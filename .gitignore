@@ -1,0 +1,76 @@
+# Build directories - 排除所有构建生成的文件
+build/
+bin/
+lib/
+out/
+
+# Visual Studio files - VS生成的项目文件和用户设置
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+*.sln
+*.sln.docstates
+*.suo
+*.user
+*.userosscache
+.vs/
+
+# CMake generated files - CMake生成的文件
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+CMakeSettings.json
+
+# Debug/Release output - 编译输出目录
+Debug/
+Release/
+x64/
+Win32/
+RelWithDebInfo/
+MinSizeRel/
+
+# Compiled Object files - 编译产生的目标文件
+*.obj
+*.o
+*.lo
+*.slo
+
+# Compiled Dynamic libraries - 动态链接库
+*.dll
+*.so
+*.dylib
+
+# Compiled Static libraries - 静态链接库
+*.lib
+*.a
+*.la
+
+# Executables - 可执行文件
+*.exe
+*.out
+*.app
+
+# Log files - 日志文件
+*.log
+
+# IDE files - IDE配置文件
+.vscode/
+*.swp
+*.swo
+
+# OS specific - 操作系统特定文件
+.DS_Store
+Thumbs.db
+
+# Temporary files - 临时文件
+*.tmp
+*.temp
+
+# Package manager files - 包管理器文件
+node_modules/
+package-lock.json
+
+# Database files - 数据库文件
+*.db
+*.sqlite

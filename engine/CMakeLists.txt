@@ -1,0 +1,4 @@
+add_subdirectory(core)
+add_subdirectory(render)
+add_subdirectory(samples)
+# (Other modules appear later)

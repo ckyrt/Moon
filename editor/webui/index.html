@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>UGC Editor WebUI</title>
+    <style>
+      html, body, #root { height: 100%; margin: 0; }
+      .layout { display: grid; grid-template-columns: 280px 1fr 320px; grid-template-rows: 1fr; height: 100%; }
+      .panel { border-left: 1px solid #222; border-right: 1px solid #222; background: #1b1e22; color: #d7dbdf; }
+      .left { border-left: none; }
+      .right { border-right: none; }
+      .title { padding: 8px 12px; font-weight: bold; background: #0f1114; border-bottom: 1px solid #222; }
+      .content { padding: 8px 12px; }
+      #viewport { width: 100%; height: calc(100% - 36px); background: #000; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
