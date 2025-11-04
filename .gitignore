@@ -4,23 +4,18 @@ bin/
 lib/
 out/
 
-# Visual Studio files - VS生成的项目文件和用户设置
-*.vcxproj
+# Visual Studio user files - 只排除用户特定的设置文件
 *.vcxproj.user
-*.vcxproj.filters
-*.sln
 *.sln.docstates
 *.suo
 *.user
 *.userosscache
 .vs/
 
-# CMake generated files - CMake生成的文件
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-CMakeSettings.json
+# NOTE: 保留这些文件用于团队开发：
+# *.vcxproj - Visual Studio项目文件 (需要提交)
+# *.vcxproj.filters - 项目过滤器 (需要提交)
+# *.sln - 解决方案文件 (需要提交)
 
 # Debug/Release output - 编译输出目录
 Debug/
