@@ -1,162 +1,341 @@
-# Moon Game Engine - Modular Architecture Framework
+# UGC 虚拟世界引擎与编辑器
 
-🚀 **这是一个完整的项目架构骨架，专为AI代码生成优化**
+> **超级 README（最终版）**  
+> *适用于项目根目录 README.md*
 
-## 📋 项目概述
+User-Generated World Engine & Editor
 
-这个仓库包含一个**模块化游戏引擎**的完整架构框架，采用 Contract-First 设计理念。每个模块都有清晰的职责边界和接口定义，UI (WebUI) 与引擎逻辑完全分离。
+让任何人都能轻松创造一个 3D 世界。
+像 Roblox + GTA + Minecraft + SketchUp + SimCity 的结合体。
+你可以使用此引擎创建：建筑、地形、城市、角色、载具、脚本化交互，甚至是多人开放世界。
 
-## 🎯 设计目标
+## 🎯 核心目标
 
-- ✅ **Contract-First 架构** - 接口先行，实现后续
-- ✅ **UI与引擎完全分离** - WebUI通过IPC与引擎通信
-- ✅ **确定性引擎核心** - 可无头运行 (适用于服务器)
-- ✅ **稳定的渲染接口** - 支持多种渲染后端
-- ✅ **独立可测试模块** - 几何/建筑/地形/车辆模块相互独立
-- ✅ **标准化IPC接口** - 所有通信协议在 `/engine/contracts` 定义
+- ✅ **低门槛建造**：小白用户无需学习建模软件即可搭建建筑 / 地形 / 场景
+- ✅ **高扩展性**：支持高级用户进行 CSG 建模、地形编辑、参数化系统
+- ✅ **模块化引擎**：渲染、物理、几何、网络全部可替换
+- ✅ **多人协作**：未来支持多人实时编辑与在线世界
+- ✅ **UGC 平台**：所有可被用户修改、组合、分享
 
-## 📁 目录结构 (Monorepo)
-
-```
-/engine
-  /core          # ECS、组件注册、事件系统、整体Game Loop
-  /geometry      # CSG、Extrude、Sweep、Mesh生成、简化
-  /physics       # 物理适配层 (Jolt/PhysX)、刚体、碰撞体、射线查询
-  /render        # 渲染接口 (IRenderer)、bgfx/diligent实现、多相机支持
-  /terrain       # 高度图、道路、植被、河湖海 (逻辑层)
-  /building      # 墙、门窗、楼梯、地板的参数化生成
-  /vehicle       # 轮式车辆、悬挂、油门转向
-  /character     # 动画播放、骨骼、捏人参数系统
-  /persistence   # 场景保存、加载、格式版本迁移
-  /net           # Server/Client同步、CRDT/指令队列、快照
-  /scripting     # 脚本语言集成 (Lua/JavaScript/Python)
-  /contracts     # IDL类型定义 (Protobuf/FlatBuffers)、IPC协议
-  /adapters      # 文件系统、OS、时间、平台API、CEF/WebView2 host
-  /samples       # 最小可运行示例 (Cube、CSG、地形、载具)
-  /tests         # 单元测试和集成测试
-
-/editor
-  /webui         # React/Vue，UI布局、Inspector、Hierarchy、菜单栏
-  /bridge        # C++ ↔ WebUI通信层、WebSocket/CEF/WebView2
-
-/tools           # 构建工具、资产处理工具
-
-/docs
-  /adr           # 架构决策记录 (Architecture Decision Records)
-  /spec          # 技术规范和API文档
-  /playbooks     # 开发流程和最佳实践
-```
-
-## 🚀 快速开始 (AI代码生成)
-
-### 对AI说：
+# 1️⃣ 项目总体架构 Overview
 
 ```
-"根据已有项目架构，生成对应的文件内容、CMake、Hello World 实现。"
+┌──────────────────────────────────────────────┐
+│               WebUI 编辑器（React）          │
+│  - 场景树、属性面板、工具栏、CSG建模、地形工具     │
+└──────────────▲─────────────────────────────┘
+               │ IPC JSON/WebSocket
+┌──────────────▼─────────────────────────────┐
+│             Editor Bridge（C++）             │
+│     负责 UI ↔ 引擎通信（命令、数据、事件）        │
+└──────────────▲─────────────────────────────┘
+               │ 调用 Engine API
+┌──────────────▼─────────────────────────────┐
+│                原生引擎（C++）                │
+│  - SceneGraph / Entity / Component           │
+│  - CSG 几何系统                               │
+│  - 建筑系统、地形系统、预制件、资产系统           │
+│  - 逻辑模拟（可无渲染运行，用于服务器）           │
+└──────────────▲─────────────────────────────┘
+               │ 渲染抽象 IRenderer
+┌──────────────▼─────────────────────────────┐
+│                渲染后端（可替换）              │
+│  - NullRenderer（默认）                       │
+│  - bgfx / Diligent / Vulkan / DX12           │
+└──────────────────────────────────────────────┘
 ```
 
-AI 会自动生成：
-- ✅ 所有接口的初始实现
-- ✅ 完整的CMakeLists.txt
-- ✅ 平台适配层
-- ✅ WebUI/bridge WebSocket主机
-- ✅ Hello Triangle/Cube示例
+## 🏗️ 分层优势
 
-### 或者分步骤：
+- **UI 与引擎彻底解耦**
+- **引擎与渲染彻底解耦**
 
-1. **生成核心模块：**
-   ```
-   "实现 /engine/core 的ECS系统和游戏循环"
-   ```
+可以无渲染运行 → 适用于服务器 authoritative logic
 
-2. **生成渲染系统：**
-   ```
-   "实现 /engine/render 的IRenderer接口和NullRenderer"
-   ```
+可支持任意渲染后端
 
-3. **生成IPC通信：**
-   ```
-   "实现 /engine/contracts 的IPC协议和 /editor/bridge 的WebSocket通信"
-   ```
+可扩展到多人在线、脚本系统、物理系统等
 
-## 🏗️ 技术栈
+# 2. 项目目录结构
+# 2️⃣ 目录结构
 
-### 引擎核心
-- **语言**: C++20
-- **构建**: CMake
-- **架构**: ECS (Entity Component System)
-- **物理**: Jolt Physics (推荐) 或 PhysX
-- **渲染**: bgfx (跨平台) 或 原生图形API
+```
+/engine/                  # 引擎核心模块
+  /core/                 # 🔧 ECS系统、场景图、序列化
+  /geometry/             # 📐 CSG几何、布尔运算、网格生成
+  /render/               # 🖼️ 渲染抽象层（支持多后端）
+  /terrain/              # 🏔️ 地形系统、高度图、笔刷
+  /building/             # 🏠 建筑系统、参数化构件
+  /character/            # 👤 角色系统、参数化捏人
+  /vehicle/              # 🚗 载具系统、物理模拟
+  /physics/              # ⚡ 物理引擎集成
+  /persistence/          # 💾 序列化、资产管理
+  /net/                  # 🌐 网络同步、多人协作
+  /scripting/            # 📜 脚本系统、行为编程
+  /contracts/            # 📋 模块间接口定义
+  /adapters/             # 🔌 第三方库适配器
+  /samples/              # 📚 示例项目
+  /tests/                # 🧪 测试框架
 
-### 编辑器界面
-- **前端**: React 或 Vue.js
-- **通信**: WebSocket + Protobuf/JSON
-- **宿主**: CEF 或 WebView2
+/editor/                  # 编辑器
+  /bridge/               # 🌉 C++ ↔ WebUI 通信桥
+  /webui/                # 🖥️ React编辑器界面
 
-### 开发工具
-- **版本控制**: Git
-- **文档**: Markdown + ADR
-- **测试**: 单元测试 + 集成测试
+/tools/                   # 🛠️ 构建工具、资产流水线
+/docs/                    # 📖 文档、架构决策记录
+```
 
-## 📖 文档结构
+# 3️⃣ 系统模块说明（完整版）
 
-- **[架构决策记录](/docs/adr/)** - 重要技术决策的记录
-- **[技术规范](/docs/spec/)** - API和协议详细说明
-- **[开发手册](/docs/playbooks/)** - 流程和最佳实践
+## ✅ 3.1 Core Engine 核心引擎
 
-## 🎮 示例程序
+**包含：**
+- 引擎生命周期（Init/Update/Shutdown）
+- Scene Graph（节点）
+- Entity / Component 系统
+- 组件注册表
+- 系统管理器（SystemManager）
+- Undo/Redo 栈
+- 序列化（JSON / 二进制）
+- EventBus / 消息系统
+- Time / File / Platform 抽象层
 
-每个模块都包含最小化的示例程序：
+**特点：**
+- ✅ 不依赖渲染
+- ✅ 可在服务器无界面运行
+- ✅ 所有模块的基础
 
-- `hello_cube` - 基础渲染和相机控制
-- `csg_demo` - CSG布尔运算演示
-- `terrain_demo` - 地形生成和渲染
-- `vehicle_demo` - 车辆物理和控制
-- `building_demo` - 建筑系统演示
+## ✅ 3.2 Renderer 渲染抽象层
 
-## 🔧 开发环境
+**接口 IRenderer 提供：**
+- 初始化
 
-### Windows (推荐)
-- Visual Studio 2022
-- CMake 3.24+
-- Node.js 18+ (编辑器WebUI)
+- resize
+- beginFrame / endFrame
+- drawMesh(mesh, material)
+- drawGizmo
+- 资源加载（纹理、mesh、shader）
 
-### Linux/macOS
-- GCC 11+ 或 Clang 14+
-- CMake 3.24+
-- Node.js 18+ (编辑器WebUI)
+**可用后端：**
+- NullRenderer（默认）
+- BgfxRenderer
+- DiligentRenderer
+- VulkanRenderer（未来）
 
-## 🤖 AI 生成指导
+**特点：**
+- ✅ 完全可替换
+- ✅ 引擎不依赖底层图形 API
 
-这个框架专为AI代码生成设计：
+## ✅ 3.3 Geometry（CSG）几何核心
 
-1. **每个模块都有明确的README** - 说明职责和依赖关系
-2. **接口先行设计** - 定义清晰的API边界
-3. **示例驱动** - 每个功能都有对应的示例程序
-4. **测试覆盖** - 每个模块都有对应的测试结构
+UGC 平台的关键模块，负责：
+- boolean（union / subtract / intersect）
+- extrude（拉伸体）
+- bevel（倒角）
+- parametric modeling（参数化建模）
+- mesh 生成与修复
+- 自动 UV
 
-## 📄 许可证
+**用于：**
+- 建筑构件
+- 地形开洞
+- 窗户自动开洞
 
-[MIT License](LICENSE) - 自由使用和修改
+## ✅ 3.4 Terrain 地形系统
+
+- 高度图（heightmap）
+- 地形笔刷（提升、压低、平滑、噪声）
+- 多层材质混合
+
+- 分块地形（LOD 地形优化）
+- 自动散布自然要素（树、草、石）
+
+## ✅ 3.5 Building 建筑系统
+
+**参数化构件：**
+- Wall（厚度、材质、是否自动开洞）
+- Window（尺寸、样式、玻璃类型）
+- Door（开合、铰链方向）
+- Stair（直梯、旋转梯）
+- Roof（坡度、材质）
+
+**特点：**
+- ✅ 所有构件可用 CSG 合并
+- ✅ 用户可以用拖拽方式制作一栋别墅
+- ✅ 完全可扩展的构件库
+
+## ✅ 3.6 Character 角色系统（参数化捏人）
+
+不提供专业骨骼建模，而是：
+- 预制人类 / 动物
+- 身体参数（身高、手臂长、腿长、头大小）
+- Morph Targets（脸型、表情）
+- 捏人面板
+- 服装系统（mesh 替换 + 骨骼蒙皮）
+
+## ✅ 3.7 Vehicle 载具系统
+
+**支持：**
+- 轮胎 / 转向 / 悬挂
+- 发动机动力模型
+- 载具控制（油门、刹车、方向盘）
+- 多种载具类型（汽车、摩托、船、飞机、直升机）
+- 外观参数化
+
+## ✅ 3.8 Physics 物理系统
+
+**基于 Jolt/Bullet：**
+- 刚体
+- 触发器
+- 车辆物理
+- 角色胶囊碰撞
+- 刚体/CSG 动态碰撞体生成
+- 布料（未来）
+
+## ✅ 3.9 Net 多人同步（未来）
+
+- authoritative server
+- client prediction
+- state replication
+- editing sync（多人协作编辑）
+- 权限系统
+
+## ✅ 3.10 Scripting 脚本系统（未来）
+
+- Lua / JS 虚拟机
+- 沙盒环境
+- Visual Scripting（节点图）
+- 事件系统（OnClick / OnEnter / Timer）
+- 控制角色/载具/动画/物理
+
+## ✅ 3.11 Assets 持久化与资产系统
+
+- 场景保存/加载
+- 资产格式（模型、材质、贴图）
+- 预制件（Prefab）
+- 用户自定义资产库
+- 在线分享（未来）
+
+# 4️⃣ 模块依赖矩阵（防止 AI 越界修改）
+
+```
+core:           无依赖
+geometry:       core
+terrain:        core, geometry
+building:       core, geometry
+character:      core
+vehicle:        core, physics
+physics:        core
+render:         core
+persistence:    core
+net:            core
+scripting:      core, contracts
+contracts:      core
+adapters:       core
+editor-ui:      无（只 IPC JSON）
+editor-bridge:  core, contracts
+```
+
+## ⚠️ 重要约束
+
+- ✅ WebUI 不得依赖 C++ 引擎
+- ✅ 引擎不得依赖 UI
+- ✅ Render 不得依赖 Terrain/Building
+- ✅ Physics 不得依赖 Render
+
+# 5️⃣ 开发阶段成功标准（AI 友好）
+
+## ✅ 阶段 1：基础框架 + Null Renderer
+
+**成功标准：**
+- 能创建 Scene/Entity/Component
+- WebUI 能发送 JSON → 引擎接收命令
+- NullRenderer 输出 draw log
+- HelloCube 示例运行
+
+## ✅ 阶段 2：CSG 基础
+
+**成功标准：**
+- Box + Cylinder + Extrude
+- Boolean：Union/Subtract
+- 自动生成可渲染 Mesh
+- WebUI 能创建/删除形状
+
+## ✅ 阶段 3：编辑器基本操作
+
+**成功标准：**
+- 选择（点击选中）
+- 移动/旋转/缩放
+- Undo/Redo
+- 属性面板实时修改
+
+## ✅ 阶段 4：地形系统
+
+**成功标准：**
+- Heightmap 生成
+- 笔刷修改实时看到结果
+- 多材质地表
+
+## ✅ 阶段 5：建筑系统
+
+**成功标准：**
+- 墙体绘制
+- 自动开洞（门窗）
+- 楼梯参数化生成
+- 屋顶生成
+
+# 6️⃣ AI 辅助开发规范（非常关键）
+
+**为了防止反复返工，你必须遵守：**
+
+## ✅ 6.1 接口确定后禁止 AI 修改模块边界
+
+**例如：**
+- renderer 不能包含 scene graph
+- geometry 不能调用 render
+- physics 不得操作 UI
+
+## ✅ 6.2 头文件一旦确定，不允许 AI 修改函数签名
+（除非你人工允许）
+
+## ✅ 6.3 所有复杂算法必须放到独立文件
+
+**比如：**
+- CSGBoolean.cpp
+- TerrainBrush.cpp
+- VehicleSuspension.cpp
+
+避免 AI 修改无关内容。
+
+## ✅ 6.4 所有模块必须有测试
+防止 AI 修改一处导致全盘崩。
+
+## ✅ 6.5 使用 PR（单模块）开发
+不允许 AI 改所有文件。
+
+## ✅ 6.6 版本库必须加文档：
+- `/docs/adr/*.md` - 记录每个架构决策原因。
+
+# 7️⃣ 开发路线图（建议）
+
+- ✅ **阶段 0**：搭建工程（CMake + 基础目录）
+- ✅ **阶段 1**：Core + Null Renderer
+- ✅ **阶段 2**：CSG 几何系统
+- ✅ **阶段 3**：WebUI + 引擎交互
+- ✅ **阶段 4**：编辑器工具（选择、Gizmo、Undo）
+- ✅ **阶段 5**：地形系统
+- ✅ **阶段 6**：建筑系统
+- ✅ **阶段 7**：参数化角色
+- ✅ **阶段 8**：载具系统
+- ✅ **阶段 9**：物理系统
+- ✅ **阶段 10**：多人同步
+- ✅ **阶段 11**：脚本系统
+- ✅ **阶段 12**：资产系统
 
 ---
 
-**💡 提示**: 这是一个架构框架，等待AI或开发者填充具体实现。每个模块的README文件包含详细的实现指导。
+## 🎯 **总结**
 
-## Notes
-- `/engine/render` contains a **NullRenderer** (default) and a **BgfxRenderer** stub.
-  - NullRenderer requires no dependencies and is used by the sample.
-  - BgfxRenderer is a placeholder for future integration (AI/you can wire bgfx later).
-- The WebUI (`/editor/webui`) is a basic React/Vite skeleton; start it separately with `npm install && npm run dev`.
+这是一个完整的 UGC 虚拟世界引擎架构文档。所有模块都已规划完毕，具备清晰的边界和依赖关系。现在可以开始逐步实现每个模块，建议按照路线图顺序进行开发。
 
-## Layout
-```
-/engine
-  /core           # EngineCore (Initialize/Tick/Shutdown)
-  /render         # IRenderer + NullRenderer (default) + bgfx stub
-  /samples        # hello_engine (Win32 window + render loop)
-/editor
-  /webui          # React skeleton (Blueprint-like layout)
-  /bridge         # IPC stubs
-/docs             # ADR/spec placeholders
-```
+**记住：保持模块间的解耦，确保每个模块都可以独立开发和测试！** 🚀
