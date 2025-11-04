@@ -1,22 +1,57 @@
-# Modular UGC Engine + WebUI Editor (Version 2 - Minimal Demo)
+# Moon Game Engine - Modular UGC Engine
 
-This is a **minimal runnable skeleton** for Windows that shows:
-- A Win32 window + message loop
-- A **Null renderer** that clears the background (no external deps)
-- EngineCore lifecycle (Initialize/Tick/Shutdown)
-- WebUI React skeleton + IPC stubs (not required to run the C++ demo)
+一个基于Windows的模块化游戏引擎，支持用户生成内容(UGC)和WebUI编辑器。
 
-> ✅ You can build and run the **Hello Engine** sample on Windows without any third‑party libraries.
+## 项目结构
 
-## Build (Windows, MSVC + CMake >= 3.24)
-```bat
-mkdir build
-cd build
-cmake .. -A x64
-cmake --build . --config Debug
-bin\Debug\hello_engine.exe
 ```
-(Or run the `Release` binary accordingly.)
+Moon/
+├── engine/              # 引擎核心
+│   ├── core/           # 引擎核心模块
+│   ├── render/         # 渲染模块
+│   └── samples/        # 示例程序
+├── editor/             # 编辑器
+│   ├── bridge/         # 原生-Web桥接
+│   └── webui/          # React Web界面
+├── docs/               # 文档
+└── tools/              # 工具
+```
+
+## 开发环境
+
+- **开发工具**: Visual Studio 2022
+- **语言**: C++20
+- **平台**: Windows
+- **前端**: React + TypeScript (编辑器界面)
+
+## 如何开始
+
+### 方法1: 直接运行示例
+1. 打开Visual Studio 2022
+2. 创建新项目或解决方案
+3. 添加现有代码文件到项目中
+4. 编译并运行 `engine/samples/hello_win32.cpp`
+
+### 方法2: 创建完整解决方案
+1. 在Visual Studio中创建新的空白解决方案
+2. 添加以下项目：
+   - **EngineCore** (静态库) - `engine/core/`
+   - **EngineRender** (静态库) - `engine/render/`
+   - **EditorBridge** (静态库) - `editor/bridge/`
+   - **HelloEngine** (可执行文件) - `engine/samples/`
+
+## 特性
+
+- ✅ 引擎核心架构 (Initialize/Tick/Shutdown)
+- ✅ 模块化渲染系统
+- ✅ Win32窗口支持
+- ✅ 空渲染器实现（无外部依赖）
+- 🚧 WebUI编辑器（开发中）
+- 🚧 IPC通信桥接（开发中）
+
+## 编译说明
+
+项目使用Visual Studio开发，无需外部构建工具。所有源文件已经过Windows编译验证。
 
 ## Notes
 - `/engine/render` contains a **NullRenderer** (default) and a **BgfxRenderer** stub.
