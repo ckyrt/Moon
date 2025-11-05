@@ -3,15 +3,22 @@
 #include <thread>
 #include "../core/EngineCore.h"
 #include "../render/IRenderer.h"
-#include "../render/NullRenderer.h"
+#include "../render/DiligentRenderer.h"
 #include "../render/RenderCommon.h"
 
 static const wchar_t* kWndClass = L"UGC_Editor_WndClass";
 
+// Global renderer pointer for resize handling
+static IRenderer* g_pRenderer = nullptr;
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_SIZE:
-        InvalidateRect(hWnd, nullptr, FALSE);
+        if (g_pRenderer && wParam != SIZE_MINIMIZED) {
+            UINT width = LOWORD(lParam);
+            UINT height = HIWORD(lParam);
+            g_pRenderer->Resize(width, height);
+        }
         break;
     case WM_PAINT:
         // Rendering will occur in our loop; here just validate.
@@ -40,7 +47,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     RECT rc = {0, 0, 1280, 720};
     AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
     HWND hwnd = CreateWindowExW(
-        0, kWndClass, L"Hello Engine (NullRenderer)",
+        0, kWndClass, L"Hello Engine (DiligentRenderer)",
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         rc.right - rc.left, rc.bottom - rc.top,
@@ -53,14 +60,20 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     EngineCore engine;
     engine.Initialize();
 
-    NullRenderer renderer;
+    DiligentRenderer renderer;
+    g_pRenderer = &renderer;  // Set global pointer for resize handling
+    
     RenderInitParams params{};
     params.windowHandle = hwnd;
     RECT cr;
     GetClientRect(hwnd, &cr);
     params.width  = cr.right - cr.left;
     params.height = cr.bottom - cr.top;
-    renderer.Initialize(params);
+    
+    if (!renderer.Initialize(params)) {
+        MessageBoxA(hwnd, "Failed to initialize DiligentRenderer!", "Error", MB_OK | MB_ICONERROR);
+        return -1;
+    }
 
     // 4) Main loop
     bool running = true;
@@ -87,6 +100,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     }
 
     renderer.Shutdown();
+    g_pRenderer = nullptr;
     engine.Shutdown();
     return 0;
 }

@@ -57,15 +57,21 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_LIB;DILIGENT_DEVELOPMENT=1;ENGINE_DLL=0;D3D11_SUPPORTED=1;PLATFORM_WIN32=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>$(SolutionDir)external\DiligentEngine;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentCore\Graphics\GraphicsEngine\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Graphics\GraphicsEngineD3D11\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Common\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Platforms\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Platforms\Win32\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Primitives\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>
       </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\GraphicsEngineD3D11\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\GraphicsEngineD3DBase\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\GraphicsEngine\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\ShaderTools\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Common\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Platforms\Win32\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Platforms\Basic\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Primitives\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\ThirdParty\SPIRV-Tools\source\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\ThirdParty\SPIRV-Tools\source\opt\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\ThirdParty\glslang\glslang\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\ThirdParty\glslang\SPIRV\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\ThirdParty\SPIRV-Cross\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\GraphicsAccessories\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\HLSL2GLSLConverterLib\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Diligent-GraphicsEngineD3D11-static.lib;Diligent-GraphicsEngineD3DBase.lib;Diligent-GraphicsEngine.lib;Diligent-ShaderTools.lib;Diligent-Common.lib;Diligent-Win32Platform.lib;Diligent-BasicPlatform.lib;Diligent-Primitives.lib;SPIRV-Tools.lib;SPIRV-Tools-opt.lib;glslangd.lib;SPIRVd.lib;spirv-cross-cored.lib;Diligent-GraphicsAccessories.lib;Diligent-HLSL2GLSLConverterLib.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -73,9 +79,11 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_LIB;DILIGENT_DEVELOPMENT=1;ENGINE_DLL=0;D3D11_SUPPORTED=1;PLATFORM_WIN32=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>$(SolutionDir)external\DiligentEngine;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentCore\Graphics\GraphicsEngine\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Graphics\GraphicsEngineD3D11\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Common\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Platforms\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Platforms\Win32\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Primitives\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -84,15 +92,21 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\GraphicsEngineD3D11\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\GraphicsEngineD3DBase\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\GraphicsEngine\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\ShaderTools\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Common\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Platforms\Win32\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Platforms\Basic\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Primitives\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\ThirdParty\SPIRV-Tools\source\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\ThirdParty\SPIRV-Tools\source\opt\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\ThirdParty\glslang\glslang\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\ThirdParty\glslang\SPIRV\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\ThirdParty\SPIRV-Cross\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\GraphicsAccessories\$(Configuration);$(SolutionDir)external\DiligentEngine\build\DiligentCore\Graphics\HLSL2GLSLConverterLib\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Diligent-GraphicsEngineD3D11-static.lib;Diligent-GraphicsEngineD3DBase.lib;Diligent-GraphicsEngine.lib;Diligent-ShaderTools.lib;Diligent-Common.lib;Diligent-Win32Platform.lib;Diligent-BasicPlatform.lib;Diligent-Primitives.lib;SPIRV-Tools.lib;SPIRV-Tools-opt.lib;glslang.lib;SPIRV.lib;spirv-cross-core.lib;Diligent-GraphicsAccessories.lib;Diligent-HLSL2GLSLConverterLib.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BgfxRenderer.h" />
+    <ClInclude Include="DiligentRenderer.h" />
     <ClInclude Include="IRenderer.h" />
     <ClInclude Include="NullRenderer.h" />
     <ClInclude Include="RenderCommon.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BgfxRendererStub.cpp" />
+    <ClCompile Include="DiligentRenderer.cpp" />
     <ClCompile Include="NullRenderer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
