@@ -36,8 +36,15 @@ namespace Core {
         }
         
         try {
-            // Set log directory
-            s_instance->m_logDirectory = "./logs";
+            // Set log directory to absolute path based on executable location
+            char exePath[MAX_PATH];
+            GetModuleFileNameA(NULL, exePath, MAX_PATH);
+            std::string exeDir = std::string(exePath);
+            size_t lastSlash = exeDir.find_last_of("\\/");
+            if (lastSlash != std::string::npos) {
+                exeDir = exeDir.substr(0, lastSlash);
+            }
+            s_instance->m_logDirectory = exeDir + "\\logs";
             
             // Create log directory
             if (!s_instance->CreateLogDirectory()) {
