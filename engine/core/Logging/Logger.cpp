@@ -6,6 +6,7 @@
 #include <cstdarg>
 #include <vector>
 #include <cerrno>
+#include <memory>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -26,63 +27,79 @@ namespace Core {
     bool Logger::Init() {
         std::lock_guard<std::mutex> lock(s_mutex);
         
-        if (!s_instance) {
-            s_instance = std::unique_ptr<Logger>(new Logger());
-        }
-        
-        if (s_instance->m_initialized) {
+        if (s_instance && s_instance->m_initialized) {
             return true; // Already initialized
         }
         
-        Logger& instance = *s_instance;
-        
-        // Set log directory
-        instance.m_logDirectory = "./logs";
-        
-        // Create log directory
-        if (!instance.CreateLogDirectory()) {
-            std::cerr << "Failed to create log directory: " << instance.m_logDirectory << std::endl;
-            return false;
+        if (!s_instance) {
+            s_instance = std::make_unique<Logger>();
         }
         
-        // Setup console
+        try {
+            // Set log directory
+            s_instance->m_logDirectory = "./logs";
+            
+            // Create log directory
+            if (!s_instance->CreateLogDirectory()) {
+                std::cerr << "Failed to create log directory: " << s_instance->m_logDirectory << std::endl;
+                return false;
+            }
+            
+            // Setup console
 #ifdef _WIN32
-        instance.m_consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-        
-        // Enable ANSI escape sequence support (Windows 10+)
-        DWORD mode = 0;
-        GetConsoleMode(instance.m_consoleHandle, &mode);
-        mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-        SetConsoleMode(instance.m_consoleHandle, mode);
+            s_instance->m_consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+            
+            // Enable ANSI escape sequence support (Windows 10+)
+            DWORD mode = 0;
+            GetConsoleMode(s_instance->m_consoleHandle, &mode);
+            mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+            SetConsoleMode(s_instance->m_consoleHandle, mode);
 #endif
-        
-        // Open log file
-        if (!instance.OpenLogFile()) {
-            std::cerr << "Failed to open log file" << std::endl;
+            
+            // Open log file
+            if (!s_instance->OpenLogFile()) {
+                std::cerr << "Failed to open log file" << std::endl;
+                return false;
+            }
+            
+            s_instance->m_initialized = true;
+            
+            // Write initialization log after everything is set up
+            Write(LogLevel::Info, "Logger", "Logger system initialized successfully");
+            
+            return true;
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Logger initialization failed: " << e.what() << std::endl;
             return false;
         }
-        
-        instance.m_initialized = true;
-        
-        // Write initialization log
-        MOON_LOG_INFO("Logger", "Logger system initialized successfully");
-        
-        return true;
     }
     
     void Logger::Shutdown() {
         std::lock_guard<std::mutex> lock(s_mutex);
         
         if (s_instance && s_instance->m_initialized) {
-            MOON_LOG_INFO("Logger", "Logger system shutting down");
+            // Write shutdown message directly to avoid macro recursion
+            try {
+                if (s_instance->m_logFile.is_open()) {
+                    std::string timestamp = s_instance->GetTimestampString();
+                    s_instance->m_logFile << "[" << timestamp << "] [INFO] [Logger] Logger system shutting down" << std::endl;
+                    s_instance->m_logFile.flush();
+                }
+            }
+            catch (...) {
+                // Ignore any errors during shutdown logging
+            }
             
-            std::lock_guard<std::mutex> writeLock(s_instance->m_writeMutex);
-            
+            // Close file
             if (s_instance->m_logFile.is_open()) {
                 s_instance->m_logFile.close();
             }
             
             s_instance->m_initialized = false;
+            
+            // Reset the unique_ptr to properly destroy the instance
+            s_instance.reset();
         }
     }
     
@@ -250,7 +267,11 @@ namespace Core {
     
     bool Logger::OpenLogFile() {
         std::string currentDate = GetCurrentDateString();
+#ifdef _WIN32
+        std::string logFileName = m_logDirectory + "\\" + currentDate + ".log";
+#else
         std::string logFileName = m_logDirectory + "/" + currentDate + ".log";
+#endif
         
         m_logFile.open(logFileName, std::ios::app);
         

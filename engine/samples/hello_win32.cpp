@@ -2,6 +2,7 @@
 #include <chrono>
 #include <thread>
 #include "../core/EngineCore.h"
+#include "../core/Logging/Logger.h"
 #include "../render/IRenderer.h"
 #include "../render/DiligentRenderer.h"
 #include "../render/RenderCommon.h"
@@ -56,6 +57,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
 
+    // Initialize logging system
+    Moon::Core::Logger::Init();
+
     // 3) Engine + Renderer
     EngineCore engine;
     engine.Initialize();
@@ -102,5 +106,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     renderer.Shutdown();
     g_pRenderer = nullptr;
     engine.Shutdown();
+    
+    // Shutdown logging system
+    Moon::Core::Logger::Shutdown();
+    
     return 0;
 }

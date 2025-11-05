@@ -31,9 +31,10 @@ namespace Core {
         // Destructor needs to be public for unique_ptr access
         ~Logger() = default;
         
-    private:
+        // Constructor needs to be public for make_unique
         Logger() = default;
         
+    private:
         // Get singleton instance
         static Logger& GetInstance();
         
