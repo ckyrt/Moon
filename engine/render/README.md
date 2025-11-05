@@ -19,38 +19,14 @@
 
 ## 坐标系统与矩阵约定 (Coordinate System & Matrix Conventions)
 
-### ✅ 统一规则（已确定 2025-11-06）
+> **📋 完整的坐标系统约定请参考：**  
+> [ADR 0005: 坐标系统与矩阵约定](../../docs/adr/0005-coordinate-system-and-matrix-conventions.md)
 
-**1. 坐标系：左手坐标系 (Left-Handed)**
-```
-+Y (Up) |  
-        |  / +Z (Forward)
-        | /
-        |/_____ +X (Right)
-```
-
-**2. 矩阵布局：CPU 用 Row-Major，上传 GPU 前转置**
-```cpp
-// CPU 构建 row-major 矩阵
-Matrix4x4 wvp = world * view * proj;
-
-// 转置后上传给 HLSL
-Matrix4x4 wvpT = transpose(wvp);
-```
-
-**3. HLSL 着色器：使用 `mul(vector, matrix)`**
-```hlsl
-VSOut.Pos = mul(float4(VSIn.Pos, 1.0), g_WorldViewProj);
-```
-
-**4. 标准矩阵函数（左手系）**
-- `Perspective()` - 左手系透视投影，Z 正向前
-- `LookAt()` - 左手系视图矩阵，Forward = target - eye
-- `RotationY()` - 左手系旋转，符号与右手系相反
-
-**理由：** 与 DirectX/Diligent Engine 标准一致，避免坐标系混乱。
-
-**⚠️ 所有新代码必须遵循此规则！**
+**快速参考：**
+- **坐标系**：左手坐标系 (+Y 上, +Z 前, +X 右)
+- **矩阵布局**：CPU 使用行主序，上传 GPU 前转置
+- **着色器约定**：HLSL 使用 `mul(vector, matrix)`
+- **决策日期**：2025-11-06
 
 ---
 
