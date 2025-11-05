@@ -1,7 +1,6 @@
 ﻿#include "DiligentRenderer.h"
 #include "../core/Logging/Logger.h"
 #include <iostream>
-#include <vector>
 #include <cmath>
 #include <cstring>
 
@@ -13,48 +12,28 @@
 #include "Graphics/GraphicsEngine/interface/Shader.h"
 #include "Graphics/GraphicsEngine/interface/PipelineState.h"
 #include "Graphics/GraphicsEngine/interface/ShaderResourceBinding.h"
-#include "Graphics/GraphicsEngine/interface/Texture.h"
-#include "Graphics/GraphicsEngine/interface/TextureView.h"
+// (textures not used in this sample)
 #include "Graphics/GraphicsEngineD3D11/interface/EngineFactoryD3D11.h"
 #include "Common/interface/RefCntAutoPtr.hpp"
 
 using namespace Diligent;
 
-// Cube vertex data with position and color
+// Simple triangle vertex data with position and color
 struct Vertex {
     float position[3];
-    float color[4];  // Changed to 4 components to match float4
+    float color[4];
 };
 
-// Cube vertices (8 vertices for a cube)
-static const Vertex CubeVertices[] = {
-    // Front face
-    {{-1.0f, -1.0f,  1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}}, // 0: Red
-    {{ 1.0f, -1.0f,  1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}}, // 1: Green
-    {{ 1.0f,  1.0f,  1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}}, // 2: Blue
-    {{-1.0f,  1.0f,  1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}, // 3: Yellow
-    
-    // Back face
-    {{-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}}, // 4: Magenta
-    {{ 1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}}, // 5: Cyan
-    {{ 1.0f,  1.0f, -1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 6: White
-    {{-1.0f,  1.0f, -1.0f}, {0.5f, 0.5f, 0.5f, 1.0f}}  // 7: Gray
+// Simple triangle vertices (3 vertices)
+static const Vertex TriangleVertices[] = {
+    {{ 0.0f,  0.5f,  0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+    {{-0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+    {{ 0.5f, -0.5f,  0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}}
 };
 
-// Cube indices (12 triangles = 36 indices)
-static const uint32_t CubeIndices[] = {
-    // Front face
-    0, 1, 2,  2, 3, 0,
-    // Right face
-    1, 5, 6,  6, 2, 1,
-    // Back face
-    7, 6, 5,  5, 4, 7,
-    // Left face
-    4, 0, 3,  3, 7, 4,
-    // Bottom face
-    4, 5, 1,  1, 0, 4,
-    // Top face
-    3, 2, 6,  6, 7, 3
+// Triangle indices (1 triangle = 3 indices)
+static const uint32_t TriangleIndices[] = {
+    0, 1, 2
 };
 
 // HLSL Vertex Shader
@@ -216,6 +195,9 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params) {
     m_Width = params.width;
     m_Height = params.height;
 
+    MOON_LOG_INFO("DiligentRenderer", "Starting DiligentRenderer initialization...");
+    MOON_LOG_INFO("DiligentRenderer", "Window size: %dx%d", params.width, params.height);
+
     try {
         MOON_LOG_INFO("DiligentRenderer", "Initializing DiligentRenderer...");
         
@@ -274,7 +256,7 @@ void DiligentRenderer::CreatePipelineState() {
         ShaderCreateInfo ShaderCI;
         ShaderCI.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
         ShaderCI.Desc.ShaderType = SHADER_TYPE_VERTEX;
-        ShaderCI.Desc.Name = "Cube vertex shader";
+    ShaderCI.Desc.Name = "Triangle vertex shader";
         ShaderCI.Source = VSSource;
         m_pDevice->CreateShader(ShaderCI, &pVS);
         MOON_LOG_INFO("DiligentRenderer", "Vertex shader created");
@@ -286,7 +268,7 @@ void DiligentRenderer::CreatePipelineState() {
         ShaderCreateInfo ShaderCI;
         ShaderCI.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
         ShaderCI.Desc.ShaderType = SHADER_TYPE_PIXEL;
-        ShaderCI.Desc.Name = "Cube pixel shader";
+    ShaderCI.Desc.Name = "Triangle pixel shader";
         ShaderCI.Source = PSSource;
         m_pDevice->CreateShader(ShaderCI, &pPS);
         MOON_LOG_INFO("DiligentRenderer", "Pixel shader created");
@@ -294,19 +276,20 @@ void DiligentRenderer::CreatePipelineState() {
 
     // Define vertex input layout
     LayoutElement LayoutElems[] = {
-        {0, 0, 3, VT_FLOAT32, False, 0},  // Position
-        {1, 0, 4, VT_FLOAT32, False, 12}  // Color (changed to 4 components)
+        {0, 0, 3, VT_FLOAT32, False, 0},      // Position
+        {1, 0, 4, VT_FLOAT32, False, 12}      // Color
     };
 
     // Create graphics pipeline state
     GraphicsPipelineStateCreateInfo PSOCreateInfo;
-    PSOCreateInfo.PSODesc.Name = "Cube PSO";
+    PSOCreateInfo.PSODesc.Name = "Triangle PSO";
     PSOCreateInfo.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
     PSOCreateInfo.GraphicsPipeline.NumRenderTargets = 1;
     PSOCreateInfo.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
     PSOCreateInfo.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
     PSOCreateInfo.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    PSOCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
+    PSOCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_NONE;  // 禁用面剔除以看到所有面
+    PSOCreateInfo.GraphicsPipeline.RasterizerDesc.FillMode = FILL_MODE_SOLID;  // 实心填充模式
     PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
     PSOCreateInfo.pVS = pVS;
     PSOCreateInfo.pPS = pPS;
@@ -332,30 +315,34 @@ void DiligentRenderer::CreatePipelineState() {
 
 void DiligentRenderer::CreateVertexBuffer() {
     BufferDesc VertBuffDesc;
-    VertBuffDesc.Name = "Cube vertex buffer";
+    VertBuffDesc.Name = "Triangle vertex buffer";
     VertBuffDesc.Usage = USAGE_IMMUTABLE;
     VertBuffDesc.BindFlags = BIND_VERTEX_BUFFER;
-    VertBuffDesc.Size = sizeof(CubeVertices);
+    VertBuffDesc.Size = sizeof(TriangleVertices);
     
     BufferData VBData;
-    VBData.pData = CubeVertices;
-    VBData.DataSize = sizeof(CubeVertices);
+    VBData.pData = TriangleVertices;
+    VBData.DataSize = sizeof(TriangleVertices);
     
     m_pDevice->CreateBuffer(VertBuffDesc, &VBData, &m_pVertexBuffer);
+    MOON_LOG_INFO("DiligentRenderer", "Vertex buffer created: %zu vertices, %zu bytes", 
+                  sizeof(TriangleVertices)/sizeof(TriangleVertices[0]), sizeof(TriangleVertices));
 }
 
 void DiligentRenderer::CreateIndexBuffer() {
     BufferDesc IndBuffDesc;
-    IndBuffDesc.Name = "Cube index buffer";
+    IndBuffDesc.Name = "Triangle index buffer";
     IndBuffDesc.Usage = USAGE_IMMUTABLE;
     IndBuffDesc.BindFlags = BIND_INDEX_BUFFER;
-    IndBuffDesc.Size = sizeof(CubeIndices);
+    IndBuffDesc.Size = sizeof(TriangleIndices);
     
     BufferData IBData;
-    IBData.pData = CubeIndices;
-    IBData.DataSize = sizeof(CubeIndices);
+    IBData.pData = TriangleIndices;
+    IBData.DataSize = sizeof(TriangleIndices);
     
     m_pDevice->CreateBuffer(IndBuffDesc, &IBData, &m_pIndexBuffer);
+    MOON_LOG_INFO("DiligentRenderer", "Index buffer created: %zu indices, %zu bytes", 
+                  sizeof(TriangleIndices)/sizeof(TriangleIndices[0]), sizeof(TriangleIndices));
 }
 
 void DiligentRenderer::CreateUniformBuffer() {
@@ -371,26 +358,14 @@ void DiligentRenderer::CreateUniformBuffer() {
 }
 
 void DiligentRenderer::UpdateTransforms() {
-    // Calculate time-based rotation
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float>(currentTime - m_StartTime).count();
-    
-    // Create transformation matrices
-    Matrix4x4 world = Matrix4x4::RotationY(time * 1.2f) * Matrix4x4::Translation(0.0f, 0.0f, 0.0f);
-    Matrix4x4 view = Matrix4x4::LookAt(0.0f, 3.0f, -5.0f,  // Eye position
-                                      0.0f, 0.0f, 0.0f,    // Look at point
-                                      0.0f, 1.0f, 0.0f);   // Up vector
-    Matrix4x4 proj = Matrix4x4::Perspective(3.14159f * 0.25f, // 45 degrees
-                                          (float)m_Width / (float)m_Height,
-                                          0.1f, 100.0f);
-    
-    Matrix4x4 worldViewProj = world * view * proj;
-    
-    // Update uniform buffer - 按照官方示例的方式
+    // World-View-Projection = Identity for simple triangle
+    Matrix4x4 worldViewProj; // default-constructed to identity
+
+    // Update uniform buffer
     void* pMappedData = nullptr;
     m_pImmediateContext->MapBuffer(m_pVSConstants, MAP_WRITE, MAP_FLAG_DISCARD, pMappedData);
     if (pMappedData) {
-        // 直接复制矩阵数据
+        // Copy identity matrix
         memcpy(pMappedData, &worldViewProj.m[0][0], sizeof(Matrix4x4));
         m_pImmediateContext->UnmapBuffer(m_pVSConstants, MAP_WRITE);
     }
@@ -398,9 +373,12 @@ void DiligentRenderer::UpdateTransforms() {
 
 void DiligentRenderer::RenderFrame() {
     if (!m_pDevice || !m_pSwapChain) {
+        MOON_LOG_ERROR("DiligentRenderer", "Device or SwapChain is null!");
         std::cerr << "Device or SwapChain is null!" << std::endl;
         return;
     }
+    
+    // First frame message removed to reduce noise
     
     // Update transformations
     UpdateTransforms();
@@ -409,9 +387,11 @@ void DiligentRenderer::RenderFrame() {
     m_pImmediateContext->SetRenderTargets(1, &m_pRTV, m_pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     
     // Clear render target and depth buffer
-    const float ClearColor[] = {0.0f, 0.2f, 0.4f, 1.0f};
+    const float ClearColor[] = {0.2f, 0.4f, 0.6f, 1.0f};
     m_pImmediateContext->ClearRenderTarget(m_pRTV, ClearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     m_pImmediateContext->ClearDepthStencil(m_pDSV, CLEAR_DEPTH_FLAG, 1.0f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    
+    // One-time clear log removed
     
     // Set viewport
     Viewport VP;
@@ -427,11 +407,13 @@ void DiligentRenderer::RenderFrame() {
     if (!m_pPSO || !m_pVertexBuffer || !m_pIndexBuffer || !m_pSRB) {
         static bool errorLogged = false;
         if (!errorLogged) {
-            std::cerr << "Missing render resources!" << std::endl;
-            std::cerr << "PSO: " << (m_pPSO ? "OK" : "NULL") << std::endl;
-            std::cerr << "VertexBuffer: " << (m_pVertexBuffer ? "OK" : "NULL") << std::endl;
-            std::cerr << "IndexBuffer: " << (m_pIndexBuffer ? "OK" : "NULL") << std::endl;
-            std::cerr << "SRB: " << (m_pSRB ? "OK" : "NULL") << std::endl;
+            MOON_LOG_ERROR("DiligentRenderer", "Missing render resources!");
+            MOON_LOG_ERROR("DiligentRenderer", "PSO: %s", (m_pPSO ? "OK" : "NULL"));
+            MOON_LOG_ERROR("DiligentRenderer", "VertexBuffer: %s", (m_pVertexBuffer ? "OK" : "NULL"));
+            MOON_LOG_ERROR("DiligentRenderer", "IndexBuffer: %s", (m_pIndexBuffer ? "OK" : "NULL"));
+            MOON_LOG_ERROR("DiligentRenderer", "SRB: %s", (m_pSRB ? "OK" : "NULL"));
+            
+            // stderr prints removed
             errorLogged = true;
         }
         m_pSwapChain->Present();
@@ -449,12 +431,31 @@ void DiligentRenderer::RenderFrame() {
     // Commit shader resources
     m_pImmediateContext->CommitShaderResources(m_pSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     
-    // Draw the cube
+    // Draw the triangle
     DrawIndexedAttribs DrawAttrs;
     DrawAttrs.IndexType = VT_UINT32;
-    DrawAttrs.NumIndices = _countof(CubeIndices);
+    DrawAttrs.NumIndices = sizeof(TriangleIndices)/sizeof(TriangleIndices[0]);
     DrawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
     m_pImmediateContext->DrawIndexed(DrawAttrs);
+    
+    static int drawLogCounter = 0;
+    if (drawLogCounter % 120 == 0) {
+        MOON_LOG_INFO("DiligentRenderer", "=== DRAW DEBUG ===");
+    MOON_LOG_INFO("DiligentRenderer", "Drawing %d indices (%d triangles)", 
+                      DrawAttrs.NumIndices, DrawAttrs.NumIndices / 3);
+    MOON_LOG_INFO("DiligentRenderer", "Vertex count: %zu, Index count: %zu", 
+              sizeof(TriangleVertices)/sizeof(TriangleVertices[0]), sizeof(TriangleIndices)/sizeof(TriangleIndices[0]));
+        MOON_LOG_INFO("DiligentRenderer", "Viewport: %.0fx%.0f, Depth: %.1f-%.1f", 
+                      (float)m_Width, (float)m_Height, 0.0f, 1.0f);
+        
+        // 验证第一个顶点和索引
+    MOON_LOG_INFO("DiligentRenderer", "First vertex: pos(%.1f,%.1f,%.1f) color(%.1f,%.1f,%.1f,%.1f)", 
+              TriangleVertices[0].position[0], TriangleVertices[0].position[1], TriangleVertices[0].position[2],
+              TriangleVertices[0].color[0], TriangleVertices[0].color[1], TriangleVertices[0].color[2], TriangleVertices[0].color[3]);
+    MOON_LOG_INFO("DiligentRenderer", "First triangle indices: %d, %d, %d", 
+              TriangleIndices[0], TriangleIndices[1], TriangleIndices[2]);
+    }
+    drawLogCounter++;
     
     // Present
     m_pSwapChain->Present();
