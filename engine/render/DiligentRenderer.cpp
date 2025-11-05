@@ -1,4 +1,5 @@
-#include "DiligentRenderer.h"
+﻿#include "DiligentRenderer.h"
+#include "../core/Logging/Logger.h"
 #include <iostream>
 #include <vector>
 #include <cmath>
@@ -22,7 +23,7 @@ using namespace Diligent;
 // Cube vertex data with position and color
 struct Vertex {
     float position[3];
-    float color[4];  // 改为 4 个分量匹配 float4
+    float color[4];  // Changed to 4 components to match float4
 };
 
 // Cube vertices (8 vertices for a cube)
@@ -216,7 +217,7 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params) {
     m_Height = params.height;
 
     try {
-        std::cout << "Initializing DiligentRenderer..." << std::endl;
+        MOON_LOG_INFO("DiligentRenderer", "Initializing DiligentRenderer...");
         
         // Create Diligent Engine factory
         auto* pFactoryD3D11 = GetEngineFactoryD3D11();
@@ -224,7 +225,7 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params) {
         // Create render device and device context
         EngineD3D11CreateInfo EngineCI;
         pFactoryD3D11->CreateDeviceAndContextsD3D11(EngineCI, &m_pDevice, &m_pImmediateContext);
-        std::cout << "D3D11 device and context created" << std::endl;
+        MOON_LOG_INFO("DiligentRenderer", "D3D11 device and context created");
         
         // Create swap chain
         SwapChainDesc SCDesc;
@@ -241,27 +242,27 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params) {
         pFactoryD3D11->CreateSwapChainD3D11(m_pDevice, m_pImmediateContext, SCDesc, 
                                            FullScreenModeDesc{}, Window, &m_pSwapChain);
 #endif
-        std::cout << "Swap chain created" << std::endl;
+        MOON_LOG_INFO("DiligentRenderer", "Swap chain created");
         
         // Get render target and depth stencil views
         m_pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
         m_pDSV = m_pSwapChain->GetDepthBufferDSV();
         
         // Create pipeline state and resources
-        std::cout << "Creating vertex buffer..." << std::endl;
+        MOON_LOG_INFO("DiligentRenderer", "Creating vertex buffer...");
         CreateVertexBuffer();
-        std::cout << "Creating index buffer..." << std::endl;
+        MOON_LOG_INFO("DiligentRenderer", "Creating index buffer...");
         CreateIndexBuffer();
-        std::cout << "Creating uniform buffer..." << std::endl;
+        MOON_LOG_INFO("DiligentRenderer", "Creating uniform buffer...");
         CreateUniformBuffer();
-        std::cout << "Creating pipeline state..." << std::endl;
+        MOON_LOG_INFO("DiligentRenderer", "Creating pipeline state...");
         CreatePipelineState();
         
-        std::cout << "DiligentRenderer initialized successfully!" << std::endl;
+        MOON_LOG_INFO("DiligentRenderer", "DiligentRenderer initialized successfully!");
         return true;
     }
     catch (const std::exception& e) {
-        std::cerr << "Failed to initialize DiligentRenderer: " << e.what() << std::endl;
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to initialize DiligentRenderer: %s", e.what());
         return false;
     }
 }
@@ -276,7 +277,7 @@ void DiligentRenderer::CreatePipelineState() {
         ShaderCI.Desc.Name = "Cube vertex shader";
         ShaderCI.Source = VSSource;
         m_pDevice->CreateShader(ShaderCI, &pVS);
-        std::cout << "Vertex shader created" << std::endl;
+        MOON_LOG_INFO("DiligentRenderer", "Vertex shader created");
     }
 
     // Create pixel shader
@@ -288,13 +289,13 @@ void DiligentRenderer::CreatePipelineState() {
         ShaderCI.Desc.Name = "Cube pixel shader";
         ShaderCI.Source = PSSource;
         m_pDevice->CreateShader(ShaderCI, &pPS);
-        std::cout << "Pixel shader created" << std::endl;
+        MOON_LOG_INFO("DiligentRenderer", "Pixel shader created");
     }
 
     // Define vertex input layout
     LayoutElement LayoutElems[] = {
         {0, 0, 3, VT_FLOAT32, False, 0},  // Position
-        {1, 0, 4, VT_FLOAT32, False, 12}  // Color (改为 4 个分量)
+        {1, 0, 4, VT_FLOAT32, False, 12}  // Color (changed to 4 components)
     };
 
     // Create graphics pipeline state
@@ -316,17 +317,17 @@ void DiligentRenderer::CreatePipelineState() {
     PSOCreateInfo.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
 
     m_pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pPSO);
-    std::cout << "Pipeline state created" << std::endl;
+    MOON_LOG_INFO("DiligentRenderer", "Pipeline state created");
 
-    // 按照官方示例的方式绑定常量缓冲区
-    // 由于我们没有显式指定 'Constants' 变量的类型，它会使用默认类型 STATIC
-    // Static 变量永远不会改变，通过 pipeline state object 直接绑定
+    // Bind constant buffer following official examples
+    // Since we don't explicitly specify 'Constants' variable type, it uses default type STATIC
+    // Static variables never change, bound directly through pipeline state object
     m_pPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants")->Set(m_pVSConstants);
-    std::cout << "Constants buffer bound to pipeline state" << std::endl;
+    MOON_LOG_INFO("DiligentRenderer", "Constants buffer bound to pipeline state");
 
     // Create shader resource binding object and bind all static resources
     m_pPSO->CreateShaderResourceBinding(&m_pSRB, true);
-    std::cout << "Shader resource binding created" << std::endl;
+    MOON_LOG_INFO("DiligentRenderer", "Shader resource binding created");
 }
 
 void DiligentRenderer::CreateVertexBuffer() {
@@ -361,12 +362,12 @@ void DiligentRenderer::CreateUniformBuffer() {
     // 按照官方示例创建常量缓冲区
     BufferDesc CBDesc;
     CBDesc.Name = "VS constants CB";
-    CBDesc.Size = sizeof(Matrix4x4);  // 只存储一个 4x4 矩阵
+    CBDesc.Size = sizeof(Matrix4x4);  // Store only one 4x4 matrix
     CBDesc.Usage = USAGE_DYNAMIC;
     CBDesc.BindFlags = BIND_UNIFORM_BUFFER;
     CBDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
     m_pDevice->CreateBuffer(CBDesc, nullptr, &m_pVSConstants);
-    std::cout << "Uniform buffer created" << std::endl;
+    MOON_LOG_INFO("DiligentRenderer", "Uniform buffer created");
 }
 
 void DiligentRenderer::UpdateTransforms() {
@@ -462,6 +463,8 @@ void DiligentRenderer::RenderFrame() {
 void DiligentRenderer::Resize(uint32_t w, uint32_t h) {
     if (m_Width == w && m_Height == h) return;
     
+    MOON_LOG_INFO("DiligentRenderer", "Resizing viewport from %ux%u to %ux%u", m_Width, m_Height, w, h);
+    
     m_Width = w;
     m_Height = h;
     
@@ -469,10 +472,13 @@ void DiligentRenderer::Resize(uint32_t w, uint32_t h) {
         m_pSwapChain->Resize(m_Width, m_Height);
         m_pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
         m_pDSV = m_pSwapChain->GetDepthBufferDSV();
+        MOON_LOG_INFO("DiligentRenderer", "Viewport resize completed");
     }
 }
 
 void DiligentRenderer::Shutdown() {
+    MOON_LOG_INFO("DiligentRenderer", "Shutting down DiligentRenderer");
+    
     // Release resources in reverse order of creation
     if (m_pSRB) {
         m_pSRB->Release();
@@ -511,6 +517,8 @@ void DiligentRenderer::Shutdown() {
         m_pDevice->Release();
         m_pDevice = nullptr;
     }
+    
+    MOON_LOG_INFO("DiligentRenderer", "DiligentRenderer shutdown completed");
     
 #ifdef _WIN32
     m_hWnd = nullptr;

@@ -88,9 +88,11 @@
   <ItemGroup>
     <ClInclude Include="EngineCore.h" />
     <ClInclude Include="IEngine.h" />
+    <ClInclude Include="Logging\Logger.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineCore.cpp" />
+    <ClCompile Include="Logging\Logger.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

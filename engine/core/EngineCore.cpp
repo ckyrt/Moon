@@ -1,8 +1,8 @@
 #include "EngineCore.h"
-#include <cstdio>
+#include "Logging/Logger.h"
 
 void EngineCore::Initialize() {
-    std::puts("[EngineCore] Initialize");
+    MOON_LOG_INFO("EngineCore", "Initialize");
 }
 
 void EngineCore::Tick(double dt) {
@@ -11,5 +11,5 @@ void EngineCore::Tick(double dt) {
 }
 
 void EngineCore::Shutdown() {
-    std::puts("[EngineCore] Shutdown");
+    MOON_LOG_INFO("EngineCore", "Shutdown");
 }
