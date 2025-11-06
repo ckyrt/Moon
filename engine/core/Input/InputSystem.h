@@ -21,6 +21,11 @@ public:
     Vector2 GetMouseDelta() const override;
     Vector2 GetMouseScrollDelta() const override;
     void Update() override;
+    
+    // Set window handle for proper mouse coordinate conversion
+#ifdef _WIN32
+    void SetWindowHandle(void* hwnd);
+#endif
 
 private:
     std::unordered_set<int> m_currentKeys;
@@ -30,6 +35,9 @@ private:
     Vector2 m_mousePosition;
     Vector2 m_previousMousePosition;
     Vector2 m_scrollDelta;
+#ifdef _WIN32
+    void* m_hWnd = nullptr;
+#endif
 };
 
 }

@@ -83,11 +83,24 @@ void InputSystem::Update() {
 #ifdef _WIN32
     POINT p;
     if (GetCursorPos(&p)) {
-        m_mousePosition.x = static_cast<float>(p.x);
-        m_mousePosition.y = static_cast<float>(p.y);
+        // Convert screen coordinates to client area coordinates if window handle is set
+        if (m_hWnd && ScreenToClient(static_cast<HWND>(m_hWnd), &p)) {
+            m_mousePosition.x = static_cast<float>(p.x);
+            m_mousePosition.y = static_cast<float>(p.y);
+        } else {
+            // Fallback to screen coordinates
+            m_mousePosition.x = static_cast<float>(p.x);
+            m_mousePosition.y = static_cast<float>(p.y);
+        }
     }
 #endif
     m_scrollDelta = Vector2(0.0f, 0.0f);
 }
+
+#ifdef _WIN32
+void InputSystem::SetWindowHandle(void* hwnd) {
+    m_hWnd = hwnd;
+}
+#endif
 
 }

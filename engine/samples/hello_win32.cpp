@@ -74,6 +74,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     Moon::PerspectiveCamera* camera = engine.GetCamera();
     Moon::InputSystem* inputSystem = engine.GetInputSystem();
     
+    // Set window handle for proper mouse input
+    inputSystem->SetWindowHandle(hwnd);
+    
     // Set global camera pointer for resize handling
     g_pCamera = camera;
     
@@ -84,10 +87,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     float height = static_cast<float>(cr.bottom - cr.top);
     camera->SetAspectRatio(width / height);
     
-    // Create FPS Camera Controller
+    // Create FPS Camera Controller (Unity-like controls)
     Moon::FPSCameraController cameraController(camera, inputSystem);
-    cameraController.SetMoveSpeed(5.0f);
-    cameraController.SetMouseSensitivity(0.002f);
+    cameraController.SetMoveSpeed(10.0f);           // Movement speed (units/sec)
+    cameraController.SetMouseSensitivity(30.0f);     // Mouse sensitivity (1.0=slow, 10.0=fast)
 
     DiligentRenderer renderer;
     g_pRenderer = &renderer;  // Set global pointer for resize handling
