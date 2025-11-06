@@ -15,6 +15,9 @@
 // (textures not used in this sample)
 #include "Graphics/GraphicsEngineD3D11/interface/EngineFactoryD3D11.h"
 #include "Common/interface/RefCntAutoPtr.hpp"
+#ifdef _WIN32
+#include "Platforms/Win32/interface/Win32NativeWindow.h"
+#endif
 
 using namespace Diligent;
 
@@ -117,100 +120,6 @@ void main(in PSInput PSIn, out PSOutput PSOut)
     PSOut.Color = PSIn.Color;
 }
 )";
-
-// Matrix4x4 implementation
-DiligentRenderer::Matrix4x4::Matrix4x4() {
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            m[i][j] = (i == j) ? 1.0f : 0.0f;
-        }
-    }
-}
-
-DiligentRenderer::Matrix4x4 DiligentRenderer::Matrix4x4::Identity() {
-    return Matrix4x4();
-}
-
-DiligentRenderer::Matrix4x4 DiligentRenderer::Matrix4x4::Perspective(float fov, float aspect, float nearZ, float farZ) {
-    Matrix4x4 result;
-    float tanHalfFov = tan(fov * 0.5f);
-    float height = 1.0f / tanHalfFov;
-    float width = height / aspect;
-    float fRange = farZ / (farZ - nearZ);
-    
-    result.m[0][0] = width;
-    result.m[1][1] = height;
-    result.m[2][2] = fRange;
-    result.m[2][3] = 1.0f;
-    result.m[3][2] = -fRange * nearZ;
-    result.m[3][3] = 0.0f;
-    
-    return result;
-}
-
-DiligentRenderer::Matrix4x4 DiligentRenderer::Matrix4x4::LookAt(float eyeX, float eyeY, float eyeZ, 
-                                                               float atX, float atY, float atZ,
-                                                               float upX, float upY, float upZ) {
-    Matrix4x4 result;
-    
-    float fX = atX - eyeX;
-    float fY = atY - eyeY;
-    float fZ = atZ - eyeZ;
-    float fLen = sqrt(fX*fX + fY*fY + fZ*fZ);
-    fX /= fLen; fY /= fLen; fZ /= fLen;
-    
-    float rX = upY * fZ - upZ * fY;
-    float rY = upZ * fX - upX * fZ;
-    float rZ = upX * fY - upY * fX;
-    float rLen = sqrt(rX*rX + rY*rY + rZ*rZ);
-    rX /= rLen; rY /= rLen; rZ /= rLen;
-    
-    float uX = fY * rZ - fZ * rY;
-    float uY = fZ * rX - fX * rZ;
-    float uZ = fX * rY - fY * rX;
-    
-    result.m[0][0] = rX;   result.m[0][1] = uX;   result.m[0][2] = fX;  result.m[0][3] = 0.0f;
-    result.m[1][0] = rY;   result.m[1][1] = uY;   result.m[1][2] = fY;  result.m[1][3] = 0.0f;
-    result.m[2][0] = rZ;   result.m[2][1] = uZ;   result.m[2][2] = fZ;  result.m[2][3] = 0.0f;
-    result.m[3][0] = -(rX*eyeX + rY*eyeY + rZ*eyeZ);
-    result.m[3][1] = -(uX*eyeX + uY*eyeY + uZ*eyeZ);
-    result.m[3][2] = -(fX*eyeX + fY*eyeY + fZ*eyeZ);
-    result.m[3][3] = 1.0f;
-    
-    return result;
-}
-
-DiligentRenderer::Matrix4x4 DiligentRenderer::Matrix4x4::RotationY(float angle) {
-    Matrix4x4 result;
-    float c = cos(angle);
-    float s = sin(angle);
-    
-    result.m[0][0] = c;    result.m[0][2] = -s;
-    result.m[2][0] = s;    result.m[2][2] = c;
-    
-    return result;
-}
-
-DiligentRenderer::Matrix4x4 DiligentRenderer::Matrix4x4::Translation(float x, float y, float z) {
-    Matrix4x4 result;
-    result.m[3][0] = x;
-    result.m[3][1] = y;
-    result.m[3][2] = z;
-    return result;
-}
-
-DiligentRenderer::Matrix4x4 DiligentRenderer::Matrix4x4::operator*(const Matrix4x4& other) const {
-    Matrix4x4 result;
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            result.m[i][j] = 0.0f;
-            for (int k = 0; k < 4; k++) {
-                result.m[i][j] += m[i][k] * other.m[k][j];
-            }
-        }
-    }
-    return result;
-}
 
 DiligentRenderer::DiligentRenderer() {
     m_StartTime = std::chrono::high_resolution_clock::now();
@@ -381,7 +290,7 @@ void DiligentRenderer::CreateUniformBuffer() {
     // 按照官方示例创建常量缓冲区
     BufferDesc CBDesc;
     CBDesc.Name = "VS constants CB";
-    CBDesc.Size = sizeof(Matrix4x4);  // Store only one 4x4 matrix
+    CBDesc.Size = sizeof(Moon::Matrix4x4);  // Store only one 4x4 matrix
     CBDesc.Usage = USAGE_DYNAMIC;
     CBDesc.BindFlags = BIND_UNIFORM_BUFFER;
     CBDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
@@ -390,16 +299,14 @@ void DiligentRenderer::CreateUniformBuffer() {
 }
 
 void DiligentRenderer::UpdateTransforms() {
+    // Use view-projection matrix from external camera with world transform
     auto now = std::chrono::high_resolution_clock::now();
     float seconds = std::chrono::duration<float>(now - m_StartTime).count();
+    Moon::Matrix4x4 world = Moon::Matrix4x4::RotationY(seconds * 0.8f);
+    Moon::Matrix4x4 worldViewProj = world * m_viewProj;
 
-    Matrix4x4 world = Matrix4x4::RotationY(seconds * 0.8f);
-    Matrix4x4 view = Matrix4x4::LookAt(0.0f, 0.0f, -3.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-    float aspect = (m_Height != 0) ? (static_cast<float>(m_Width) / static_cast<float>(m_Height)) : 1.0f;
-    Matrix4x4 proj = Matrix4x4::Perspective(60.0f * 3.14159265f / 180.0f, aspect, 0.1f, 100.0f);
-
-    Matrix4x4 worldViewProj = world * view * proj;
-    Matrix4x4 worldViewProjT;
+    // Transpose for HLSL column-major layout
+    Moon::Matrix4x4 worldViewProjT;
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j)
             worldViewProjT.m[i][j] = worldViewProj.m[j][i];
@@ -407,7 +314,7 @@ void DiligentRenderer::UpdateTransforms() {
     void* pMappedData = nullptr;
     m_pImmediateContext->MapBuffer(m_pVSConstants, MAP_WRITE, MAP_FLAG_DISCARD, pMappedData);
     if (pMappedData) {
-        memcpy(pMappedData, &worldViewProjT.m[0][0], sizeof(Matrix4x4));
+        memcpy(pMappedData, &worldViewProjT.m[0][0], sizeof(Moon::Matrix4x4));
         m_pImmediateContext->UnmapBuffer(m_pVSConstants, MAP_WRITE);
     }
 }
@@ -465,6 +372,22 @@ void DiligentRenderer::Resize(uint32_t w, uint32_t h) {
         m_pDSV = m_pSwapChain->GetDepthBufferDSV();
         MOON_LOG_INFO("DiligentRenderer", "Viewport resize completed");
     }
+}
+
+void DiligentRenderer::SetViewProjectionMatrix(const float* viewProj16) {
+    if (viewProj16) {
+        // Copy the 16 floats into our matrix (assuming row-major from Moon::Matrix4x4)
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                m_viewProj.m[i][j] = viewProj16[i * 4 + j];
+            }
+        }
+    }
+}
+
+void DiligentRenderer::ClearExternalViewProjection() {
+    // Reset to identity matrix (no-op, since we always use external camera now)
+    m_viewProj = Moon::Matrix4x4();
 }
 
 void DiligentRenderer::Shutdown() {

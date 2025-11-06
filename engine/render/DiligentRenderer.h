@@ -1,6 +1,7 @@
 #pragma once
 #include "IRenderer.h"
 #include "RenderCommon.h"
+#include "../core/Camera/Camera.h"  // For Moon::Matrix4x4
 #include <memory>
 #include <chrono>
 
@@ -25,6 +26,10 @@ public:
     void RenderFrame() override;
     void Resize(uint32_t w, uint32_t h) override;
     void Shutdown() override;
+    
+    // Set view-projection matrix from external camera
+    void SetViewProjectionMatrix(const float* viewProj16);
+    void ClearExternalViewProjection(); // Reset to identity matrix
 
 private:
     // Diligent Engine core objects
@@ -53,28 +58,17 @@ private:
     // Animation
     std::chrono::high_resolution_clock::time_point m_StartTime;
     
+    // View-projection matrix from external camera
+    Moon::Matrix4x4 m_viewProj;
+    
     // Helper methods
     void CreatePipelineState();
     void CreateVertexBuffer();
     void CreateIndexBuffer();
     void CreateUniformBuffer();
     void UpdateTransforms();
-    
-    // Matrix helper methods
-    struct Matrix4x4 {
-        float m[4][4];
-        Matrix4x4();
-        static Matrix4x4 Identity();
-        static Matrix4x4 Perspective(float fov, float aspect, float nearZ, float farZ);
-        static Matrix4x4 LookAt(float eyeX, float eyeY, float eyeZ, 
-                               float atX, float atY, float atZ,
-                               float upX, float upY, float upZ);
-        static Matrix4x4 RotationY(float angle);
-        static Matrix4x4 Translation(float x, float y, float z);
-        Matrix4x4 operator*(const Matrix4x4& other) const;
-    };
 
     struct VSConstants {
-        Matrix4x4 WorldViewProj;
+        Moon::Matrix4x4 WorldViewProj;
     };
 };

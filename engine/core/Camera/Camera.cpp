@@ -24,7 +24,7 @@ Vector3 Camera::GetForward() const {
 }
 
 Vector3 Camera::GetRight() const { 
-    return Vector3::Cross(GetForward(), m_up).Normalized(); 
+    return Vector3::Cross(m_up, GetForward()).Normalized(); 
 }
 
 Matrix4x4 Camera::GetViewMatrix() const { 

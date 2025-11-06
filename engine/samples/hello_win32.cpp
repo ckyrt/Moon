@@ -3,6 +3,7 @@
 #include <thread>
 #include "../core/EngineCore.h"
 #include "../core/Logging/Logger.h"
+#include "../core/Camera/FPSCameraController.h"
 #include "../render/IRenderer.h"
 #include "../render/DiligentRenderer.h"
 #include "../render/RenderCommon.h"
@@ -11,6 +12,7 @@ static const wchar_t* kWndClass = L"UGC_Editor_WndClass";
 
 // Global renderer pointer for resize handling
 static IRenderer* g_pRenderer = nullptr;
+static Moon::PerspectiveCamera* g_pCamera = nullptr;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -19,6 +21,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             UINT width = LOWORD(lParam);
             UINT height = HIWORD(lParam);
             g_pRenderer->Resize(width, height);
+            // Update camera aspect ratio
+            if (g_pCamera && height > 0) {
+                g_pCamera->SetAspectRatio(static_cast<float>(width) / static_cast<float>(height));
+            }
         }
         break;
     case WM_PAINT:
@@ -64,13 +70,30 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     EngineCore engine;
     engine.Initialize();
 
+    // Get Camera and Input System from Engine
+    Moon::PerspectiveCamera* camera = engine.GetCamera();
+    Moon::InputSystem* inputSystem = engine.GetInputSystem();
+    
+    // Set global camera pointer for resize handling
+    g_pCamera = camera;
+    
+    // Update camera aspect ratio based on window size
+    RECT cr;
+    GetClientRect(hwnd, &cr);
+    float width = static_cast<float>(cr.right - cr.left);
+    float height = static_cast<float>(cr.bottom - cr.top);
+    camera->SetAspectRatio(width / height);
+    
+    // Create FPS Camera Controller
+    Moon::FPSCameraController cameraController(camera, inputSystem);
+    cameraController.SetMoveSpeed(5.0f);
+    cameraController.SetMouseSensitivity(0.002f);
+
     DiligentRenderer renderer;
     g_pRenderer = &renderer;  // Set global pointer for resize handling
     
     RenderInitParams params{};
     params.windowHandle = hwnd;
-    RECT cr;
-    GetClientRect(hwnd, &cr);
     params.width  = cr.right - cr.left;
     params.height = cr.bottom - cr.top;
     
@@ -95,7 +118,14 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         prev = now;
 
         engine.Tick(dt);
+        
+        // Update Camera Controller
+        cameraController.Update(static_cast<float>(dt));
 
+        // Pass camera view-projection matrix to renderer
+        Moon::Matrix4x4 viewProj = camera->GetViewProjectionMatrix();
+        renderer.SetViewProjectionMatrix(&viewProj.m[0][0]);
+        
         // Render
         renderer.RenderFrame();
 
@@ -105,6 +135,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
 
     renderer.Shutdown();
     g_pRenderer = nullptr;
+    g_pCamera = nullptr;
     engine.Shutdown();
     
     // Shutdown logging system

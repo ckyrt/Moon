@@ -1,4 +1,4 @@
-# UGC 虚拟世界引擎与编辑器
+# UGC 虚拟世界引擎与编辑器 (Moon Engine)
 
 > **超级 README（最终版）**  
 > *适用于项目根目录 README.md*
@@ -8,6 +8,12 @@ User-Generated World Engine & Editor
 让任何人都能轻松创造一个 3D 世界。
 像 Roblox + GTA + Minecraft + SketchUp + SimCity 的结合体。
 你可以使用此引擎创建：建筑、地形、城市、角色、载具、脚本化交互，甚至是多人开放世界。
+
+## 📋 快速导航
+
+- 📖 [开发路线图](docs/ROADMAP.md) - 开发计划、当前进度、快速参考
+- � [架构决策记录 (ADR)](docs/adr/README.md) - 重要技术决策
+- 🔧 [开发手册 (Playbooks)](docs/playbooks/README.md) - 开发流程和最佳实践
 
 ## 🎯 核心目标
 

@@ -59,6 +59,17 @@ struct Matrix4x4 {
         r.m[0][0]=2.0f/w; r.m[1][1]=2.0f/h; r.m[2][2]=1.0f/(farZ-nearZ); r.m[3][2]=-nearZ/(farZ-nearZ);
         return r;
     }
+    static Matrix4x4 RotationY(float angle) {
+        Matrix4x4 r;
+        float c = std::cos(angle), s = std::sin(angle);
+        r.m[0][0]=c; r.m[0][2]=-s; r.m[2][0]=s; r.m[2][2]=c;
+        return r;
+    }
+    static Matrix4x4 Translation(float x, float y, float z) {
+        Matrix4x4 r;
+        r.m[3][0]=x; r.m[3][1]=y; r.m[3][2]=z;
+        return r;
+    }
 };
 
 class ICamera {
