@@ -4,6 +4,9 @@
 #include "../core/EngineCore.h"
 #include "../core/Logging/Logger.h"
 #include "../core/Camera/FPSCameraController.h"
+#include "../core/Scene/Scene.h"
+#include "../core/Scene/SceneNode.h"
+#include "../core/Scene/MeshRenderer.h"
 #include "../render/IRenderer.h"
 #include "../render/DiligentRenderer.h"
 #include "../render/RenderCommon.h"
@@ -104,6 +107,40 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         MessageBoxA(hwnd, "Failed to initialize DiligentRenderer!", "Error", MB_OK | MB_ICONERROR);
         return -1;
     }
+    
+    // Setup Scene with multiple cubes
+    Moon::Scene* scene = engine.GetScene();
+    
+    // Create cube 1 (left, red tint - rotating)
+    Moon::SceneNode* cube1 = scene->CreateNode("Cube1");
+    cube1->GetTransform()->SetLocalPosition(Moon::Vector3(-3.0f, 0.0f, 0.0f));
+    cube1->AddComponent<Moon::MeshRenderer>();
+    
+    // Create cube 2 (center, stationary)
+    Moon::SceneNode* cube2 = scene->CreateNode("Cube2");
+    cube2->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 0.0f, 0.0f));
+    cube2->AddComponent<Moon::MeshRenderer>();
+    
+    // Create cube 3 (right, elevated)
+    Moon::SceneNode* cube3 = scene->CreateNode("Cube3");
+    cube3->GetTransform()->SetLocalPosition(Moon::Vector3(3.0f, 2.0f, 0.0f));
+    cube3->AddComponent<Moon::MeshRenderer>();
+    
+    // Create a parent-child hierarchy
+    Moon::SceneNode* parent = scene->CreateNode("Parent");
+    parent->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, -3.0f, 5.0f));
+    
+    Moon::SceneNode* child1 = scene->CreateNode("Child1");
+    child1->SetParent(parent);
+    child1->GetTransform()->SetLocalPosition(Moon::Vector3(-1.5f, 0.0f, 0.0f));
+    child1->AddComponent<Moon::MeshRenderer>();
+    
+    Moon::SceneNode* child2 = scene->CreateNode("Child2");
+    child2->SetParent(parent);
+    child2->GetTransform()->SetLocalPosition(Moon::Vector3(1.5f, 0.0f, 0.0f));
+    child2->AddComponent<Moon::MeshRenderer>();
+    
+    MOON_LOG_INFO("Sample", "Created %d scene nodes", scene->GetRootNodeCount());
 
     // 4) Main loop
     bool running = true;
@@ -124,13 +161,32 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         
         // Update Camera Controller
         cameraController.Update(static_cast<float>(dt));
+        
+        // Animate cube1 (rotate around Y axis)
+        float rotationSpeed = 45.0f; // degrees per second
+        Moon::Vector3 currentRot = cube1->GetTransform()->GetLocalRotation();
+        cube1->GetTransform()->SetLocalRotation(Moon::Vector3(currentRot.x, currentRot.y + rotationSpeed * static_cast<float>(dt), currentRot.z));
+        
+        // Animate parent (rotate the hierarchy)
+        currentRot = parent->GetTransform()->GetLocalRotation();
+        parent->GetTransform()->SetLocalRotation(Moon::Vector3(currentRot.x, currentRot.y + 30.0f * static_cast<float>(dt), currentRot.z));
 
-        // Pass camera view-projection matrix to renderer
+        // Set camera for rendering
         Moon::Matrix4x4 viewProj = camera->GetViewProjectionMatrix();
         renderer.SetViewProjectionMatrix(&viewProj.m[0][0]);
         
-        // Render
-        renderer.RenderFrame();
+        // Render all scene objects
+        renderer.BeginFrame();
+        
+        scene->Traverse([&](Moon::SceneNode* node) {
+            Moon::MeshRenderer* meshRenderer = node->GetComponent<Moon::MeshRenderer>();
+            if (meshRenderer && meshRenderer->IsVisible() && meshRenderer->IsEnabled()) {
+                Moon::Matrix4x4 worldMatrix = node->GetTransform()->GetWorldMatrix();
+                renderer.DrawCube(worldMatrix);
+            }
+        });
+        
+        renderer.EndFrame();
 
         // simple throttle
         std::this_thread::sleep_for(std::chrono::milliseconds(16));

@@ -319,19 +319,20 @@ void DiligentRenderer::UpdateTransforms() {
     }
 }
 
-void DiligentRenderer::RenderFrame() {
+void DiligentRenderer::BeginFrame() {
     if (!m_pDevice || !m_pSwapChain) {
         return;
     }
     
-    UpdateTransforms();
-    
+    // Set render targets
     m_pImmediateContext->SetRenderTargets(1, &m_pRTV, m_pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     
+    // Clear buffers
     const float ClearColor[] = {0.2f, 0.4f, 0.6f, 1.0f};
     m_pImmediateContext->ClearRenderTarget(m_pRTV, ClearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     m_pImmediateContext->ClearDepthStencil(m_pDSV, CLEAR_DEPTH_FLAG, 1.0f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     
+    // Set viewport
     Viewport VP;
     VP.TopLeftX = 0;
     VP.TopLeftY = 0;
@@ -341,21 +342,74 @@ void DiligentRenderer::RenderFrame() {
     VP.MaxDepth = 1.0f;
     m_pImmediateContext->SetViewports(1, &VP, 0, 0);
     
+    // Set pipeline state
     m_pImmediateContext->SetPipelineState(m_pPSO);
     
+    // Set vertex and index buffers
     Uint64 offset = 0;
     IBuffer* pBuffs[] = {m_pVertexBuffer};
     m_pImmediateContext->SetVertexBuffers(0, 1, pBuffs, &offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
     m_pImmediateContext->SetIndexBuffer(m_pIndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+}
+
+void DiligentRenderer::EndFrame() {
+    if (!m_pDevice || !m_pSwapChain) {
+        return;
+    }
+    
+    m_pSwapChain->Present();
+}
+
+void DiligentRenderer::DrawCube(const Moon::Matrix4x4& worldMatrix) {
+    if (!m_pDevice || !m_pSwapChain) {
+        return;
+    }
+    
+    // Calculate world-view-projection matrix
+    Moon::Matrix4x4 worldViewProj = worldMatrix * m_viewProj;
+    
+    // Transpose for HLSL column-major layout
+    Moon::Matrix4x4 worldViewProjT;
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j)
+            worldViewProjT.m[i][j] = worldViewProj.m[j][i];
+    
+    // Update constant buffer
+    void* pMappedData = nullptr;
+    m_pImmediateContext->MapBuffer(m_pVSConstants, MAP_WRITE, MAP_FLAG_DISCARD, pMappedData);
+    if (pMappedData) {
+        memcpy(pMappedData, &worldViewProjT.m[0][0], sizeof(Moon::Matrix4x4));
+        m_pImmediateContext->UnmapBuffer(m_pVSConstants, MAP_WRITE);
+    }
+    
+    // Commit shader resources
     m_pImmediateContext->CommitShaderResources(m_pSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     
+    // Draw cube
     DrawIndexedAttribs DrawAttrs;
     DrawAttrs.IndexType = VT_UINT32;
     DrawAttrs.NumIndices = sizeof(CubeIndices)/sizeof(CubeIndices[0]);
     DrawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
     m_pImmediateContext->DrawIndexed(DrawAttrs);
+}
+
+void DiligentRenderer::RenderFrame() {
+    if (!m_pDevice || !m_pSwapChain) {
+        return;
+    }
     
-    m_pSwapChain->Present();
+    // Legacy single cube rendering with animation
+    UpdateTransforms();
+    
+    BeginFrame();
+    
+    // Draw animated cube
+    auto now = std::chrono::high_resolution_clock::now();
+    float seconds = std::chrono::duration<float>(now - m_StartTime).count();
+    Moon::Matrix4x4 world = Moon::Matrix4x4::RotationY(seconds * 0.8f);
+    DrawCube(world);
+    
+    EndFrame();
 }
 
 void DiligentRenderer::Resize(uint32_t w, uint32_t h) {
@@ -383,11 +437,6 @@ void DiligentRenderer::SetViewProjectionMatrix(const float* viewProj16) {
             }
         }
     }
-}
-
-void DiligentRenderer::ClearExternalViewProjection() {
-    // Reset to identity matrix (no-op, since we always use external camera now)
-    m_viewProj = Moon::Matrix4x4();
 }
 
 void DiligentRenderer::Shutdown() {

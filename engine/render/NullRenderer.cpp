@@ -42,3 +42,22 @@ void NullRenderer::Shutdown() {
     hwnd_ = nullptr;
 #endif
 }
+
+void NullRenderer::BeginFrame() {
+    // No-op for null renderer
+}
+
+void NullRenderer::EndFrame()
+{
+    // No-op for null renderer
+}
+
+void NullRenderer::SetViewProjectionMatrix(const float* viewProj16)
+{
+    (void)viewProj16; // Suppress unused parameter warning
+}
+
+void NullRenderer::DrawCube(const Moon::Matrix4x4& worldMatrix)
+{
+    (void)worldMatrix; // Suppress unused parameter warning
+}

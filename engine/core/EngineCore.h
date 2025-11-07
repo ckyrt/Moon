@@ -2,6 +2,7 @@
 #include "IEngine.h"
 #include "Input/InputSystem.h"
 #include "Camera/PerspectiveCamera.h"
+#include "Scene/Scene.h"
 #include <memory>
 
 class EngineCore : public IEngine {
@@ -10,10 +11,13 @@ public:
     void Tick(double dt) override;
     void Shutdown() override;
     
+    // 访问器
     Moon::InputSystem* GetInputSystem() { return m_inputSystem.get(); }
     Moon::PerspectiveCamera* GetCamera() { return m_camera.get(); }
+    Moon::Scene* GetScene() { return m_mainScene.get(); }
     
 private:
     std::unique_ptr<Moon::InputSystem> m_inputSystem;
     std::unique_ptr<Moon::PerspectiveCamera> m_camera;
+    std::unique_ptr<Moon::Scene> m_mainScene;
 };

@@ -22,14 +22,18 @@ public:
     DiligentRenderer();
     ~DiligentRenderer();
 
-    bool Initialize(const RenderInitParams& params) override;
-    void RenderFrame() override;
-    void Resize(uint32_t w, uint32_t h) override;
-    void Shutdown() override;
+    // === IRenderer 接口实现 ===
     
-    // Set view-projection matrix from external camera
-    void SetViewProjectionMatrix(const float* viewProj16);
-    void ClearExternalViewProjection(); // Reset to identity matrix
+    bool Initialize(const RenderInitParams& params) override;
+    void Shutdown() override;
+    void Resize(uint32_t w, uint32_t h) override;
+    
+    void BeginFrame() override;
+    void EndFrame() override;
+    void RenderFrame() override;
+    
+    void SetViewProjectionMatrix(const float* viewProj16) override;
+    void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
 
 private:
     // Diligent Engine core objects
