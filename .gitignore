@@ -3,6 +3,11 @@ build/
 bin/
 lib/
 out/
+temp/
+
+# External dependencies - 第三方库（太大，不提交）
+external/cef/
+external/DiligentEngine/
 
 # Visual Studio user files - 只排除用户特定的设置文件
 *.vcxproj.user
