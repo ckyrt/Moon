@@ -361,16 +361,22 @@ void DiligentRenderer::EndFrame() {
     m_pSwapChain->Present();
 }
 
-void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) {
-    if (!m_pDevice || !m_pSwapChain || !mesh || !mesh->IsValid()) {
-        return;
+DiligentRenderer::MeshGPUResources* 
+DiligentRenderer::GetOrCreateMeshResources(Moon::Mesh* mesh) {
+    // 检查缓存中是否已有该 Mesh 的 GPU 资源
+    auto it = m_meshCache.find(mesh);
+    if (it != m_meshCache.end()) {
+        // 已缓存，直接返回
+        return &it->second;
     }
     
-    // 获取 Mesh 数据
+    // 首次渲染：创建 GPU 资源
+    MeshGPUResources gpu;
+    
     const auto& vertices = mesh->GetVertices();
     const auto& indices = mesh->GetIndices();
     
-    // 创建临时顶点缓冲区（简化实现，未来应该缓存）
+    // 创建顶点缓冲区
     BufferDesc VertBuffDesc;
     VertBuffDesc.Name = "Mesh Vertex Buffer";
     VertBuffDesc.Usage = USAGE_IMMUTABLE;
@@ -381,10 +387,10 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMa
     VBData.pData = vertices.data();
     VBData.DataSize = VertBuffDesc.Size;
     
-    Diligent::IBuffer* pMeshVertexBuffer = nullptr;
-    m_pDevice->CreateBuffer(VertBuffDesc, &VBData, &pMeshVertexBuffer);
+    m_pDevice->CreateBuffer(VertBuffDesc, &VBData, &gpu.vertexBuffer);
+    gpu.vertexCount = vertices.size();
     
-    // 创建临时索引缓冲区
+    // 创建索引缓冲区
     BufferDesc IndBuffDesc;
     IndBuffDesc.Name = "Mesh Index Buffer";
     IndBuffDesc.Usage = USAGE_IMMUTABLE;
@@ -395,8 +401,25 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMa
     IBData.pData = indices.data();
     IBData.DataSize = IndBuffDesc.Size;
     
-    Diligent::IBuffer* pMeshIndexBuffer = nullptr;
-    m_pDevice->CreateBuffer(IndBuffDesc, &IBData, &pMeshIndexBuffer);
+    m_pDevice->CreateBuffer(IndBuffDesc, &IBData, &gpu.indexBuffer);
+    gpu.indexCount = indices.size();
+    
+    // 插入缓存
+    m_meshCache[mesh] = gpu;
+    
+    MOON_LOG_INFO("DiligentRenderer", "Uploaded Mesh to GPU: %zu vertices, %zu indices (cached)", 
+                  gpu.vertexCount, gpu.indexCount);
+    
+    return &m_meshCache[mesh];
+}
+
+void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) {
+    if (!m_pDevice || !m_pSwapChain || !mesh || !mesh->IsValid()) {
+        return;
+    }
+    
+    // 获取或创建 GPU 资源（自动缓存）
+    MeshGPUResources* gpu = GetOrCreateMeshResources(mesh);
     
     // 计算变换矩阵
     Moon::Matrix4x4 worldViewProj = worldMatrix * m_viewProj;
@@ -415,25 +438,24 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMa
         m_pImmediateContext->UnmapBuffer(m_pVSConstants, MAP_WRITE);
     }
     
-    // 设置顶点和索引缓冲区
+    // 设置顶点和索引缓冲区（使用缓存的 GPU 资源）
     Uint64 offset = 0;
-    IBuffer* pBuffs[] = {pMeshVertexBuffer};
-    m_pImmediateContext->SetVertexBuffers(0, 1, pBuffs, &offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
-    m_pImmediateContext->SetIndexBuffer(pMeshIndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    IBuffer* pBuffs[] = {gpu->vertexBuffer};
+    m_pImmediateContext->SetVertexBuffers(0, 1, pBuffs, &offset, 
+        RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
+    m_pImmediateContext->SetIndexBuffer(gpu->indexBuffer, 0, 
+        RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     
     // 提交着色器资源
-    m_pImmediateContext->CommitShaderResources(m_pSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    m_pImmediateContext->CommitShaderResources(m_pSRB, 
+        RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     
     // 绘制
     DrawIndexedAttribs DrawAttrs;
     DrawAttrs.IndexType = VT_UINT32;
-    DrawAttrs.NumIndices = static_cast<Uint32>(indices.size());
+    DrawAttrs.NumIndices = static_cast<Uint32>(gpu->indexCount);
     DrawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
     m_pImmediateContext->DrawIndexed(DrawAttrs);
-    
-    // 释放临时缓冲区
-    if (pMeshIndexBuffer) pMeshIndexBuffer->Release();
-    if (pMeshVertexBuffer) pMeshVertexBuffer->Release();
 }
 
 void DiligentRenderer::DrawCube(const Moon::Matrix4x4& worldMatrix) {
@@ -515,8 +537,39 @@ void DiligentRenderer::SetViewProjectionMatrix(const float* viewProj16) {
     }
 }
 
+void DiligentRenderer::ReleaseMeshResources(Moon::Mesh* mesh) {
+    auto it = m_meshCache.find(mesh);
+    if (it != m_meshCache.end()) {
+        if (it->second.vertexBuffer) {
+            it->second.vertexBuffer->Release();
+        }
+        if (it->second.indexBuffer) {
+            it->second.indexBuffer->Release();
+        }
+        m_meshCache.erase(it);
+        MOON_LOG_INFO("DiligentRenderer", "Released GPU resources for Mesh");
+    }
+}
+
+void DiligentRenderer::ClearAllMeshResources() {
+    MOON_LOG_INFO("DiligentRenderer", "Clearing all Mesh GPU resources (%zu meshes cached)", m_meshCache.size());
+    
+    for (auto& pair : m_meshCache) {
+        if (pair.second.vertexBuffer) {
+            pair.second.vertexBuffer->Release();
+        }
+        if (pair.second.indexBuffer) {
+            pair.second.indexBuffer->Release();
+        }
+    }
+    m_meshCache.clear();
+}
+
 void DiligentRenderer::Shutdown() {
     MOON_LOG_INFO("DiligentRenderer", "Shutting down DiligentRenderer");
+    
+    // 首先清理所有 Mesh 的 GPU 资源
+    ClearAllMeshResources();
     
     // Release resources in reverse order of creation
     if (m_pSRB) {

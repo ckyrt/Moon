@@ -4,6 +4,7 @@
 #include "../core/Camera/Camera.h"  // For Moon::Matrix4x4
 #include <memory>
 #include <chrono>
+#include <unordered_map>
 
 // Forward declarations for Diligent Engine
 namespace Diligent
@@ -40,8 +41,22 @@ public:
     void SetViewProjectionMatrix(const float* viewProj16) override;
     void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) override;
     void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
+    
+    // Mesh GPU 资源管理
+    void ReleaseMeshResources(Moon::Mesh* mesh);
+    void ClearAllMeshResources();
 
 private:
+    // Mesh GPU 资源结构
+    struct MeshGPUResources {
+        Diligent::IBuffer* vertexBuffer = nullptr;
+        Diligent::IBuffer* indexBuffer = nullptr;
+        size_t vertexCount = 0;
+        size_t indexCount = 0;
+    };
+    
+    // Mesh 到 GPU 资源的映射表（Renderer 内部维护）
+    std::unordered_map<Moon::Mesh*, MeshGPUResources> m_meshCache;
     // Diligent Engine core objects
     Diligent::IRenderDevice*     m_pDevice = nullptr;
     Diligent::IDeviceContext*    m_pImmediateContext = nullptr;
@@ -77,6 +92,9 @@ private:
     void CreateIndexBuffer();
     void CreateUniformBuffer();
     void UpdateTransforms();
+    
+    // Mesh 资源管理辅助方法
+    MeshGPUResources* GetOrCreateMeshResources(Moon::Mesh* mesh);
 
     struct VSConstants {
         Moon::Matrix4x4 WorldViewProj;
