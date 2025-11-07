@@ -21,6 +21,12 @@
     <Filter Include="Scene">
       <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Mesh">
+      <UniqueIdentifier>{B2C3D4E5-F6A7-8901-BCDE-F12345678901}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Geometry">
+      <UniqueIdentifier>{C3D4E5F6-A7B8-9012-CDEF-123456789012}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EngineCore.h">
@@ -77,6 +83,12 @@
     <ClInclude Include="Scene\MeshRenderer.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Mesh\Mesh.h">
+      <Filter>Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Geometry\MeshGenerator.h">
+      <Filter>Geometry</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineCore.cpp">
@@ -117,6 +129,12 @@
     </ClCompile>
     <ClCompile Include="Scene\MeshRenderer.cpp">
       <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh\Mesh.cpp">
+      <Filter>Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Geometry\MeshGenerator.cpp">
+      <Filter>Geometry</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
