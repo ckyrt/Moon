@@ -348,6 +348,136 @@ int main() {
 - [React Official Documentation](https://react.dev/)
 - [Diligent Engine](https://github.com/DiligentGraphics/DiligentEngine)
 
+## 实施指南 (Implementation Guide)
+
+### 目录结构设计
+
+```
+/editor/
+├── bridge/                          # C++ CEF 集成层
+│   ├── README.md                    # 模块说明
+│   ├── EditorBridge.vcxproj         # Visual Studio 项目文件
+│   │
+│   ├── include/                     # 公共头文件
+│   │   ├── EditorBridge.h           # 主入口类（初始化 CEF，管理生命周期）
+│   │   └── EngineAPI.h              # 引擎 API 接口定义
+│   │
+│   ├── src/                         # 实现文件
+│   │   ├── EditorBridge.cpp         # CEF 初始化、主窗口创建、消息循环
+│   │   │
+│   │   ├── cef/                     # CEF 相关
+│   │   │   ├── CefApp.cpp           # CefApp 实现（进程管理）
+│   │   │   ├── CefClient.cpp        # CefClient 实现（浏览器回调）
+│   │   │   ├── CefRenderHandler.cpp # 渲染处理（可选）
+│   │   │   └── CefLifeSpanHandler.cpp # 浏览器生命周期
+│   │   │
+│   │   ├── bindings/                # JavaScript 绑定层
+│   │   │   ├── EngineJSHandler.cpp  # V8 绑定处理器
+│   │   │   ├── SceneBindings.cpp    # Scene API 绑定
+│   │   │   ├── TransformBindings.cpp # Transform API 绑定
+│   │   │   └── AssetBindings.cpp    # 资产 API 绑定
+│   │   │
+│   │   └── native/                  # 原生窗口管理
+│   │       ├── WindowManager.cpp    # 窗口创建和布局管理
+│   │       └── ViewportWindow.cpp   # 3D 视口窗口（HWND）
+│   │
+│   └── bin/x64/Debug/               # 编译输出
+│
+├── webui/                           # React 前端项目
+│   ├── README.md                    # 模块说明
+│   ├── package.json                 # npm 依赖配置
+│   ├── tsconfig.json                # TypeScript 配置
+│   ├── vite.config.ts               # Vite 构建配置
+│   ├── index.html                   # HTML 入口
+│   │
+│   ├── src/                         # 源代码
+│   │   ├── main.tsx                 # React 入口
+│   │   ├── App.tsx                  # 主应用组件
+│   │   │
+│   │   ├── components/              # UI 组件
+│   │   │   ├── layout/
+│   │   │   │   ├── EditorLayout.tsx    # 编辑器主布局
+│   │   │   │   ├── Toolbar.tsx          # 顶部工具栏
+│   │   │   │   └── StatusBar.tsx        # 底部状态栏
+│   │   │   │
+│   │   │   ├── panels/
+│   │   │   │   ├── Hierarchy.tsx        # 场景层级树
+│   │   │   │   ├── Inspector.tsx        # 属性检查器
+│   │   │   │   ├── Viewport.tsx         # 3D 视口容器
+│   │   │   │   └── AssetBrowser.tsx     # 资产浏览器
+│   │   │   │
+│   │   │   └── widgets/
+│   │   │       ├── Vector3Input.tsx     # 三维向量输入
+│   │   │       ├── ColorPicker.tsx      # 颜色选择器
+│   │   │       └── FileSelector.tsx     # 文件选择器
+│   │   │
+│   │   ├── services/                # 服务层
+│   │   │   ├── EngineAPI.ts         # 引擎 API 封装
+│   │   │   └── MockEngine.ts        # Mock 引擎（开发用）
+│   │   │
+│   │   ├── types/                   # TypeScript 类型
+│   │   │   ├── engine.d.ts          # 引擎 API 类型
+│   │   │   ├── scene.ts             # Scene 类型
+│   │   │   └── transform.ts         # Transform 类型
+│   │   │
+│   │   ├── stores/                  # 状态管理
+│   │   │   ├── sceneStore.ts        # 场景状态
+│   │   │   └── selectionStore.ts    # 选择状态
+│   │   │
+│   │   └── styles/                  # 样式文件
+│   │       ├── globals.css
+│   │       └── editor.module.css
+│   │
+│   ├── dist/                        # 构建输出
+│   │   ├── index.html               # CEF 加载入口
+│   │   └── assets/
+│   │
+│   └── public/                      # 静态资源
+│       └── icons/
+│
+└── samples/                         # 编辑器示例应用
+    ├── EditorApp.cpp                # 编辑器主程序
+    ├── EditorApp.vcxproj            # Visual Studio 项目
+    └── README.md
+```
+
+### 关键文件职责
+
+#### C++ Bridge 层
+- `EditorBridge.h/cpp` - 主入口，初始化 CEF，管理生命周期
+- `cef/CefApp.cpp` - CEF 应用实现，管理进程
+- `cef/CefClient.cpp` - CEF 客户端，处理浏览器事件
+- `bindings/EngineJSHandler.cpp` - JavaScript 绑定核心，注册 window.engine API
+- `bindings/SceneBindings.cpp` - Scene API（createNode, getSceneGraph 等）
+- `bindings/TransformBindings.cpp` - Transform API（updateTransform 等）
+- `native/WindowManager.cpp` - 窗口创建和布局管理
+- `native/ViewportWindow.cpp` - 原生 HWND 窗口，嵌入 DiligentRenderer
+
+#### React WebUI 层
+- `App.tsx` - 主应用，编辑器整体布局
+- `components/layout/EditorLayout.tsx` - 可调整大小的面板布局
+- `components/panels/Hierarchy.tsx` - 场景树，显示节点层级
+- `components/panels/Inspector.tsx` - 属性面板，编辑节点属性
+- `components/panels/Viewport.tsx` - 视口容器（空 div，原生窗口嵌入）
+- `services/EngineAPI.ts` - 封装 window.engine 调用，类型安全
+- `types/engine.d.ts` - 定义 window.engine 的 TypeScript 类型
+- `stores/sceneStore.ts` - 场景状态管理（Zustand）
+
+### 实施步骤
+
+1. **集成 CEF SDK** - 下载 CEF，配置 EditorBridge.vcxproj
+2. **创建基础框架** - 实现 CefApp、CefClient 基础接口
+3. **创建浏览器窗口** - 初始化 CEF，加载测试 HTML
+4. **实现 JS 绑定层** - 创建 EngineJSHandler，注册 API
+5. **测试 JS 绑定** - 在 HTML 中调用 window.engine.* 验证
+6. **搭建 React 项目** - 初始化 Vite + React + TypeScript
+7. **实现 UI 组件** - 开发场景树、属性面板、工具栏
+8. **集成 React 到 CEF** - 构建 React，CEF 加载 dist/
+9. **嵌入原生窗口** - 创建 HWND，DiligentRenderer 渲染
+10. **完善引擎 API** - 补充所有必要的引擎接口
+
+---
+
 ## 相关 ADR
 - [ADR 0005: 坐标系统与矩阵约定](0005-coordinate-system-and-matrix-conventions.md) - 渲染系统约定
 - ADR 0001: 模块化架构选择（待创建）
@@ -355,3 +485,4 @@ int main() {
 
 ## 修订历史 (Revision History)
 - 2025-11-07: 初始版本，选择 CEF + React 作为编辑器 UI 架构
+- 2025-11-07: 添加完整的目录结构和实施指南
