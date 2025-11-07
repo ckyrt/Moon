@@ -294,6 +294,19 @@ editor-bridge:  core, contracts
 
 **为了防止反复返工，你必须遵守：**
 
+## ✅ 6.0 文件编码规范
+
+**所有代码文件必须使用 UTF-8 无 BOM 编码格式：**
+- `.cpp`、`.h`、`.hpp` 文件 → **UTF-8 无 BOM**
+- `.md`、`.json`、`.xml` 文件 → **UTF-8 无 BOM**
+- 禁止使用 UTF-8 with BOM 或其他编码格式
+- Visual Studio 设置：文件 → 高级保存选项 → 编码选择 "Unicode (UTF-8 无签名)"
+
+**理由：**
+- 避免 BOM 导致编译器警告或错误
+- 跨平台兼容性更好
+- Git diff 更清晰
+
 ## ✅ 6.1 接口确定后禁止 AI 修改模块边界
 
 **例如：**
