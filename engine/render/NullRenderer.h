@@ -19,6 +19,7 @@ public:
     void RenderFrame() override;
     
     void SetViewProjectionMatrix(const float* viewProj16) override;
+    void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) override;
     void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
 
 private:

@@ -108,6 +108,7 @@
     <ClInclude Include="Scene\SceneNode.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Scene\MeshRenderer.h" />
+    <ClInclude Include="Mesh\Mesh.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineCore.cpp" />
@@ -123,6 +124,7 @@
     <ClCompile Include="Scene\SceneNode.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Scene\MeshRenderer.cpp" />
+    <ClCompile Include="Mesh\Mesh.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -7,6 +7,7 @@
 #include "../core/Scene/Scene.h"
 #include "../core/Scene/SceneNode.h"
 #include "../core/Scene/MeshRenderer.h"
+#include "../core/Mesh/Mesh.h"
 #include "../render/IRenderer.h"
 #include "../render/DiligentRenderer.h"
 #include "../render/RenderCommon.h"
@@ -111,20 +112,26 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     // Setup Scene with multiple cubes
     Moon::Scene* scene = engine.GetScene();
     
-    // Create cube 1 (left, red tint - rotating)
+    // Create shared cube mesh (all cubes use the same geometry)
+    Moon::Mesh* cubeMesh = Moon::CreateCubeMesh(1.0f);
+    
+    // Create cube 1 (left, rotating)
     Moon::SceneNode* cube1 = scene->CreateNode("Cube1");
     cube1->GetTransform()->SetLocalPosition(Moon::Vector3(-3.0f, 0.0f, 0.0f));
-    cube1->AddComponent<Moon::MeshRenderer>();
+    Moon::MeshRenderer* renderer1 = cube1->AddComponent<Moon::MeshRenderer>();
+    renderer1->SetMesh(cubeMesh);
     
     // Create cube 2 (center, stationary)
     Moon::SceneNode* cube2 = scene->CreateNode("Cube2");
     cube2->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 0.0f, 0.0f));
-    cube2->AddComponent<Moon::MeshRenderer>();
+    Moon::MeshRenderer* renderer2 = cube2->AddComponent<Moon::MeshRenderer>();
+    renderer2->SetMesh(cubeMesh);
     
     // Create cube 3 (right, elevated)
     Moon::SceneNode* cube3 = scene->CreateNode("Cube3");
     cube3->GetTransform()->SetLocalPosition(Moon::Vector3(3.0f, 2.0f, 0.0f));
-    cube3->AddComponent<Moon::MeshRenderer>();
+    Moon::MeshRenderer* renderer3 = cube3->AddComponent<Moon::MeshRenderer>();
+    renderer3->SetMesh(cubeMesh);
     
     // Create a parent-child hierarchy
     Moon::SceneNode* parent = scene->CreateNode("Parent");
@@ -133,14 +140,16 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     Moon::SceneNode* child1 = scene->CreateNode("Child1");
     child1->SetParent(parent);
     child1->GetTransform()->SetLocalPosition(Moon::Vector3(-1.5f, 0.0f, 0.0f));
-    child1->AddComponent<Moon::MeshRenderer>();
+    Moon::MeshRenderer* rendererChild1 = child1->AddComponent<Moon::MeshRenderer>();
+    rendererChild1->SetMesh(cubeMesh);
     
     Moon::SceneNode* child2 = scene->CreateNode("Child2");
     child2->SetParent(parent);
     child2->GetTransform()->SetLocalPosition(Moon::Vector3(1.5f, 0.0f, 0.0f));
-    child2->AddComponent<Moon::MeshRenderer>();
+    Moon::MeshRenderer* rendererChild2 = child2->AddComponent<Moon::MeshRenderer>();
+    rendererChild2->SetMesh(cubeMesh);
     
-    MOON_LOG_INFO("Sample", "Created %d scene nodes", scene->GetRootNodeCount());
+    MOON_LOG_INFO("Sample", "Created %d scene nodes with shared mesh", scene->GetRootNodeCount());
 
     // 4) Main loop
     bool running = true;
@@ -181,8 +190,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         scene->Traverse([&](Moon::SceneNode* node) {
             Moon::MeshRenderer* meshRenderer = node->GetComponent<Moon::MeshRenderer>();
             if (meshRenderer && meshRenderer->IsVisible() && meshRenderer->IsEnabled()) {
-                Moon::Matrix4x4 worldMatrix = node->GetTransform()->GetWorldMatrix();
-                renderer.DrawCube(worldMatrix);
+                meshRenderer->Render(&renderer);
             }
         });
         
@@ -192,6 +200,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
+    // Cleanup
+    delete cubeMesh;
+    
     renderer.Shutdown();
     g_pRenderer = nullptr;
     g_pCamera = nullptr;

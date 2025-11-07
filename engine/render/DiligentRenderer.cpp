@@ -1,5 +1,6 @@
 ﻿#include "DiligentRenderer.h"
 #include "../core/Logging/Logger.h"
+#include "../core/Mesh/Mesh.h"
 #include <iostream>
 #include <cmath>
 #include <cstring>
@@ -358,6 +359,81 @@ void DiligentRenderer::EndFrame() {
     }
     
     m_pSwapChain->Present();
+}
+
+void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) {
+    if (!m_pDevice || !m_pSwapChain || !mesh || !mesh->IsValid()) {
+        return;
+    }
+    
+    // 获取 Mesh 数据
+    const auto& vertices = mesh->GetVertices();
+    const auto& indices = mesh->GetIndices();
+    
+    // 创建临时顶点缓冲区（简化实现，未来应该缓存）
+    BufferDesc VertBuffDesc;
+    VertBuffDesc.Name = "Mesh Vertex Buffer";
+    VertBuffDesc.Usage = USAGE_IMMUTABLE;
+    VertBuffDesc.BindFlags = BIND_VERTEX_BUFFER;
+    VertBuffDesc.Size = vertices.size() * sizeof(Moon::Vertex);
+    
+    BufferData VBData;
+    VBData.pData = vertices.data();
+    VBData.DataSize = VertBuffDesc.Size;
+    
+    Diligent::IBuffer* pMeshVertexBuffer = nullptr;
+    m_pDevice->CreateBuffer(VertBuffDesc, &VBData, &pMeshVertexBuffer);
+    
+    // 创建临时索引缓冲区
+    BufferDesc IndBuffDesc;
+    IndBuffDesc.Name = "Mesh Index Buffer";
+    IndBuffDesc.Usage = USAGE_IMMUTABLE;
+    IndBuffDesc.BindFlags = BIND_INDEX_BUFFER;
+    IndBuffDesc.Size = indices.size() * sizeof(uint32_t);
+    
+    BufferData IBData;
+    IBData.pData = indices.data();
+    IBData.DataSize = IndBuffDesc.Size;
+    
+    Diligent::IBuffer* pMeshIndexBuffer = nullptr;
+    m_pDevice->CreateBuffer(IndBuffDesc, &IBData, &pMeshIndexBuffer);
+    
+    // 计算变换矩阵
+    Moon::Matrix4x4 worldViewProj = worldMatrix * m_viewProj;
+    
+    // 转置为 HLSL 列主序
+    Moon::Matrix4x4 worldViewProjT;
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j)
+            worldViewProjT.m[i][j] = worldViewProj.m[j][i];
+    
+    // 更新常量缓冲区
+    void* pMappedData = nullptr;
+    m_pImmediateContext->MapBuffer(m_pVSConstants, MAP_WRITE, MAP_FLAG_DISCARD, pMappedData);
+    if (pMappedData) {
+        memcpy(pMappedData, &worldViewProjT.m[0][0], sizeof(Moon::Matrix4x4));
+        m_pImmediateContext->UnmapBuffer(m_pVSConstants, MAP_WRITE);
+    }
+    
+    // 设置顶点和索引缓冲区
+    Uint64 offset = 0;
+    IBuffer* pBuffs[] = {pMeshVertexBuffer};
+    m_pImmediateContext->SetVertexBuffers(0, 1, pBuffs, &offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
+    m_pImmediateContext->SetIndexBuffer(pMeshIndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    
+    // 提交着色器资源
+    m_pImmediateContext->CommitShaderResources(m_pSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    
+    // 绘制
+    DrawIndexedAttribs DrawAttrs;
+    DrawAttrs.IndexType = VT_UINT32;
+    DrawAttrs.NumIndices = static_cast<Uint32>(indices.size());
+    DrawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
+    m_pImmediateContext->DrawIndexed(DrawAttrs);
+    
+    // 释放临时缓冲区
+    if (pMeshIndexBuffer) pMeshIndexBuffer->Release();
+    if (pMeshVertexBuffer) pMeshVertexBuffer->Release();
 }
 
 void DiligentRenderer::DrawCube(const Moon::Matrix4x4& worldMatrix) {

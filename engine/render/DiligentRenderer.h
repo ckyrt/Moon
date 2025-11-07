@@ -17,6 +17,11 @@ namespace Diligent
     struct ITextureView;
 }
 
+// Forward declarations for Moon Engine
+namespace Moon {
+    class Mesh;
+}
+
 class DiligentRenderer : public IRenderer {
 public:
     DiligentRenderer();
@@ -33,6 +38,7 @@ public:
     void RenderFrame() override;
     
     void SetViewProjectionMatrix(const float* viewProj16) override;
+    void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) override;
     void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
 
 private:

@@ -57,6 +57,13 @@ void NullRenderer::SetViewProjectionMatrix(const float* viewProj16)
     (void)viewProj16; // Suppress unused parameter warning
 }
 
+void NullRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix)
+{
+    (void)mesh;
+    (void)worldMatrix;
+    // No-op for null renderer
+}
+
 void NullRenderer::DrawCube(const Moon::Matrix4x4& worldMatrix)
 {
     (void)worldMatrix; // Suppress unused parameter warning

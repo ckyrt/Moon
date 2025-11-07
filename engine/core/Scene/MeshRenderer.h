@@ -7,11 +7,14 @@ class IRenderer;
 
 namespace Moon {
 
+// Forward declarations
+class Mesh;
+
 /**
  * @brief MeshRenderer 组件 - 负责渲染网格
  * 
- * 这是一个简化版的 MeshRenderer，用于渲染基本的立方体。
- * 未来可以扩展为支持任意 Mesh 数据。
+ * 持有 Mesh 数据的引用，并通过渲染器进行绘制。
+ * 注意：MeshRenderer 不拥有 Mesh，只持有指针。
  */
 class MeshRenderer : public Component {
 public:
@@ -26,9 +29,21 @@ public:
     /**
      * @brief 渲染网格
      * @param renderer 渲染器接口
-     * @param viewProjection 视图投影矩阵
+     * 
+     * 如果 Mesh 有效且可见，将调用 renderer->DrawMesh() 进行渲染
      */
-    void Render(IRenderer* renderer, const Matrix4x4& viewProjection);
+    void Render(IRenderer* renderer);
+    
+    /**
+     * @brief 设置要渲染的 Mesh
+     * @param mesh Mesh 指针（不转移所有权）
+     */
+    void SetMesh(Mesh* mesh) { m_mesh = mesh; }
+    
+    /**
+     * @brief 获取当前的 Mesh
+     */
+    Mesh* GetMesh() const { return m_mesh; }
     
     /**
      * @brief 设置是否可见
@@ -41,7 +56,8 @@ public:
     bool IsVisible() const { return m_visible; }
 
 private:
-    bool m_visible;  ///< 是否可见
+    Mesh* m_mesh;      ///< 要渲染的 Mesh（不拥有）
+    bool m_visible;    ///< 是否可见
 };
 
 } // namespace Moon

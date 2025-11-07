@@ -1,9 +1,10 @@
 #pragma once
 #include <cstdint>
 
-// Forward declaration
+// Forward declarations
 namespace Moon {
     struct Matrix4x4;
+    class Mesh;
 }
 
 struct RenderInitParams {
@@ -77,10 +78,21 @@ public:
     // === 绘制接口 ===
     
     /**
-     * @brief 绘制立方体（临时接口）
+     * @brief 绘制网格（主要接口）
+     * @param mesh 要绘制的 Mesh 数据
      * @param worldMatrix 世界变换矩阵
      * 
-     * 注意：这是临时方法，未来会被通用的 DrawMesh 替代
+     * 渲染器负责：
+     * 1. 从 Mesh 获取顶点/索引数据
+     * 2. 创建/更新 GPU 缓冲区
+     * 3. 设置渲染状态并绘制
+     */
+    virtual void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) = 0;
+    
+    /**
+     * @brief 绘制立方体（便捷方法，已废弃）
+     * @param worldMatrix 世界变换矩阵
+     * @deprecated 请使用 DrawMesh() 替代，未来版本将移除
      */
     virtual void DrawCube(const Moon::Matrix4x4& worldMatrix) = 0;
 };
