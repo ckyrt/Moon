@@ -27,6 +27,9 @@
     <Filter Include="Geometry">
       <UniqueIdentifier>{C3D4E5F6-A7B8-9012-CDEF-123456789012}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Assets">
+      <UniqueIdentifier>{D4E5F6A7-B8C9-0123-DEFG-234567890123}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EngineCore.h">
@@ -89,6 +92,9 @@
     <ClInclude Include="Geometry\MeshGenerator.h">
       <Filter>Geometry</Filter>
     </ClInclude>
+    <ClInclude Include="Assets\MeshManager.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineCore.cpp">
@@ -135,6 +141,9 @@
     </ClCompile>
     <ClCompile Include="Geometry\MeshGenerator.cpp">
       <Filter>Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Assets\MeshManager.cpp">
+      <Filter>Assets</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

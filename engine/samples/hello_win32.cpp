@@ -112,60 +112,61 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     // Setup Scene with multiple geometry types (Unity-like primitives showcase)
     Moon::Scene* scene = engine.GetScene();
+    Moon::MeshManager* meshManager = engine.GetMeshManager();
     
-    MOON_LOG_INFO("Sample", "Creating geometry showcase scene...");
+    MOON_LOG_INFO("Sample", "Creating geometry showcase scene with MeshManager...");
     
     // Row 1: Basic shapes (Y = 0)
     // Cube (Red)
     Moon::SceneNode* cube = scene->CreateNode("Cube");
     cube->GetTransform()->SetLocalPosition(Moon::Vector3(-6.0f, 0.0f, 0.0f));
     Moon::MeshRenderer* cubeRenderer = cube->AddComponent<Moon::MeshRenderer>();
-    cubeRenderer->SetMesh(Moon::MeshGenerator::CreateCube(1.0f, Moon::Vector3(1.0f, 0.3f, 0.3f)));
+    cubeRenderer->SetMesh(meshManager->CreateCube(1.0f, Moon::Vector3(1.0f, 0.3f, 0.3f)));
     
     // Sphere (Green)
     Moon::SceneNode* sphere = scene->CreateNode("Sphere");
     sphere->GetTransform()->SetLocalPosition(Moon::Vector3(-3.0f, 0.0f, 0.0f));
     Moon::MeshRenderer* sphereRenderer = sphere->AddComponent<Moon::MeshRenderer>();
-    sphereRenderer->SetMesh(Moon::MeshGenerator::CreateSphere(0.6f, 32, 16, Moon::Vector3(0.3f, 1.0f, 0.3f)));
+    sphereRenderer->SetMesh(meshManager->CreateSphere(0.6f, 32, 16, Moon::Vector3(0.3f, 1.0f, 0.3f)));
     
     // Cylinder (Blue)
     Moon::SceneNode* cylinder = scene->CreateNode("Cylinder");
     cylinder->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 0.0f, 0.0f));
     Moon::MeshRenderer* cylinderRenderer = cylinder->AddComponent<Moon::MeshRenderer>();
-    cylinderRenderer->SetMesh(Moon::MeshGenerator::CreateCylinder(0.5f, 0.5f, 1.5f, 24, Moon::Vector3(0.3f, 0.5f, 1.0f)));
+    cylinderRenderer->SetMesh(meshManager->CreateCylinder(0.5f, 0.5f, 1.5f, 24, Moon::Vector3(0.3f, 0.5f, 1.0f)));
     
     // Cone (Yellow)
     Moon::SceneNode* cone = scene->CreateNode("Cone");
     cone->GetTransform()->SetLocalPosition(Moon::Vector3(3.0f, 0.0f, 0.0f));
     Moon::MeshRenderer* coneRenderer = cone->AddComponent<Moon::MeshRenderer>();
-    coneRenderer->SetMesh(Moon::MeshGenerator::CreateCone(0.6f, 1.5f, 24, Moon::Vector3(1.0f, 1.0f, 0.3f)));
+    coneRenderer->SetMesh(meshManager->CreateCone(0.6f, 1.5f, 24, Moon::Vector3(1.0f, 1.0f, 0.3f)));
     
     // Capsule (Magenta)
     Moon::SceneNode* capsule = scene->CreateNode("Capsule");
     capsule->GetTransform()->SetLocalPosition(Moon::Vector3(6.0f, 0.0f, 0.0f));
     Moon::MeshRenderer* capsuleRenderer = capsule->AddComponent<Moon::MeshRenderer>();
-    capsuleRenderer->SetMesh(Moon::MeshGenerator::CreateCapsule(0.4f, 2.0f, 16, 8, Moon::Vector3(1.0f, 0.3f, 1.0f)));
+    capsuleRenderer->SetMesh(meshManager->CreateCapsule(0.4f, 2.0f, 16, 8, Moon::Vector3(1.0f, 0.3f, 1.0f)));
     
     // Row 2: Advanced shapes (Y = -3)
     // Torus (Cyan)
     Moon::SceneNode* torus = scene->CreateNode("Torus");
     torus->GetTransform()->SetLocalPosition(Moon::Vector3(-4.5f, -3.0f, 0.0f));
     Moon::MeshRenderer* torusRenderer = torus->AddComponent<Moon::MeshRenderer>();
-    torusRenderer->SetMesh(Moon::MeshGenerator::CreateTorus(0.6f, 0.2f, 32, 16, Moon::Vector3(0.3f, 1.0f, 1.0f)));
+    torusRenderer->SetMesh(meshManager->CreateTorus(0.6f, 0.2f, 32, 16, Moon::Vector3(0.3f, 1.0f, 1.0f)));
     
     // Plane (White)
     Moon::SceneNode* plane = scene->CreateNode("Plane");
     plane->GetTransform()->SetLocalPosition(Moon::Vector3(-1.5f, -3.0f, 0.0f));
     plane->GetTransform()->SetLocalRotation(Moon::Vector3(0.0f, 0.0f, 0.0f));
     Moon::MeshRenderer* planeRenderer = plane->AddComponent<Moon::MeshRenderer>();
-    planeRenderer->SetMesh(Moon::MeshGenerator::CreatePlane(1.5f, 1.5f, 2, 2, Moon::Vector3(0.9f, 0.9f, 0.9f)));
+    planeRenderer->SetMesh(meshManager->CreatePlane(1.5f, 1.5f, 2, 2, Moon::Vector3(0.9f, 0.9f, 0.9f)));
     
     // Quad (Orange)
     Moon::SceneNode* quad = scene->CreateNode("Quad");
     quad->GetTransform()->SetLocalPosition(Moon::Vector3(1.5f, -3.0f, 0.0f));
     quad->GetTransform()->SetLocalRotation(Moon::Vector3(0.0f, 45.0f, 0.0f));
     Moon::MeshRenderer* quadRenderer = quad->AddComponent<Moon::MeshRenderer>();
-    quadRenderer->SetMesh(Moon::MeshGenerator::CreateQuad(1.2f, 1.2f, Moon::Vector3(1.0f, 0.6f, 0.2f)));
+    quadRenderer->SetMesh(meshManager->CreateQuad(1.2f, 1.2f, Moon::Vector3(1.0f, 0.6f, 0.2f)));
     
     // Parent-child hierarchy demo (Right side, elevated)
     Moon::SceneNode* parent = scene->CreateNode("Parent");
@@ -175,15 +176,16 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     child1->SetParent(parent);
     child1->GetTransform()->SetLocalPosition(Moon::Vector3(-0.8f, 0.0f, 0.0f));
     Moon::MeshRenderer* child1Renderer = child1->AddComponent<Moon::MeshRenderer>();
-    child1Renderer->SetMesh(Moon::MeshGenerator::CreateCube(0.5f, Moon::Vector3(0.8f, 0.4f, 0.2f)));
+    child1Renderer->SetMesh(meshManager->CreateCube(0.5f, Moon::Vector3(0.8f, 0.4f, 0.2f)));
     
     Moon::SceneNode* child2 = scene->CreateNode("Child2");
     child2->SetParent(parent);
     child2->GetTransform()->SetLocalPosition(Moon::Vector3(0.8f, 0.0f, 0.0f));
     Moon::MeshRenderer* child2Renderer = child2->AddComponent<Moon::MeshRenderer>();
-    child2Renderer->SetMesh(Moon::MeshGenerator::CreateSphere(0.3f, 16, 8, Moon::Vector3(0.2f, 0.8f, 0.4f)));
+    child2Renderer->SetMesh(meshManager->CreateSphere(0.3f, 16, 8, Moon::Vector3(0.2f, 0.8f, 0.4f)));
     
-    MOON_LOG_INFO("Sample", "Scene created with 11 geometry primitives (Cube, Sphere, Cylinder, Cone, Capsule, Torus, Plane, Quad + Hierarchy)");
+    MOON_LOG_INFO("Sample", "Scene created with 11 geometry primitives (managed by MeshManager, %zu meshes in cache)", 
+                  meshManager->GetMeshCount());
 
     // 4) Main loop
     bool running = true;

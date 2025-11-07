@@ -1,6 +1,7 @@
 #pragma once
 #include "Component.h"
 #include "../Camera/Camera.h"
+#include <memory>
 
 // Forward declarations
 class IRenderer;
@@ -13,8 +14,8 @@ class Mesh;
 /**
  * @brief MeshRenderer 组件 - 负责渲染网格
  * 
- * 持有 Mesh 数据的引用，并通过渲染器进行绘制。
- * 注意：MeshRenderer 不拥有 Mesh，只持有指针。
+ * 持有 Mesh 的共享所有权（shared_ptr），支持多个 Renderer 共享同一个 Mesh。
+ * Mesh 的生命周期由引用计数自动管理，最后一个引用消失时自动释放。
  */
 class MeshRenderer : public Component {
 public:
@@ -35,15 +36,15 @@ public:
     void Render(IRenderer* renderer);
     
     /**
-     * @brief 设置要渲染的 Mesh
-     * @param mesh Mesh 指针（不转移所有权）
+     * @brief 设置要渲染的 Mesh（共享所有权）
+     * @param mesh Mesh 智能指针
      */
-    void SetMesh(Mesh* mesh) { m_mesh = mesh; }
+    void SetMesh(std::shared_ptr<Mesh> mesh) { m_mesh = mesh; }
     
     /**
      * @brief 获取当前的 Mesh
      */
-    Mesh* GetMesh() const { return m_mesh; }
+    std::shared_ptr<Mesh> GetMesh() const { return m_mesh; }
     
     /**
      * @brief 设置是否可见
@@ -56,8 +57,8 @@ public:
     bool IsVisible() const { return m_visible; }
 
 private:
-    Mesh* m_mesh;      ///< 要渲染的 Mesh（不拥有）
-    bool m_visible;    ///< 是否可见
+    std::shared_ptr<Mesh> m_mesh;  ///< 要渲染的 Mesh（共享所有权）
+    bool m_visible;                ///< 是否可见
 };
 
 } // namespace Moon

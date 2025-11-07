@@ -15,6 +15,10 @@ void EngineCore::Initialize() {
     m_camera->SetUp(Moon::Vector3(0.0f, 1.0f, 0.0f));
     MOON_LOG_INFO("EngineCore", "Camera initialized");
     
+    // Initialize Mesh Manager
+    m_meshManager = std::make_unique<Moon::MeshManager>();
+    MOON_LOG_INFO("EngineCore", "MeshManager initialized");
+    
     // Initialize Main Scene
     m_mainScene = std::make_unique<Moon::Scene>("Main Scene");
     MOON_LOG_INFO("EngineCore", "Main Scene initialized");
@@ -38,7 +42,25 @@ void EngineCore::Shutdown() {
     MOON_LOG_INFO("EngineCore", "Shutdown");
     
     // Shutdown in reverse order of initialization
-    m_mainScene.reset();
-    m_camera.reset();
-    m_inputSystem.reset();
+    // Scene 必须先销毁，因为 MeshRenderer 持有 Mesh 的 shared_ptr
+    if (m_mainScene) {
+        MOON_LOG_INFO("EngineCore", "Destroying Scene...");
+        m_mainScene.reset();
+    }
+    
+    // MeshManager 在 Scene 之后销毁，释放 Mesh 资源
+    if (m_meshManager) {
+        MOON_LOG_INFO("EngineCore", "Destroying MeshManager...");
+        m_meshManager.reset();
+    }
+    
+    if (m_camera) {
+        m_camera.reset();
+    }
+    
+    if (m_inputSystem) {
+        m_inputSystem.reset();
+    }
+    
+    MOON_LOG_INFO("EngineCore", "Shutdown complete");
 }

@@ -21,8 +21,8 @@ void MeshRenderer::Render(IRenderer* renderer) {
     // 获取世界变换矩阵
     const Matrix4x4& worldMatrix = GetOwner()->GetTransform()->GetWorldMatrix();
     
-    // 调用渲染器绘制 Mesh
-    renderer->DrawMesh(m_mesh, worldMatrix);
+    // 调用渲染器绘制 Mesh（传递原始指针给渲染器）
+    renderer->DrawMesh(m_mesh.get(), worldMatrix);
 }
 
 } // namespace Moon
