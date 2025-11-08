@@ -94,27 +94,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>rem 复制 CEF 运行时文件（仅必需项）
-echo Copying CEF runtime files...
-
-rem 核心库（必需）
-xcopy /Y /D "$(CEF_PATH)\Debug\libcef.dll" "$(OutDir)" &gt;nul
-xcopy /Y /D "$(CEF_PATH)\Debug\chrome_elf.dll" "$(OutDir)" &gt;nul
-xcopy /Y /D "$(CEF_PATH)\Debug\v8_context_snapshot.bin" "$(OutDir)" &gt;nul
-xcopy /Y /D "$(CEF_PATH)\Resources\icudtl.dat" "$(OutDir)" &gt;nul
-
-rem 本地化资源（必需）
-xcopy /Y /E /I /D "$(CEF_PATH)\Resources\locales" "$(OutDir)locales\" &gt;nul
-
-rem GPU 支持（推荐，支持 WebGL/Canvas）
-xcopy /Y /D "$(CEF_PATH)\Debug\d3dcompiler_47.dll" "$(OutDir)" &gt;nul
-xcopy /Y /D "$(CEF_PATH)\Debug\libEGL.dll" "$(OutDir)" &gt;nul
-xcopy /Y /D "$(CEF_PATH)\Debug\libGLESv2.dll" "$(OutDir)" &gt;nul
-
-echo CEF runtime files copied successfully.</Command>
-      <Message>Copying CEF runtime files...</Message>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -142,27 +121,6 @@ echo CEF runtime files copied successfully.</Command>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>rem 复制 CEF 运行时文件（仅必需项）
-echo Copying CEF runtime files...
-
-rem 核心库（必需）
-xcopy /Y /D "$(CEF_PATH)\Release\libcef.dll" "$(OutDir)" &gt;nul
-xcopy /Y /D "$(CEF_PATH)\Release\chrome_elf.dll" "$(OutDir)" &gt;nul
-xcopy /Y /D "$(CEF_PATH)\Release\v8_context_snapshot.bin" "$(OutDir)" &gt;nul
-xcopy /Y /D "$(CEF_PATH)\Resources\icudtl.dat" "$(OutDir)" &gt;nul
-
-rem 本地化资源（必需）
-xcopy /Y /E /I /D "$(CEF_PATH)\Resources\locales" "$(OutDir)locales\" &gt;nul
-
-rem GPU 支持（推荐，支持 WebGL/Canvas）
-xcopy /Y /D "$(CEF_PATH)\Release\d3dcompiler_47.dll" "$(OutDir)" &gt;nul
-xcopy /Y /D "$(CEF_PATH)\Release\libEGL.dll" "$(OutDir)" &gt;nul
-xcopy /Y /D "$(CEF_PATH)\Release\libGLESv2.dll" "$(OutDir)" &gt;nul
-
-echo CEF runtime files copied successfully.</Command>
-      <Message>Copying CEF runtime files...</Message>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   
   <ItemGroup>

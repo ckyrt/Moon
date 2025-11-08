@@ -12,8 +12,10 @@ User-Generated World Engine & Editor
 ## 📋 快速导航
 
 - 📖 [开发路线图](docs/ROADMAP.md) - 开发计划、当前进度、快速参考
-- � [架构决策记录 (ADR)](docs/adr/README.md) - 重要技术决策
+- 📐 [架构决策记录 (ADR)](docs/adr/README.md) - 重要技术决策
 - 🔧 [开发手册 (Playbooks)](docs/playbooks/README.md) - 开发流程和最佳实践
+- 🔨 **[编译指南](#8️⃣-编译指南重要)** - MSBuild 正确使用方法（AI 必读）
+- ⚙️ **[配置精简原则](docs/playbooks/MINIMALIST_CONFIGURATION.md)** - 最小化配置原则（AI 必读）
 
 ## 🎯 核心目标
 
@@ -96,6 +98,7 @@ User-Generated World Engine & Editor
   /tests/                # 🧪 测试框架
 
 /editor/                  # 编辑器
+  /app/                  # 🎮 编辑器主程序 (EditorApp.exe)
   /bridge/               # 🌉 C++ ↔ WebUI 通信桥
   /webui/                # 🖥️ React编辑器界面
 
@@ -362,6 +365,53 @@ editor-webui:   无依赖（纯 React）
 - ✅ **阶段 10**：多人同步
 - ✅ **阶段 11**：脚本系统
 - ✅ **阶段 12**：资产系统
+
+---
+
+# 8️⃣ 编译指南（重要）
+
+## ⚠️ MSBuild 路径问题（AI 必读）
+
+**必须使用 Visual Studio 的 MSBuild，而不是 Mono 的 MSBuild！**
+
+### 错误的方式（会报错）
+```powershell
+msbuild Moon.sln  # ❌ 可能调用 Mono 的 MSBuild
+# 错误：找不到导入的项目"E:\Microsoft.Cpp.Default.props"
+```
+
+### ✅ 正确的方式
+```powershell
+# 使用完整路径（推荐）
+& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Moon.sln /p:Configuration=Debug /p:Platform=x64 /m /v:minimal
+```
+
+### 编译参数说明
+- `/p:Configuration=Debug` - Debug 或 Release
+- `/p:Platform=x64` - 64位平台
+- `/m` - 多核并行编译
+- `/v:minimal` - 最小化输出
+- `/t:ProjectName` - 只编译指定项目（可选）
+
+### 常用编译命令
+```powershell
+# 编译所有项目
+& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Moon.sln /p:Configuration=Debug /p:Platform=x64 /m
+
+# 只编译编辑器
+& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Moon.sln /p:Configuration=Debug /p:Platform=x64 /t:EditorApp /m
+
+# 只编译引擎示例
+& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Moon.sln /p:Configuration=Debug /p:Platform=x64 /t:HelloEngine /m
+
+# 清理构建
+& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Moon.sln /t:Clean /p:Configuration=Debug /p:Platform=x64
+```
+
+### 输出目录
+- 可执行文件：`bin\x64\{Debug|Release}\*.exe`
+- 静态库：`bin\x64\{Debug|Release}\*.lib`
+- 中间文件：`temp\{ProjectName}\x64\{Debug|Release}\`
 
 ---
 
