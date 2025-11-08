@@ -21,7 +21,7 @@
 ## 坐标系统与矩阵约定 (Coordinate System & Matrix Conventions)
 
 > **📋 完整的坐标系统约定请参考：**  
-> [ADR 0005: 坐标系统与矩阵约定](../../docs/adr/0005-coordinate-system-and-matrix-conventions.md)
+> [ADR 0005: 坐标系统与矩阵约定](adr-0005-coordinate-system-and-matrix-conventions.md)
 
 **快速参考：**
 - **坐标系**：左手坐标系 (+Y 上, +Z 前, +X 右)

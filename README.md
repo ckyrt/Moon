@@ -12,10 +12,10 @@ User-Generated World Engine & Editor
 ## 📋 快速导航
 
 - 📖 [开发路线图](docs/ROADMAP.md) - 开发计划、当前进度、快速参考
-- 📐 [架构决策记录 (ADR)](docs/adr/README.md) - 重要技术决策
-- 🔧 [开发手册 (Playbooks)](docs/playbooks/README.md) - 开发流程和最佳实践
+- 📐 架构决策记录 (ADR) - 重要技术决策（见 `docs/adr-*.md` 文件）
+- 🔧 开发手册 (Playbooks) - 开发流程和最佳实践（见 `docs/` 目录）
 - 🔨 **[编译指南](#8️⃣-编译指南重要)** - MSBuild 正确使用方法（AI 必读）
-- ⚙️ **[配置精简原则](docs/playbooks/MINIMALIST_CONFIGURATION.md)** - 最小化配置原则（AI 必读）
+- ⚙️ **[配置精简原则](docs/playbook-minimalist-configuration.md)** - 最小化配置原则（AI 必读）
 
 ## 🎯 核心目标
 
@@ -59,7 +59,7 @@ User-Generated World Engine & Editor
 └─────────────────────────────────────────────────────┘
 ```
 
-> **架构决策**: 详见 [ADR 0003: 编辑器 UI 架构选择](docs/adr/0003-editor-ui-architecture.md)
+> **架构决策**: 详见 [ADR 0003: 编辑器 UI 架构选择](docs/adr-0003-editor-ui-architecture.md)
 
 ## 🏗️ 分层优势
 
@@ -72,7 +72,7 @@ User-Generated World Engine & Editor
 
 可扩展到多人在线、脚本系统、物理系统等
 
-> **编辑器 UI 架构**: 使用 CEF + React，详见 [ADR 0003](docs/adr/0003-editor-ui-architecture.md)
+> **编辑器 UI 架构**: 使用 CEF + React，详见 [ADR 0003](docs/adr-0003-editor-ui-architecture.md)
 
 ---
 
@@ -348,7 +348,7 @@ editor-webui:   无依赖（纯 React）
 不允许 AI 改所有文件。
 
 ## ✅ 6.6 版本库必须加文档：
-- `/docs/adr/*.md` - 记录每个架构决策原因。
+- `/docs/adr-*.md` - 记录每个架构决策原因（使用 ADR 格式）
 
 # 7️⃣ 开发路线图（建议）
 

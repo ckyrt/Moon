@@ -356,5 +356,5 @@ A: 使用逻辑与操作：`if (input->IsKeyDown(Ctrl) && input->IsKeyPressed(S)
 - `engine/core/Camera/OrbitCameraController.cpp` - 轨道控制器实现
 
 ## 相关文档
-- [相机系统文档](../Camera/README.md)
-- [引擎核心文档](../README.md)
+- [相机系统文档](engine-core-camera.md)
+- [引擎核心文档](engine-core.md)

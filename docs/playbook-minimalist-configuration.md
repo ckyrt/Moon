@@ -177,7 +177,7 @@ bin/**/*.dat
 
 ### 3. PostBuild 每次复制不变的文件
 - ❌ 每次编译都复制 CEF 运行时文件
-- ✅ 改用手动复制一次（详见 [CEF_SETUP.md](../../editor/bridge/CEF_SETUP.md)）
+- ✅ 改用手动复制一次（详见 [CEF_SETUP.md](../editor/bridge/CEF_SETUP.md)）
 
 ### 4. 重复的编译器标志
 - 同一个 `<ClCompile>` 节点中多次设置 `<WarningLevel>`

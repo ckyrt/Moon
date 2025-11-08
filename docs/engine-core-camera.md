@@ -55,7 +55,7 @@
 
 ## 坐标系约定 (Coordinate System)
 
-根据 [ADR 0005](../../docs/adr/0005-coordinate-system-and-matrix-conventions.md)：
+根据 [ADR 0005](adr-0005-coordinate-system-and-matrix-conventions.md)：
 - 使用**左手坐标系**
 - +Y 向上，+Z 向前，+X 向右
 - 使用 `LookAtLH` 和 `PerspectiveFovLH` 等左手系函数
@@ -297,5 +297,5 @@ A: 只有在相机参数（位置、目标、FOV等）发生变化时才会重�
 A: 可以使用插值函数（lerp）在当前位置和目标位置之间进行平滑过渡。
 
 ## 相关文档
-- [架构决策记录 - 坐标系和矩阵约定](../../docs/adr/0005-coordinate-system-and-matrix-conventions.md)
-- [输入系统文档](../Input/README.md)
+- [架构决策记录 - 坐标系和矩阵约定](adr-0005-coordinate-system-and-matrix-conventions.md)
+- [输入系统文档](engine-core-input.md)

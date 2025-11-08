@@ -92,7 +92,7 @@ parent->GetTransform()->SetLocalPosition(Moon::Vector3(5, 0, 0));
 - Euler 角度使用度数 (Degrees)
 - 矩阵使用行主序 (Row-Major)
 
-详见: [ADR 0005](../../../docs/adr/0005-coordinate-system-and-matrix-conventions.md)
+详见: [ADR 0005](adr-0005-coordinate-system-and-matrix-conventions.md)
 
 ## 性能优化 (Performance)
 - **矩阵缓存**: Local 和 World 矩阵只在脏标记时重新计算
