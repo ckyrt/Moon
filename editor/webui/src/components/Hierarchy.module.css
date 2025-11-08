@@ -1,0 +1,91 @@
+.hierarchy {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.title {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  transition: all 0.15s;
+}
+
+.button:hover {
+  background: var(--bg-hover);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-xs) 0;
+}
+
+.empty {
+  padding: var(--spacing-md);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.nodeContainer {
+  /* Container for node and its children */
+}
+
+.node {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.node:hover {
+  background: var(--bg-hover);
+}
+
+.node.selected {
+  background: var(--accent-blue);
+  color: white;
+}
+
+.arrow {
+  font-size: 10px;
+  width: 12px;
+  text-align: center;
+}
+
+.icon {
+  font-size: 14px;
+}
+
+.name {
+  flex: 1;
+  font-size: var(--font-size-sm);
+}
+
+.children {
+  /* Children container */
+}

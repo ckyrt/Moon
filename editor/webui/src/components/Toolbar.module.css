@@ -1,0 +1,40 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: 0 var(--spacing-md);
+  height: 100%;
+}
+
+.section {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-right: var(--spacing-xs);
+}
+
+.button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  transition: all 0.15s;
+}
+
+.button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.button.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: white;
+}
