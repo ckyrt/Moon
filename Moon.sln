@@ -14,6 +14,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HelloEngine", "engine\sampl
 		{256A3289-BE13-44ED-B3AE-BFDCAA130227} = {256A3289-BE13-44ED-B3AE-BFDCAA130227}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EditorApp", "editor\app\EditorApp.vcxproj", "{8FA3C2D1-9F5E-4B2A-A1D7-3E8F4C5B6A97}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -36,6 +38,10 @@ Global
 		{FCC7182C-2101-4180-A029-284BB9AE21A2}.Debug|x64.Build.0 = Debug|x64
 		{FCC7182C-2101-4180-A029-284BB9AE21A2}.Release|x64.ActiveCfg = Release|x64
 		{FCC7182C-2101-4180-A029-284BB9AE21A2}.Release|x64.Build.0 = Release|x64
+		{8FA3C2D1-9F5E-4B2A-A1D7-3E8F4C5B6A97}.Debug|x64.ActiveCfg = Debug|x64
+		{8FA3C2D1-9F5E-4B2A-A1D7-3E8F4C5B6A97}.Debug|x64.Build.0 = Debug|x64
+		{8FA3C2D1-9F5E-4B2A-A1D7-3E8F4C5B6A97}.Release|x64.ActiveCfg = Release|x64
+		{8FA3C2D1-9F5E-4B2A-A1D7-3E8F4C5B6A97}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -183,26 +183,26 @@ Mesh* MeshGenerator::CreateCylinder(float radiusTop, float radiusBottom, float h
     float halfH = height * 0.5f;
     
     // 顶部圆心
-    int topCenterIdx = vertices.size();
+    uint32_t topCenterIdx = static_cast<uint32_t>(vertices.size());
     vertices.push_back(Vertex(Vector3(0, halfH, 0), color));
     
     // 顶部圆周顶点
-    int topStartIdx = vertices.size();
+    uint32_t topStartIdx = static_cast<uint32_t>(vertices.size());
     GenerateCircleVertices(vertices, radiusTop, halfH, segments, color);
     
     // 底部圆心
-    int bottomCenterIdx = vertices.size();
+    uint32_t bottomCenterIdx = static_cast<uint32_t>(vertices.size());
     vertices.push_back(Vertex(Vector3(0, -halfH, 0), color));
     
     // 底部圆周顶点
-    int bottomStartIdx = vertices.size();
+    uint32_t bottomStartIdx = static_cast<uint32_t>(vertices.size());
     GenerateCircleVertices(vertices, radiusBottom, -halfH, segments, color);
     
     // 侧面顶点（需要重复顶点以支持不同法线）
-    int sideTopStartIdx = vertices.size();
+    uint32_t sideTopStartIdx = static_cast<uint32_t>(vertices.size());
     GenerateCircleVertices(vertices, radiusTop, halfH, segments, color);
     
-    int sideBottomStartIdx = vertices.size();
+    uint32_t sideBottomStartIdx = static_cast<uint32_t>(vertices.size());
     GenerateCircleVertices(vertices, radiusBottom, -halfH, segments, color);
     
     // 顶面三角形（从圆心发散）
