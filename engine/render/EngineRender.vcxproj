@@ -63,6 +63,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)external\DiligentEngine;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentCore\Graphics\GraphicsEngine\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Graphics\GraphicsEngineD3D11\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Common\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Platforms\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Platforms\Win32\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Primitives\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -86,6 +87,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)external\DiligentEngine;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentCore\Graphics\GraphicsEngine\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Graphics\GraphicsEngineD3D11\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Common\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Platforms\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Platforms\Win32\interface;$(SolutionDir)external\DiligentEngine\DiligentCore\Primitives\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>
