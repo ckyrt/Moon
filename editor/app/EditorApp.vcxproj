@@ -68,17 +68,21 @@
       <ConformanceMode>true</ConformanceMode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+            <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>false</TreatWarningAsError>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <!-- 禁用 C4100 警告：CEF 头文件中大量虚函数参数未使用，这是所有 CEF 项目的标准做法 -->
       <DisableSpecificWarnings>4100</DisableSpecificWarnings>
+      <!-- 添加引擎核心和渲染器的包含路径 -->
+      <AdditionalIncludeDirectories>$(SolutionDir)engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;EngineCore.lib;EngineRender.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(SolutionDir)editor\webui\dist" "$(TargetDir)dist" /E /Y /I</Command>
@@ -116,6 +120,12 @@
   <ItemGroup>
     <ProjectReference Include="..\bridge\EditorBridge.vcxproj">
       <Project>{24F11C82-584E-4AEB-8F20-09CCD345B193}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\engine\core\EngineCore.vcxproj">
+      <Project>{8C06E4E0-6A8A-4A7F-9F5A-0C6F4D5E8B9C}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\engine\render\EngineRender.vcxproj">
+      <Project>{C9F0E5A8-9B7C-4D3E-8F6A-1A2B3C4D5E6F}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

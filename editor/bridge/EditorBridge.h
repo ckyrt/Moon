@@ -22,6 +22,9 @@ public:
     // 检查是否正在关闭
     bool IsClosing() const;
 
+    // 获取客户端处理器（用于获取浏览器窗口句柄）
+    CefRefPtr<CefClientHandler> GetClient() const { return m_client; }
+
     // 关闭编辑器
     void Shutdown();
 
