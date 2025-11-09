@@ -2,6 +2,7 @@
 #include "cef/CefApp.h"
 #include "include/cef_browser.h"
 #include <iostream>
+#include <filesystem>
 
 EditorBridge::EditorBridge() {
 }
@@ -44,11 +45,32 @@ bool EditorBridge::Initialize(HINSTANCE hInstance) {
     return true;
 }
 
-bool EditorBridge::CreateEditorWindow(const std::string& url) {
+std::string GetExecutableDir() {
+    char buffer[MAX_PATH];
+    GetModuleFileNameA(NULL, buffer, MAX_PATH);
+    std::filesystem::path exePath(buffer);
+    return exePath.parent_path().string();
+}
+
+bool EditorBridge::CreateEditorWindow(const std::string& urlOverride) {
     if (!m_initialized) {
         std::cerr << "[EditorBridge] Not initialized" << std::endl;
         return false;
     }
+
+    // 🔍 获取 EXE 所在目录
+    std::string exeDir = GetExecutableDir();
+    std::string distIndex = exeDir + "\\dist\\index.html";
+
+    // ✅ 自动选择 URL：有 override 用 override，否则用自动路径
+    std::string url = urlOverride.empty()
+        ? ("file:///" + distIndex)
+        : urlOverride;
+
+    // 替换反斜杠为斜杠（CEF / Chrome 需要）
+    std::replace(url.begin(), url.end(), '\\', '/');
+
+    std::cout << "[EditorBridge] Loading URL: " << url << std::endl;
 
     // 创建客户端处理器
     m_client = new CefClientHandler();
@@ -56,23 +78,15 @@ bool EditorBridge::CreateEditorWindow(const std::string& url) {
     // 窗口信息
     CefWindowInfo window_info;
     window_info.SetAsPopup(nullptr, "Moon Engine Editor");
-    // 设置窗口初始大小
-    window_info.bounds.x = 100;
-    window_info.bounds.y = 100;
-    window_info.bounds.width = 1600;
-    window_info.bounds.height = 900;
 
-    // 浏览器设置
     CefBrowserSettings browser_settings;
-    browser_settings.windowless_frame_rate = 60; // 60 FPS
 
-    // 创建浏览器
     bool success = CefBrowserHost::CreateBrowser(
-        window_info, 
-        m_client, 
-        url, 
-        browser_settings, 
-        nullptr, 
+        window_info,
+        m_client,
+        url,
+        browser_settings,
+        nullptr,
         nullptr
     );
 
@@ -81,7 +95,6 @@ bool EditorBridge::CreateEditorWindow(const std::string& url) {
         return false;
     }
 
-    std::cout << "[EditorBridge] Browser window created" << std::endl;
     return true;
 }
 

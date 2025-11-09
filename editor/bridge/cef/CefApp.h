@@ -13,6 +13,17 @@ public:
         return this;
     }
 
+    void OnBeforeCommandLineProcessing(
+        const CefString& process_type,
+        CefRefPtr<CefCommandLine> command_line) override
+    {
+        command_line->AppendSwitch("disable-web-security");
+        command_line->AppendSwitch("allow-file-access-from-files");
+        command_line->AppendSwitch("allow-universal-access-from-files");
+        command_line->AppendSwitch("allow-file-access");
+    }
+
+
 private:
     IMPLEMENT_REFCOUNTING(CefAppHandler);
 };

@@ -37,12 +37,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         return -1;
     }
 
-    // 创建编辑器窗口
-    std::string url =
-        "data:text/html,<html><body><h1>Hello from CEF!</h1>"
-        "<p>Moon Engine Editor is running.</p></body></html>";
-
-    if (!bridge.CreateEditorWindow(url)) {
+    if (!bridge.CreateEditorWindow("")) {
         std::cerr << "Failed to create editor window!" << std::endl;
         return -1;
     }

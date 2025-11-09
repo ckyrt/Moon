@@ -4,6 +4,7 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: './',  // ✅✅✅ 关键：让所有资源改为相对路径
   plugins: [react()],
   resolve: {
     alias: {

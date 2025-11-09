@@ -5,6 +5,9 @@ lib/
 out/
 temp/
 
+# Ignore front-end build output
+editor/webui/dist/
+
 # External dependencies - 第三方库（太大，不提交）
 external/cef/
 external/DiligentEngine/
