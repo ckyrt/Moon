@@ -2,12 +2,22 @@
 // 集成 CEF 浏览器，显示 React 编辑器界面
 
 #include "EditorBridge.h"
+#include "cef/CefApp.h"     // ✅ 必须包含这个（用于 CefAppHandler）
 #include <Windows.h>
 #include <iostream>
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, 
-                   LPSTR lpCmdLine, int nCmdShow) {
-    // 重定向输出到控制台（方便调试）
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+    LPSTR lpCmdLine, int nCmdShow)
+{
+    // ✅【必须 1】让 CEF 处理子进程，否则会无限创建 EditorApp.exe
+    CefMainArgs main_args(hInstance);
+    CefRefPtr<CefAppHandler> app(new CefAppHandler());
+    int exit_code = CefExecuteProcess(main_args, app.get(), nullptr);
+    if (exit_code >= 0) {
+        return exit_code;   // ✅ 子进程执行完毕后直接退出，不进入主程序逻辑
+    }
+
+    // ✅【必须 2】主进程继续往下运行
     AllocConsole();
     FILE* fp;
     freopen_s(&fp, "CONOUT$", "w", stdout);
@@ -28,9 +38,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     }
 
     // 创建编辑器窗口
-    // 注意：这里先加载一个测试 HTML，后续会改为加载 React 应用
-    std::string url = "data:text/html,<html><body><h1>Hello from CEF!</h1><p>Moon Engine Editor is running.</p></body></html>";
-    
+    std::string url =
+        "data:text/html,<html><body><h1>Hello from CEF!</h1>"
+        "<p>Moon Engine Editor is running.</p></body></html>";
+
     if (!bridge.CreateEditorWindow(url)) {
         std::cerr << "Failed to create editor window!" << std::endl;
         return -1;
@@ -41,7 +52,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     // 主消息循环
     MSG msg;
     while (true) {
-        // 处理 Windows 消息
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) {
                 goto cleanup;
@@ -50,22 +60,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
             DispatchMessage(&msg);
         }
 
-        // 处理 CEF 消息（非阻塞）
         bridge.DoMessageLoopWork();
 
-        // 检查是否正在关闭
         if (bridge.IsClosing()) {
             break;
         }
 
-        // 避免 CPU 占用过高
         Sleep(1);
     }
 
 cleanup:
     std::cout << "Shutting down..." << std::endl;
     bridge.Shutdown();
-    
+
     FreeConsole();
     return 0;
 }
