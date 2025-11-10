@@ -2,6 +2,7 @@
 #include "include/cef_app.h"
 #include "cef/CefClient.h"
 #include <string>
+#include <Windows.h>
 
 // 编辑器桥接类
 // 负责初始化 CEF，创建浏览器窗口，管理生命周期
@@ -25,10 +26,15 @@ public:
     // 获取客户端处理器（用于获取浏览器窗口句柄）
     CefRefPtr<CefClientHandler> GetClient() const { return m_client; }
 
+    // 获取主窗口句柄
+    HWND GetMainWindow() const { return m_mainWindow; }
+
     // 关闭编辑器
     void Shutdown();
 
 private:
     CefRefPtr<CefClientHandler> m_client;
     bool m_initialized = false;
+    HWND m_mainWindow = nullptr;
+    HINSTANCE m_hInstance = nullptr;
 };

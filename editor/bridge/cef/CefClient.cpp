@@ -96,9 +96,15 @@ void CefClientHandler::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
 bool CefClientHandler::DoClose(CefRefPtr<CefBrowser> browser) {
     CEF_REQUIRE_UI_THREAD();
 
-    // 允许关闭
+    // ✅ 验证日志：DoClose 是否被调用
+    MOON_LOG_INFO("CEF", "DoClose CALLED! Posting WM_QUIT for immediate shutdown");
+    std::cout << "[CEF] DoClose CALLED! User clicked close button" << std::endl;
+
+    // 立即发送 WM_QUIT 消息，让主循环退出
+    PostQuitMessage(0);
+    
     m_isClosing = true;
-    return false;
+    return false;  // 允许窗口关闭
 }
 
 void CefClientHandler::OnBeforeClose(CefRefPtr<CefBrowser> browser) {

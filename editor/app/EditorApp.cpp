@@ -151,10 +151,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     std::cout << "[Editor] CEF window created successfully" << std::endl;
 
-    // 等待CEF窗口创建完成，获取窗口句柄
+    // ✅ 获取主窗口句柄（现在是 SetAsChild 模式）
+    HWND mainWindow = bridge.GetMainWindow();
+    if (!mainWindow) {
+        std::cerr << "[Editor] Failed to get main window handle!" << std::endl;
+        return -1;
+    }
+
+    // 等待CEF浏览器创建完成，获取浏览器窗口句柄
     MSG msg;
     int waitCount = 0;
-    HWND cefWindow = nullptr;
+    HWND cefBrowserWindow = nullptr;
     while (waitCount < 100) {
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
@@ -164,9 +171,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         
         // 尝试获取CEF浏览器窗口
         if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
-            cefWindow = bridge.GetClient()->GetBrowser()->GetHost()->GetWindowHandle();
-            if (cefWindow) {
-                std::cout << "[Editor] CEF window handle obtained: " << cefWindow << std::endl;
+            cefBrowserWindow = bridge.GetClient()->GetBrowser()->GetHost()->GetWindowHandle();
+            if (cefBrowserWindow) {
+                std::cout << "[Editor] CEF browser window handle obtained: " << cefBrowserWindow << std::endl;
                 break;
             }
         }
@@ -175,19 +182,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         waitCount++;
     }
 
-    if (!cefWindow) {
-        std::cerr << "[Editor] Failed to get CEF window handle!" << std::endl;
+    if (!cefBrowserWindow) {
+        std::cerr << "[Editor] Failed to get CEF browser window handle!" << std::endl;
         return -1;
     }
 
     // 查找真正的 HTML 渲染窗口
-    HWND htmlRenderWindow = FindCefHtmlRenderWindow(cefWindow);
-    HWND parentWindow = htmlRenderWindow ? htmlRenderWindow : cefWindow;
+    HWND htmlRenderWindow = FindCefHtmlRenderWindow(cefBrowserWindow);
+    HWND parentWindow = htmlRenderWindow ? htmlRenderWindow : cefBrowserWindow;
     
     if (htmlRenderWindow) {
         MOON_LOG_INFO("EditorApp", "Using HTML render window as parent: %p", htmlRenderWindow);
     } else {
-        MOON_LOG_WARN("EditorApp", "HTML render window not found, using CEF window as fallback: %p", cefWindow);
+        MOON_LOG_WARN("EditorApp", "HTML render window not found, using CEF browser window as fallback: %p", cefBrowserWindow);
     }
 
     // 设置 Viewport 矩形回调（从 JavaScript 接收坐标）
@@ -313,6 +320,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         }
 
         if (!running) break;
+
+        // ✅ 关键：停止渲染，立即退出
+        if (bridge.IsClosing()) {
+            std::cout << "[Editor] UI closed, stopping render loop..." << std::endl;
+            break;
+        }
 
         // 处理CEF消息（非阻塞）
         bridge.DoMessageLoopWork();
