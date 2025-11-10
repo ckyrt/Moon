@@ -11,6 +11,8 @@ editor/webui/dist/
 # External dependencies - 第三方库（太大，不提交）
 external/cef/
 external/DiligentEngine/
+external/imgui/
+external/ImGuizmo/
 
 # Visual Studio user files - 只排除用户特定的设置文件
 *.vcxproj.user

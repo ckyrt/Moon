@@ -46,6 +46,11 @@ public:
     void ReleaseMeshResources(Moon::Mesh* mesh);
     void ClearAllMeshResources();
 
+    // ✅ 添加：获取 Diligent 对象用于 ImGui 初始化
+    Diligent::IRenderDevice* GetDevice() const { return m_pDevice; }
+    Diligent::IDeviceContext* GetContext() const { return m_pImmediateContext; }
+    Diligent::ISwapChain* GetSwapChain() const { return m_pSwapChain; }
+
 private:
     // Mesh GPU 资源结构
     struct MeshGPUResources {

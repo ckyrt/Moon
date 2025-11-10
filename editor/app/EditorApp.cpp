@@ -1,6 +1,7 @@
 ﻿// EditorApp.cpp - Moon Engine 编辑器主程序
 // 集成 CEF 浏览器显示 React 编辑器界面
 // 集成 EngineCore 渲染3D场景
+// 集成 ImGui + ImGuizmo 实现 3D 操作手柄
 
 #include "EditorBridge.h"
 #include "cef/CefApp.h"
@@ -18,11 +19,28 @@
 #include "../engine/render/DiligentRenderer.h"
 #include "../engine/render/RenderCommon.h"
 
+// ImGui + ImGuizmo
+#include "imgui.h"
+#include "ImGuiImplWin32.hpp"
+#include "ImGuiImplDiligent.hpp"
+#include "ImGuizmo.h"
+
+// Diligent Engine 完整头文件
+#include "Graphics/GraphicsEngine/interface/SwapChain.h"
+#include "Graphics/GraphicsEngine/interface/GraphicsTypes.h"
+
+// ImGui Win32 消息处理函数声明
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 // 全局引擎对象
 static EngineCore* g_Engine = nullptr;
 static DiligentRenderer* g_Renderer = nullptr;
 static Moon::FPSCameraController* g_CameraController = nullptr;
 static HWND g_EngineWindow = nullptr;
+
+// ImGui 对象
+static Diligent::ImGuiImplWin32* g_ImGuiWin32 = nullptr;
+static Moon::SceneNode* g_SelectedObject = nullptr;  // 当前选中的物体
 
 // Viewport 矩形信息（从 JavaScript 接收）
 struct ViewportRect {
@@ -74,6 +92,14 @@ HWND FindCefHtmlRenderWindow(HWND cefWindow) {
 
 // 引擎窗口过程
 LRESULT CALLBACK EngineWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    // ✅ 优先让 ImGui 处理消息
+    if (g_ImGuiWin32) {
+        LRESULT result = g_ImGuiWin32->Win32_ProcHandler(hWnd, msg, wParam, lParam);
+        if (result) {
+            return true;  // ImGui 已处理
+        }
+    }
+
     switch (msg) {
     case WM_SIZE:
         if (g_Renderer && wParam != SIZE_MINIMIZED) {
@@ -265,6 +291,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     std::cout << "[Editor] Renderer initialized" << std::endl;
 
+    // ========================================
+    // 初始化 ImGui
+    // ========================================
+    std::cout << "[Editor] Initializing ImGui..." << std::endl;
+
+    // 初始化 Win32 平台后端（会自动创建 ImGui 上下文）
+    Diligent::ImGuiDiligentCreateInfo imguiCI;
+    imguiCI.pDevice = renderer.GetDevice();
+    imguiCI.BackBufferFmt = renderer.GetSwapChain()->GetDesc().ColorBufferFormat;
+    imguiCI.DepthBufferFmt = renderer.GetSwapChain()->GetDesc().DepthBufferFormat;
+
+    g_ImGuiWin32 = new Diligent::ImGuiImplWin32(imguiCI, g_EngineWindow);
+
+    // 设置 ImGui 配置（在 ImGuiImplWin32 创建上下文之后）
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // 启用键盘控制
+
+    // 设置 ImGui 样式
+    ImGui::StyleColorsDark();
+    
+    std::cout << "[Editor] ImGui initialized successfully" << std::endl;
+
     // 设置相机
     Moon::PerspectiveCamera* camera = engine.GetCamera();
     camera->SetAspectRatio(800.0f / 600.0f);
@@ -301,6 +349,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     std::cout << "[Editor] Scene created with 3 objects" << std::endl;
     std::cout << "[Editor] Entering main loop..." << std::endl;
+
+    // ========================================
+    // 初始化 ImGui 第一帧（避免断言错误）
+    // ========================================
+    if (g_ImGuiWin32) {
+        g_ImGuiWin32->NewFrame(800, 600, Diligent::SURFACE_TRANSFORM_OPTIMAL);
+        // Render 内部会调用 ImGui::Render()
+        g_ImGuiWin32->Render(renderer.GetContext());
+    }
 
     // ========================================
     // 4. 主循环：同时更新引擎和CEF
@@ -393,6 +450,49 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
                 meshRenderer->Render(&renderer);
             }
         });
+
+        // ========================================
+        // 渲染 ImGui + ImGuizmo
+        // ========================================
+        if (g_ImGuiWin32) {
+            // 新帧（内部已调用 ImGui::NewFrame）
+            g_ImGuiWin32->NewFrame(g_ViewportRect.width, g_ViewportRect.height, Diligent::SURFACE_TRANSFORM_OPTIMAL);
+            ImGuizmo::BeginFrame();
+
+            // 设置 ImGuizmo 渲染区域（整个视口）
+            ImGuizmo::SetRect(0, 0, static_cast<float>(g_ViewportRect.width), static_cast<float>(g_ViewportRect.height));
+
+            // 如果有选中物体，绘制 Gizmo
+            if (g_SelectedObject == nullptr && cube) {
+                g_SelectedObject = cube;  // 默认选中第一个立方体
+            }
+
+            if (g_SelectedObject) {
+                Moon::Matrix4x4 viewMatrix = camera->GetViewMatrix();
+                Moon::Matrix4x4 projMatrix = camera->GetProjectionMatrix();
+                Moon::Matrix4x4 objectMatrix = g_SelectedObject->GetTransform()->GetWorldMatrix();
+
+                // 绘制平移 Gizmo
+                ImGuizmo::Manipulate(
+                    &viewMatrix.m[0][0],
+                    &projMatrix.m[0][0],
+                    ImGuizmo::OPERATION::TRANSLATE,  // 平移模式
+                    ImGuizmo::MODE::WORLD,           // 世界坐标系
+                    &objectMatrix.m[0][0]
+                );
+
+                // 如果 Gizmo 被拖动，更新物体变换
+                if (ImGuizmo::IsUsing()) {
+                    // 从矩阵中提取位置
+                    Moon::Vector3 position(objectMatrix.m[3][0], objectMatrix.m[3][1], objectMatrix.m[3][2]);
+                    g_SelectedObject->GetTransform()->SetLocalPosition(position);
+                }
+            }
+
+            // 渲染 ImGui（Render 内部会自动调用 ImGui::Render）
+            g_ImGuiWin32->Render(renderer.GetContext());
+        }
+
         renderer.EndFrame();
 
         Sleep(1);
@@ -402,6 +502,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     // 5. 清理资源
     // ========================================
     std::cout << "[Editor] Shutting down..." << std::endl;
+
+    // 清理 ImGui (析构函数会自动调用 ImGui::DestroyContext())
+    if (g_ImGuiWin32) {
+        delete g_ImGuiWin32;
+        g_ImGuiWin32 = nullptr;
+    }
 
     renderer.Shutdown();
     g_Renderer = nullptr;
