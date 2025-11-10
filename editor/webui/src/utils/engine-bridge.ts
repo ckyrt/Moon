@@ -157,6 +157,10 @@ const createMockAPI = (): MoonEngineAPI => {
       console.log(`[Mock Engine] removeComponent(${nodeId}, "${componentType}")`);
     },
 
+    setViewportBounds: (x: number, y: number, width: number, height: number) => {
+      console.log(`[Mock Engine] setViewportBounds(${x}, ${y}, ${width}, ${height})`);
+    },
+
     createCSGPrimitive: (type, params) => {
       console.log(`[Mock Engine] createCSGPrimitive("${type}")`, params);
       return mockScene.allNodes[1]!; // Placeholder

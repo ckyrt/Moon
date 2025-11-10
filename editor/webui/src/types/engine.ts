@@ -74,6 +74,9 @@ export interface MoonEngineAPI {
   addComponent(nodeId: number, componentType: string): Component | null;
   removeComponent(nodeId: number, componentType: string): void;
   
+  // Viewport Management
+  setViewportBounds(x: number, y: number, width: number, height: number): void;
+  
   // CSG Operations (Phase 3)
   createCSGPrimitive(type: 'box' | 'sphere' | 'cylinder', params: Record<string, unknown>): SceneNode;
   performCSGOperation(nodeId1: number, nodeId2: number, operation: 'union' | 'subtract' | 'intersect'): SceneNode;
@@ -84,6 +87,11 @@ export interface MoonEngineAPI {
 declare global {
   interface Window {
     moonEngine?: MoonEngineAPI;
+    cefQuery?: (options: {
+      request: string;
+      onSuccess?: (response: string) => void;
+      onFailure?: (errorCode: number, errorMessage: string) => void;
+    }) => void;
   }
 }
 

@@ -24,8 +24,53 @@ static DiligentRenderer* g_Renderer = nullptr;
 static Moon::FPSCameraController* g_CameraController = nullptr;
 static HWND g_EngineWindow = nullptr;
 
+// Viewport 矩形信息（从 JavaScript 接收）
+struct ViewportRect {
+    int x = 0;
+    int y = 0;
+    int width = 800;
+    int height = 600;
+    bool updated = false;
+};
+static ViewportRect g_ViewportRect;
+
 // 引擎窗口类名
 static const wchar_t* kEngineWindowClass = L"MoonEngine_Viewport";
+
+// ========================================
+// 辅助函数：查找 CEF HTML 渲染窗口
+// ========================================
+HWND FindCefHtmlRenderWindow(HWND cefWindow) {
+    // CEF 窗口层级：
+    // Chrome_WidgetWin_1 (outer window with title bar)
+    //   └── Chrome_RenderWidgetHostHWND (actual HTML rendering) ← 目标窗口
+    
+    // 方法 1：直接查找
+    HWND htmlWindow = FindWindowExW(cefWindow, nullptr, L"Chrome_RenderWidgetHostHWND", nullptr);
+    if (htmlWindow) return htmlWindow;
+    
+    // 方法 2：通过中间层查找
+    HWND chromeWidget = FindWindowExW(cefWindow, nullptr, L"Chrome_WidgetWin_0", nullptr);
+    if (chromeWidget) {
+        htmlWindow = FindWindowExW(chromeWidget, nullptr, L"Chrome_RenderWidgetHostHWND", nullptr);
+        if (htmlWindow) return htmlWindow;
+    }
+    
+    // 方法 3：遍历所有子窗口
+    MOON_LOG_INFO("EditorApp", "Searching for HTML render window via enumeration...");
+    EnumChildWindows(cefWindow, [](HWND hwnd, LPARAM lParam) -> BOOL {
+        wchar_t className[256];
+        GetClassNameW(hwnd, className, 256);
+        if (wcscmp(className, L"Chrome_RenderWidgetHostHWND") == 0) {
+            *reinterpret_cast<HWND*>(lParam) = hwnd;
+            MOON_LOG_INFO("EditorApp", "Found HTML render window: %p", hwnd);
+            return FALSE; // 停止枚举
+        }
+        return TRUE; // 继续枚举
+    }, reinterpret_cast<LPARAM>(&htmlWindow));
+    
+    return htmlWindow;
+}
 
 // 引擎窗口过程
 LRESULT CALLBACK EngineWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -68,8 +113,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     std::cout << "  Moon Engine Editor - CEF Version" << std::endl;
     std::cout << "========================================" << std::endl;
 
-    // 初始化日志系统
-    Moon::Core::Logger::Init();
+    // ✅ 初始化日志系统（在控制台之后）
+    try {
+        Moon::Core::Logger::Init();
+        std::cout << "[Editor] Logger initialized successfully" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "[Editor] Logger initialization failed: " << e.what() << std::endl;
+        std::cerr << "[Editor] Continuing without file logging..." << std::endl;
+    }
 
     // ========================================
     // 1. 初始化引擎核心（独立于UI）
@@ -129,6 +180,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         return -1;
     }
 
+    // 查找真正的 HTML 渲染窗口
+    HWND htmlRenderWindow = FindCefHtmlRenderWindow(cefWindow);
+    HWND parentWindow = htmlRenderWindow ? htmlRenderWindow : cefWindow;
+    
+    if (htmlRenderWindow) {
+        MOON_LOG_INFO("EditorApp", "Using HTML render window as parent: %p", htmlRenderWindow);
+    } else {
+        MOON_LOG_WARN("EditorApp", "HTML render window not found, using CEF window as fallback: %p", cefWindow);
+    }
+
+    // 设置 Viewport 矩形回调（从 JavaScript 接收坐标）
+    bridge.GetClient()->SetViewportRectCallback([](int x, int y, int width, int height) {
+        MOON_LOG_INFO("EditorApp", "Viewport rect: (%d, %d) %dx%d", x, y, width, height);
+        g_ViewportRect.x = x;
+        g_ViewportRect.y = y;
+        g_ViewportRect.width = width;
+        g_ViewportRect.height = height;
+        g_ViewportRect.updated = true;
+    });
+
     // ========================================
     // 3. 创建嵌入式3D渲染窗口
     // ========================================
@@ -151,15 +222,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         }
     }
 
-    // 创建引擎渲染窗口（作为CEF窗口的子窗口）
+    // 创建引擎渲染窗口（作为 HTML 渲染窗口的子窗口）
     g_EngineWindow = CreateWindowExW(
         0,
         kEngineWindowClass,
         L"Engine Viewport",
-        WS_CHILD | WS_VISIBLE,
-        10, 60,  // 位置（留出工具栏空间）
-        800, 600,  // 大小
-        cefWindow,  // 父窗口是CEF浏览器窗口
+        WS_CHILD,  // 子窗口，初始隐藏
+        0, 0, 100, 100,  // 临时位置和大小
+        parentWindow,  // 父窗口是 HTML 渲染窗口
         nullptr,
         hInstance,
         nullptr
@@ -170,9 +240,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         return -1;
     }
 
-    ShowWindow(g_EngineWindow, SW_SHOW);
-    UpdateWindow(g_EngineWindow);
-    std::cout << "[Editor] Engine viewport created: " << g_EngineWindow << std::endl;
+    MOON_LOG_INFO("EditorApp", "Engine viewport created (hidden): %p", g_EngineWindow);
 
     // 初始化渲染器
     DiligentRenderer renderer;
@@ -232,7 +300,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     // ========================================
     auto prevTime = std::chrono::high_resolution_clock::now();
     bool running = true;
-
+    
     while (running) {
         // 处理Windows消息
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -253,6 +321,38 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         if (bridge.IsClosing()) {
             running = false;
             break;
+        }
+
+        // 更新 viewport 窗口位置和大小
+        if (g_ViewportRect.updated) {
+            // JavaScript 坐标已经是相对于 HTML 渲染窗口的，直接使用
+            BOOL success = SetWindowPos(
+                g_EngineWindow,
+                nullptr,
+                g_ViewportRect.x,
+                g_ViewportRect.y,
+                g_ViewportRect.width,
+                g_ViewportRect.height,
+                SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW
+            );
+            
+            if (!success) {
+                MOON_LOG_ERROR("EditorApp", "SetWindowPos failed: %lu", GetLastError());
+            } else {
+                MOON_LOG_INFO("EditorApp", "Viewport updated: (%d, %d) %dx%d", 
+                             g_ViewportRect.x, g_ViewportRect.y,
+                             g_ViewportRect.width, g_ViewportRect.height);
+            }
+
+            // 更新渲染器和相机
+            if (g_ViewportRect.width > 0 && g_ViewportRect.height > 0) {
+                renderer.Resize(g_ViewportRect.width, g_ViewportRect.height);
+                float aspectRatio = static_cast<float>(g_ViewportRect.width) / 
+                                   static_cast<float>(g_ViewportRect.height);
+                camera->SetAspectRatio(aspectRatio);
+            }
+            
+            g_ViewportRect.updated = false;
         }
 
         // 计算deltaTime
