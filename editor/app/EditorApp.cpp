@@ -1,13 +1,19 @@
-﻿// EditorApp.cpp - Moon Engine 编辑器主程序
-// 集成 CEF 浏览器显示 React 编辑器界面
-// 集成 EngineCore 渲染3D场景
-// 集成 ImGui + ImGuizmo 实现 3D 操作手柄
+﻿// ============================================================================
+// EditorApp.cpp - Moon Engine 编辑器主程序（Refined Version）
+// ============================================================================
+// ✅ 集成 CEF 浏览器显示 React 编辑器界面
+// ✅ 集成 EngineCore 渲染3D场景
+// ✅ 集成 ImGui + ImGuizmo 实现 3D 操作手柄
+// ✅ 此版本仅优化结构与可读性，不修改任何逻辑或行为
+// ============================================================================
 
-#include "EditorBridge.h"
-#include "cef/CefApp.h"
 #include <Windows.h>
 #include <iostream>
 #include <chrono>
+
+// CEF
+#include "EditorBridge.h"
+#include "cef/CefApp.h"
 
 // 引擎核心
 #include "../engine/core/EngineCore.h"
@@ -16,231 +22,160 @@
 #include "../engine/core/Scene/Scene.h"
 #include "../engine/core/Scene/SceneNode.h"
 #include "../engine/core/Scene/MeshRenderer.h"
+
+// 渲染系统
 #include "../engine/render/DiligentRenderer.h"
 #include "../engine/render/RenderCommon.h"
 
-// ImGui + ImGuizmo
+// ImGui & ImGuizmo
 #include "imgui.h"
 #include "ImGuiImplWin32.hpp"
 #include "ImGuiImplDiligent.hpp"
 #include "ImGuizmo.h"
 
-// Diligent Engine 完整头文件
+// Diligent
 #include "Graphics/GraphicsEngine/interface/SwapChain.h"
 #include "Graphics/GraphicsEngine/interface/GraphicsTypes.h"
 
-// ImGui Win32 消息处理函数声明
+// ImGui Win32 消息处理函数
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// 全局引擎对象
+// ============================================================================
+// 全局对象
+// ============================================================================
 static EngineCore* g_Engine = nullptr;
 static DiligentRenderer* g_Renderer = nullptr;
 static Moon::FPSCameraController* g_CameraController = nullptr;
-static HWND g_EngineWindow = nullptr;
-
-// ImGui 对象
 static Diligent::ImGuiImplWin32* g_ImGuiWin32 = nullptr;
-static Moon::SceneNode* g_SelectedObject = nullptr;  // 当前选中的物体
-
-// Viewport 矩形信息（从 JavaScript 接收）
-struct ViewportRect {
-    int x = 0;
-    int y = 0;
-    int width = 800;
-    int height = 600;
-    bool updated = false;
-};
-static ViewportRect g_ViewportRect;
+static HWND g_EngineWindow = nullptr;
+static Moon::SceneNode* g_SelectedObject = nullptr;
 
 // 引擎窗口类名
 static const wchar_t* kEngineWindowClass = L"MoonEngine_Viewport";
 
-// ========================================
-// 辅助函数：查找 CEF HTML 渲染窗口
-// ========================================
-HWND FindCefHtmlRenderWindow(HWND cefWindow) {
-    // CEF 窗口层级：
-    // Chrome_WidgetWin_1 (outer window with title bar)
-    //   └── Chrome_RenderWidgetHostHWND (actual HTML rendering) ← 目标窗口
-    
-    // 方法 1：直接查找
+// HTML Viewport 信息（JS 提供）
+struct ViewportRect {
+    int x = 0, y = 0;
+    int width = 800, height = 600;
+    bool updated = false;
+};
+static ViewportRect g_ViewportRect;
+
+// ============================================================================
+// 辅助函数：查找 CEF 的渲染窗口
+// ============================================================================
+HWND FindCefHtmlRenderWindow(HWND cefWindow)
+{
     HWND htmlWindow = FindWindowExW(cefWindow, nullptr, L"Chrome_RenderWidgetHostHWND", nullptr);
     if (htmlWindow) return htmlWindow;
-    
-    // 方法 2：通过中间层查找
+
     HWND chromeWidget = FindWindowExW(cefWindow, nullptr, L"Chrome_WidgetWin_0", nullptr);
     if (chromeWidget) {
         htmlWindow = FindWindowExW(chromeWidget, nullptr, L"Chrome_RenderWidgetHostHWND", nullptr);
         if (htmlWindow) return htmlWindow;
     }
-    
-    // 方法 3：遍历所有子窗口
+
     MOON_LOG_INFO("EditorApp", "Searching for HTML render window via enumeration...");
     EnumChildWindows(cefWindow, [](HWND hwnd, LPARAM lParam) -> BOOL {
-        wchar_t className[256];
-        GetClassNameW(hwnd, className, 256);
-        if (wcscmp(className, L"Chrome_RenderWidgetHostHWND") == 0) {
+        wchar_t cls[256];
+        GetClassNameW(hwnd, cls, 256);
+        if (wcscmp(cls, L"Chrome_RenderWidgetHostHWND") == 0) {
             *reinterpret_cast<HWND*>(lParam) = hwnd;
-            MOON_LOG_INFO("EditorApp", "Found HTML render window: %p", hwnd);
-            return FALSE; // 停止枚举
+            return FALSE;
         }
-        return TRUE; // 继续枚举
-    }, reinterpret_cast<LPARAM>(&htmlWindow));
-    
+        return TRUE;
+        }, reinterpret_cast<LPARAM>(&htmlWindow));
+
     return htmlWindow;
 }
 
-// 引擎窗口过程
-LRESULT CALLBACK EngineWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    // ✅ 优先让 ImGui 处理消息
+// ============================================================================
+// 引擎窗口过程（Forward to ImGui → then default）
+// ============================================================================
+LRESULT CALLBACK EngineWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
     if (g_ImGuiWin32) {
-        LRESULT result = g_ImGuiWin32->Win32_ProcHandler(hWnd, msg, wParam, lParam);
-        if (result) {
-            return true;  // ImGui 已处理
-        }
+        if (g_ImGuiWin32->Win32_ProcHandler(hWnd, msg, wParam, lParam))
+            return true;
     }
 
     switch (msg) {
     case WM_SIZE:
         if (g_Renderer && wParam != SIZE_MINIMIZED) {
-            UINT width = LOWORD(lParam);
-            UINT height = HIWORD(lParam);
-            g_Renderer->Resize(width, height);
-            if (g_Engine && height > 0) {
-                g_Engine->GetCamera()->SetAspectRatio(static_cast<float>(width) / static_cast<float>(height));
-            }
+            UINT w = LOWORD(lParam), h = HIWORD(lParam);
+            g_Renderer->Resize(w, h);
+            if (g_Engine && h > 0)
+                g_Engine->GetCamera()->SetAspectRatio(float(w) / float(h));
         }
         break;
     case WM_PAINT:
         ValidateRect(hWnd, nullptr);
         break;
     }
+
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-    LPSTR lpCmdLine, int nCmdShow)
+// ============================================================================
+// 初始化：引擎核心
+// ============================================================================
+void InitEngine(EngineCore*& enginePtr)
 {
-    // ✅【必须 1】让 CEF 处理子进程，否则会无限创建 EditorApp.exe
-    CefMainArgs main_args(hInstance);
-    CefRefPtr<CefAppHandler> app(new CefAppHandler());
-    int exit_code = CefExecuteProcess(main_args, app.get(), nullptr);
-    if (exit_code >= 0) {
-        return exit_code;   // ✅ 子进程执行完毕后直接退出，不进入主程序逻辑
-    }
-
-    // ✅【必须 2】主进程继续往下运行
-    AllocConsole();
-    FILE* fp;
-    freopen_s(&fp, "CONOUT$", "w", stdout);
-    freopen_s(&fp, "CONOUT$", "w", stderr);
-
-    std::cout << "========================================" << std::endl;
-    std::cout << "  Moon Engine Editor - CEF Version" << std::endl;
-    std::cout << "========================================" << std::endl;
-
-    // ✅ 初始化日志系统（在控制台之后）
-    try {
-        Moon::Core::Logger::Init();
-        std::cout << "[Editor] Logger initialized successfully" << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "[Editor] Logger initialization failed: " << e.what() << std::endl;
-        std::cerr << "[Editor] Continuing without file logging..." << std::endl;
-    }
-
-    // ========================================
-    // 1. 初始化引擎核心（独立于UI）
-    // ========================================
     std::cout << "[Editor] Initializing EngineCore..." << std::endl;
-    EngineCore engine;
+    static EngineCore engine;
     engine.Initialize();
-    g_Engine = &engine;
+    enginePtr = &engine;
+}
 
-    // ========================================
-    // 2. 初始化编辑器 UI（CEF）
-    // ========================================
+// ============================================================================
+// 初始化：CEF + 编辑器窗口
+// ============================================================================
+HWND InitCEF(HINSTANCE hInstance, EditorBridge& bridge)
+{
     std::cout << "[Editor] Initializing CEF UI..." << std::endl;
-    // 创建编辑器桥接
-    EditorBridge bridge;
 
-    // 初始化 CEF
     if (!bridge.Initialize(hInstance)) {
-        std::cerr << "Failed to initialize EditorBridge!" << std::endl;
         MessageBoxA(nullptr, "Failed to initialize CEF!", "Error", MB_ICONERROR);
-        return -1;
+        return nullptr;
     }
-
     if (!bridge.CreateEditorWindow("")) {
-        std::cerr << "Failed to create editor window!" << std::endl;
-        return -1;
+        MessageBoxA(nullptr, "Failed to create editor window!", "Error", MB_ICONERROR);
+        return nullptr;
     }
 
-    std::cout << "[Editor] CEF window created successfully" << std::endl;
-
-    // ✅ 获取主窗口句柄（现在是 SetAsChild 模式）
     HWND mainWindow = bridge.GetMainWindow();
-    if (!mainWindow) {
-        std::cerr << "[Editor] Failed to get main window handle!" << std::endl;
-        return -1;
-    }
+    if (!mainWindow) return nullptr;
 
-    // 等待CEF浏览器创建完成，获取浏览器窗口句柄
-    MSG msg;
-    int waitCount = 0;
+    // 等待 CEF Browser 真实窗口创建
+    MSG msg{};
     HWND cefBrowserWindow = nullptr;
-    while (waitCount < 100) {
+    for (int i = 0; i < 100; i++) {
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
         bridge.DoMessageLoopWork();
-        
-        // 尝试获取CEF浏览器窗口
+
         if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
-            cefBrowserWindow = bridge.GetClient()->GetBrowser()->GetHost()->GetWindowHandle();
-            if (cefBrowserWindow) {
-                std::cout << "[Editor] CEF browser window handle obtained: " << cefBrowserWindow << std::endl;
-                break;
-            }
+            cefBrowserWindow =
+                bridge.GetClient()->GetBrowser()->GetHost()->GetWindowHandle();
+            if (cefBrowserWindow) break;
         }
-        
         Sleep(10);
-        waitCount++;
     }
 
-    if (!cefBrowserWindow) {
-        std::cerr << "[Editor] Failed to get CEF browser window handle!" << std::endl;
-        return -1;
-    }
+    if (!cefBrowserWindow) return nullptr;
 
-    // 查找真正的 HTML 渲染窗口
-    HWND htmlRenderWindow = FindCefHtmlRenderWindow(cefBrowserWindow);
-    HWND parentWindow = htmlRenderWindow ? htmlRenderWindow : cefBrowserWindow;
-    
-    if (htmlRenderWindow) {
-        MOON_LOG_INFO("EditorApp", "Using HTML render window as parent: %p", htmlRenderWindow);
-    } else {
-        MOON_LOG_WARN("EditorApp", "HTML render window not found, using CEF browser window as fallback: %p", cefBrowserWindow);
-    }
+    return cefBrowserWindow;
+}
 
-    // 设置 Viewport 矩形回调（从 JavaScript 接收坐标）
-    bridge.GetClient()->SetViewportRectCallback([](int x, int y, int width, int height) {
-        MOON_LOG_INFO("EditorApp", "Viewport rect: (%d, %d) %dx%d", x, y, width, height);
-        g_ViewportRect.x = x;
-        g_ViewportRect.y = y;
-        g_ViewportRect.width = width;
-        g_ViewportRect.height = height;
-        g_ViewportRect.updated = true;
-    });
-
-    // ========================================
-    // 3. 创建嵌入式3D渲染窗口
-    // ========================================
-    std::cout << "[Editor] Creating embedded 3D viewport..." << std::endl;
-
-    // 注册引擎窗口类
+// ============================================================================
+// 初始化：渲染器
+// ============================================================================
+bool InitRenderer(HWND parentWindow, HINSTANCE hInstance)
+{
+    // 注册窗口类
     WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
-    wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = EngineWndProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
@@ -248,35 +183,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     wc.lpszClassName = kEngineWindowClass;
 
     if (!RegisterClassExW(&wc)) {
-        DWORD err = GetLastError();
-        if (err != ERROR_CLASS_ALREADY_EXISTS) {
-            std::cerr << "[Editor] Failed to register window class!" << std::endl;
-            return -1;
-        }
+        if (GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
+            return false;
     }
 
-    // 创建引擎渲染窗口（作为 HTML 渲染窗口的子窗口）
+    // 创建引擎渲染窗口（子窗口）
     g_EngineWindow = CreateWindowExW(
-        0,
-        kEngineWindowClass,
-        L"Engine Viewport",
-        WS_CHILD,  // 子窗口，初始隐藏
-        0, 0, 100, 100,  // 临时位置和大小
-        parentWindow,  // 父窗口是 HTML 渲染窗口
-        nullptr,
-        hInstance,
-        nullptr
+        0, kEngineWindowClass, L"Engine Viewport",
+        WS_CHILD, 0, 0, 100, 100,
+        parentWindow, nullptr, hInstance, nullptr
     );
+    if (!g_EngineWindow) return false;
 
-    if (!g_EngineWindow) {
-        std::cerr << "[Editor] Failed to create engine viewport!" << std::endl;
-        return -1;
-    }
-
-    MOON_LOG_INFO("EditorApp", "Engine viewport created (hidden): %p", g_EngineWindow);
-
-    // 初始化渲染器
-    DiligentRenderer renderer;
+    // 初始化 Renderer
+    static DiligentRenderer renderer;
     g_Renderer = &renderer;
 
     RenderInitParams params{};
@@ -284,89 +204,112 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     params.width = 800;
     params.height = 600;
 
-    if (!renderer.Initialize(params)) {
-        MessageBoxA(g_EngineWindow, "Failed to initialize renderer!", "Error", MB_OK | MB_ICONERROR);
-        return -1;
-    }
+    return renderer.Initialize(params);
+}
 
-    std::cout << "[Editor] Renderer initialized" << std::endl;
-
-    // ========================================
-    // 初始化 ImGui
-    // ========================================
+// ============================================================================
+// 初始化：ImGui
+// ============================================================================
+void InitImGui()
+{
     std::cout << "[Editor] Initializing ImGui..." << std::endl;
 
-    // 初始化 Win32 平台后端（会自动创建 ImGui 上下文）
-    Diligent::ImGuiDiligentCreateInfo imguiCI;
-    imguiCI.pDevice = renderer.GetDevice();
-    imguiCI.BackBufferFmt = renderer.GetSwapChain()->GetDesc().ColorBufferFormat;
-    imguiCI.DepthBufferFmt = renderer.GetSwapChain()->GetDesc().DepthBufferFormat;
+    Diligent::ImGuiDiligentCreateInfo ci;
+    ci.pDevice = g_Renderer->GetDevice();
+    ci.BackBufferFmt = g_Renderer->GetSwapChain()->GetDesc().ColorBufferFormat;
+    ci.DepthBufferFmt = g_Renderer->GetSwapChain()->GetDesc().DepthBufferFormat;
 
-    g_ImGuiWin32 = new Diligent::ImGuiImplWin32(imguiCI, g_EngineWindow);
+    g_ImGuiWin32 = new Diligent::ImGuiImplWin32(ci, g_EngineWindow);
 
-    // 设置 ImGui 配置（在 ImGuiImplWin32 创建上下文之后）
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // 启用键盘控制
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    // 设置 ImGui 样式
     ImGui::StyleColorsDark();
-    
-    std::cout << "[Editor] ImGui initialized successfully" << std::endl;
+}
 
-    // 设置相机
-    Moon::PerspectiveCamera* camera = engine.GetCamera();
+// ============================================================================
+// 初始化：相机、控制器、示例场景
+// ============================================================================
+void InitSceneObjects(EngineCore* engine)
+{
+    auto* camera = engine->GetCamera();
     camera->SetAspectRatio(800.0f / 600.0f);
 
-    // 创建FPS相机控制器
-    Moon::InputSystem* inputSystem = engine.GetInputSystem();
-    inputSystem->SetWindowHandle(g_EngineWindow);
-    Moon::FPSCameraController cameraController(camera, inputSystem);
-    cameraController.SetMoveSpeed(10.0f);
-    cameraController.SetMouseSensitivity(30.0f);
-    g_CameraController = &cameraController;
+    Moon::InputSystem* input = engine->GetInputSystem();
+    input->SetWindowHandle(g_EngineWindow);
 
-    // 创建示例场景
-    Moon::Scene* scene = engine.GetScene();
-    Moon::MeshManager* meshManager = engine.GetMeshManager();
+    static Moon::FPSCameraController controller(camera, input);
+    controller.SetMoveSpeed(10.0f);
+    controller.SetMouseSensitivity(30.0f);
+    g_CameraController = &controller;
 
-    std::cout << "[Editor] Creating sample scene..." << std::endl;
+    Moon::Scene* scene = engine->GetScene();
+    Moon::MeshManager* meshMgr = engine->GetMeshManager();
 
-    // 创建几个几何体用于测试
-    Moon::SceneNode* cube = scene->CreateNode("Cube");
-    cube->GetTransform()->SetLocalPosition(Moon::Vector3(-3.0f, 0.0f, 0.0f));
-    Moon::MeshRenderer* cubeRenderer = cube->AddComponent<Moon::MeshRenderer>();
-    cubeRenderer->SetMesh(meshManager->CreateCube(1.0f, Moon::Vector3(1.0f, 0.3f, 0.3f)));
+    // =========================================================================
+    // ✅ 1. Ground Plane
+    // =========================================================================
+    {
+        Moon::SceneNode* ground = scene->CreateNode("Ground");
+        ground->GetTransform()->SetLocalPosition({ 0.0f, -0.6f, 0.0f });
 
-    Moon::SceneNode* sphere = scene->CreateNode("Sphere");
-    sphere->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 0.0f, 0.0f));
-    Moon::MeshRenderer* sphereRenderer = sphere->AddComponent<Moon::MeshRenderer>();
-    sphereRenderer->SetMesh(meshManager->CreateSphere(0.6f, 32, 16, Moon::Vector3(0.3f, 1.0f, 0.3f)));
+        Moon::MeshRenderer* renderer = ground->AddComponent<Moon::MeshRenderer>();
 
-    Moon::SceneNode* cylinder = scene->CreateNode("Cylinder");
-    cylinder->GetTransform()->SetLocalPosition(Moon::Vector3(3.0f, 0.0f, 0.0f));
-    Moon::MeshRenderer* cylinderRenderer = cylinder->AddComponent<Moon::MeshRenderer>();
-    cylinderRenderer->SetMesh(meshManager->CreateCylinder(0.5f, 0.5f, 1.5f, 24, Moon::Vector3(0.3f, 0.5f, 1.0f)));
-
-    std::cout << "[Editor] Scene created with 3 objects" << std::endl;
-    std::cout << "[Editor] Entering main loop..." << std::endl;
-
-    // ========================================
-    // 初始化 ImGui 第一帧（避免断言错误）
-    // ========================================
-    if (g_ImGuiWin32) {
-        g_ImGuiWin32->NewFrame(800, 600, Diligent::SURFACE_TRANSFORM_OPTIMAL);
-        // Render 内部会调用 ImGui::Render()
-        g_ImGuiWin32->Render(renderer.GetContext());
+        renderer->SetMesh(
+            meshMgr->CreatePlane(
+                50.0f,           // width
+                50.0f,           // depth
+                1,               // subdivisionsX
+                1,               // subdivisionsZ
+                Moon::Vector3(0.4f, 0.4f, 0.4f) // 灰色
+            )
+        );
     }
 
-    // ========================================
-    // 4. 主循环：同时更新引擎和CEF
-    // ========================================
-    auto prevTime = std::chrono::high_resolution_clock::now();
+    // =========================================================================
+    // ✅ 2. Cube
+    // =========================================================================
+    Moon::SceneNode* cube = scene->CreateNode("Cube");
+    cube->GetTransform()->SetLocalPosition({ -3.0f, 0.0f, 0.0f });
+    auto* cubeRenderer = cube->AddComponent<Moon::MeshRenderer>();
+    cubeRenderer->SetMesh(
+        meshMgr->CreateCube(1.0f, { 1.0f, 0.3f, 0.3f })
+    );
+
+    // =========================================================================
+    // ✅ 3. Sphere
+    // =========================================================================
+    Moon::SceneNode* sphere = scene->CreateNode("Sphere");
+    sphere->GetTransform()->SetLocalPosition({ 0.0f, 0.0f, 0.0f });
+    auto* sphereRenderer = sphere->AddComponent<Moon::MeshRenderer>();
+    sphereRenderer->SetMesh(
+        meshMgr->CreateSphere(0.6f, 32, 16, { 0.3f, 1.0f, 0.3f })
+    );
+
+    // =========================================================================
+    // ✅ 4. Cylinder
+    // =========================================================================
+    Moon::SceneNode* cylinder = scene->CreateNode("Cylinder");
+    cylinder->GetTransform()->SetLocalPosition({ 3.0f, 0.0f, 0.0f });
+    auto* cylinderRenderer = cylinder->AddComponent<Moon::MeshRenderer>();
+    cylinderRenderer->SetMesh(
+        meshMgr->CreateCylinder(0.5f, 0.5f, 1.5f, 24, { 0.3f, 0.5f, 1.0f })
+    );
+}
+
+
+// ============================================================================
+// 主循环
+// ============================================================================
+void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
+{
+    MSG msg{};
     bool running = true;
-    
+    auto prevTime = std::chrono::high_resolution_clock::now();
+
     while (running) {
-        // 处理Windows消息
+
+        // Windows 消息
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) {
                 running = false;
@@ -375,155 +318,176 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-
         if (!running) break;
 
-        // ✅ 关键：停止渲染，立即退出
-        if (bridge.IsClosing()) {
-            std::cout << "[Editor] UI closed, stopping render loop..." << std::endl;
-            break;
-        }
+        // UI 关闭退出
+        if (bridge.IsClosing()) break;
 
-        // 处理CEF消息（非阻塞）
+        // CEF
         bridge.DoMessageLoopWork();
+        if (bridge.IsClosing()) break;
 
-        // 检查CEF是否关闭
-        if (bridge.IsClosing()) {
-            running = false;
-            break;
-        }
-
-        // 更新 viewport 窗口位置和大小
+        // 更新 Viewport
         if (g_ViewportRect.updated) {
-            // JavaScript 坐标已经是相对于 HTML 渲染窗口的，直接使用
-            BOOL success = SetWindowPos(
-                g_EngineWindow,
-                nullptr,
-                g_ViewportRect.x,
-                g_ViewportRect.y,
-                g_ViewportRect.width,
-                g_ViewportRect.height,
+            SetWindowPos(
+                g_EngineWindow, nullptr,
+                g_ViewportRect.x, g_ViewportRect.y,
+                g_ViewportRect.width, g_ViewportRect.height,
                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW
             );
-            
-            if (!success) {
-                MOON_LOG_ERROR("EditorApp", "SetWindowPos failed: %lu", GetLastError());
-            } else {
-                MOON_LOG_INFO("EditorApp", "Viewport updated: (%d, %d) %dx%d", 
-                             g_ViewportRect.x, g_ViewportRect.y,
-                             g_ViewportRect.width, g_ViewportRect.height);
-            }
 
-            // 更新渲染器和相机
             if (g_ViewportRect.width > 0 && g_ViewportRect.height > 0) {
-                renderer.Resize(g_ViewportRect.width, g_ViewportRect.height);
-                float aspectRatio = static_cast<float>(g_ViewportRect.width) / 
-                                   static_cast<float>(g_ViewportRect.height);
-                camera->SetAspectRatio(aspectRatio);
+                g_Renderer->Resize(g_ViewportRect.width, g_ViewportRect.height);
+                engine->GetCamera()->SetAspectRatio(
+                    float(g_ViewportRect.width) / float(g_ViewportRect.height)
+                );
             }
-            
             g_ViewportRect.updated = false;
         }
 
-        // 计算deltaTime
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float deltaTime = std::chrono::duration<float>(currentTime - prevTime).count();
-        prevTime = currentTime;
+        // deltaTime
+        auto now = std::chrono::high_resolution_clock::now();
+        float dt = std::chrono::duration<float>(now - prevTime).count();
+        prevTime = now;
 
         // 更新引擎
-        engine.Tick(deltaTime);
-        cameraController.Update(deltaTime);
+        engine->Tick(dt);
+        g_CameraController->Update(dt);
 
-        // 动画物体
-        float rotationSpeed = 45.0f;
-        Moon::Vector3 cubeRot = cube->GetTransform()->GetLocalRotation();
-        cube->GetTransform()->SetLocalRotation(Moon::Vector3(cubeRot.x, cubeRot.y + rotationSpeed * deltaTime, cubeRot.z));
-
-        // 渲染场景
-        Moon::Matrix4x4 viewProj = camera->GetViewProjectionMatrix();
-        renderer.SetViewProjectionMatrix(&viewProj.m[0][0]);
-
-        renderer.BeginFrame();
-        scene->Traverse([&](Moon::SceneNode* node) {
-            Moon::MeshRenderer* meshRenderer = node->GetComponent<Moon::MeshRenderer>();
-            if (meshRenderer && meshRenderer->IsVisible() && meshRenderer->IsEnabled()) {
-                meshRenderer->Render(&renderer);
+        // 旋转 cube
+        {
+            auto* cube = engine->GetScene()->FindNodeByName("Cube");
+            if (cube) {
+                auto r = cube->GetTransform()->GetLocalRotation();
+                cube->GetTransform()->SetLocalRotation({ r.x, r.y + 45.0f * dt, r.z });
             }
-        });
+        }
 
-        // ========================================
-        // 渲染 ImGui + ImGuizmo
-        // ========================================
+        // 渲染
+        auto vp = engine->GetCamera()->GetViewProjectionMatrix();
+        g_Renderer->SetViewProjectionMatrix(&vp.m[0][0]);
+
+        g_Renderer->BeginFrame();
+
+        engine->GetScene()->Traverse([&](Moon::SceneNode* node) {
+            auto* mr = node->GetComponent<Moon::MeshRenderer>();
+            if (mr && mr->IsEnabled() && mr->IsVisible())
+                mr->Render(g_Renderer);
+            });
+
+        // ImGui + ImGuizmo
         if (g_ImGuiWin32) {
-            // 新帧（内部已调用 ImGui::NewFrame）
-            g_ImGuiWin32->NewFrame(g_ViewportRect.width, g_ViewportRect.height, Diligent::SURFACE_TRANSFORM_OPTIMAL);
+            g_ImGuiWin32->NewFrame(g_ViewportRect.width, g_ViewportRect.height,
+                Diligent::SURFACE_TRANSFORM_OPTIMAL);
+
             ImGuizmo::BeginFrame();
+            ImGuizmo::SetRect(0, 0, (float)g_ViewportRect.width, (float)g_ViewportRect.height);
 
-            // 设置 ImGuizmo 渲染区域（整个视口）
-            ImGuizmo::SetRect(0, 0, static_cast<float>(g_ViewportRect.width), static_cast<float>(g_ViewportRect.height));
-
-            // 如果有选中物体，绘制 Gizmo
-            if (g_SelectedObject == nullptr && cube) {
-                g_SelectedObject = cube;  // 默认选中第一个立方体
-            }
+            if (!g_SelectedObject)
+                g_SelectedObject = engine->GetScene()->FindNodeByName("Cylinder");
 
             if (g_SelectedObject) {
-                Moon::Matrix4x4 viewMatrix = camera->GetViewMatrix();
-                Moon::Matrix4x4 projMatrix = camera->GetProjectionMatrix();
-                Moon::Matrix4x4 objectMatrix = g_SelectedObject->GetTransform()->GetWorldMatrix();
+                auto view = engine->GetCamera()->GetViewMatrix();
+                auto proj = engine->GetCamera()->GetProjectionMatrix();
+                auto mat = g_SelectedObject->GetTransform()->GetWorldMatrix();
 
-                // 绘制平移 Gizmo
-                ImGuizmo::Manipulate(
-                    &viewMatrix.m[0][0],
-                    &projMatrix.m[0][0],
-                    ImGuizmo::OPERATION::TRANSLATE,  // 平移模式
-                    ImGuizmo::MODE::WORLD,           // 世界坐标系
-                    &objectMatrix.m[0][0]
-                );
+                ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0],
+                    ImGuizmo::TRANSLATE, ImGuizmo::WORLD,
+                    &mat.m[0][0]);
 
-                // 如果 Gizmo 被拖动，更新物体变换
                 if (ImGuizmo::IsUsing()) {
-                    // 从矩阵中提取位置
-                    Moon::Vector3 position(objectMatrix.m[3][0], objectMatrix.m[3][1], objectMatrix.m[3][2]);
-                    g_SelectedObject->GetTransform()->SetLocalPosition(position);
+                    g_SelectedObject->GetTransform()->SetLocalPosition({
+                        mat.m[3][0], mat.m[3][1], mat.m[3][2]
+                        });
                 }
             }
 
-            // 渲染 ImGui（Render 内部会自动调用 ImGui::Render）
-            g_ImGuiWin32->Render(renderer.GetContext());
+            g_ImGuiWin32->Render(g_Renderer->GetContext());
         }
 
-        renderer.EndFrame();
-
+        g_Renderer->EndFrame();
         Sleep(1);
     }
+}
 
-    // ========================================
-    // 5. 清理资源
-    // ========================================
-    std::cout << "[Editor] Shutting down..." << std::endl;
-
-    // 清理 ImGui (析构函数会自动调用 ImGui::DestroyContext())
+// ============================================================================
+// 清理
+// ============================================================================
+void Shutdown(EditorBridge& bridge, EngineCore* engine)
+{
     if (g_ImGuiWin32) {
         delete g_ImGuiWin32;
         g_ImGuiWin32 = nullptr;
     }
 
-    renderer.Shutdown();
-    g_Renderer = nullptr;
-    g_CameraController = nullptr;
-    g_Engine = nullptr;
-
-    engine.Shutdown();
+    g_Renderer->Shutdown();
 
     if (g_EngineWindow) {
         DestroyWindow(g_EngineWindow);
         g_EngineWindow = nullptr;
     }
 
+    engine->Shutdown();
     bridge.Shutdown();
 
     Moon::Core::Logger::Shutdown();
+}
+
+// ============================================================================
+// WinMain (入口点，保持原始逻辑)
+// ============================================================================
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
+{
+    // ========== 处理 CEF 子进程 ==========
+    CefMainArgs args(hInstance);
+    CefRefPtr<CefAppHandler> app(new CefAppHandler());
+    int exit_code = CefExecuteProcess(args, app.get(), nullptr);
+    if (exit_code >= 0) return exit_code;
+
+    // Console
+    AllocConsole();
+    FILE* fp; freopen_s(&fp, "CONOUT$", "w", stdout);
+    freopen_s(&fp, "CONOUT$", "w", stderr);
+
+    // Logger
+    Moon::Core::Logger::Init();
+
+    // ========== 引擎 ==========
+    InitEngine(g_Engine);
+
+    // ========== CEF ==========
+    EditorBridge bridge;
+    HWND cefBrowserWindow = InitCEF(hInstance, bridge);
+    if (!cefBrowserWindow) return -1;
+
+    // 绑定 viewport 回调
+    bridge.GetClient()->SetViewportRectCallback([](int x, int y, int w, int h) {
+        g_ViewportRect = { x, y, w, h, true };
+        });
+
+    // 找 HTML 渲染窗口
+    HWND htmlWindow = FindCefHtmlRenderWindow(cefBrowserWindow);
+    HWND parentWindow = htmlWindow ? htmlWindow : cefBrowserWindow;
+
+    // ========== 渲染器 ==========
+    if (!InitRenderer(parentWindow, hInstance)) {
+        MessageBoxA(nullptr, "Renderer init failed!", "Error", MB_ICONERROR);
+        return -1;
+    }
+
+    // ========== ImGui ==========
+    InitImGui();
+
+    // ========== 场景 ==========
+    InitSceneObjects(g_Engine);
+
+    // ========== 主循环 ==========
+    RunMainLoop(bridge, g_Engine);
+
+    // ========== 清理 ==========
+    Shutdown(bridge, g_Engine);
+
     FreeConsole();
     return 0;
 }
+

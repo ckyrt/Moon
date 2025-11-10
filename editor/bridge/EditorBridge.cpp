@@ -1,17 +1,94 @@
-﻿#include "EditorBridge.h"
+﻿// ============================================================================
+// EditorBridge.cpp - CEF 编辑器桥接层 (Refined Version)
+// ============================================================================
+// ✅ 保持原始功能完全不变
+// ✅ 清晰拆分：初始化 → 创建窗口 → 创建浏览器 → 消息循环 → Shutdown
+// ✅ 仅进行结构与可读性优化，不改变逻辑
+// ============================================================================
+
+#include "EditorBridge.h"
 #include "cef/CefApp.h"
 #include "include/cef_browser.h"
+
 #include <iostream>
 #include <filesystem>
+#include <algorithm>
 
-EditorBridge::EditorBridge() {
+// ============================================================================
+// 辅助：获取 EXE 路径
+// ============================================================================
+static std::string GetExecutableDir()
+{
+    char buf[MAX_PATH];
+    GetModuleFileNameA(nullptr, buf, MAX_PATH);
+    return std::filesystem::path(buf).parent_path().string();
 }
 
-EditorBridge::~EditorBridge() {
+// ============================================================================
+// Windows 主窗口过程
+// ============================================================================
+LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    EditorBridge* bridge =
+        reinterpret_cast<EditorBridge*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+
+    switch (msg) {
+
+    case WM_SIZE:
+        if (bridge && bridge->GetClient() && bridge->GetClient()->GetBrowser()) {
+
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+
+            HWND browser = bridge->GetClient()->GetBrowser()->GetHost()->GetWindowHandle();
+            if (browser) {
+                SetWindowPos(
+                    browser, nullptr,
+                    0, 0,
+                    rc.right - rc.left,
+                    rc.bottom - rc.top,
+                    SWP_NOZORDER | SWP_NOACTIVATE
+                );
+            }
+        }
+        return 0;
+
+    case WM_CLOSE:
+        if (bridge && bridge->GetClient() && bridge->GetClient()->GetBrowser()) {
+
+            // ✅ 正常关闭 CEF 浏览器（触发 DoClose → PostQuitMessage）
+            auto client = bridge->GetClient();
+            client->DoClose(nullptr);
+            client->GetBrowser()->GetHost()->CloseBrowser(false);
+
+        }
+        else {
+            PostQuitMessage(0);
+        }
+        return 0;
+
+    case WM_DESTROY:
+        return 0;
+    }
+
+    return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+// ============================================================================
+// EditorBridge
+// ============================================================================
+EditorBridge::EditorBridge() = default;
+
+EditorBridge::~EditorBridge()
+{
     Shutdown();
 }
 
-bool EditorBridge::Initialize(HINSTANCE hInstance) {
+// ============================================================================
+// 初始化 CEF
+// ============================================================================
+bool EditorBridge::Initialize(HINSTANCE hInstance)
+{
     if (m_initialized) {
         std::cerr << "[EditorBridge] Already initialized" << std::endl;
         return false;
@@ -19,25 +96,18 @@ bool EditorBridge::Initialize(HINSTANCE hInstance) {
 
     m_hInstance = hInstance;
 
-    // CEF 设置
-    CefMainArgs main_args(hInstance);
-    
-    // 创建 CEF App
+    CefMainArgs args(hInstance);
     CefRefPtr<CefAppHandler> app(new CefAppHandler());
 
-    // CEF 设置参数
     CefSettings settings;
-    settings.no_sandbox = true;  // 简化开发，生产环境建议启用沙箱
-    settings.multi_threaded_message_loop = false;  // 使用单线程消息循环
-    settings.windowless_rendering_enabled = false; // 使用窗口渲染
-    
-    // 日志设置
+    settings.no_sandbox = true;
+    settings.multi_threaded_message_loop = false;
+    settings.windowless_rendering_enabled = false;
+
     settings.log_severity = LOGSEVERITY_INFO;
     CefString(&settings.log_file).FromASCII("cef_debug.log");
 
-    // 初始化 CEF
-    bool success = CefInitialize(main_args, settings, app.get(), nullptr);
-    if (!success) {
+    if (!CefInitialize(args, settings, app.get(), nullptr)) {
         std::cerr << "[EditorBridge] Failed to initialize CEF" << std::endl;
         return false;
     }
@@ -47,61 +117,19 @@ bool EditorBridge::Initialize(HINSTANCE hInstance) {
     return true;
 }
 
-std::string GetExecutableDir() {
-    char buffer[MAX_PATH];
-    GetModuleFileNameA(NULL, buffer, MAX_PATH);
-    std::filesystem::path exePath(buffer);
-    return exePath.parent_path().string();
-}
-
-// 主窗口过程
-LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    // 获取 EditorBridge 指针
-    EditorBridge* bridge = reinterpret_cast<EditorBridge*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-    
-    switch (msg) {
-    case WM_SIZE:
-        if (bridge && bridge->GetClient() && bridge->GetClient()->GetBrowser()) {
-            // 调整 CEF 浏览器窗口大小以填充整个客户区
-            RECT rect;
-            GetClientRect(hwnd, &rect);
-            
-            HWND browserHwnd = bridge->GetClient()->GetBrowser()->GetHost()->GetWindowHandle();
-            if (browserHwnd) {
-                SetWindowPos(browserHwnd, nullptr, 
-                           0, 0, 
-                           rect.right - rect.left, 
-                           rect.bottom - rect.top,
-                           SWP_NOZORDER | SWP_NOACTIVATE);
-            }
-        }
-        return 0;
-        
-    case WM_CLOSE:
-        // 用户点击关闭按钮
-        if (bridge && bridge->GetClient() && bridge->GetClient()->GetBrowser()) {
-            // ✅ 先关闭 CEF 浏览器（会触发 DoClose → PostQuitMessage）
-            bridge->GetClient()->DoClose(nullptr);
-            bridge->GetClient()->GetBrowser()->GetHost()->CloseBrowser(false);
-        } else {
-            // 如果没有浏览器，直接退出
-            PostQuitMessage(0);
-        }
-        return 0;
-        
-    case WM_DESTROY:
-        return 0;
-    }
-    return DefWindowProc(hwnd, msg, wParam, lParam);
-}
-
-bool EditorBridge::CreateEditorWindow(const std::string& urlOverride) {
+// ============================================================================
+// 创建主编辑器窗口
+// ============================================================================
+bool EditorBridge::CreateEditorWindow(const std::string& urlOverride)
+{
     if (!m_initialized) {
         std::cerr << "[EditorBridge] Not initialized" << std::endl;
         return false;
     }
 
-    // ✅ 创建主窗口（作为 CEF 的父窗口）
+    // ------------------------------------
+    // 注册窗口类
+    // ------------------------------------
     WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = MainWindowProc;
@@ -111,14 +139,15 @@ bool EditorBridge::CreateEditorWindow(const std::string& urlOverride) {
     wc.lpszClassName = L"MoonEditor_MainWindow";
 
     if (!RegisterClassExW(&wc)) {
-        DWORD err = GetLastError();
-        if (err != ERROR_CLASS_ALREADY_EXISTS) {
+        if (GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
             std::cerr << "[EditorBridge] Failed to register window class" << std::endl;
             return false;
         }
     }
 
+    // ------------------------------------
     // 创建主窗口
+    // ------------------------------------
     m_mainWindow = CreateWindowExW(
         0,
         L"MoonEditor_MainWindow",
@@ -137,44 +166,50 @@ bool EditorBridge::CreateEditorWindow(const std::string& urlOverride) {
         return false;
     }
 
-    // ✅ 保存 this 指针到窗口，以便窗口过程可以访问
-    SetWindowLongPtr(m_mainWindow, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+    // 保存 this 指针
+    SetWindowLongPtr(
+        m_mainWindow,
+        GWLP_USERDATA,
+        reinterpret_cast<LONG_PTR>(this)
+    );
 
     ShowWindow(m_mainWindow, SW_SHOW);
     UpdateWindow(m_mainWindow);
 
-    // 🔍 获取 EXE 所在目录
+    // ------------------------------------
+    // 生成 URL
+    // ------------------------------------
     std::string exeDir = GetExecutableDir();
     std::string distIndex = exeDir + "\\dist\\index.html";
 
-    // ✅ 自动选择 URL：有 override 用 override，否则用自动路径
     std::string url = urlOverride.empty()
         ? ("file:///" + distIndex)
         : urlOverride;
 
-    // 替换反斜杠为斜杠（CEF / Chrome 需要）
     std::replace(url.begin(), url.end(), '\\', '/');
-
     std::cout << "[EditorBridge] Loading URL: " << url << std::endl;
 
-    // 创建客户端处理器
+    // ------------------------------------
+    // 创建浏览器
+    // ------------------------------------
     m_client = new CefClientHandler();
 
-    // ✅ 使用 SetAsChild 模式（而不是 SetAsPopup）
-    // 这样我们才能收到 DoClose 回调
-    CefWindowInfo window_info;
-    RECT rect;
-    GetClientRect(m_mainWindow, &rect);
-    CefRect cefRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
-    window_info.SetAsChild(m_mainWindow, cefRect);
+    CefWindowInfo winInfo;
+    RECT rc;
+    GetClientRect(m_mainWindow, &rc);
 
-    CefBrowserSettings browser_settings;
+    winInfo.SetAsChild(
+        m_mainWindow,
+        CefRect(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top)
+    );
+
+    CefBrowserSettings browserSettings;
 
     bool success = CefBrowserHost::CreateBrowser(
-        window_info,
+        winInfo,
         m_client,
         url,
-        browser_settings,
+        browserSettings,
         nullptr,
         nullptr
     );
@@ -187,24 +222,34 @@ bool EditorBridge::CreateEditorWindow(const std::string& urlOverride) {
     return true;
 }
 
-void EditorBridge::DoMessageLoopWork() {
-    if (m_initialized) {
+// ============================================================================
+// CEF 事件循环
+// ============================================================================
+void EditorBridge::DoMessageLoopWork()
+{
+    if (m_initialized)
         CefDoMessageLoopWork();
-    }
 }
 
-bool EditorBridge::IsClosing() const {
+// ============================================================================
+// CEF 是否正在关闭
+// ============================================================================
+bool EditorBridge::IsClosing() const
+{
     return m_client && m_client->IsClosing();
 }
 
-void EditorBridge::Shutdown() {
-    if (!m_initialized) {
+// ============================================================================
+// Shutdown
+// ============================================================================
+void EditorBridge::Shutdown()
+{
+    if (!m_initialized)
         return;
-    }
 
     std::cout << "[EditorBridge] Shutting down..." << std::endl;
 
-    // 关闭所有浏览器
+    // 关闭浏览器
     if (m_client) {
         m_client->CloseAllBrowsers(false);
         m_client = nullptr;
