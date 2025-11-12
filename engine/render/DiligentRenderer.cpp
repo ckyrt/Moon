@@ -358,7 +358,10 @@ void DiligentRenderer::CreatePickingStatic()
         ci.EntryPoint = "main_vs";
         ci.Source = R"(
 cbuffer VSConstants { float4x4 g_WorldViewProj; };
-struct VSInput { float3 Position:ATTRIB0; };
+struct VSInput { 
+    float3 Position:ATTRIB0; 
+    float4 Color:ATTRIB1;      // 必须声明但不使用，以匹配 VB 的 stride
+};
 struct PSInput { float4 Position:SV_Position; };
 PSInput main_vs(VSInput i){
     PSInput o; o.Position = mul(float4(i.Position,1), g_WorldViewProj); return o;
@@ -391,9 +394,11 @@ uint main_ps(PSInput i) : SV_Target { return g_ObjectID; })";
     pci.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
     pci.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
 
-    // 只位置
+    // 必须声明完整的 Vertex 结构来保证正确的 stride (28 bytes)
+    // 即使 picking shader 只使用 position，也需要声明 color 来匹配 VB 的实际布局
     LayoutElement layout[] = {
-        {0, 0, 3, VT_FLOAT32, False, 0}
+        {0, 0, 3, VT_FLOAT32, False, 0},   // position at offset 0  (12 bytes)
+        {1, 0, 4, VT_FLOAT32, False, 12}   // color at offset 12 (16 bytes) - unused but required for stride
     };
     pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
     pci.GraphicsPipeline.InputLayout.NumElements = _countof(layout);
