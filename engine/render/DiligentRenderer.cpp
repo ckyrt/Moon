@@ -40,6 +40,38 @@ Moon::Matrix4x4 DiligentRenderer::Transpose(const Moon::Matrix4x4& a)
             t.m[i][j] = a.m[j][i];
     return t;
 }
+
+/**
+ * @brief 从 Vertex 结构自动生成 Diligent Engine 的 InputLayout
+ * 
+ * 该函数根据 Vertex::GetLayoutDesc() 提供的布局信息，自动生成 LayoutElement 数组。
+ * 这样当 Vertex 结构修改时（例如添加法线、UV），只需更新 Vertex::GetLayoutDesc()，
+ * 所有 PSO 的 InputLayout 会自动同步更新。
+ * 
+ * 优势：
+ * - ✅ 单一真实来源（Single Source of Truth）在 Vertex 结构内部
+ * - ✅ 使用 offsetof() 自动计算偏移，无需手动维护
+ * - ✅ 编译时 static_assert 验证布局正确性
+ * 
+ * @param[out] outLayout 指向至少能容纳 Vertex 属性数量的 LayoutElement 数组
+ * @param[out] outNumElements 返回属性数量
+ */
+void DiligentRenderer::GetVertexLayout(LayoutElement* outLayout, Uint32& outNumElements)
+{
+    int attrCount = 0;
+    const Moon::VertexAttributeDesc* attrs = Moon::Vertex::GetLayoutDesc(attrCount);
+    
+    for (int i = 0; i < attrCount; ++i) {
+        outLayout[i].InputIndex = i;                              // ATTRIB0, ATTRIB1, ... 的索引
+        outLayout[i].BufferSlot = 0;                              // 使用第 0 个 vertex buffer
+        outLayout[i].NumComponents = attrs[i].numComponents;      // 从 Vertex 读取分量数
+        outLayout[i].ValueType = VT_FLOAT32;                      // 目前都是 float
+        outLayout[i].IsNormalized = False;                        // 不归一化
+        outLayout[i].RelativeOffset = attrs[i].offsetInBytes;     // 从 Vertex 读取偏移
+    }
+    
+    outNumElements = static_cast<Uint32>(attrCount);
+}
 template<typename T>
 void DiligentRenderer::UpdateCB(IBuffer* buf, const T& data)
 {
@@ -173,11 +205,10 @@ float4 main(in PSInput i) : SV_TARGET {
         m_pDevice->CreateShader(ci, &ps);
     }
 
-    // Input layout: position (3 floats) + color (4 floats)
-    LayoutElement layout[] = {
-        {0, 0, 3, VT_FLOAT32, False},     // Position (offset 0)
-        {1, 0, 4, VT_FLOAT32, False, 12}  // Color RGBA (offset 12 bytes)
-    };
+    // 使用统一的 Vertex Layout（避免手写重复声明）
+    LayoutElement layout[2];
+    Uint32 numElements;
+    GetVertexLayout(layout, numElements);
 
     GraphicsPipelineStateCreateInfo pci{};
     pci.PSODesc.Name = "Main PSO";
@@ -191,7 +222,7 @@ float4 main(in PSInput i) : SV_TARGET {
     pci.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
     pci.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
     pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
-    pci.GraphicsPipeline.InputLayout.NumElements = _countof(layout);
+    pci.GraphicsPipeline.InputLayout.NumElements = numElements;
 
     pci.pVS = vs;
     pci.pPS = ps;
@@ -394,14 +425,13 @@ uint main_ps(PSInput i) : SV_Target { return g_ObjectID; })";
     pci.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
     pci.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
 
-    // 必须声明完整的 Vertex 结构来保证正确的 stride (28 bytes)
-    // 即使 picking shader 只使用 position，也需要声明 color 来匹配 VB 的实际布局
-    LayoutElement layout[] = {
-        {0, 0, 3, VT_FLOAT32, False, 0},   // position at offset 0  (12 bytes)
-        {1, 0, 4, VT_FLOAT32, False, 12}   // color at offset 12 (16 bytes) - unused but required for stride
-    };
+    // 使用统一的 Vertex Layout（避免手写重复声明）
+    // 注意：即使 picking shader 只使用 position，也必须声明完整的 layout 来保证 stride 正确
+    LayoutElement layout[2];
+    Uint32 numElements;
+    GetVertexLayout(layout, numElements);
     pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
-    pci.GraphicsPipeline.InputLayout.NumElements = _countof(layout);
+    pci.GraphicsPipeline.InputLayout.NumElements = numElements;
 
     pci.pVS = vs;
     pci.pPS = ps;

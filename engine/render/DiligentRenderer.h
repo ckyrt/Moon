@@ -31,6 +31,8 @@ namespace Diligent {
     struct IShaderResourceBinding;
     struct ITexture;
     struct ITextureView;
+    struct LayoutElement;
+    using Uint32 = uint32_t;
 }
 
 class DiligentRenderer : public IRenderer {
@@ -129,6 +131,9 @@ private:
     // 工具
     static Moon::Matrix4x4 Transpose(const Moon::Matrix4x4& m);
     template<typename T> void UpdateCB(Diligent::IBuffer* buf, const T& data);
+    
+    // Vertex Layout 辅助函数（避免手写重复声明，确保所有 PSO 使用一致的 layout）
+    static void GetVertexLayout(Diligent::LayoutElement* outLayout, Diligent::Uint32& outNumElements);
 
     // 禁拷贝
     DiligentRenderer(const DiligentRenderer&) = delete;
