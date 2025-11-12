@@ -149,7 +149,7 @@ LRESULT CALLBACK EngineWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
                 } else {
                     // 点击空白处取消选择
                     g_SelectedObject = nullptr;
-                    MOON_LOG_INFO("EditorApp", "Deselected");
+                    MOON_LOG_INFO("EditorApp", "Deselected (ObjectID = 0)");
                 }
             }
         }
@@ -277,7 +277,7 @@ void InitSceneObjects(EngineCore* engine)
 {
     auto* camera = engine->GetCamera();
     camera->SetAspectRatio(800.0f / 600.0f);
-
+    
     Moon::InputSystem* input = engine->GetInputSystem();
     input->SetWindowHandle(g_EngineWindow);
 
@@ -425,9 +425,6 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
 
             ImGuizmo::BeginFrame();
             ImGuizmo::SetRect(0, 0, (float)g_ViewportRect.width, (float)g_ViewportRect.height);
-
-            if (!g_SelectedObject)
-                g_SelectedObject = engine->GetScene()->FindNodeByName("Cylinder");
 
             if (g_SelectedObject) {
                 auto view = engine->GetCamera()->GetViewMatrix();
