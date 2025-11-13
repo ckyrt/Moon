@@ -5,6 +5,9 @@
 
 import type { MoonEngineAPI, SceneNode, Scene, Transform, Vector3, Component } from '@/types/engine';
 
+// 检查是否在真实的 CEF 环境中
+const isRealEngine = typeof window !== 'undefined' && 'moonEngine' in window;
+
 // Mock implementation for development (当 CEF 未连接时使用)
 const createMockAPI = (): MoonEngineAPI => {
   let nodeIdCounter = 1;
@@ -173,10 +176,160 @@ const createMockAPI = (): MoonEngineAPI => {
   };
 };
 
-// Export the engine API
-export const engine: MoonEngineAPI = window.moonEngine ?? createMockAPI();
+// ============================================================================
+// Real Engine API Wrapper (使用 window.moonEngine)
+// ============================================================================
+const createRealAPI = (): MoonEngineAPI => {
+  const realEngine = window.moonEngine!;
+
+  return {
+    getScene: async () => {
+      console.log('[Real Engine] getScene()');
+      try {
+        const sceneData = await realEngine.getScene();
+        console.log('[Real Engine] Scene data received:', sceneData);
+        return sceneData;
+      } catch (error) {
+        console.error('[Real Engine] getScene() failed:', error);
+        throw error;
+      }
+    },
+
+    createNode: (name: string, parentId?: number) => {
+      console.log(`[Real Engine] createNode("${name}", ${parentId})`);
+      // TODO: Implement in C++
+      return {
+        id: 0,
+        name,
+        active: true,
+        transform: {
+          position: { x: 0, y: 0, z: 0 },
+          rotation: { x: 0, y: 0, z: 0 },
+          scale: { x: 1, y: 1, z: 1 },
+        },
+        parentId: parentId ?? null,
+        children: [],
+        components: [],
+      };
+    },
+
+    deleteNode: (nodeId: number) => {
+      console.log(`[Real Engine] deleteNode(${nodeId})`);
+      // TODO: Implement in C++
+    },
+
+    renameNode: (nodeId: number, newName: string) => {
+      console.log(`[Real Engine] renameNode(${nodeId}, "${newName}")`);
+      // TODO: Implement in C++
+    },
+
+    setNodeActive: (nodeId: number, active: boolean) => {
+      console.log(`[Real Engine] setNodeActive(${nodeId}, ${active})`);
+      // TODO: Implement in C++
+    },
+
+    setNodeParent: (nodeId: number, parentId: number | null) => {
+      console.log(`[Real Engine] setNodeParent(${nodeId}, ${parentId})`);
+      // TODO: Implement in C++
+    },
+
+    setTransform: (nodeId: number, transform: Transform) => {
+      console.log(`[Real Engine] setTransform(${nodeId})`, transform);
+      realEngine.setPosition(nodeId, transform.position);
+      realEngine.setRotation(nodeId, transform.rotation);
+      realEngine.setScale(nodeId, transform.scale);
+    },
+
+    setPosition: (nodeId: number, position: Vector3) => {
+      console.log(`[Real Engine] setPosition(${nodeId})`, position);
+      realEngine.setPosition(nodeId, position);
+    },
+
+    setRotation: (nodeId: number, rotation: Vector3) => {
+      console.log(`[Real Engine] setRotation(${nodeId})`, rotation);
+      realEngine.setRotation(nodeId, rotation);
+    },
+
+    setScale: (nodeId: number, scale: Vector3) => {
+      console.log(`[Real Engine] setScale(${nodeId})`, scale);
+      realEngine.setScale(nodeId, scale);
+    },
+
+    selectNode: (nodeId: number | null) => {
+      console.log(`[Real Engine] selectNode(${nodeId})`);
+      if (nodeId !== null) {
+        realEngine.selectNode(nodeId);
+      }
+    },
+
+    addComponent: (nodeId: number, componentType: string) => {
+      console.log(`[Real Engine] addComponent(${nodeId}, "${componentType}")`);
+      // TODO: Implement in C++
+      return null;
+    },
+
+    removeComponent: (nodeId: number, componentType: string) => {
+      console.log(`[Real Engine] removeComponent(${nodeId}, "${componentType}")`);
+      // TODO: Implement in C++
+    },
+
+    setViewportBounds: (x: number, y: number, width: number, height: number) => {
+      console.log(`[Real Engine] setViewportBounds(${x}, ${y}, ${width}, ${height})`);
+      // Viewport bounds are handled separately via viewport-rect message
+    },
+
+    createCSGPrimitive: (type, params) => {
+      console.log(`[Real Engine] createCSGPrimitive("${type}")`, params);
+      // TODO: Implement in C++
+      return {} as SceneNode;
+    },
+
+    performCSGOperation: (nodeId1, nodeId2, operation) => {
+      console.log(`[Real Engine] performCSGOperation(${nodeId1}, ${nodeId2}, "${operation}")`);
+      // TODO: Implement in C++
+      return {} as SceneNode;
+    },
+  };
+};
+
+// Export the engine API (优先使用真实 API，回退到 Mock)
+export const engine: MoonEngineAPI = isRealEngine ? createRealAPI() : createMockAPI();
 
 // 辅助函数：检查是否连接到真实引擎
 export const isConnectedToEngine = (): boolean => {
   return window.moonEngine !== undefined;
+};
+
+// ============================================================================
+// Transform 更新回调（C++ 推送通知）
+// ============================================================================
+// 定义全局回调类型
+declare global {
+  interface Window {
+    onTransformChanged?: (nodeId: number, position: Vector3) => void;
+  }
+}
+
+// 注册 Transform 更新监听器
+export const registerTransformCallback = (callback: (nodeId: number, position: Vector3) => void) => {
+  window.onTransformChanged = (nodeId: number, position: Vector3) => {
+    console.log(`[Engine Bridge] Transform changed: node=${nodeId}, pos=(${position.x}, ${position.y}, ${position.z})`);
+    callback(nodeId, position);
+  };
+  console.log('[Engine Bridge] Transform callback registered');
+};
+
+// 注册选中状态更新监听器（C++ Pick 物体后推送）
+declare global {
+  interface Window {
+    onNodeSelected?: (nodeId: number | null) => void;
+  }
+}
+
+export const registerSelectionCallback = (callback: (nodeId: number | null) => void) => {
+  window.onNodeSelected = (nodeId: number | null) => {
+    console.log(`[Engine Bridge] Node selected: ${nodeId}`);
+    callback(nodeId);
+  };
+  console.log('[Engine Bridge] Selection callback registered');
 };

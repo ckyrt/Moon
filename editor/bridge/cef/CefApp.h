@@ -1,6 +1,7 @@
 #pragma once
 #include "include/cef_app.h"
 #include "include/wrapper/cef_message_router.h"
+#include "MoonEngineV8Handler.h"
 
 // CEF Application handler
 // 管理 CEF 的生命周期和进程通信
@@ -30,6 +31,9 @@ public:
             CefMessageRouterRendererSide::Create(config);
         router->OnContextCreated(browser, frame, context);
         m_messageRouters.push_back(router);
+
+        // 注册 window.moonEngine API
+        RegisterMoonEngineAPI(browser, frame, context);
     }
 
     void OnContextReleased(CefRefPtr<CefBrowser> browser,

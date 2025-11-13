@@ -55,6 +55,18 @@ static Moon::FPSCameraController* g_CameraController = nullptr;
 static Diligent::ImGuiImplWin32* g_ImGuiWin32 = nullptr;
 static HWND g_EngineWindow = nullptr;
 static Moon::SceneNode* g_SelectedObject = nullptr;
+static EditorBridge* g_EditorBridge = nullptr;  // 用于通知 WebUI
+
+// 全局选中状态访问接口
+void SetSelectedObject(Moon::SceneNode* node)
+{
+    g_SelectedObject = node;
+}
+
+Moon::SceneNode* GetSelectedObject()
+{
+    return g_SelectedObject;
+}
 
 // 引擎窗口类名
 static const wchar_t* kEngineWindowClass = L"MoonEngine_Viewport";
@@ -145,11 +157,30 @@ LRESULT CALLBACK EngineWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
                     if (g_SelectedObject) {
                         MOON_LOG_INFO("EditorApp", "Selected object: %s (ID=%u)", 
                                      g_SelectedObject->GetName().c_str(), objectID);
+                        
+                        // 通知 WebUI 更新选中状态
+                        if (g_EditorBridge && g_EditorBridge->GetClient() && g_EditorBridge->GetClient()->GetBrowser()) {
+                            char jsCode[256];
+                            snprintf(jsCode, sizeof(jsCode),
+                                "if (window.onNodeSelected) { window.onNodeSelected(%u); }",
+                                objectID
+                            );
+                            auto frame = g_EditorBridge->GetClient()->GetBrowser()->GetMainFrame();
+                            frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
+                        }
                     }
                 } else {
                     // 点击空白处取消选择
                     g_SelectedObject = nullptr;
                     MOON_LOG_INFO("EditorApp", "Deselected (ObjectID = 0)");
+                    
+                    // 通知 WebUI 取消选中
+                    if (g_EditorBridge && g_EditorBridge->GetClient() && g_EditorBridge->GetClient()->GetBrowser()) {
+                        char jsCode[256];
+                        snprintf(jsCode, sizeof(jsCode), "if (window.onNodeSelected) { window.onNodeSelected(null); }");
+                        auto frame = g_EditorBridge->GetClient()->GetBrowser()->GetMainFrame();
+                        frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
+                    }
                 }
             }
         }
@@ -436,9 +467,26 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
                     &mat.m[0][0]);
 
                 if (ImGuizmo::IsUsing()) {
+                    // 更新物体位置
                     g_SelectedObject->GetTransform()->SetLocalPosition({
                         mat.m[3][0], mat.m[3][1], mat.m[3][2]
-                        });
+                    });
+
+                    // 通知 WebUI Transform 已更新
+                    if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
+                        auto pos = g_SelectedObject->GetTransform()->GetLocalPosition();
+                        char jsCode[512];
+                        snprintf(jsCode, sizeof(jsCode),
+                            "if (window.onTransformChanged) { "
+                            "  window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
+                            "}",
+                            g_SelectedObject->GetID(),
+                            pos.x, pos.y, pos.z
+                        );
+                        
+                        auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
+                        frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
+                    }
                 }
             }
 
@@ -497,6 +545,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
     // ========== CEF ==========
     EditorBridge bridge;
+    g_EditorBridge = &bridge;  // 保存全局指针用于通知 WebUI
     HWND cefBrowserWindow = InitCEF(hInstance, bridge);
     if (!cefBrowserWindow) return -1;
 
@@ -504,6 +553,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     bridge.GetClient()->SetViewportRectCallback([](int x, int y, int w, int h) {
         g_ViewportRect = { x, y, w, h, true };
         });
+
+    // ✅ 设置引擎核心到 CEF Client（用于 MoonEngine API）
+    bridge.GetClient()->SetEngineCore(g_Engine);
 
     // 找 HTML 渲染窗口
     HWND htmlWindow = FindCefHtmlRenderWindow(cefBrowserWindow);

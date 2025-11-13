@@ -12,6 +12,8 @@ using ViewportRectCallback = std::function<void(int x, int y, int width, int hei
 
 // 前向声明
 class MessageHandler;
+class MoonEngineMessageHandler;
+class EngineCore;
 
 // CEF Client handler
 // 处理浏览器事件、生命周期、加载等
@@ -69,11 +71,15 @@ public:
         m_viewportRectCallback = callback;
     }
 
+    // ✅ 设置引擎核心指针（用于 MoonEngine API）
+    void SetEngineCore(EngineCore* engine);
+
 private:
     CefRefPtr<CefBrowser> m_browser;
     bool m_isClosing = false;
     CefRefPtr<CefMessageRouterBrowserSide> m_messageRouter;
     ViewportRectCallback m_viewportRectCallback;
+    MoonEngineMessageHandler* m_moonEngineHandler;
 
     IMPLEMENT_REFCOUNTING(CefClientHandler);
 };

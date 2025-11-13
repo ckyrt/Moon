@@ -52,7 +52,7 @@ export interface EditorState {
 
 export interface MoonEngineAPI {
   // Scene Management
-  getScene(): Scene;
+  getScene(): Scene | Promise<Scene>;
   createNode(name: string, parentId?: number): SceneNode;
   deleteNode(nodeId: number): void;
   renameNode(nodeId: number, newName: string): void;

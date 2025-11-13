@@ -110,12 +110,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="EditorBridge.h" />
+    <ClInclude Include="SceneSerializer.h" />
     <ClInclude Include="cef\CefApp.h" />
     <ClInclude Include="cef\CefClient.h" />
+    <ClInclude Include="cef\MoonEngineV8Handler.h" />
+    <ClInclude Include="cef\MoonEngineMessageHandler.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EditorBridge.cpp" />
+    <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="cef\CefClient.cpp" />
+    <ClCompile Include="cef\MoonEngineV8Handler.cpp" />
+    <ClCompile Include="cef\MoonEngineMessageHandler.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

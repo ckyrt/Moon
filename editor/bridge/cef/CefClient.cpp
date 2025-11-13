@@ -21,6 +21,9 @@
 #include "../../../external/nlohmann/json.hpp"
 using json = nlohmann::json;
 
+// ✅ Moon Engine Message Handler
+#include "MoonEngineMessageHandler.h"
+
 // ============================================================================
 // MessageHandler - Browser Side Message Router Handler
 // ============================================================================
@@ -40,13 +43,18 @@ public:
         CefRefPtr<Callback> callback) override
     {
         std::string requestStr = request.ToString();
-        MOON_LOG_INFO("CEF_MessageHandler", "Received query: %s", requestStr.c_str());
 
         try {
             json j = json::parse(requestStr);
-            std::string type = j.value("type", "");
+            
+            // 只处理有 "type" 字段的消息（viewport-rect 等）
+            // 有 "command" 字段的消息由 MoonEngineMessageHandler 处理
+            if (!j.contains("type")) {
+                return false;  // 不是我们处理的消息，让下一个 handler 处理
+            }
 
-            MOON_LOG_INFO("CEF_MessageHandler", "Parsed type: %s", type.c_str());
+            std::string type = j.value("type", "");
+            MOON_LOG_INFO("CEF_MessageHandler", "Received query with type: %s", type.c_str());
 
             // ------------------------------------------------------------
             // ✅ viewport-rect 事件（JavaScript → C++）
@@ -81,8 +89,7 @@ public:
         catch (const json::exception& e) {
             MOON_LOG_ERROR("CEF_MessageHandler",
                 "JSON parse error: %s", e.what());
-            callback->Failure(1, "Invalid JSON");
-            return true;
+            return false;  // 让下一个 handler 尝试
         }
 
         return false;
@@ -96,6 +103,7 @@ private:
 // CefClientHandler - Browser Lifecycle + Router
 // ============================================================================
 CefClientHandler::CefClientHandler()
+    : m_moonEngineHandler(nullptr)
 {
     // 创建 Message Router
     CefMessageRouterConfig config;
@@ -104,7 +112,18 @@ CefClientHandler::CefClientHandler()
     // 添加处理器
     m_messageRouter->AddHandler(new MessageHandler(this), false);
 
-    MOON_LOG_INFO("CEF", "CefClientHandler created with message router");
+    // 添加 Moon Engine 处理器
+    m_moonEngineHandler = new MoonEngineMessageHandler();
+    m_messageRouter->AddHandler(m_moonEngineHandler, false);
+
+    MOON_LOG_INFO("CEF", "CefClientHandler created with message router and MoonEngine handler");
+}
+
+void CefClientHandler::SetEngineCore(EngineCore* engine) {
+    if (m_moonEngineHandler) {
+        m_moonEngineHandler->SetEngineCore(engine);
+        MOON_LOG_INFO("CEF", "EngineCore set for MoonEngineMessageHandler");
+    }
 }
 
 // ============================================================================
