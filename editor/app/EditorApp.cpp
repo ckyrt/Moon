@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <string>
 
 // CEF
 #include "EditorBridge.h"
@@ -57,6 +58,10 @@ static HWND g_EngineWindow = nullptr;
 static Moon::SceneNode* g_SelectedObject = nullptr;
 static EditorBridge* g_EditorBridge = nullptr;  // 用于通知 WebUI
 
+// Gizmo 模式
+static ImGuizmo::OPERATION g_GizmoOperation = ImGuizmo::TRANSLATE;
+static ImGuizmo::MODE g_GizmoMode = ImGuizmo::WORLD;
+
 // 全局选中状态访问接口
 void SetSelectedObject(Moon::SceneNode* node)
 {
@@ -66,6 +71,20 @@ void SetSelectedObject(Moon::SceneNode* node)
 Moon::SceneNode* GetSelectedObject()
 {
     return g_SelectedObject;
+}
+
+// Gizmo 模式设置接口
+void SetGizmoOperation(const std::string& mode)
+{
+    if (mode == "translate") {
+        g_GizmoOperation = ImGuizmo::TRANSLATE;
+    }
+    else if (mode == "rotate") {
+        g_GizmoOperation = ImGuizmo::ROTATE;
+    }
+    else if (mode == "scale") {
+        g_GizmoOperation = ImGuizmo::SCALE;
+    }
 }
 
 // 引擎窗口类名
@@ -463,29 +482,78 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
                 auto mat = g_SelectedObject->GetTransform()->GetWorldMatrix();
 
                 ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0],
-                    ImGuizmo::TRANSLATE, ImGuizmo::WORLD,
+                    g_GizmoOperation, g_GizmoMode,
                     &mat.m[0][0]);
 
                 if (ImGuizmo::IsUsing()) {
-                    // 更新物体位置
-                    g_SelectedObject->GetTransform()->SetLocalPosition({
-                        mat.m[3][0], mat.m[3][1], mat.m[3][2]
-                    });
+                    // 根据 Gizmo 模式更新不同的 Transform 属性
+                    if (g_GizmoOperation == ImGuizmo::TRANSLATE) {
+                        // 更新位置
+                        Moon::Vector3 newPos = {mat.m[3][0], mat.m[3][1], mat.m[3][2]};
+                        g_SelectedObject->GetTransform()->SetLocalPosition(newPos);
 
-                    // 通知 WebUI Transform 已更新
-                    if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
-                        auto pos = g_SelectedObject->GetTransform()->GetLocalPosition();
-                        char jsCode[512];
-                        snprintf(jsCode, sizeof(jsCode),
-                            "if (window.onTransformChanged) { "
-                            "  window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
-                            "}",
-                            g_SelectedObject->GetID(),
-                            pos.x, pos.y, pos.z
-                        );
+                        // 通知 WebUI 位置已更新
+                        if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
+                            char jsCode[512];
+                            snprintf(jsCode, sizeof(jsCode),
+                                "if (window.onTransformChanged) { "
+                                "  window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
+                                "}",
+                                g_SelectedObject->GetID(),
+                                newPos.x, newPos.y, newPos.z
+                            );
+                            
+                            auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
+                            frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
+                        }
+                    }
+                    else if (g_GizmoOperation == ImGuizmo::ROTATE) {
+                        // 从矩阵提取旋转（欧拉角）
+                        float matrixTranslation[3], matrixRotation[3], matrixScale[3];
+                        ImGuizmo::DecomposeMatrixToComponents(&mat.m[0][0], 
+                            matrixTranslation, matrixRotation, matrixScale);
                         
-                        auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
-                        frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
+                        Moon::Vector3 newRot = {matrixRotation[0], matrixRotation[1], matrixRotation[2]};
+                        g_SelectedObject->GetTransform()->SetLocalRotation(newRot);
+
+                        // 通知 WebUI 旋转已更新
+                        if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
+                            char jsCode[512];
+                            snprintf(jsCode, sizeof(jsCode),
+                                "if (window.onRotationChanged) { "
+                                "  window.onRotationChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
+                                "}",
+                                g_SelectedObject->GetID(),
+                                newRot.x, newRot.y, newRot.z
+                            );
+                            
+                            auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
+                            frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
+                        }
+                    }
+                    else if (g_GizmoOperation == ImGuizmo::SCALE) {
+                        // 从矩阵提取缩放
+                        float matrixTranslation[3], matrixRotation[3], matrixScale[3];
+                        ImGuizmo::DecomposeMatrixToComponents(&mat.m[0][0], 
+                            matrixTranslation, matrixRotation, matrixScale);
+                        
+                        Moon::Vector3 newScale = {matrixScale[0], matrixScale[1], matrixScale[2]};
+                        g_SelectedObject->GetTransform()->SetLocalScale(newScale);
+
+                        // 通知 WebUI 缩放已更新
+                        if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
+                            char jsCode[512];
+                            snprintf(jsCode, sizeof(jsCode),
+                                "if (window.onScaleChanged) { "
+                                "  window.onScaleChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
+                                "}",
+                                g_SelectedObject->GetID(),
+                                newScale.x, newScale.y, newScale.z
+                            );
+                            
+                            auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
+                            frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
+                        }
                     }
                 }
             }

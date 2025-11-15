@@ -1,5 +1,6 @@
 /**
  * Moon Editor - Inspector Panel Component
+ * 显示选中节点的属性并支持编辑
  */
 
 import React from 'react';
@@ -10,9 +11,10 @@ import styles from './Inspector.module.css';
 
 export const Inspector: React.FC = () => {
   const { scene, selectedNodeId, updateNodeTransform } = useEditorStore();
-  
   const selectedNode = selectedNodeId ? scene.allNodes[selectedNodeId] : null;
 
+  // ========== Transform 修改处理器 ==========
+  
   const handlePositionChange = (axis: 'x' | 'y' | 'z', value: number) => {
     if (!selectedNode) return;
     const newPosition = { ...selectedNode.transform.position, [axis]: value };
@@ -34,6 +36,8 @@ export const Inspector: React.FC = () => {
     engine.setScale(selectedNode.id, newScale);
   };
 
+  // ========== 渲染 ==========
+
   if (!selectedNode) {
     return (
       <div className={styles.inspector}>
@@ -47,7 +51,8 @@ export const Inspector: React.FC = () => {
     <div className={styles.inspector}>
       <div className={styles.header}>Inspector</div>
       <div className={styles.content}>
-        {/* Node Info */}
+        
+        {/* 节点信息 */}
         <div className={styles.section}>
           <div className={styles.sectionTitle}>Node</div>
           <div className={styles.field}>
@@ -64,111 +69,39 @@ export const Inspector: React.FC = () => {
           </div>
         </div>
 
-        {/* Transform */}
+        {/* Transform 组件 */}
         <div className={styles.section}>
           <div className={styles.sectionTitle}>Transform</div>
           
-          <div className={styles.vector3Field}>
-            <label>Position:</label>
-            <div className={styles.vector3Inputs}>
-              <div className={styles.axisInput}>
-                <span>X</span>
-                <input
-                  type="number"
-                  value={selectedNode.transform.position.x.toFixed(2)}
-                  onChange={(e) => handlePositionChange('x', parseFloat(e.target.value))}
-                  step="0.1"
-                />
-              </div>
-              <div className={styles.axisInput}>
-                <span>Y</span>
-                <input
-                  type="number"
-                  value={selectedNode.transform.position.y.toFixed(2)}
-                  onChange={(e) => handlePositionChange('y', parseFloat(e.target.value))}
-                  step="0.1"
-                />
-              </div>
-              <div className={styles.axisInput}>
-                <span>Z</span>
-                <input
-                  type="number"
-                  value={selectedNode.transform.position.z.toFixed(2)}
-                  onChange={(e) => handlePositionChange('z', parseFloat(e.target.value))}
-                  step="0.1"
-                />
-              </div>
-            </div>
-          </div>
+          {/* Position */}
+          <Vector3Input
+            label="Position"
+            value={selectedNode.transform.position}
+            onChange={handlePositionChange}
+            step={0.1}
+            precision={2}
+          />
 
-          <div className={styles.vector3Field}>
-            <label>Rotation:</label>
-            <div className={styles.vector3Inputs}>
-              <div className={styles.axisInput}>
-                <span>X</span>
-                <input
-                  type="number"
-                  value={selectedNode.transform.rotation.x.toFixed(1)}
-                  onChange={(e) => handleRotationChange('x', parseFloat(e.target.value))}
-                  step="1"
-                />
-              </div>
-              <div className={styles.axisInput}>
-                <span>Y</span>
-                <input
-                  type="number"
-                  value={selectedNode.transform.rotation.y.toFixed(1)}
-                  onChange={(e) => handleRotationChange('y', parseFloat(e.target.value))}
-                  step="1"
-                />
-              </div>
-              <div className={styles.axisInput}>
-                <span>Z</span>
-                <input
-                  type="number"
-                  value={selectedNode.transform.rotation.z.toFixed(1)}
-                  onChange={(e) => handleRotationChange('z', parseFloat(e.target.value))}
-                  step="1"
-                />
-              </div>
-            </div>
-          </div>
+          {/* Rotation */}
+          <Vector3Input
+            label="Rotation"
+            value={selectedNode.transform.rotation}
+            onChange={handleRotationChange}
+            step={1}
+            precision={1}
+          />
 
-          <div className={styles.vector3Field}>
-            <label>Scale:</label>
-            <div className={styles.vector3Inputs}>
-              <div className={styles.axisInput}>
-                <span>X</span>
-                <input
-                  type="number"
-                  value={selectedNode.transform.scale.x.toFixed(2)}
-                  onChange={(e) => handleScaleChange('x', parseFloat(e.target.value))}
-                  step="0.1"
-                />
-              </div>
-              <div className={styles.axisInput}>
-                <span>Y</span>
-                <input
-                  type="number"
-                  value={selectedNode.transform.scale.y.toFixed(2)}
-                  onChange={(e) => handleScaleChange('y', parseFloat(e.target.value))}
-                  step="0.1"
-                />
-              </div>
-              <div className={styles.axisInput}>
-                <span>Z</span>
-                <input
-                  type="number"
-                  value={selectedNode.transform.scale.z.toFixed(2)}
-                  onChange={(e) => handleScaleChange('z', parseFloat(e.target.value))}
-                  step="0.1"
-                />
-              </div>
-            </div>
-          </div>
+          {/* Scale */}
+          <Vector3Input
+            label="Scale"
+            value={selectedNode.transform.scale}
+            onChange={handleScaleChange}
+            step={0.1}
+            precision={2}
+          />
         </div>
 
-        {/* Components */}
+        {/* 组件列表 */}
         {selectedNode.components.length > 0 && (
           <div className={styles.section}>
             <div className={styles.sectionTitle}>Components</div>
@@ -186,3 +119,35 @@ export const Inspector: React.FC = () => {
     </div>
   );
 };
+
+// ========== Vector3 输入组件 ==========
+
+interface Vector3InputProps {
+  label: string;
+  value: Vector3;
+  onChange: (axis: 'x' | 'y' | 'z', value: number) => void;
+  step: number;
+  precision: number;
+}
+
+const Vector3Input: React.FC<Vector3InputProps> = ({ label, value, onChange, step, precision }) => {
+  return (
+    <div className={styles.vector3Field}>
+      <label>{label}:</label>
+      <div className={styles.vector3Inputs}>
+        {(['x', 'y', 'z'] as const).map((axis) => (
+          <div key={axis} className={styles.axisInput}>
+            <span>{axis.toUpperCase()}</span>
+            <input
+              type="number"
+              value={value[axis].toFixed(precision)}
+              onChange={(e) => onChange(axis, parseFloat(e.target.value))}
+              step={step}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+

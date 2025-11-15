@@ -1,11 +1,22 @@
 /**
- * Moon Editor - Main App Component
+ * Moon Editor - Main Application Component
+ * 
+ * 职责：
+ * 1. 初始化加载场景数据
+ * 2. 注册 C++ → JavaScript 回调
+ * 3. 渲染编辑器布局
  */
 
 import React, { useEffect } from 'react';
 import { EditorLayout } from '../components/EditorLayout';
 import { useEditorStore } from '../store/editorStore';
-import { engine, registerTransformCallback, registerSelectionCallback } from '../utils/engine-bridge';
+import { 
+  engine, 
+  registerTransformCallback, 
+  registerRotationCallback, 
+  registerScaleCallback, 
+  registerSelectionCallback 
+} from '../utils/engine-bridge';
 import '../styles/global.css';
 
 export const App: React.FC = () => {
@@ -13,7 +24,8 @@ export const App: React.FC = () => {
   const updateNodeTransform = useEditorStore((state) => state.updateNodeTransform);
   const setSelectedNode = useEditorStore((state) => state.setSelectedNode);
 
-  // Load initial scene from engine
+  // ========== 场景初始化 ==========
+  
   useEffect(() => {
     const loadScene = async () => {
       try {
@@ -29,18 +41,36 @@ export const App: React.FC = () => {
     loadScene();
   }, [updateScene]);
 
-  // Register Transform update callback from C++
+  // ========== C++ 回调注册 ==========
+  
+  // Position 更新（Gizmo 拖动）
   useEffect(() => {
     registerTransformCallback((nodeId, position) => {
-      console.log(`[App] Received transform update from C++: node=${nodeId}`, position);
+      console.log(`[App] C++ → JS: Position changed (node=${nodeId})`, position);
       updateNodeTransform(nodeId, { position });
     });
   }, [updateNodeTransform]);
 
-  // Register Selection update callback from C++ (Pick 操作)
+  // Rotation 更新（Gizmo 旋转）
+  useEffect(() => {
+    registerRotationCallback((nodeId, rotation) => {
+      console.log(`[App] C++ → JS: Rotation changed (node=${nodeId})`, rotation);
+      updateNodeTransform(nodeId, { rotation });
+    });
+  }, [updateNodeTransform]);
+
+  // Scale 更新（Gizmo 缩放）
+  useEffect(() => {
+    registerScaleCallback((nodeId, scale) => {
+      console.log(`[App] C++ → JS: Scale changed (node=${nodeId})`, scale);
+      updateNodeTransform(nodeId, { scale });
+    });
+  }, [updateNodeTransform]);
+
+  // Selection 更新（鼠标 Pick）
   useEffect(() => {
     registerSelectionCallback((nodeId) => {
-      console.log(`[App] Received selection update from C++: node=${nodeId}`);
+      console.log(`[App] C++ → JS: Node selected (node=${nodeId})`);
       setSelectedNode(nodeId);
     });
   }, [setSelectedNode]);

@@ -3,12 +3,156 @@
 #include "../../../engine/core/EngineCore.h"
 #include "../../../engine/core/Logging/Logger.h"
 #include "../../../external/nlohmann/json.hpp"
+#include <functional>
+#include <unordered_map>
 
 using json = nlohmann::json;
 
 // 外部函数声明（定义在 EditorApp.cpp 中）
 extern void SetSelectedObject(Moon::SceneNode* node);
 extern Moon::SceneNode* GetSelectedObject();
+extern void SetGizmoOperation(const std::string& mode);
+
+// ============================================================================
+// JSON 响应辅助函数
+// ============================================================================
+namespace {
+    // 创建成功响应
+    std::string CreateSuccessResponse() {
+        json result;
+        result["success"] = true;
+        return result.dump();
+    }
+
+    // 创建错误响应
+    std::string CreateErrorResponse(const std::string& errorMessage) {
+        json error;
+        error["error"] = errorMessage;
+        return error.dump();
+    }
+
+    // 解析 Vector3 参数
+    Moon::Vector3 ParseVector3(const json& obj) {
+        return {
+            obj["x"].get<float>(),
+            obj["y"].get<float>(),
+            obj["z"].get<float>()
+        };
+    }
+}
+
+// ============================================================================
+// 命令处理函数类型定义
+// ============================================================================
+using CommandHandler = std::function<std::string(MoonEngineMessageHandler*, const json&, Moon::Scene*)>;
+
+// ============================================================================
+// 各个命令的处理函数
+// ============================================================================
+namespace CommandHandlers {
+    // 获取场景层级
+    std::string HandleGetScene(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        return SceneSerializer::GetSceneHierarchy(scene);
+    }
+
+    // 获取节点详情
+    std::string HandleGetNodeDetails(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        return SceneSerializer::GetNodeDetails(scene, nodeId);
+    }
+
+    // 选中节点
+    std::string HandleSelectNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        MOON_LOG_INFO("MoonEngineMessage", "Selected node: %s (ID=%u)", 
+                     node->GetName().c_str(), nodeId);
+        
+        // 更新全局选中状态（这样 Gizmo 会显示在这个物体上）
+        SetSelectedObject(node);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置位置
+    std::string HandleSetPosition(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        Moon::Vector3 position = ParseVector3(req["position"]);
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        node->GetTransform()->SetLocalPosition(position);
+        MOON_LOG_INFO("MoonEngineMessage", "Set position of node %u to (%.2f, %.2f, %.2f)",
+                     nodeId, position.x, position.y, position.z);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置旋转
+    std::string HandleSetRotation(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        Moon::Vector3 rotation = ParseVector3(req["rotation"]);
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        node->GetTransform()->SetLocalRotation(rotation);
+        MOON_LOG_INFO("MoonEngineMessage", "Set rotation of node %u to (%.2f, %.2f, %.2f)",
+                     nodeId, rotation.x, rotation.y, rotation.z);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置缩放
+    std::string HandleSetScale(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        Moon::Vector3 scale = ParseVector3(req["scale"]);
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        node->GetTransform()->SetLocalScale(scale);
+        MOON_LOG_INFO("MoonEngineMessage", "Set scale of node %u to (%.2f, %.2f, %.2f)",
+                     nodeId, scale.x, scale.y, scale.z);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Gizmo 模式
+    std::string HandleSetGizmoMode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        std::string mode = req["mode"];
+        
+        SetGizmoOperation(mode);
+        MOON_LOG_INFO("MoonEngineMessage", "Gizmo mode set to %s", mode.c_str());
+        
+        return CreateSuccessResponse();
+    }
+}
+
+// ============================================================================
+// 命令映射表（静态初始化）
+// ============================================================================
+static const std::unordered_map<std::string, CommandHandler> s_commandHandlers = {
+    {"getScene",        CommandHandlers::HandleGetScene},
+    {"getNodeDetails",  CommandHandlers::HandleGetNodeDetails},
+    {"selectNode",      CommandHandlers::HandleSelectNode},
+    {"setPosition",     CommandHandlers::HandleSetPosition},
+    {"setRotation",     CommandHandlers::HandleSetRotation},
+    {"setScale",        CommandHandlers::HandleSetScale},
+    {"setGizmoMode",    CommandHandlers::HandleSetGizmoMode}
+};
 
 MoonEngineMessageHandler::MoonEngineMessageHandler()
     : m_engine(nullptr) {
@@ -50,128 +194,38 @@ void MoonEngineMessageHandler::OnQueryCanceled(CefRefPtr<CefBrowser> browser,
 }
 
 // ============================================================================
-// 处理具体请求
+// 处理具体请求（重构后：使用命令映射表）
 // ============================================================================
 std::string MoonEngineMessageHandler::ProcessRequest(const std::string& request) {
     if (!m_engine) {
-        json error;
-        error["error"] = "Engine not initialized";
-        return error.dump();
+        return CreateErrorResponse("Engine not initialized");
     }
 
     try {
         // 解析 JSON 请求
         json req = json::parse(request);
-        std::string command = req["command"];
+        
+        if (!req.contains("command")) {
+            return CreateErrorResponse("Missing 'command' field");
+        }
 
+        std::string command = req["command"];
         Moon::Scene* scene = m_engine->GetScene();
 
-        // ===== getScene =====
-        if (command == "getScene") {
-            return SceneSerializer::GetSceneHierarchy(scene);
-        }
-
-        // ===== getNodeDetails =====
-        if (command == "getNodeDetails") {
-            uint32_t nodeId = req["nodeId"];
-            return SceneSerializer::GetNodeDetails(scene, nodeId);
-        }
-
-        // ===== selectNode =====
-        if (command == "selectNode") {
-            uint32_t nodeId = req["nodeId"];
-            Moon::SceneNode* node = scene->FindNodeByID(nodeId);
-            if (node) {
-                MOON_LOG_INFO("MoonEngineMessage", "Selected node: %s (ID=%u)", 
-                             node->GetName().c_str(), nodeId);
-                
-                // 更新全局选中状态（这样 Gizmo 会显示在这个物体上）
-                SetSelectedObject(node);
-                
-                json result;
-                result["success"] = true;
-                return result.dump();
-            } else {
-                json error;
-                error["error"] = "Node not found";
-                return error.dump();
-            }
-        }
-
-        // ===== setPosition =====
-        if (command == "setPosition") {
-            uint32_t nodeId = req["nodeId"];
-            float x = req["position"]["x"];
-            float y = req["position"]["y"];
-            float z = req["position"]["z"];
-
-            Moon::SceneNode* node = scene->FindNodeByID(nodeId);
-            if (node) {
-                node->GetTransform()->SetLocalPosition({x, y, z});
-                MOON_LOG_INFO("MoonEngineMessage", "Set position of node %u to (%.2f, %.2f, %.2f)",
-                             nodeId, x, y, z);
-                json result;
-                result["success"] = true;
-                return result.dump();
-            } else {
-                json error;
-                error["error"] = "Node not found";
-                return error.dump();
-            }
-        }
-
-        // ===== setRotation =====
-        if (command == "setRotation") {
-            uint32_t nodeId = req["nodeId"];
-            float x = req["rotation"]["x"];
-            float y = req["rotation"]["y"];
-            float z = req["rotation"]["z"];
-
-            Moon::SceneNode* node = scene->FindNodeByID(nodeId);
-            if (node) {
-                node->GetTransform()->SetLocalRotation({x, y, z});
-                MOON_LOG_INFO("MoonEngineMessage", "Set rotation of node %u to (%.2f, %.2f, %.2f)",
-                             nodeId, x, y, z);
-                json result;
-                result["success"] = true;
-                return result.dump();
-            } else {
-                json error;
-                error["error"] = "Node not found";
-                return error.dump();
-            }
-        }
-
-        // ===== setScale =====
-        if (command == "setScale") {
-            uint32_t nodeId = req["nodeId"];
-            float x = req["scale"]["x"];
-            float y = req["scale"]["y"];
-            float z = req["scale"]["z"];
-
-            Moon::SceneNode* node = scene->FindNodeByID(nodeId);
-            if (node) {
-                node->GetTransform()->SetLocalScale({x, y, z});
-                MOON_LOG_INFO("MoonEngineMessage", "Set scale of node %u to (%.2f, %.2f, %.2f)",
-                             nodeId, x, y, z);
-                json result;
-                result["success"] = true;
-                return result.dump();
-            } else {
-                json error;
-                error["error"] = "Node not found";
-                return error.dump();
-            }
+        // 查找命令处理器
+        auto it = s_commandHandlers.find(command);
+        if (it != s_commandHandlers.end()) {
+            // 调用对应的处理函数
+            return it->second(this, req, scene);
         }
 
         // 未知命令
-        json error;
-        error["error"] = "Unknown command: " + command;
-        return error.dump();
+        return CreateErrorResponse("Unknown command: " + command);
+    }
+    catch (const json::exception& e) {
+        return CreateErrorResponse(std::string("JSON parse error: ") + e.what());
     }
     catch (const std::exception& e) {
-        json error;
-        error["error"] = std::string("Exception: ") + e.what();
-        return error.dump();
+        return CreateErrorResponse(std::string("Exception: ") + e.what());
     }
 }

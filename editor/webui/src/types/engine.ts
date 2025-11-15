@@ -70,6 +70,9 @@ export interface MoonEngineAPI {
   // Selection
   selectNode(nodeId: number | null): void;
   
+  // Gizmo Mode
+  setGizmoMode(mode: 'translate' | 'rotate' | 'scale'): void;
+  
   // Component
   addComponent(nodeId: number, componentType: string): Component | null;
   removeComponent(nodeId: number, componentType: string): void;

@@ -218,6 +218,14 @@ void RegisterMoonEngineAPI(CefRefPtr<CefBrowser> browser,
                     }));
                 },
 
+                // 设置 Gizmo 模式
+                setGizmoMode: function(mode) {
+                    return this._call(JSON.stringify({ 
+                        command: 'setGizmoMode', 
+                        mode: mode 
+                    }));
+                },
+
                 // 获取节点详情
                 getNodeDetails: function(nodeId) {
                     return this._call(JSON.stringify({ 

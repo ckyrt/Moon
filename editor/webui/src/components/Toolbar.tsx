@@ -4,10 +4,16 @@
 
 import React from 'react';
 import { useEditorStore } from '@/store/editorStore';
+import { engine } from '@/utils/engine-bridge';
 import styles from './Toolbar.module.css';
 
 export const Toolbar: React.FC = () => {
   const { gizmoMode, setGizmoMode } = useEditorStore();
+
+  const handleGizmoModeChange = (mode: 'translate' | 'rotate' | 'scale') => {
+    setGizmoMode(mode);
+    engine.setGizmoMode(mode);
+  };
 
   return (
     <div className={styles.toolbar}>
@@ -15,21 +21,21 @@ export const Toolbar: React.FC = () => {
         <span className={styles.label}>Transform:</span>
         <button
           className={`${styles.button} ${gizmoMode === 'translate' ? styles.active : ''}`}
-          onClick={() => setGizmoMode('translate')}
+          onClick={() => handleGizmoModeChange('translate')}
           title="Move (W)"
         >
           ⌖
         </button>
         <button
           className={`${styles.button} ${gizmoMode === 'rotate' ? styles.active : ''}`}
-          onClick={() => setGizmoMode('rotate')}
+          onClick={() => handleGizmoModeChange('rotate')}
           title="Rotate (E)"
         >
           ↻
         </button>
         <button
           className={`${styles.button} ${gizmoMode === 'scale' ? styles.active : ''}`}
-          onClick={() => setGizmoMode('scale')}
+          onClick={() => handleGizmoModeChange('scale')}
           title="Scale (R)"
         >
           ▢
