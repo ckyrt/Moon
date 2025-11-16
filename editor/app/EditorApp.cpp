@@ -337,10 +337,9 @@ void InitSceneObjects(EngineCore* engine)
     g_CameraController = &controller;
 
     Moon::Scene* scene = engine->GetScene();
-    Moon::MeshManager* meshMgr = engine->GetMeshManager();
-
+    
     // =========================================================================
-    // ✅ 1. Ground Plane
+    // 创建 Ground Plane
     // =========================================================================
     {
         Moon::SceneNode* ground = scene->CreateNode("Ground");
@@ -349,7 +348,7 @@ void InitSceneObjects(EngineCore* engine)
         Moon::MeshRenderer* renderer = ground->AddComponent<Moon::MeshRenderer>();
 
         renderer->SetMesh(
-            meshMgr->CreatePlane(
+            engine->GetMeshManager()->CreatePlane(
                 50.0f,           // width
                 50.0f,           // depth
                 1,               // subdivisionsX
@@ -358,36 +357,10 @@ void InitSceneObjects(EngineCore* engine)
             )
         );
     }
-
+    
     // =========================================================================
-    // ✅ 2. Cube
+    // 场景初始化完成 - 其他物体通过 UI 创建
     // =========================================================================
-    Moon::SceneNode* cube = scene->CreateNode("Cube");
-    cube->GetTransform()->SetLocalPosition({ -3.0f, 0.0f, 0.0f });
-    auto* cubeRenderer = cube->AddComponent<Moon::MeshRenderer>();
-    cubeRenderer->SetMesh(
-        meshMgr->CreateCube(1.0f, { 1.0f, 0.3f, 0.3f })
-    );
-
-    // =========================================================================
-    // ✅ 3. Sphere
-    // =========================================================================
-    Moon::SceneNode* sphere = scene->CreateNode("Sphere");
-    sphere->GetTransform()->SetLocalPosition({ 0.0f, 0.0f, 0.0f });
-    auto* sphereRenderer = sphere->AddComponent<Moon::MeshRenderer>();
-    sphereRenderer->SetMesh(
-        meshMgr->CreateSphere(0.6f, 32, 16, { 0.3f, 1.0f, 0.3f })
-    );
-
-    // =========================================================================
-    // ✅ 4. Cylinder
-    // =========================================================================
-    Moon::SceneNode* cylinder = scene->CreateNode("Cylinder");
-    cylinder->GetTransform()->SetLocalPosition({ 3.0f, 0.0f, 0.0f });
-    auto* cylinderRenderer = cylinder->AddComponent<Moon::MeshRenderer>();
-    cylinderRenderer->SetMesh(
-        meshMgr->CreateCylinder(0.5f, 0.5f, 1.5f, 24, { 0.3f, 0.5f, 1.0f })
-    );
 }
 
 
@@ -447,15 +420,6 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
         engine->Tick(dt);
         g_CameraController->Update(dt);
 
-        // 旋转 cube
-        {
-            auto* cube = engine->GetScene()->FindNodeByName("Cube");
-            if (cube) {
-                auto r = cube->GetTransform()->GetLocalRotation();
-                cube->GetTransform()->SetLocalRotation({ r.x, r.y + 45.0f * dt, r.z });
-            }
-        }
-
         // 渲染
         auto vp = engine->GetCamera()->GetViewProjectionMatrix();
         g_Renderer->SetViewProjectionMatrix(&vp.m[0][0]);
@@ -481,79 +445,59 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
                 auto proj = engine->GetCamera()->GetProjectionMatrix();
                 auto mat = g_SelectedObject->GetTransform()->GetWorldMatrix();
 
+                // 根据操作类型选择坐标系模式
+                // TRANSLATE: WORLD - 沿世界坐标轴移动
+                // ROTATE: LOCAL - 绕物体自己的轴旋转
+                // SCALE: LOCAL - 沿物体自己的轴缩放
+                ImGuizmo::MODE mode = (g_GizmoOperation == ImGuizmo::TRANSLATE) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
+
                 ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0],
-                    g_GizmoOperation, g_GizmoMode,
+                    g_GizmoOperation, mode,
                     &mat.m[0][0]);
 
                 if (ImGuizmo::IsUsing()) {
-                    // 根据 Gizmo 模式更新不同的 Transform 属性
-                    if (g_GizmoOperation == ImGuizmo::TRANSLATE) {
-                        // 更新位置
-                        Moon::Vector3 newPos = {mat.m[3][0], mat.m[3][1], mat.m[3][2]};
-                        g_SelectedObject->GetTransform()->SetLocalPosition(newPos);
+                    // 方法1: 直接从变换后的世界矩阵提取位置和旋转
+                    Moon::Vector3 newWorldPos = {mat.m[3][0], mat.m[3][1], mat.m[3][2]};
+                    
+                    // 从矩阵提取旋转 Quaternion（更精确）
+                    Moon::Quaternion newWorldRot = Moon::Quaternion::FromMatrix(mat);
+                    
+                    // 提取缩放（从矩阵的列向量长度）
+                    Moon::Vector3 scaleX = {mat.m[0][0], mat.m[0][1], mat.m[0][2]};
+                    Moon::Vector3 scaleY = {mat.m[1][0], mat.m[1][1], mat.m[1][2]};
+                    Moon::Vector3 scaleZ = {mat.m[2][0], mat.m[2][1], mat.m[2][2]};
+                    Moon::Vector3 newWorldScale = {scaleX.Length(), scaleY.Length(), scaleZ.Length()};
+                    
+                    // 设置世界变换
+                    g_SelectedObject->GetTransform()->SetWorldPosition(newWorldPos);
+                    g_SelectedObject->GetTransform()->SetWorldRotation(newWorldRot);
+                    g_SelectedObject->GetTransform()->SetWorldScale(newWorldScale);
 
-                        // 通知 WebUI 位置已更新
-                        if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
-                            char jsCode[512];
-                            snprintf(jsCode, sizeof(jsCode),
-                                "if (window.onTransformChanged) { "
-                                "  window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
-                                "}",
-                                g_SelectedObject->GetID(),
-                                newPos.x, newPos.y, newPos.z
-                            );
-                            
-                            auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
-                            frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
-                        }
-                    }
-                    else if (g_GizmoOperation == ImGuizmo::ROTATE) {
-                        // 从矩阵提取旋转（欧拉角）
-                        float matrixTranslation[3], matrixRotation[3], matrixScale[3];
-                        ImGuizmo::DecomposeMatrixToComponents(&mat.m[0][0], 
-                            matrixTranslation, matrixRotation, matrixScale);
+                    // 获取本地变换用于通知 WebUI
+                    auto localPos = g_SelectedObject->GetTransform()->GetLocalPosition();
+                    auto localRot = g_SelectedObject->GetTransform()->GetLocalEulerAngles();
+                    auto localScale = g_SelectedObject->GetTransform()->GetLocalScale();
+
+                    // 通知 WebUI 变换已更新
+                    if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
+                        char jsCode[1024];
+                        snprintf(jsCode, sizeof(jsCode),
+                            "if (window.onTransformChanged) { "
+                            "  window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
+                            "}"
+                            "if (window.onRotationChanged) { "
+                            "  window.onRotationChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
+                            "}"
+                            "if (window.onScaleChanged) { "
+                            "  window.onScaleChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
+                            "}",
+                            g_SelectedObject->GetID(), localPos.x, localPos.y, localPos.z,
+                            g_SelectedObject->GetID(), localRot.x, localRot.y, localRot.z,
+                            g_SelectedObject->GetID(), localScale.x, localScale.y, localScale.z
+                        );
                         
-                        Moon::Vector3 newRot = {matrixRotation[0], matrixRotation[1], matrixRotation[2]};
-                        g_SelectedObject->GetTransform()->SetLocalRotation(newRot);
-
-                        // 通知 WebUI 旋转已更新
-                        if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
-                            char jsCode[512];
-                            snprintf(jsCode, sizeof(jsCode),
-                                "if (window.onRotationChanged) { "
-                                "  window.onRotationChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
-                                "}",
-                                g_SelectedObject->GetID(),
-                                newRot.x, newRot.y, newRot.z
-                            );
-                            
-                            auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
-                            frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
-                        }
-                    }
-                    else if (g_GizmoOperation == ImGuizmo::SCALE) {
-                        // 从矩阵提取缩放
-                        float matrixTranslation[3], matrixRotation[3], matrixScale[3];
-                        ImGuizmo::DecomposeMatrixToComponents(&mat.m[0][0], 
-                            matrixTranslation, matrixRotation, matrixScale);
-                        
-                        Moon::Vector3 newScale = {matrixScale[0], matrixScale[1], matrixScale[2]};
-                        g_SelectedObject->GetTransform()->SetLocalScale(newScale);
-
-                        // 通知 WebUI 缩放已更新
-                        if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
-                            char jsCode[512];
-                            snprintf(jsCode, sizeof(jsCode),
-                                "if (window.onScaleChanged) { "
-                                "  window.onScaleChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
-                                "}",
-                                g_SelectedObject->GetID(),
-                                newScale.x, newScale.y, newScale.z
-                            );
-                            
-                            auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
-                            frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
-                        }
+                        auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
+                        frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
                     }
                 }
             }

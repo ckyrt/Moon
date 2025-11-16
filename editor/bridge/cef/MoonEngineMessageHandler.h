@@ -22,6 +22,11 @@ public:
     void SetEngineCore(EngineCore* engine);
 
     /**
+     * @brief 获取引擎核心指针
+     */
+    EngineCore* GetEngineCore() const { return m_engine; }
+
+    /**
      * @brief 处理来自渲染进程的查询
      */
     bool OnQuery(CefRefPtr<CefBrowser> browser,

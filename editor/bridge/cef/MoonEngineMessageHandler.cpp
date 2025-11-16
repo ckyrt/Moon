@@ -2,6 +2,7 @@
 #include "../SceneSerializer.h"
 #include "../../../engine/core/EngineCore.h"
 #include "../../../engine/core/Logging/Logger.h"
+#include "../../../engine/core/Scene/MeshRenderer.h"
 #include "../../../external/nlohmann/json.hpp"
 #include <functional>
 #include <unordered_map>
@@ -139,6 +140,78 @@ namespace CommandHandlers {
         
         return CreateSuccessResponse();
     }
+
+    // 创建节点
+    std::string HandleCreateNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        std::string type = req["type"];
+        
+        MOON_LOG_INFO("MoonEngineMessage", "Creating node of type: %s", type.c_str());
+        
+        // 获取引擎核心
+        EngineCore* engine = handler->GetEngineCore();
+        if (!engine) {
+            return CreateErrorResponse("Engine core not available");
+        }
+        
+        // 创建场景节点
+        Moon::SceneNode* newNode = nullptr;
+        
+        if (type == "empty") {
+            newNode = scene->CreateNode("Empty Node");
+        }
+        else if (type == "cube") {
+            newNode = scene->CreateNode("Cube");
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(engine->GetMeshManager()->CreateCube(
+                1.0f,  // size
+                Moon::Vector3(1.0f, 0.5f, 0.2f)  // orange color
+            ));
+        }
+        else if (type == "sphere") {
+            newNode = scene->CreateNode("Sphere");
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(engine->GetMeshManager()->CreateSphere(
+                0.5f,  // radius
+                24,    // segments
+                16,    // rings
+                Moon::Vector3(0.2f, 0.5f, 1.0f)  // blue color
+            ));
+        }
+        else if (type == "cylinder") {
+            newNode = scene->CreateNode("Cylinder");
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(engine->GetMeshManager()->CreateCylinder(
+                0.5f,  // radiusTop
+                0.5f,  // radiusBottom
+                1.0f,  // height
+                24,    // segments
+                Moon::Vector3(0.2f, 1.0f, 0.5f)  // green color
+            ));
+        }
+        else if (type == "plane") {
+            newNode = scene->CreateNode("Plane");
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(engine->GetMeshManager()->CreatePlane(
+                2.0f,  // width
+                2.0f,  // depth
+                1,     // subdivisionsX
+                1,     // subdivisionsZ
+                Moon::Vector3(0.7f, 0.7f, 0.7f)  // gray color
+            ));
+        }
+        else {
+            return CreateErrorResponse("Unknown node type: " + type);
+        }
+        
+        if (!newNode) {
+            return CreateErrorResponse("Failed to create node");
+        }
+        
+        MOON_LOG_INFO("MoonEngineMessage", "Created node: %s (ID=%u)", 
+                     newNode->GetName().c_str(), newNode->GetID());
+        
+        return CreateSuccessResponse();
+    }
 }
 
 // ============================================================================
@@ -151,7 +224,8 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"setPosition",     CommandHandlers::HandleSetPosition},
     {"setRotation",     CommandHandlers::HandleSetRotation},
     {"setScale",        CommandHandlers::HandleSetScale},
-    {"setGizmoMode",    CommandHandlers::HandleSetGizmoMode}
+    {"setGizmoMode",    CommandHandlers::HandleSetGizmoMode},
+    {"createNode",      CommandHandlers::HandleCreateNode}
 };
 
 MoonEngineMessageHandler::MoonEngineMessageHandler()

@@ -211,20 +211,24 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         float rotationSpeed = 45.0f; // degrees per second
         
         // Rotate cube around Y axis
-        Moon::Vector3 cubeRot = cube->GetTransform()->GetLocalRotation();
-        cube->GetTransform()->SetLocalRotation(Moon::Vector3(cubeRot.x, cubeRot.y + rotationSpeed * static_cast<float>(dt), cubeRot.z));
-        
+        Moon::Vector3 cubeRot = cube->GetTransform()->GetLocalEulerAngles();
+        cubeRot.y += rotationSpeed * (float)dt;
+        cube->GetTransform()->SetLocalRotation(cubeRot);
+
         // Rotate sphere around X axis
-        Moon::Vector3 sphereRot = sphere->GetTransform()->GetLocalRotation();
-        sphere->GetTransform()->SetLocalRotation(Moon::Vector3(sphereRot.x + rotationSpeed * 0.5f * static_cast<float>(dt), sphereRot.y, sphereRot.z));
-        
-        // Rotate torus around Y axis (faster)
-        Moon::Vector3 torusRot = torus->GetTransform()->GetLocalRotation();
-        torus->GetTransform()->SetLocalRotation(Moon::Vector3(torusRot.x, torusRot.y + rotationSpeed * 1.5f * static_cast<float>(dt), torusRot.z));
-        
-        // Rotate parent hierarchy
-        Moon::Vector3 parentRot = parent->GetTransform()->GetLocalRotation();
-        parent->GetTransform()->SetLocalRotation(Moon::Vector3(parentRot.x, parentRot.y + 30.0f * static_cast<float>(dt), parentRot.z));
+        Moon::Vector3 sphereRot = sphere->GetTransform()->GetLocalEulerAngles();
+        sphereRot.x += rotationSpeed * 0.5f * (float)dt;
+        sphere->GetTransform()->SetLocalRotation(sphereRot);
+
+        // Rotate torus around Y axis
+        Moon::Vector3 torusRot = torus->GetTransform()->GetLocalEulerAngles();
+        torusRot.y += rotationSpeed * 1.5f * (float)dt;
+        torus->GetTransform()->SetLocalRotation(torusRot);
+
+        // Rotate parent
+        Moon::Vector3 parentRot = parent->GetTransform()->GetLocalEulerAngles();
+        parentRot.y += 30.0f * (float)dt;
+        parent->GetTransform()->SetLocalRotation(parentRot);
 
         // Set camera for rendering
         Moon::Matrix4x4 viewProj = camera->GetViewProjectionMatrix();

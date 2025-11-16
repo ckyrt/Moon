@@ -83,6 +83,9 @@ export interface MoonEngineAPI {
   // CSG Operations (Phase 3)
   createCSGPrimitive(type: 'box' | 'sphere' | 'cylinder', params: Record<string, unknown>): SceneNode;
   performCSGOperation(nodeId1: number, nodeId2: number, operation: 'union' | 'subtract' | 'intersect'): SceneNode;
+  
+  // Primitive Creation
+  createPrimitive(type: string): Promise<void>;
 }
 
 // ============ Window Extensions ============

@@ -147,6 +147,33 @@ const createRealAPI = (): MoonEngineAPI => {
       // TODO: Implement in C++
       return {} as SceneNode;
     }),
+
+    // ========== Primitive Creation ==========
+    createPrimitive: wrapAsyncEngineCall('createPrimitive', async (type: string) => {
+      if (!window.cefQuery) {
+        console.warn('[createPrimitive] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'createNode',
+          type
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            console.log(`[createPrimitive] Success: ${response}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[createPrimitive] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
   };
 };
 
