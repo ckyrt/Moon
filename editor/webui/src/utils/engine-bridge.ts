@@ -122,6 +122,33 @@ const createRealAPI = (): MoonEngineAPI => {
       realEngine.setGizmoMode(mode);
     }),
 
+    // 🎯 设置 Gizmo 坐标系模式（world/local）
+    setGizmoCoordinateMode: wrapAsyncEngineCall('setGizmoCoordinateMode', async (mode: 'world' | 'local') => {
+      if (!window.cefQuery) {
+        console.warn('[setGizmoCoordinateMode] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setGizmoCoordinateMode',
+          mode: mode
+        });
+
+        window.cefQuery({
+          request: request,
+          onSuccess: (response: string) => {
+            console.log('[setGizmoCoordinateMode] Success:', response);
+            resolve();
+          },
+          onFailure: (error_code: number, error_message: string) => {
+            console.error('[setGizmoCoordinateMode] Failed:', error_message);
+            reject(new Error(error_message));
+          }
+        });
+      });
+    }),
+
     // ========== Component Management (未实现) ==========
     addComponent: wrapEngineCall('addComponent', (_nodeId: number, _componentType: string) => {
       // TODO: Implement in C++

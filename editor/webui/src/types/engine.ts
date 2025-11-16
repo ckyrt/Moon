@@ -73,6 +73,9 @@ export interface MoonEngineAPI {
   // Gizmo Mode
   setGizmoMode(mode: 'translate' | 'rotate' | 'scale'): void;
   
+  // 🎯 Gizmo 坐标系模式（World/Local，Unity 风格）
+  setGizmoCoordinateMode(mode: 'world' | 'local'): Promise<void>;
+  
   // Component
   addComponent(nodeId: number, componentType: string): Component | null;
   removeComponent(nodeId: number, componentType: string): void;

@@ -60,7 +60,15 @@ static EditorBridge* g_EditorBridge = nullptr;  // 用于通知 WebUI
 
 // Gizmo 模式
 static ImGuizmo::OPERATION g_GizmoOperation = ImGuizmo::TRANSLATE;
-static ImGuizmo::MODE g_GizmoMode = ImGuizmo::WORLD;
+static ImGuizmo::MODE g_GizmoMode = ImGuizmo::LOCAL;  // 🎯 World/Local 模式（可切换）
+static bool g_WasUsingGizmo = false;  // 跟踪 Gizmo 使用状态
+
+// 🎯 方案 C：记录上一帧的旋转，用于符号一致性检查
+static Moon::Quaternion g_LastRotation = Moon::Quaternion(0, 0, 0, 1);  // 初始为单位四元数
+
+// 🎯 Gizmo 矩阵缓存：确保拖动期间使用同一个矩阵实例
+static Moon::Matrix4x4 g_GizmoMatrix;
+static bool g_GizmoMatrixInitialized = false;
 
 // 全局选中状态访问接口
 void SetSelectedObject(Moon::SceneNode* node)
@@ -84,6 +92,19 @@ void SetGizmoOperation(const std::string& mode)
     }
     else if (mode == "scale") {
         g_GizmoOperation = ImGuizmo::SCALE;
+    }
+}
+
+// 🎯 World/Local 模式切换接口（Unity 风格）
+void SetGizmoMode(const std::string& mode)
+{
+    if (mode == "world") {
+        g_GizmoMode = ImGuizmo::WORLD;
+        MOON_LOG_INFO("EditorApp", "Gizmo mode set to WORLD");
+    }
+    else if (mode == "local") {
+        g_GizmoMode = ImGuizmo::LOCAL;
+        MOON_LOG_INFO("EditorApp", "Gizmo mode set to LOCAL");
     }
 }
 
@@ -363,6 +384,48 @@ void InitSceneObjects(EngineCore* engine)
     // =========================================================================
 }
 
+// ====================== Gizmo Helper Functions ======================
+
+// 计算 MATRIX 的世界缩放（列向量长度）
+inline Moon::Vector3 ExtractScale(const Moon::Matrix4x4& m)
+{
+    return {
+        Moon::Vector3(m.m[0][0], m.m[0][1], m.m[0][2]).Length(),
+        Moon::Vector3(m.m[1][0], m.m[1][1], m.m[1][2]).Length(),
+        Moon::Vector3(m.m[2][0], m.m[2][1], m.m[2][2]).Length()
+    };
+}
+
+// 移除缩放，得到纯旋转矩阵
+inline Moon::Matrix4x4 RemoveScale(const Moon::Matrix4x4& m, const Moon::Vector3& s)
+{
+    Moon::Matrix4x4 r = m;
+    if (s.x > 0.0001f) { r.m[0][0] /= s.x; r.m[0][1] /= s.x; r.m[0][2] /= s.x; }
+    if (s.y > 0.0001f) { r.m[1][0] /= s.y; r.m[1][1] /= s.y; r.m[1][2] /= s.y; }
+    if (s.z > 0.0001f) { r.m[2][0] /= s.z; r.m[2][1] /= s.z; r.m[2][2] /= s.z; }
+    return r;
+}
+
+// Quaternion 双覆盖修复
+inline Moon::Quaternion StabilizeQuaternion(
+    Moon::Quaternion newQ,
+    const Moon::Quaternion& lastQ)
+{
+    float dot =
+        newQ.x * lastQ.x +
+        newQ.y * lastQ.y +
+        newQ.z * lastQ.z +
+        newQ.w * lastQ.w;
+
+    if (dot < 0.f)
+    {
+        newQ.x = -newQ.x;
+        newQ.y = -newQ.y;
+        newQ.z = -newQ.z;
+        newQ.w = -newQ.w;
+    }
+    return newQ;
+}
 
 // ============================================================================
 // 主循环
@@ -433,73 +496,141 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
             });
 
         // ImGui + ImGuizmo
-        if (g_ImGuiWin32) {
+        if (g_ImGuiWin32)
+        {
             g_ImGuiWin32->NewFrame(g_ViewportRect.width, g_ViewportRect.height,
                 Diligent::SURFACE_TRANSFORM_OPTIMAL);
 
             ImGuizmo::BeginFrame();
             ImGuizmo::SetRect(0, 0, (float)g_ViewportRect.width, (float)g_ViewportRect.height);
 
-            if (g_SelectedObject) {
+            if (g_SelectedObject)
+            {
+                Moon::Transform* tr = g_SelectedObject->GetTransform();
+                Moon::Transform* parent = g_SelectedObject->GetParent()
+                    ? g_SelectedObject->GetParent()->GetTransform()
+                    : nullptr;
+
                 auto view = engine->GetCamera()->GetViewMatrix();
                 auto proj = engine->GetCamera()->GetProjectionMatrix();
-                auto mat = g_SelectedObject->GetTransform()->GetWorldMatrix();
 
-                // 根据操作类型选择坐标系模式
-                // TRANSLATE: WORLD - 沿世界坐标轴移动
-                // ROTATE: LOCAL - 绕物体自己的轴旋转
-                // SCALE: LOCAL - 沿物体自己的轴缩放
-                ImGuizmo::MODE mode = (g_GizmoOperation == ImGuizmo::TRANSLATE) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
+                bool usingGizmo = ImGuizmo::IsUsing();
 
-                ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0],
+                //-------------------------------------------------------
+                // Matrix 缓存：拖动期间保持同一个矩阵
+                //-------------------------------------------------------
+                if (!g_WasUsingGizmo && usingGizmo)
+                    g_GizmoMatrix = tr->GetWorldMatrix();     // 开始拖动
+                else if (!usingGizmo)
+                    g_GizmoMatrix = tr->GetWorldMatrix();     // 空闲刷新
+
+                //-------------------------------------------------------
+                // 选择 Gizmo 模式（Unity 风格）
+                //-------------------------------------------------------
+                ImGuizmo::MODE mode =
+                    (g_GizmoOperation == ImGuizmo::SCALE)
+                    ? ImGuizmo::LOCAL                   // Scale 永远 Local
+                    : g_GizmoMode;                      // Move/Rotate 使用用户选择的 Local/Global
+
+                //-------------------------------------------------------
+                // 🔹 转换为 Column-Major（ImGuizmo 需要）
+                //-------------------------------------------------------
+                float viewColMajor[16], projColMajor[16], gizmoColMajor[16];
+                ConvertRowMajorToColumnMajor(view, viewColMajor);
+                ConvertRowMajorToColumnMajor(proj, projColMajor);
+                ConvertRowMajorToColumnMajor(g_GizmoMatrix, gizmoColMajor);
+
+                //-------------------------------------------------------
+                // 执行 gizmo 操作（修改 gizmoColMajor）
+                //-------------------------------------------------------
+                ImGuizmo::Manipulate(viewColMajor, projColMajor,
                     g_GizmoOperation, mode,
-                    &mat.m[0][0]);
+                    gizmoColMajor);
 
-                if (ImGuizmo::IsUsing()) {
-                    // 方法1: 直接从变换后的世界矩阵提取位置和旋转
-                    Moon::Vector3 newWorldPos = {mat.m[3][0], mat.m[3][1], mat.m[3][2]};
-                    
-                    // 从矩阵提取旋转 Quaternion（更精确）
-                    Moon::Quaternion newWorldRot = Moon::Quaternion::FromMatrix(mat);
-                    
-                    // 提取缩放（从矩阵的列向量长度）
-                    Moon::Vector3 scaleX = {mat.m[0][0], mat.m[0][1], mat.m[0][2]};
-                    Moon::Vector3 scaleY = {mat.m[1][0], mat.m[1][1], mat.m[1][2]};
-                    Moon::Vector3 scaleZ = {mat.m[2][0], mat.m[2][1], mat.m[2][2]};
-                    Moon::Vector3 newWorldScale = {scaleX.Length(), scaleY.Length(), scaleZ.Length()};
-                    
-                    // 设置世界变换
-                    g_SelectedObject->GetTransform()->SetWorldPosition(newWorldPos);
-                    g_SelectedObject->GetTransform()->SetWorldRotation(newWorldRot);
-                    g_SelectedObject->GetTransform()->SetWorldScale(newWorldScale);
+                //-------------------------------------------------------
+                // 🔹 转换回 Row-Major
+                //-------------------------------------------------------
+                ConvertColumnMajorToRowMajor(gizmoColMajor, g_GizmoMatrix);
 
-                    // 获取本地变换用于通知 WebUI
-                    auto localPos = g_SelectedObject->GetTransform()->GetLocalPosition();
-                    auto localRot = g_SelectedObject->GetTransform()->GetLocalEulerAngles();
-                    auto localScale = g_SelectedObject->GetTransform()->GetLocalScale();
+                //-------------------------------------------------------
+                // 拖动中：实时应用变换到 Transform
+                //-------------------------------------------------------
+                if (usingGizmo)
+                {
+                    if (g_GizmoOperation == ImGuizmo::TRANSLATE)
+                    {
+                        Moon::Vector3 worldPos = {
+                            g_GizmoMatrix.m[3][0],
+                            g_GizmoMatrix.m[3][1],
+                            g_GizmoMatrix.m[3][2]
+                        };
 
-                    // 通知 WebUI 变换已更新
-                    if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
-                        char jsCode[1024];
-                        snprintf(jsCode, sizeof(jsCode),
-                            "if (window.onTransformChanged) { "
-                            "  window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
-                            "}"
-                            "if (window.onRotationChanged) { "
-                            "  window.onRotationChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
-                            "}"
-                            "if (window.onScaleChanged) { "
-                            "  window.onScaleChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); "
-                            "}",
+                        // world -> local
+                        if (parent)
+                            worldPos = parent->GetWorldMatrix().Inverse().MultiplyPoint(worldPos);
+
+                        tr->SetLocalPosition(worldPos);
+                    }
+                    else if (g_GizmoOperation == ImGuizmo::ROTATE)
+                    {
+                        Moon::Vector3 scale = ExtractScale(g_GizmoMatrix);
+                        Moon::Matrix4x4 rotMat = RemoveScale(g_GizmoMatrix, scale);
+
+                        Moon::Quaternion worldRot = Moon::Quaternion::FromMatrix(rotMat);
+                            
+                        // 保持符号连续性
+                        worldRot = StabilizeQuaternion(worldRot, g_LastRotation);
+                        g_LastRotation = worldRot;
+
+                        // world → local
+                        if (parent)
+                            worldRot = parent->GetWorldRotation().Inverse() * worldRot;
+
+                        tr->SetLocalRotation(worldRot);
+                    }
+                    else if (g_GizmoOperation == ImGuizmo::SCALE)
+                    {
+                        Moon::Vector3 worldScale = ExtractScale(g_GizmoMatrix);
+
+                        if (parent)
+                        {
+                            Moon::Vector3 parentScale = parent->GetWorldScale();
+                            if (parentScale.x > 0.0001f) worldScale.x /= parentScale.x;
+                            if (parentScale.y > 0.0001f) worldScale.y /= parentScale.y;
+                            if (parentScale.z > 0.0001f) worldScale.z /= parentScale.z;
+                        }
+
+                        tr->SetLocalScale(worldScale);
+                    }
+                }
+
+                //-------------------------------------------------------
+                // 拖动结束：通知 Web UI
+                //-------------------------------------------------------
+                if (g_WasUsingGizmo && !usingGizmo)
+                {
+                    auto localPos = tr->GetLocalPosition();
+                    auto localRot = tr->GetLocalEulerAngles();
+                    auto localScale = tr->GetLocalScale();
+
+                    if (bridge.GetClient() && bridge.GetClient()->GetBrowser())
+                    {
+                        char js[1024];
+                        snprintf(js, sizeof(js),
+                            "if (window.onTransformChanged) { window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }"
+                            "if (window.onRotationChanged) { window.onRotationChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }"
+                            "if (window.onScaleChanged) { window.onScaleChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }",
                             g_SelectedObject->GetID(), localPos.x, localPos.y, localPos.z,
                             g_SelectedObject->GetID(), localRot.x, localRot.y, localRot.z,
                             g_SelectedObject->GetID(), localScale.x, localScale.y, localScale.z
                         );
-                        
+
                         auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
-                        frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
+                        frame->ExecuteJavaScript(js, frame->GetURL(), 0);
                     }
                 }
+
+                g_WasUsingGizmo = usingGizmo;
             }
 
             g_ImGuiWin32->Render(g_Renderer->GetContext());

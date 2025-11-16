@@ -13,6 +13,7 @@ using json = nlohmann::json;
 extern void SetSelectedObject(Moon::SceneNode* node);
 extern Moon::SceneNode* GetSelectedObject();
 extern void SetGizmoOperation(const std::string& mode);
+extern void SetGizmoMode(const std::string& mode);  // 🎯 World/Local 切换
 
 // ============================================================================
 // JSON 响应辅助函数
@@ -131,12 +132,22 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 设置 Gizmo 模式
+    // 设置 Gizmo 操作模式（translate/rotate/scale）
     std::string HandleSetGizmoMode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         std::string mode = req["mode"];
         
         SetGizmoOperation(mode);
-        MOON_LOG_INFO("MoonEngineMessage", "Gizmo mode set to %s", mode.c_str());
+        MOON_LOG_INFO("MoonEngineMessage", "Gizmo operation set to %s", mode.c_str());
+        
+        return CreateSuccessResponse();
+    }
+
+    // 🎯 设置 Gizmo 坐标系模式（world/local）
+    std::string HandleSetGizmoCoordinateMode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        std::string mode = req["mode"];
+        
+        SetGizmoMode(mode);
+        MOON_LOG_INFO("MoonEngineMessage", "Gizmo coordinate mode set to %s", mode.c_str());
         
         return CreateSuccessResponse();
     }
@@ -218,14 +229,15 @@ namespace CommandHandlers {
 // 命令映射表（静态初始化）
 // ============================================================================
 static const std::unordered_map<std::string, CommandHandler> s_commandHandlers = {
-    {"getScene",        CommandHandlers::HandleGetScene},
-    {"getNodeDetails",  CommandHandlers::HandleGetNodeDetails},
-    {"selectNode",      CommandHandlers::HandleSelectNode},
-    {"setPosition",     CommandHandlers::HandleSetPosition},
-    {"setRotation",     CommandHandlers::HandleSetRotation},
-    {"setScale",        CommandHandlers::HandleSetScale},
-    {"setGizmoMode",    CommandHandlers::HandleSetGizmoMode},
-    {"createNode",      CommandHandlers::HandleCreateNode}
+    {"getScene",                 CommandHandlers::HandleGetScene},
+    {"getNodeDetails",           CommandHandlers::HandleGetNodeDetails},
+    {"selectNode",               CommandHandlers::HandleSelectNode},
+    {"setPosition",              CommandHandlers::HandleSetPosition},
+    {"setRotation",              CommandHandlers::HandleSetRotation},
+    {"setScale",                 CommandHandlers::HandleSetScale},
+    {"setGizmoMode",             CommandHandlers::HandleSetGizmoMode},
+    {"setGizmoCoordinateMode",   CommandHandlers::HandleSetGizmoCoordinateMode},  // 🎯 World/Local 切换
+    {"createNode",               CommandHandlers::HandleCreateNode}
 };
 
 MoonEngineMessageHandler::MoonEngineMessageHandler()

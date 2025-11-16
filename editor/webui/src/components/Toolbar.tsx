@@ -10,11 +10,24 @@ import styles from './Toolbar.module.css';
 export const Toolbar: React.FC = () => {
   const { gizmoMode, setGizmoMode, updateScene } = useEditorStore();
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [coordinateMode, setCoordinateMode] = useState<'world' | 'local'>('world');  // 🎯 World/Local 模式
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleGizmoModeChange = (mode: 'translate' | 'rotate' | 'scale') => {
     setGizmoMode(mode);
     engine.setGizmoMode(mode);
+  };
+
+  // 🎯 切换 World/Local 坐标系模式
+  const handleCoordinateModeToggle = async () => {
+    const newMode = coordinateMode === 'world' ? 'local' : 'world';
+    setCoordinateMode(newMode);
+    try {
+      await engine.setGizmoCoordinateMode(newMode);
+      console.log(`[Toolbar] Coordinate mode set to ${newMode}`);
+    } catch (error) {
+      console.error('[Toolbar] Failed to set coordinate mode:', error);
+    }
   };
 
   const handleCreateObject = async (type: string) => {
@@ -82,6 +95,17 @@ export const Toolbar: React.FC = () => {
           title="Scale (R)"
         >
           ▢
+        </button>
+      </div>
+
+      {/* 🎯 World/Local 坐标系切换（Unity 风格） */}
+      <div className={styles.section}>
+        <button
+          className={`${styles.button} ${styles.coordinateToggle}`}
+          onClick={handleCoordinateModeToggle}
+          title={`Coordinate System: ${coordinateMode === 'world' ? 'World' : 'Local'}`}
+        >
+          {coordinateMode === 'world' ? '🌍 World' : '📍 Local'}
         </button>
       </div>
       
