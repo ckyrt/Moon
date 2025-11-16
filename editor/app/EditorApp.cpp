@@ -427,6 +427,53 @@ inline Moon::Quaternion StabilizeQuaternion(
     return newQ;
 }
 
+inline void ConvertRowMajorToColumnMajor(const Moon::Matrix4x4& rm, float cm[16])
+{
+    cm[0] = rm.m[0][0];
+    cm[1] = rm.m[1][0];
+    cm[2] = rm.m[2][0];
+    cm[3] = rm.m[3][0];
+
+    cm[4] = rm.m[0][1];
+    cm[5] = rm.m[1][1];
+    cm[6] = rm.m[2][1];
+    cm[7] = rm.m[3][1];
+
+    cm[8] = rm.m[0][2];
+    cm[9] = rm.m[1][2];
+    cm[10] = rm.m[2][2];
+    cm[11] = rm.m[3][2];
+
+    cm[12] = rm.m[0][3];
+    cm[13] = rm.m[1][3];
+    cm[14] = rm.m[2][3];
+    cm[15] = rm.m[3][3];
+}
+
+inline void ConvertColumnMajorToRowMajor(const float cm[16], Moon::Matrix4x4& rm)
+{
+    rm.m[0][0] = cm[0];
+    rm.m[0][1] = cm[4];
+    rm.m[0][2] = cm[8];
+    rm.m[0][3] = cm[12];
+
+    rm.m[1][0] = cm[1];
+    rm.m[1][1] = cm[5];
+    rm.m[1][2] = cm[9];
+    rm.m[1][3] = cm[13];
+
+    rm.m[2][0] = cm[2];
+    rm.m[2][1] = cm[6];
+    rm.m[2][2] = cm[10];
+    rm.m[2][3] = cm[14];
+
+    rm.m[3][0] = cm[3];
+    rm.m[3][1] = cm[7];
+    rm.m[3][2] = cm[11];
+    rm.m[3][3] = cm[15];
+}
+
+
 // ============================================================================
 // 主循环
 // ============================================================================
@@ -514,43 +561,32 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
                 auto view = engine->GetCamera()->GetViewMatrix();
                 auto proj = engine->GetCamera()->GetProjectionMatrix();
 
-                bool usingGizmo = ImGuizmo::IsUsing();
-
                 //-------------------------------------------------------
-                // Matrix 缓存：拖动期间保持同一个矩阵
-                //-------------------------------------------------------
-                if (!g_WasUsingGizmo && usingGizmo)
-                    g_GizmoMatrix = tr->GetWorldMatrix();     // 开始拖动
-                else if (!usingGizmo)
-                    g_GizmoMatrix = tr->GetWorldMatrix();     // 空闲刷新
-
-                //-------------------------------------------------------
-                // 选择 Gizmo 模式（Unity 风格）
+                // 选择 Gizmo 模式
                 //-------------------------------------------------------
                 ImGuizmo::MODE mode =
                     (g_GizmoOperation == ImGuizmo::SCALE)
-                    ? ImGuizmo::LOCAL                   // Scale 永远 Local
-                    : g_GizmoMode;                      // Move/Rotate 使用用户选择的 Local/Global
+                    ? ImGuizmo::LOCAL
+                    : g_GizmoMode;
 
                 //-------------------------------------------------------
-                // 🔹 转换为 Column-Major（ImGuizmo 需要）
+                // ✅ 只在非拖动时刷新矩阵（保持拖动连续性）
                 //-------------------------------------------------------
-                float viewColMajor[16], projColMajor[16], gizmoColMajor[16];
-                ConvertRowMajorToColumnMajor(view, viewColMajor);
-                ConvertRowMajorToColumnMajor(proj, projColMajor);
-                ConvertRowMajorToColumnMajor(g_GizmoMatrix, gizmoColMajor);
+                if (!g_WasUsingGizmo) {
+                    g_GizmoMatrix = tr->GetWorldMatrix();
+                }
 
                 //-------------------------------------------------------
-                // 执行 gizmo 操作（修改 gizmoColMajor）
+                // 调用 Manipulate
                 //-------------------------------------------------------
-                ImGuizmo::Manipulate(viewColMajor, projColMajor,
+                ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0],
                     g_GizmoOperation, mode,
-                    gizmoColMajor);
+                    &g_GizmoMatrix.m[0][0]);
 
                 //-------------------------------------------------------
-                // 🔹 转换回 Row-Major
+                // ✅ Manipulate 之后读取状态
                 //-------------------------------------------------------
-                ConvertColumnMajorToRowMajor(gizmoColMajor, g_GizmoMatrix);
+                bool usingGizmo = ImGuizmo::IsUsing();
 
                 //-------------------------------------------------------
                 // 拖动中：实时应用变换到 Transform
@@ -624,7 +660,7 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
                             g_SelectedObject->GetID(), localRot.x, localRot.y, localRot.z,
                             g_SelectedObject->GetID(), localScale.x, localScale.y, localScale.z
                         );
-
+                        
                         auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
                         frame->ExecuteJavaScript(js, frame->GetURL(), 0);
                     }
