@@ -116,6 +116,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="EditorApp.cpp" />
+    <ClCompile Include="EditorApp_Init.cpp" />
+    <ClCompile Include="EditorApp_WndProc.cpp" />
+    <ClCompile Include="EditorApp_Gizmo.cpp" />
+    <ClCompile Include="EditorApp_Render.cpp" />
+    <ClCompile Include="EditorApp_Utils.cpp" />
+    <ClCompile Include="EditorApp_Cleanup.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="EditorApp.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\bridge\EditorBridge.vcxproj">

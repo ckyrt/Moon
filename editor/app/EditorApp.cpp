@@ -1,22 +1,19 @@
-﻿// ============================================================================
-// EditorApp.cpp - Moon Engine 编辑器主程序（Refined Version）
+// ============================================================================
+// EditorApp.cpp - Moon Engine 编辑器主程序（重构版本）
 // ============================================================================
 // ✅ 集成 CEF 浏览器显示 React 编辑器界面
 // ✅ 集成 EngineCore 渲染3D场景
 // ✅ 集成 ImGui + ImGuizmo 实现 3D 操作手柄
-// ✅ 此版本仅优化结构与可读性，不修改任何逻辑或行为
 // ============================================================================
 
-#include <Windows.h>
-#include <windowsx.h>  // GET_X_LPARAM, GET_Y_LPARAM
+#include "EditorApp.h"
 
-// ⚠️ 解决 CEF 与 Windows.h 的宏冲突
+#include <Windows.h>
 #undef GetNextSibling
 #undef GetFirstChild
 
 #include <iostream>
 #include <chrono>
-#include <string>
 
 // CEF
 #include "EditorBridge.h"
@@ -26,51 +23,43 @@
 #include "../engine/core/EngineCore.h"
 #include "../engine/core/Logging/Logger.h"
 #include "../engine/core/Camera/FPSCameraController.h"
-#include "../engine/core/Scene/Scene.h"
-#include "../engine/core/Scene/SceneNode.h"
-#include "../engine/core/Scene/MeshRenderer.h"
 
 // 渲染系统
 #include "../engine/render/DiligentRenderer.h"
-#include "../engine/render/RenderCommon.h"
 
 // ImGui & ImGuizmo
 #include "imgui.h"
 #include "ImGuiImplWin32.hpp"
-#include "ImGuiImplDiligent.hpp"
 #include "ImGuizmo.h"
 
 // Diligent
 #include "Graphics/GraphicsEngine/interface/SwapChain.h"
 #include "Graphics/GraphicsEngine/interface/GraphicsTypes.h"
 
-// ImGui Win32 消息处理函数
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+// ============================================================================
+// 全局对象定义
+// ============================================================================
+EngineCore* g_Engine = nullptr;
+DiligentRenderer* g_Renderer = nullptr;
+Moon::FPSCameraController* g_CameraController = nullptr;
+Diligent::ImGuiImplWin32* g_ImGuiWin32 = nullptr;
+HWND g_EngineWindow = nullptr;
+Moon::SceneNode* g_SelectedObject = nullptr;
+EditorBridge* g_EditorBridge = nullptr;
+
+// Gizmo 状态
+ImGuizmo::OPERATION g_GizmoOperation = ImGuizmo::TRANSLATE;
+ImGuizmo::MODE g_GizmoMode = ImGuizmo::LOCAL;
+bool g_WasUsingGizmo = false;
+Moon::Quaternion g_LastRotation = Moon::Quaternion(0, 0, 0, 1);
+Moon::Matrix4x4 g_GizmoMatrix;
+
+// Viewport 信息
+ViewportRect g_ViewportRect;
 
 // ============================================================================
-// 全局对象
+// 公共接口实现
 // ============================================================================
-static EngineCore* g_Engine = nullptr;
-static DiligentRenderer* g_Renderer = nullptr;
-static Moon::FPSCameraController* g_CameraController = nullptr;
-static Diligent::ImGuiImplWin32* g_ImGuiWin32 = nullptr;
-static HWND g_EngineWindow = nullptr;
-static Moon::SceneNode* g_SelectedObject = nullptr;
-static EditorBridge* g_EditorBridge = nullptr;  // 用于通知 WebUI
-
-// Gizmo 模式
-static ImGuizmo::OPERATION g_GizmoOperation = ImGuizmo::TRANSLATE;
-static ImGuizmo::MODE g_GizmoMode = ImGuizmo::LOCAL;  // 🎯 World/Local 模式（可切换）
-static bool g_WasUsingGizmo = false;  // 跟踪 Gizmo 使用状态
-
-// 🎯 方案 C：记录上一帧的旋转，用于符号一致性检查
-static Moon::Quaternion g_LastRotation = Moon::Quaternion(0, 0, 0, 1);  // 初始为单位四元数
-
-// 🎯 Gizmo 矩阵缓存：确保拖动期间使用同一个矩阵实例
-static Moon::Matrix4x4 g_GizmoMatrix;
-static bool g_GizmoMatrixInitialized = false;
-
-// 全局选中状态访问接口
 void SetSelectedObject(Moon::SceneNode* node)
 {
     g_SelectedObject = node;
@@ -81,7 +70,6 @@ Moon::SceneNode* GetSelectedObject()
     return g_SelectedObject;
 }
 
-// Gizmo 模式设置接口
 void SetGizmoOperation(const std::string& mode)
 {
     if (mode == "translate") {
@@ -95,7 +83,6 @@ void SetGizmoOperation(const std::string& mode)
     }
 }
 
-// 🎯 World/Local 模式切换接口（Unity 风格）
 void SetGizmoMode(const std::string& mode)
 {
     if (mode == "world") {
@@ -107,372 +94,6 @@ void SetGizmoMode(const std::string& mode)
         MOON_LOG_INFO("EditorApp", "Gizmo mode set to LOCAL");
     }
 }
-
-// 引擎窗口类名
-static const wchar_t* kEngineWindowClass = L"MoonEngine_Viewport";
-
-// HTML Viewport 信息（JS 提供）
-struct ViewportRect {
-    int x = 0, y = 0;
-    int width = 800, height = 600;
-    bool updated = false;
-};
-static ViewportRect g_ViewportRect;
-
-// ============================================================================
-// 辅助函数：查找 CEF 的渲染窗口
-// ============================================================================
-HWND FindCefHtmlRenderWindow(HWND cefWindow)
-{
-    HWND htmlWindow = FindWindowExW(cefWindow, nullptr, L"Chrome_RenderWidgetHostHWND", nullptr);
-    if (htmlWindow) return htmlWindow;
-
-    HWND chromeWidget = FindWindowExW(cefWindow, nullptr, L"Chrome_WidgetWin_0", nullptr);
-    if (chromeWidget) {
-        htmlWindow = FindWindowExW(chromeWidget, nullptr, L"Chrome_RenderWidgetHostHWND", nullptr);
-        if (htmlWindow) return htmlWindow;
-    }
-
-    MOON_LOG_INFO("EditorApp", "Searching for HTML render window via enumeration...");
-    EnumChildWindows(cefWindow, [](HWND hwnd, LPARAM lParam) -> BOOL {
-        wchar_t cls[256];
-        GetClassNameW(hwnd, cls, 256);
-        if (wcscmp(cls, L"Chrome_RenderWidgetHostHWND") == 0) {
-            *reinterpret_cast<HWND*>(lParam) = hwnd;
-            return FALSE;
-        }
-        return TRUE;
-        }, reinterpret_cast<LPARAM>(&htmlWindow));
-
-    return htmlWindow;
-}
-
-// ============================================================================
-// 引擎窗口过程（Forward to ImGui → then default）
-// ============================================================================
-LRESULT CALLBACK EngineWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    if (g_ImGuiWin32) {
-        if (g_ImGuiWin32->Win32_ProcHandler(hWnd, msg, wParam, lParam))
-            return true;
-    }
-
-    switch (msg) {
-    case WM_SIZE:
-        if (g_Renderer && wParam != SIZE_MINIMIZED) {
-            UINT w = LOWORD(lParam), h = HIWORD(lParam);
-            g_Renderer->Resize(w, h);
-            if (g_Engine && h > 0)
-                g_Engine->GetCamera()->SetAspectRatio(float(w) / float(h));
-        }
-        break;
-    case WM_PAINT:
-        ValidateRect(hWnd, nullptr);
-        break;
-    
-    // 🎯 鼠标左键点击 - 拾取物体
-    case WM_LBUTTONDOWN:
-        if (g_Renderer && g_Engine) {
-            // 检查是否点击了 ImGuizmo（避免选中操作干扰 gizmo）
-            if (!ImGuizmo::IsOver()) {
-                int x = GET_X_LPARAM(lParam);
-                int y = GET_Y_LPARAM(lParam);
-                
-                // 渲染拾取通道
-                g_Renderer->RenderSceneForPicking(g_Engine->GetScene());
-                
-                // 读取像素下的 ObjectID
-                uint32_t objectID = g_Renderer->ReadObjectIDAt(x, y);
-                
-                if (objectID != 0) {
-                    // 查找对应的 SceneNode
-                    Moon::Scene* scene = g_Engine->GetScene();
-                    g_SelectedObject = nullptr;
-                    scene->Traverse([objectID](Moon::SceneNode* node) {
-                        if (node->GetID() == objectID) {
-                            g_SelectedObject = node;
-                        }
-                    });
-                    
-                    if (g_SelectedObject) {
-                        MOON_LOG_INFO("EditorApp", "Selected object: %s (ID=%u)", 
-                                     g_SelectedObject->GetName().c_str(), objectID);
-                        
-                        // 通知 WebUI 更新选中状态
-                        if (g_EditorBridge && g_EditorBridge->GetClient() && g_EditorBridge->GetClient()->GetBrowser()) {
-                            char jsCode[256];
-                            snprintf(jsCode, sizeof(jsCode),
-                                "if (window.onNodeSelected) { window.onNodeSelected(%u); }",
-                                objectID
-                            );
-                            auto frame = g_EditorBridge->GetClient()->GetBrowser()->GetMainFrame();
-                            frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
-                        }
-                    }
-                } else {
-                    // 点击空白处取消选择
-                    g_SelectedObject = nullptr;
-                    MOON_LOG_INFO("EditorApp", "Deselected (ObjectID = 0)");
-                    
-                    // 通知 WebUI 取消选中
-                    if (g_EditorBridge && g_EditorBridge->GetClient() && g_EditorBridge->GetClient()->GetBrowser()) {
-                        char jsCode[256];
-                        snprintf(jsCode, sizeof(jsCode), "if (window.onNodeSelected) { window.onNodeSelected(null); }");
-                        auto frame = g_EditorBridge->GetClient()->GetBrowser()->GetMainFrame();
-                        frame->ExecuteJavaScript(jsCode, frame->GetURL(), 0);
-                    }
-                }
-            }
-        }
-        break;
-    }
-
-    return DefWindowProc(hWnd, msg, wParam, lParam);
-}
-
-// ============================================================================
-// 初始化：引擎核心
-// ============================================================================
-void InitEngine(EngineCore*& enginePtr)
-{
-    std::cout << "[Editor] Initializing EngineCore..." << std::endl;
-    static EngineCore engine;
-    engine.Initialize();
-    enginePtr = &engine;
-}
-
-// ============================================================================
-// 初始化：CEF + 编辑器窗口
-// ============================================================================
-HWND InitCEF(HINSTANCE hInstance, EditorBridge& bridge)
-{
-    std::cout << "[Editor] Initializing CEF UI..." << std::endl;
-
-    if (!bridge.Initialize(hInstance)) {
-        MessageBoxA(nullptr, "Failed to initialize CEF!", "Error", MB_ICONERROR);
-        return nullptr;
-    }
-    if (!bridge.CreateEditorWindow("")) {
-        MessageBoxA(nullptr, "Failed to create editor window!", "Error", MB_ICONERROR);
-        return nullptr;
-    }
-
-    HWND mainWindow = bridge.GetMainWindow();
-    if (!mainWindow) return nullptr;
-
-    // 等待 CEF Browser 真实窗口创建
-    MSG msg{};
-    HWND cefBrowserWindow = nullptr;
-    for (int i = 0; i < 100; i++) {
-        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-        bridge.DoMessageLoopWork();
-
-        if (bridge.GetClient() && bridge.GetClient()->GetBrowser()) {
-            cefBrowserWindow =
-                bridge.GetClient()->GetBrowser()->GetHost()->GetWindowHandle();
-            if (cefBrowserWindow) break;
-        }
-        Sleep(10);
-    }
-
-    if (!cefBrowserWindow) return nullptr;
-
-    return cefBrowserWindow;
-}
-
-// ============================================================================
-// 初始化：渲染器
-// ============================================================================
-bool InitRenderer(HWND parentWindow, HINSTANCE hInstance)
-{
-    // 注册窗口类
-    WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
-    wc.lpfnWndProc = EngineWndProc;
-    wc.hInstance = hInstance;
-    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.lpszClassName = kEngineWindowClass;
-
-    if (!RegisterClassExW(&wc)) {
-        if (GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
-            return false;
-    }
-
-    // 创建引擎渲染窗口（子窗口）
-    g_EngineWindow = CreateWindowExW(
-        0, kEngineWindowClass, L"Engine Viewport",
-        WS_CHILD, 0, 0, 100, 100,
-        parentWindow, nullptr, hInstance, nullptr
-    );
-    if (!g_EngineWindow) return false;
-
-    // 初始化 Renderer
-    static DiligentRenderer renderer;
-    g_Renderer = &renderer;
-
-    RenderInitParams params{};
-    params.windowHandle = g_EngineWindow;
-    params.width = 800;
-    params.height = 600;
-
-    return renderer.Initialize(params);
-}
-
-// ============================================================================
-// 初始化：ImGui
-// ============================================================================
-void InitImGui()
-{
-    std::cout << "[Editor] Initializing ImGui..." << std::endl;
-
-    Diligent::ImGuiDiligentCreateInfo ci;
-    ci.pDevice = g_Renderer->GetDevice();
-    ci.BackBufferFmt = g_Renderer->GetSwapChain()->GetDesc().ColorBufferFormat;
-    ci.DepthBufferFmt = g_Renderer->GetSwapChain()->GetDesc().DepthBufferFormat;
-
-    g_ImGuiWin32 = new Diligent::ImGuiImplWin32(ci, g_EngineWindow);
-
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-    ImGui::StyleColorsDark();
-}
-
-// ============================================================================
-// 初始化：相机、控制器、示例场景
-// ============================================================================
-void InitSceneObjects(EngineCore* engine)
-{
-    auto* camera = engine->GetCamera();
-    camera->SetAspectRatio(800.0f / 600.0f);
-    
-    Moon::InputSystem* input = engine->GetInputSystem();
-    input->SetWindowHandle(g_EngineWindow);
-
-    static Moon::FPSCameraController controller(camera, input);
-    controller.SetMoveSpeed(10.0f);
-    controller.SetMouseSensitivity(30.0f);
-    g_CameraController = &controller;
-
-    Moon::Scene* scene = engine->GetScene();
-    
-    // =========================================================================
-    // 创建 Ground Plane
-    // =========================================================================
-    {
-        Moon::SceneNode* ground = scene->CreateNode("Ground");
-        ground->GetTransform()->SetLocalPosition({ 0.0f, -0.6f, 0.0f });
-
-        Moon::MeshRenderer* renderer = ground->AddComponent<Moon::MeshRenderer>();
-
-        renderer->SetMesh(
-            engine->GetMeshManager()->CreatePlane(
-                50.0f,           // width
-                50.0f,           // depth
-                1,               // subdivisionsX
-                1,               // subdivisionsZ
-                Moon::Vector3(0.4f, 0.4f, 0.4f) // 灰色
-            )
-        );
-    }
-    
-    // =========================================================================
-    // 场景初始化完成 - 其他物体通过 UI 创建
-    // =========================================================================
-}
-
-// ====================== Gizmo Helper Functions ======================
-
-// 计算 MATRIX 的世界缩放（列向量长度）
-inline Moon::Vector3 ExtractScale(const Moon::Matrix4x4& m)
-{
-    return {
-        Moon::Vector3(m.m[0][0], m.m[0][1], m.m[0][2]).Length(),
-        Moon::Vector3(m.m[1][0], m.m[1][1], m.m[1][2]).Length(),
-        Moon::Vector3(m.m[2][0], m.m[2][1], m.m[2][2]).Length()
-    };
-}
-
-// 移除缩放，得到纯旋转矩阵
-inline Moon::Matrix4x4 RemoveScale(const Moon::Matrix4x4& m, const Moon::Vector3& s)
-{
-    Moon::Matrix4x4 r = m;
-    if (s.x > 0.0001f) { r.m[0][0] /= s.x; r.m[0][1] /= s.x; r.m[0][2] /= s.x; }
-    if (s.y > 0.0001f) { r.m[1][0] /= s.y; r.m[1][1] /= s.y; r.m[1][2] /= s.y; }
-    if (s.z > 0.0001f) { r.m[2][0] /= s.z; r.m[2][1] /= s.z; r.m[2][2] /= s.z; }
-    return r;
-}
-
-// Quaternion 双覆盖修复
-inline Moon::Quaternion StabilizeQuaternion(
-    Moon::Quaternion newQ,
-    const Moon::Quaternion& lastQ)
-{
-    float dot =
-        newQ.x * lastQ.x +
-        newQ.y * lastQ.y +
-        newQ.z * lastQ.z +
-        newQ.w * lastQ.w;
-
-    if (dot < 0.f)
-    {
-        newQ.x = -newQ.x;
-        newQ.y = -newQ.y;
-        newQ.z = -newQ.z;
-        newQ.w = -newQ.w;
-    }
-    return newQ;
-}
-
-inline void ConvertRowMajorToColumnMajor(const Moon::Matrix4x4& rm, float cm[16])
-{
-    cm[0] = rm.m[0][0];
-    cm[1] = rm.m[1][0];
-    cm[2] = rm.m[2][0];
-    cm[3] = rm.m[3][0];
-
-    cm[4] = rm.m[0][1];
-    cm[5] = rm.m[1][1];
-    cm[6] = rm.m[2][1];
-    cm[7] = rm.m[3][1];
-
-    cm[8] = rm.m[0][2];
-    cm[9] = rm.m[1][2];
-    cm[10] = rm.m[2][2];
-    cm[11] = rm.m[3][2];
-
-    cm[12] = rm.m[0][3];
-    cm[13] = rm.m[1][3];
-    cm[14] = rm.m[2][3];
-    cm[15] = rm.m[3][3];
-}
-
-inline void ConvertColumnMajorToRowMajor(const float cm[16], Moon::Matrix4x4& rm)
-{
-    rm.m[0][0] = cm[0];
-    rm.m[0][1] = cm[4];
-    rm.m[0][2] = cm[8];
-    rm.m[0][3] = cm[12];
-
-    rm.m[1][0] = cm[1];
-    rm.m[1][1] = cm[5];
-    rm.m[1][2] = cm[9];
-    rm.m[1][3] = cm[13];
-
-    rm.m[2][0] = cm[2];
-    rm.m[2][1] = cm[6];
-    rm.m[2][2] = cm[10];
-    rm.m[2][3] = cm[14];
-
-    rm.m[3][0] = cm[3];
-    rm.m[3][1] = cm[7];
-    rm.m[3][2] = cm[11];
-    rm.m[3][3] = cm[15];
-}
-
 
 // ============================================================================
 // 主循环
@@ -530,17 +151,11 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
         engine->Tick(dt);
         g_CameraController->Update(dt);
 
-        // 渲染
-        auto vp = engine->GetCamera()->GetViewProjectionMatrix();
-        g_Renderer->SetViewProjectionMatrix(&vp.m[0][0]);
-
+        // 渲染开始
         g_Renderer->BeginFrame();
 
-        engine->GetScene()->Traverse([&](Moon::SceneNode* node) {
-            auto* mr = node->GetComponent<Moon::MeshRenderer>();
-            if (mr && mr->IsEnabled() && mr->IsVisible())
-                mr->Render(g_Renderer);
-            });
+        // 渲染场景
+        RenderScene(engine, g_Renderer);
 
         // ImGui + ImGuizmo
         if (g_ImGuiWin32)
@@ -551,123 +166,8 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
             ImGuizmo::BeginFrame();
             ImGuizmo::SetRect(0, 0, (float)g_ViewportRect.width, (float)g_ViewportRect.height);
 
-            if (g_SelectedObject)
-            {
-                Moon::Transform* tr = g_SelectedObject->GetTransform();
-                Moon::Transform* parent = g_SelectedObject->GetParent()
-                    ? g_SelectedObject->GetParent()->GetTransform()
-                    : nullptr;
-
-                auto view = engine->GetCamera()->GetViewMatrix();
-                auto proj = engine->GetCamera()->GetProjectionMatrix();
-
-                //-------------------------------------------------------
-                // 选择 Gizmo 模式
-                //-------------------------------------------------------
-                ImGuizmo::MODE mode =
-                    (g_GizmoOperation == ImGuizmo::SCALE)
-                    ? ImGuizmo::LOCAL
-                    : g_GizmoMode;
-
-                //-------------------------------------------------------
-                // ✅ 只在非拖动时刷新矩阵（保持拖动连续性）
-                //-------------------------------------------------------
-                if (!g_WasUsingGizmo) {
-                    g_GizmoMatrix = tr->GetWorldMatrix();
-                }
-
-                //-------------------------------------------------------
-                // 调用 Manipulate
-                //-------------------------------------------------------
-                ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0],
-                    g_GizmoOperation, mode,
-                    &g_GizmoMatrix.m[0][0]);
-
-                //-------------------------------------------------------
-                // ✅ Manipulate 之后读取状态
-                //-------------------------------------------------------
-                bool usingGizmo = ImGuizmo::IsUsing();
-
-                //-------------------------------------------------------
-                // 拖动中：实时应用变换到 Transform
-                //-------------------------------------------------------
-                if (usingGizmo)
-                {
-                    if (g_GizmoOperation == ImGuizmo::TRANSLATE)
-                    {
-                        Moon::Vector3 worldPos = {
-                            g_GizmoMatrix.m[3][0],
-                            g_GizmoMatrix.m[3][1],
-                            g_GizmoMatrix.m[3][2]
-                        };
-
-                        // world -> local
-                        if (parent)
-                            worldPos = parent->GetWorldMatrix().Inverse().MultiplyPoint(worldPos);
-
-                        tr->SetLocalPosition(worldPos);
-                    }
-                    else if (g_GizmoOperation == ImGuizmo::ROTATE)
-                    {
-                        Moon::Vector3 scale = ExtractScale(g_GizmoMatrix);
-                        Moon::Matrix4x4 rotMat = RemoveScale(g_GizmoMatrix, scale);
-
-                        Moon::Quaternion worldRot = Moon::Quaternion::FromMatrix(rotMat);
-                            
-                        // 保持符号连续性
-                        worldRot = StabilizeQuaternion(worldRot, g_LastRotation);
-                        g_LastRotation = worldRot;
-
-                        // world → local
-                        if (parent)
-                            worldRot = parent->GetWorldRotation().Inverse() * worldRot;
-
-                        tr->SetLocalRotation(worldRot);
-                    }
-                    else if (g_GizmoOperation == ImGuizmo::SCALE)
-                    {
-                        Moon::Vector3 worldScale = ExtractScale(g_GizmoMatrix);
-
-                        if (parent)
-                        {
-                            Moon::Vector3 parentScale = parent->GetWorldScale();
-                            if (parentScale.x > 0.0001f) worldScale.x /= parentScale.x;
-                            if (parentScale.y > 0.0001f) worldScale.y /= parentScale.y;
-                            if (parentScale.z > 0.0001f) worldScale.z /= parentScale.z;
-                        }
-
-                        tr->SetLocalScale(worldScale);
-                    }
-                }
-
-                //-------------------------------------------------------
-                // 拖动结束：通知 Web UI
-                //-------------------------------------------------------
-                if (g_WasUsingGizmo && !usingGizmo)
-                {
-                    auto localPos = tr->GetLocalPosition();
-                    auto localRot = tr->GetLocalEulerAngles();
-                    auto localScale = tr->GetLocalScale();
-
-                    if (bridge.GetClient() && bridge.GetClient()->GetBrowser())
-                    {
-                        char js[1024];
-                        snprintf(js, sizeof(js),
-                            "if (window.onTransformChanged) { window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }"
-                            "if (window.onRotationChanged) { window.onRotationChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }"
-                            "if (window.onScaleChanged) { window.onScaleChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }",
-                            g_SelectedObject->GetID(), localPos.x, localPos.y, localPos.z,
-                            g_SelectedObject->GetID(), localRot.x, localRot.y, localRot.z,
-                            g_SelectedObject->GetID(), localScale.x, localScale.y, localScale.z
-                        );
-                        
-                        auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
-                        frame->ExecuteJavaScript(js, frame->GetURL(), 0);
-                    }
-                }
-
-                g_WasUsingGizmo = usingGizmo;
-            }
+            // 渲染并应用 Gizmo
+            RenderAndApplyGizmo(engine, bridge);
 
             g_ImGuiWin32->Render(g_Renderer->GetContext());
         }
@@ -678,34 +178,11 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
 }
 
 // ============================================================================
-// 清理
-// ============================================================================
-void Shutdown(EditorBridge& bridge, EngineCore* engine)
-{
-    if (g_ImGuiWin32) {
-        delete g_ImGuiWin32;
-        g_ImGuiWin32 = nullptr;
-    }
-
-    g_Renderer->Shutdown();
-
-    if (g_EngineWindow) {
-        DestroyWindow(g_EngineWindow);
-        g_EngineWindow = nullptr;
-    }
-
-    engine->Shutdown();
-    bridge.Shutdown();
-
-    Moon::Core::Logger::Shutdown();
-}
-
-// ============================================================================
-// WinMain (入口点，保持原始逻辑)
+// WinMain 入口点
 // ============================================================================
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 {
-    // ========== 处理 CEF 子进程 ==========
+    // 处理 CEF 子进程
     CefMainArgs args(hInstance);
     CefRefPtr<CefAppHandler> app(new CefAppHandler());
     int exit_code = CefExecuteProcess(args, app.get(), nullptr);
@@ -713,52 +190,67 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
     // Console
     AllocConsole();
-    FILE* fp; freopen_s(&fp, "CONOUT$", "w", stdout);
+    FILE* fp; 
+    freopen_s(&fp, "CONOUT$", "w", stdout);
     freopen_s(&fp, "CONOUT$", "w", stderr);
 
     // Logger
     Moon::Core::Logger::Init();
 
-    // ========== 引擎 ==========
+    // 初始化引擎
     InitEngine(g_Engine);
 
-    // ========== CEF ==========
+    // 初始化 CEF
     EditorBridge bridge;
-    g_EditorBridge = &bridge;  // 保存全局指针用于通知 WebUI
+    g_EditorBridge = &bridge;
     HWND cefBrowserWindow = InitCEF(hInstance, bridge);
     if (!cefBrowserWindow) return -1;
 
     // 绑定 viewport 回调
     bridge.GetClient()->SetViewportRectCallback([](int x, int y, int w, int h) {
         g_ViewportRect = { x, y, w, h, true };
-        });
+    });
 
-    // ✅ 设置引擎核心到 CEF Client（用于 MoonEngine API）
+    // 设置引擎核心到 CEF Client
     bridge.GetClient()->SetEngineCore(g_Engine);
 
     // 找 HTML 渲染窗口
     HWND htmlWindow = FindCefHtmlRenderWindow(cefBrowserWindow);
     HWND parentWindow = htmlWindow ? htmlWindow : cefBrowserWindow;
 
-    // ========== 渲染器 ==========
-    if (!InitRenderer(parentWindow, hInstance)) {
+    // 注册窗口类
+    if (!InitEngineWindow(hInstance)) {
+        MessageBoxA(nullptr, "Window class registration failed!", "Error", MB_ICONERROR);
+        return -1;
+    }
+
+    // 创建引擎窗口
+    g_EngineWindow = CreateWindowExW(
+        0, L"MoonEngine_Viewport", L"Engine Viewport",
+        WS_CHILD, 0, 0, 100, 100,
+        parentWindow, nullptr, hInstance, nullptr
+    );
+    if (!g_EngineWindow) return -1;
+
+    // 初始化渲染器
+    if (!InitRenderer()) {
         MessageBoxA(nullptr, "Renderer init failed!", "Error", MB_ICONERROR);
         return -1;
     }
 
-    // ========== ImGui ==========
+    // 初始化 ImGui
     InitImGui();
 
-    // ========== 场景 ==========
+    // 初始化场景
     InitSceneObjects(g_Engine);
 
-    // ========== 主循环 ==========
+    // 主循环
     RunMainLoop(bridge, g_Engine);
 
-    // ========== 清理 ==========
-    Shutdown(bridge, g_Engine);
+    // 清理资源
+    
+    CleanupResources();
 
     FreeConsole();
     return 0;
 }
-

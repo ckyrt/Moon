@@ -1,0 +1,138 @@
+// ============================================================================
+// EditorApp_Gizmo.cpp - ImGuizmo 渲染和变换应用
+// ============================================================================
+#include "EditorApp.h"
+#include "../engine/core/EngineCore.h"
+#include "../engine/core/Scene/SceneNode.h"
+#include "../engine/core/Scene/Transform.h"
+#include "../engine/core/Camera/Camera.h"
+#include "../engine/core/Math/Matrix4x4.h"
+#include "../engine/core/Math/Vector3.h"
+#include "../engine/core/Math/Quaternion.h"
+#include "EditorBridge.h"
+#include "imgui.h"
+#include "ImGuizmo.h"
+#include <stdio.h>
+
+// ============================================================================
+// 渲染并应用 ImGuizmo 变换
+// ============================================================================
+void RenderAndApplyGizmo(EngineCore* engine, EditorBridge& bridge)
+{
+    if (!g_SelectedObject) return;
+
+    Moon::Transform* tr = g_SelectedObject->GetTransform();
+    Moon::Transform* parent = g_SelectedObject->GetParent()
+        ? g_SelectedObject->GetParent()->GetTransform()
+        : nullptr;
+
+    auto view = engine->GetCamera()->GetViewMatrix();
+    auto proj = engine->GetCamera()->GetProjectionMatrix();
+
+    //-------------------------------------------------------
+    // 选择 Gizmo 模式
+    //-------------------------------------------------------
+    ImGuizmo::MODE mode =
+        (g_GizmoOperation == ImGuizmo::SCALE)
+        ? ImGuizmo::LOCAL
+        : g_GizmoMode;
+
+    //-------------------------------------------------------
+    // 只在非拖动时刷新矩阵（保持拖动连续性）
+    //-------------------------------------------------------
+    if (!g_WasUsingGizmo) {
+        g_GizmoMatrix = tr->GetWorldMatrix();
+    }
+
+    //-------------------------------------------------------
+    // 调用 Manipulate
+    //-------------------------------------------------------
+    ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0],
+        g_GizmoOperation, mode,
+        &g_GizmoMatrix.m[0][0]);
+
+    //-------------------------------------------------------
+    // Manipulate 之后读取状态
+    //-------------------------------------------------------
+    bool usingGizmo = ImGuizmo::IsUsing();
+
+    //-------------------------------------------------------
+    // 拖动中：实时应用变换到 Transform
+    //-------------------------------------------------------
+    if (usingGizmo)
+    {
+        if (g_GizmoOperation == ImGuizmo::TRANSLATE)
+        {
+            Moon::Vector3 worldPos = {
+                g_GizmoMatrix.m[3][0],
+                g_GizmoMatrix.m[3][1],
+                g_GizmoMatrix.m[3][2]
+            };
+
+            // world -> local
+            if (parent)
+                worldPos = parent->GetWorldMatrix().Inverse().MultiplyPoint(worldPos);
+
+            tr->SetLocalPosition(worldPos);
+        }
+        else if (g_GizmoOperation == ImGuizmo::ROTATE)
+        {
+            Moon::Vector3 scale = ExtractScale(g_GizmoMatrix);
+            Moon::Matrix4x4 rotMat = RemoveScale(g_GizmoMatrix, scale);
+
+            Moon::Quaternion worldRot = Moon::Quaternion::FromMatrix(rotMat);
+
+            // 保持符号连续性
+            worldRot = StabilizeQuaternion(worldRot, g_LastRotation);
+            g_LastRotation = worldRot;
+
+            // world → local
+            if (parent)
+                worldRot = parent->GetWorldRotation().Inverse() * worldRot;
+
+            tr->SetLocalRotation(worldRot);
+        }
+        else if (g_GizmoOperation == ImGuizmo::SCALE)
+        {
+            Moon::Vector3 worldScale = ExtractScale(g_GizmoMatrix);
+
+            if (parent)
+            {
+                Moon::Vector3 parentScale = parent->GetWorldScale();
+                if (parentScale.x > 0.0001f) worldScale.x /= parentScale.x;
+                if (parentScale.y > 0.0001f) worldScale.y /= parentScale.y;
+                if (parentScale.z > 0.0001f) worldScale.z /= parentScale.z;
+            }
+
+            tr->SetLocalScale(worldScale);
+        }
+    }
+
+    //-------------------------------------------------------
+    // 拖动结束：通知 Web UI
+    //-------------------------------------------------------
+    if (g_WasUsingGizmo && !usingGizmo)
+    {
+        auto localPos = tr->GetLocalPosition();
+        auto localRot = tr->GetLocalEulerAngles();
+        auto localScale = tr->GetLocalScale();
+
+        if (bridge.GetClient() && bridge.GetClient()->GetBrowser())
+        {
+            char js[1024];
+            snprintf(js, sizeof(js),
+                "if (window.onTransformChanged) { window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }"
+                "if (window.onRotationChanged) { window.onRotationChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }"
+                "if (window.onScaleChanged) { window.onScaleChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }",
+                g_SelectedObject->GetID(), localPos.x, localPos.y, localPos.z,
+                g_SelectedObject->GetID(), localRot.x, localRot.y, localRot.z,
+                g_SelectedObject->GetID(), localScale.x, localScale.y, localScale.z
+            );
+
+            auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
+            frame->ExecuteJavaScript(js, frame->GetURL(), 0);
+        }
+    }
+
+    g_WasUsingGizmo = usingGizmo;
+}
