@@ -99,6 +99,12 @@
     <ClInclude Include="Input\InputSystem.h" />
     <ClInclude Include="Input\KeyCodes.h" />
     <ClInclude Include="Input\InputTypes.h" />
+    <ClInclude Include="Math\Math.h" />
+    <ClInclude Include="Math\Vector2.h" />
+    <ClInclude Include="Math\Vector3.h" />
+    <ClInclude Include="Math\Vector4.h" />
+    <ClInclude Include="Math\Matrix4x4.h" />
+    <ClInclude Include="Math\Quaternion.h" />
     <ClInclude Include="Camera\ICamera.h" />
     <ClInclude Include="Camera\Camera.h" />
     <ClInclude Include="Camera\PerspectiveCamera.h" />
