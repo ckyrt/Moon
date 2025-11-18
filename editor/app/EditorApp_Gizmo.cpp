@@ -81,6 +81,7 @@ void RenderAndApplyGizmo(EngineCore* engine, EditorBridge& bridge)
             Moon::Matrix4x4 rotMat = RemoveScale(g_GizmoMatrix, scale);
 
             Moon::Quaternion worldRot = Moon::Quaternion::FromMatrix(rotMat);
+            worldRot = Moon::Quaternion(-worldRot.x, -worldRot.y, -worldRot.z, worldRot.w);
 
             // 保持符号连续性
             worldRot = StabilizeQuaternion(worldRot, g_LastRotation);
