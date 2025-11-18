@@ -79,8 +79,11 @@ void RenderAndApplyGizmo(EngineCore* engine, EditorBridge& bridge)
         {
             Moon::Vector3 scale = ExtractScale(g_GizmoMatrix);
             Moon::Matrix4x4 rotMat = RemoveScale(g_GizmoMatrix, scale);
-
+            // 从旋转矩阵生成世界旋转（imgui gizmo 给的就是列主序矩阵，无额外转换）
             Moon::Quaternion worldRot = Moon::Quaternion::FromMatrix(rotMat);
+            // 注意：ImGuizmo 在矩阵中使用的是右手坐标系，而 Moon 内部的四元数是左手系
+            // 因此需要把 x,y,z 分量取反，以对齐旋转方向
+            // 这相当于对四元数做一次：q = (-v, w)
             worldRot = Moon::Quaternion(-worldRot.x, -worldRot.y, -worldRot.z, worldRot.w);
 
             // 保持符号连续性
