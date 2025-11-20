@@ -14,9 +14,9 @@ namespace Diligent { class ImGuiImplWin32; }
 namespace Moon { 
     class FPSCameraController; 
     class SceneNode;
-    class Quaternion;
-    class Matrix4x4;
-    class Vector3;
+    struct Quaternion;
+    struct Matrix4x4;
+    struct Vector3;
     class PhysicsSystem;
 }
 namespace ImGuizmo {
