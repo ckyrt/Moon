@@ -17,6 +17,7 @@ namespace Moon {
     class Quaternion;
     class Matrix4x4;
     class Vector3;
+    class PhysicsSystem;
 }
 namespace ImGuizmo {
     enum OPERATION : int;
@@ -28,6 +29,7 @@ namespace ImGuizmo {
 // ============================================================================
 extern EngineCore* g_Engine;
 extern DiligentRenderer* g_Renderer;
+extern Moon::PhysicsSystem* g_PhysicsSystem;
 extern Moon::FPSCameraController* g_CameraController;
 extern Diligent::ImGuiImplWin32* g_ImGuiWin32;
 extern HWND g_EngineWindow;

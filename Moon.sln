@@ -6,6 +6,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EngineCore", "engine\core\E
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EngineRender", "engine\render\EngineRender.vcxproj", "{256A3289-BE13-44ED-B3AE-BFDCAA130227}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EnginePhysics", "engine\physics\EnginePhysics.vcxproj", "{9D8E5F6A-7B4C-3E2D-8A1F-0C6E4B5D7A92}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EditorBridge", "editor\bridge\EditorBridge.vcxproj", "{24F11C82-584E-4AEB-8F20-09CCD345B193}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImGui", "thirdparty\imgui\ImGui.vcxproj", "{A9F5D891-2E3C-4B7D-8F1A-6E9C3D4B5A72}"
@@ -38,6 +40,10 @@ Global
 		{256A3289-BE13-44ED-B3AE-BFDCAA130227}.Debug|x64.Build.0 = Debug|x64
 		{256A3289-BE13-44ED-B3AE-BFDCAA130227}.Release|x64.ActiveCfg = Release|x64
 		{256A3289-BE13-44ED-B3AE-BFDCAA130227}.Release|x64.Build.0 = Release|x64
+		{9D8E5F6A-7B4C-3E2D-8A1F-0C6E4B5D7A92}.Debug|x64.ActiveCfg = Debug|x64
+		{9D8E5F6A-7B4C-3E2D-8A1F-0C6E4B5D7A92}.Debug|x64.Build.0 = Debug|x64
+		{9D8E5F6A-7B4C-3E2D-8A1F-0C6E4B5D7A92}.Release|x64.ActiveCfg = Release|x64
+		{9D8E5F6A-7B4C-3E2D-8A1F-0C6E4B5D7A92}.Release|x64.Build.0 = Release|x64
 		{24F11C82-584E-4AEB-8F20-09CCD345B193}.Debug|x64.ActiveCfg = Debug|x64
 		{24F11C82-584E-4AEB-8F20-09CCD345B193}.Debug|x64.Build.0 = Debug|x64
 		{24F11C82-584E-4AEB-8F20-09CCD345B193}.Release|x64.ActiveCfg = Release|x64

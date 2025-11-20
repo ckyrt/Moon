@@ -27,6 +27,9 @@
 // 渲染系统
 #include "../engine/render/DiligentRenderer.h"
 
+// 物理系统
+#include "../engine/physics/PhysicsSystem.h"
+
 // ImGui & ImGuizmo
 #include "imgui.h"
 #include "ImGuiImplWin32.hpp"
@@ -41,6 +44,7 @@
 // ============================================================================
 EngineCore* g_Engine = nullptr;
 DiligentRenderer* g_Renderer = nullptr;
+Moon::PhysicsSystem* g_PhysicsSystem = nullptr;
 Moon::FPSCameraController* g_CameraController = nullptr;
 Diligent::ImGuiImplWin32* g_ImGuiWin32 = nullptr;
 HWND g_EngineWindow = nullptr;
@@ -150,6 +154,11 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
         // 更新引擎
         engine->Tick(dt);
         g_CameraController->Update(dt);
+        
+        // 更新物理系统
+        if (g_PhysicsSystem) {
+            g_PhysicsSystem->Step(dt);
+        }
 
         // 渲染开始
         g_Renderer->BeginFrame();

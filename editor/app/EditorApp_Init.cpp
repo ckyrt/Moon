@@ -13,6 +13,8 @@
 #include "../engine/core/Logging/Logger.h"
 #include "../engine/render/DiligentRenderer.h"
 #include "../engine/render/RenderCommon.h"
+#include "../engine/physics/PhysicsSystem.h"
+#include "../engine/physics/RigidBody.h"
 #include "EditorBridge.h"
 #include "cef/CefApp.h"
 #include "ImGuiImplWin32.hpp"
@@ -153,7 +155,13 @@ void InitSceneObjects(EngineCore* engine)
     controller.SetMouseSensitivity(30.0f);
     g_CameraController = &controller;
 
+    // 初始化物理系统
+    static Moon::PhysicsSystem physicsSystem;
+    physicsSystem.Init();
+    g_PhysicsSystem = &physicsSystem;
+
     Moon::Scene* scene = engine->GetScene();
+    Moon::MeshManager* meshMgr = engine->GetMeshManager();
 
     // 创建 Ground Plane
     {
@@ -163,7 +171,7 @@ void InitSceneObjects(EngineCore* engine)
         Moon::MeshRenderer* renderer = ground->AddComponent<Moon::MeshRenderer>();
 
         renderer->SetMesh(
-            engine->GetMeshManager()->CreatePlane(
+            meshMgr->CreatePlane(
                 50.0f,           // width
                 50.0f,           // depth
                 1,               // subdivisionsX
@@ -171,5 +179,95 @@ void InitSceneObjects(EngineCore* engine)
                 Moon::Vector3(0.4f, 0.4f, 0.4f) // 灰色
             )
         );
+
+        Moon::RigidBody* groundBody = ground->AddComponent<Moon::RigidBody>();
+        groundBody->CreateBody(
+            g_PhysicsSystem,
+            Moon::PhysicsShapeType::Box,
+            Moon::Vector3(25.0f, 0.1f, 25.0f),
+            0.0f
+        );
     }
+
+    {
+        Moon::SceneNode* box = scene->CreateNode("PhysicsBox");
+        box->GetTransform()->SetLocalPosition({ -3.0f, 5.0f, 0.0f });
+
+        Moon::MeshRenderer* renderer = box->AddComponent<Moon::MeshRenderer>();
+        renderer->SetMesh(meshMgr->CreateCube(1.0f, Moon::Vector3(1.0f, 0.2f, 0.2f)));
+
+        Moon::RigidBody* body = box->AddComponent<Moon::RigidBody>();
+        body->CreateBody(
+            g_PhysicsSystem,
+            Moon::PhysicsShapeType::Box,
+            Moon::Vector3(0.5f, 0.5f, 0.5f),
+            2.0f
+        );
+    }
+
+    {
+        Moon::SceneNode* sphere = scene->CreateNode("PhysicsSphere");
+        sphere->GetTransform()->SetLocalPosition({ 0.0f, 8.0f, 0.0f });
+
+        Moon::MeshRenderer* renderer = sphere->AddComponent<Moon::MeshRenderer>();
+        renderer->SetMesh(meshMgr->CreateSphere(0.5f, 24, 16, Moon::Vector3(0.2f, 1.0f, 0.2f)));
+
+        Moon::RigidBody* body = sphere->AddComponent<Moon::RigidBody>();
+        body->CreateBody(
+            g_PhysicsSystem,
+            Moon::PhysicsShapeType::Sphere,
+            Moon::Vector3(0.5f, 0.5f, 0.5f),
+            1.5f
+        );
+    }
+
+    {
+        Moon::SceneNode* capsule = scene->CreateNode("PhysicsCapsule");
+        capsule->GetTransform()->SetLocalPosition({ 3.0f, 6.0f, 0.0f });
+
+        Moon::MeshRenderer* renderer = capsule->AddComponent<Moon::MeshRenderer>();
+        renderer->SetMesh(meshMgr->CreateCylinder(0.3f, 0.3f, 1.0f, 16, Moon::Vector3(0.2f, 0.2f, 1.0f)));
+
+        Moon::RigidBody* body = capsule->AddComponent<Moon::RigidBody>();
+        body->CreateBody(
+            g_PhysicsSystem,
+            Moon::PhysicsShapeType::Capsule,
+            Moon::Vector3(0.3f, 0.5f, 0.0f),
+            1.0f
+        );
+    }
+
+    {
+        Moon::SceneNode* cylinder = scene->CreateNode("PhysicsCylinder");
+        cylinder->GetTransform()->SetLocalPosition({ -1.5f, 10.0f, 2.0f });
+
+        Moon::MeshRenderer* renderer = cylinder->AddComponent<Moon::MeshRenderer>();
+        renderer->SetMesh(meshMgr->CreateCylinder(0.4f, 0.4f, 1.2f, 20, Moon::Vector3(1.0f, 1.0f, 0.2f)));
+
+        Moon::RigidBody* body = cylinder->AddComponent<Moon::RigidBody>();
+        body->CreateBody(
+            g_PhysicsSystem,
+            Moon::PhysicsShapeType::Cylinder,
+            Moon::Vector3(0.4f, 0.6f, 0.0f),
+            2.5f
+        );
+    }
+
+    {
+        Moon::SceneNode* smallBox = scene->CreateNode("SmallBox");
+        smallBox->GetTransform()->SetLocalPosition({ 1.5f, 12.0f, -2.0f });
+
+        Moon::MeshRenderer* renderer = smallBox->AddComponent<Moon::MeshRenderer>();
+        renderer->SetMesh(meshMgr->CreateCube(0.6f, Moon::Vector3(1.0f, 0.6f, 0.2f)));
+
+        Moon::RigidBody* body = smallBox->AddComponent<Moon::RigidBody>();
+        body->CreateBody(
+            g_PhysicsSystem,
+            Moon::PhysicsShapeType::Box,
+            Moon::Vector3(0.3f, 0.3f, 0.3f),
+            0.8f
+        );
+    }
+
+    MOON_LOG_INFO("EditorApp", "Physics test objects created!");
 }

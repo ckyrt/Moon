@@ -68,20 +68,20 @@
       <ConformanceMode>true</ConformanceMode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
-            <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>false</TreatWarningAsError>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <!-- 禁用 C4100 警告：CEF 头文件中大量虚函数参数未使用，这是所有 CEF 项目的标准做法 -->
       <DisableSpecificWarnings>4100</DisableSpecificWarnings>
       <!-- 添加引擎核心和渲染器的包含路径 -->
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;$(SolutionDir)external\JoltPhysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;EngineCore.lib;EngineRender.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;EngineCore.lib;EngineRender.lib;EnginePhysics.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -111,7 +111,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;EngineCore.lib;EngineRender.lib;EnginePhysics.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -135,6 +136,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\engine\render\EngineRender.vcxproj">
       <Project>{C9F0E5A8-9B7C-4D3E-8F6A-1A2B3C4D5E6F}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\engine\physics\EnginePhysics.vcxproj">
+      <Project>{9D8E5F6A-7B4C-3E2D-8A1F-0C6E4B5D7A92}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\thirdparty\imgui\ImGui.vcxproj">
       <Project>{A9F5D891-2E3C-4B7D-8F1A-6E9C3D4B5A72}</Project>
