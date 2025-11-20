@@ -30,7 +30,23 @@ export interface SceneNode {
 export interface Component {
   type: string;
   enabled: boolean;
-  properties: Record<string, unknown>;
+  [key: string]: any; // 允许组件有额外的属性
+}
+
+export interface MeshRendererComponent extends Component {
+  type: 'MeshRenderer';
+  visible: boolean;
+  hasMesh: boolean;
+}
+
+export interface RigidBodyComponent extends Component {
+  type: 'RigidBody';
+  hasBody: boolean;
+  mass: number;
+  shapeType: 'Box' | 'Sphere' | 'Capsule' | 'Cylinder';
+  size: [number, number, number];
+  linearVelocity?: [number, number, number];
+  angularVelocity?: [number, number, number];
 }
 
 export interface Scene {

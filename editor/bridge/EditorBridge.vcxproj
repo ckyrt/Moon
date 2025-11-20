@@ -74,6 +74,7 @@
       <!-- 禁用 C4100 警告：CEF 头文件中大量虚函数参数未使用，这是所有 CEF 项目的标准做法 -->
       <DisableSpecificWarnings>4100</DisableSpecificWarnings>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>..\..\engine;..\..\external\JoltPhysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -99,6 +100,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <!-- 禁用 C4100 警告：CEF 头文件中大量虚函数参数未使用，这是所有 CEF 项目的标准做法 -->
       <DisableSpecificWarnings>4100</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>..\..\engine;..\..\external\JoltPhysics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -122,6 +124,11 @@
     <ClCompile Include="cef\CefClient.cpp" />
     <ClCompile Include="cef\MoonEngineV8Handler.cpp" />
     <ClCompile Include="cef\MoonEngineMessageHandler.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\engine\physics\EnginePhysics.vcxproj">
+      <Project>{8B8E3F24-2E8D-4F3A-9B1C-7A3D5E6F8C9D}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

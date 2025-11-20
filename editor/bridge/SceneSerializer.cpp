@@ -1,6 +1,7 @@
 #include "SceneSerializer.h"
 #include "../../external/nlohmann/json.hpp"
 #include "../../engine/core/Scene/MeshRenderer.h"
+#include "../../engine/physics/RigidBody.h"
 #include "../../engine/core/Logging/Logger.h"
 #include <typeinfo>
 
@@ -168,9 +169,41 @@ void SceneSerializer::SerializeComponents(Moon::SceneNode* node, void* jsonArray
         components.push_back(comp);
     }
 
+    // 检查 RigidBody 组件
+    if (auto* rigidBody = node->GetComponent<Moon::RigidBody>()) {
+        json comp;
+        comp["type"] = "RigidBody";
+        comp["enabled"] = rigidBody->IsEnabled();
+        comp["hasBody"] = rigidBody->HasBody();
+        comp["mass"] = rigidBody->GetMass();
+        
+        // 形状类型
+        const char* shapeTypeName = "Unknown";
+        switch (rigidBody->GetShapeType()) {
+            case Moon::PhysicsShapeType::Box:      shapeTypeName = "Box"; break;
+            case Moon::PhysicsShapeType::Sphere:   shapeTypeName = "Sphere"; break;
+            case Moon::PhysicsShapeType::Capsule:  shapeTypeName = "Capsule"; break;
+            case Moon::PhysicsShapeType::Cylinder: shapeTypeName = "Cylinder"; break;
+        }
+        comp["shapeType"] = shapeTypeName;
+        
+        // 形状尺寸
+        const Moon::Vector3& size = rigidBody->GetSize();
+        comp["size"] = json::array({ size.x, size.y, size.z });
+        
+        // 速度信息（如果有物理体）
+        if (rigidBody->HasBody()) {
+            Moon::Vector3 linearVel = rigidBody->GetLinearVelocity();
+            Moon::Vector3 angularVel = rigidBody->GetAngularVelocity();
+            comp["linearVelocity"] = json::array({ linearVel.x, linearVel.y, linearVel.z });
+            comp["angularVelocity"] = json::array({ angularVel.x, angularVel.y, angularVel.z });
+        }
+
+        components.push_back(comp);
+    }
+
     // TODO: 添加其他组件类型的序列化
     // - Light
     // - Camera
-    // - RigidBody
     // 等等...
 }

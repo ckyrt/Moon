@@ -6,7 +6,7 @@
 import React from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { engine } from '@/utils/engine-bridge';
-import type { Vector3 } from '@/types/engine';
+import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent } from '@/types/engine';
 import styles from './Inspector.module.css';
 
 export const Inspector: React.FC = () => {
@@ -106,16 +106,84 @@ export const Inspector: React.FC = () => {
           <div className={styles.section}>
             <div className={styles.sectionTitle}>Components</div>
             {selectedNode.components.map((comp, idx) => (
-              <div key={idx} className={styles.component}>
-                <span className={styles.componentType}>{comp.type}</span>
-                <span className={styles.componentStatus}>
-                  {comp.enabled ? '✓' : '✗'}
-                </span>
-              </div>
+              <ComponentView key={idx} component={comp} />
             ))}
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+// ========== 组件显示组件 ==========
+
+const ComponentView: React.FC<{ component: Component }> = ({ component }) => {
+  const renderComponentDetails = () => {
+    switch (component.type) {
+      case 'MeshRenderer':
+        const meshRenderer = component as MeshRendererComponent;
+        return (
+          <div className={styles.componentDetails}>
+            <div className={styles.propertyRow}>
+              <span>Visible:</span>
+              <span>{meshRenderer.visible ? 'Yes' : 'No'}</span>
+            </div>
+            <div className={styles.propertyRow}>
+              <span>Has Mesh:</span>
+              <span>{meshRenderer.hasMesh ? 'Yes' : 'No'}</span>
+            </div>
+          </div>
+        );
+      
+      case 'RigidBody':
+        const rigidBody = component as RigidBodyComponent;
+        return (
+          <div className={styles.componentDetails}>
+            <div className={styles.propertyRow}>
+              <span>Shape:</span>
+              <span className={styles.badge}>{rigidBody.shapeType}</span>
+            </div>
+            <div className={styles.propertyRow}>
+              <span>Mass:</span>
+              <span>{rigidBody.mass.toFixed(2)} kg</span>
+            </div>
+            <div className={styles.propertyRow}>
+              <span>Size:</span>
+              <span>({rigidBody.size.map(v => v.toFixed(2)).join(', ')})</span>
+            </div>
+            {rigidBody.linearVelocity && (
+              <div className={styles.propertyRow}>
+                <span>Linear Vel:</span>
+                <span>({rigidBody.linearVelocity.map(v => v.toFixed(2)).join(', ')})</span>
+              </div>
+            )}
+            {rigidBody.angularVelocity && (
+              <div className={styles.propertyRow}>
+                <span>Angular Vel:</span>
+                <span>({rigidBody.angularVelocity.map(v => v.toFixed(2)).join(', ')})</span>
+              </div>
+            )}
+            <div className={styles.propertyRow}>
+              <span>Has Body:</span>
+              <span>{rigidBody.hasBody ? '✓ Active' : '✗ Inactive'}</span>
+            </div>
+          </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className={styles.component}>
+      <div className={styles.componentHeader}>
+        <span className={styles.componentType}>{component.type}</span>
+        <span className={styles.componentStatus}>
+          {component.enabled ? '✓' : '✗'}
+        </span>
+      </div>
+      {renderComponentDetails()}
     </div>
   );
 };
