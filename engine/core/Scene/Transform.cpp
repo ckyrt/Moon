@@ -224,12 +224,21 @@ namespace Moon {
         m_localDirty = true;
         m_worldDirty = true;
 
-        // 递归更新子节点世界矩阵
+        // 递归标记所有子孙节点的世界矩阵为脏
+        MarkChildrenWorldDirty();
+    }
+
+    void Transform::MarkChildrenWorldDirty()
+    {
         for (size_t i = 0; i < m_owner->GetChildCount(); ++i)
         {
             SceneNode* child = m_owner->GetChild(i);
             if (child)
+            {
                 child->GetTransform()->m_worldDirty = true;
+                // 递归标记子节点的子节点
+                child->GetTransform()->MarkChildrenWorldDirty();
+            }
         }
     }
 
@@ -264,7 +273,8 @@ namespace Moon {
         SceneNode* parent = m_owner->GetParent();
 
         if (parent)
-            m_worldMatrix = parent->GetTransform()->GetWorldMatrix() * m_localMatrix;
+            // 行向量系统：M_world = M_local × M_parent
+            m_worldMatrix = m_localMatrix * parent->GetTransform()->GetWorldMatrix();
         else
             m_worldMatrix = m_localMatrix;
     }

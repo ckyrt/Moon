@@ -87,10 +87,12 @@ struct Matrix4x4 {
     }
     Vector3 MultiplyPoint(const Vector3& v) const
     {
+        // 行向量乘法: [x, y, z, 1] × M
+        // x' = x * m[0][0] + y * m[1][0] + z * m[2][0] + 1 * m[3][0]
         Vector3 r;
-        r.x = v.x * m[0][0] + v.y * m[0][1] + v.z * m[0][2] + m[0][3];
-        r.y = v.x * m[1][0] + v.y * m[1][1] + v.z * m[1][2] + m[1][3];
-        r.z = v.x * m[2][0] + v.y * m[2][1] + v.z * m[2][2] + m[2][3];
+        r.x = v.x * m[0][0] + v.y * m[1][0] + v.z * m[2][0] + m[3][0];
+        r.y = v.x * m[0][1] + v.y * m[1][1] + v.z * m[2][1] + m[3][1];
+        r.z = v.x * m[0][2] + v.y * m[1][2] + v.z * m[2][2] + m[3][2];
         return r;
     }
     Matrix4x4 Inverse() const

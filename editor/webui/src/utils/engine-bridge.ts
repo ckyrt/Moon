@@ -9,7 +9,8 @@
  * - C++ → JS: window.onXXXChanged 回调 (通过 ExecuteJavaScript 调用)
  */
 
-import type { MoonEngineAPI, SceneNode, Transform, Vector3 } from '@/types/engine';
+import type { MoonEngineAPI, SceneNode, Transform, Vector3, Quaternion } from '@/types/engine';
+import { quaternionToEuler, eulerToQuaternion } from './math';
 
 // ============================================================================
 // Engine API 初始化
@@ -56,28 +57,77 @@ const createRealAPI = (): MoonEngineAPI => {
 
   return {
     // ========== Scene Management ==========
-    getScene: wrapAsyncEngineCall('getScene', async () => realEngine.getScene()),
-
-    // ========== Node Management (未实现) ==========
-    createNode: wrapEngineCall('createNode', (name: string, parentId?: number) => {
-      // TODO: Implement in C++
-      return {
-        id: 0,
-        name,
-        active: true,
-        transform: {
-          position: { x: 0, y: 0, z: 0 },
-          rotation: { x: 0, y: 0, z: 0 },
-          scale: { x: 1, y: 1, z: 1 },
-        },
-        parentId: parentId ?? null,
-        children: [],
-        components: [],
-      };
+    getScene: wrapAsyncEngineCall('getScene', async () => {
+      const scene = await realEngine.getScene();
+      
+      // Convert quaternions to Euler angles for UI display
+      if (scene && scene.allNodes) {
+        Object.values(scene.allNodes).forEach((node: any) => {
+          if (node.transform && node.transform.rotation) {
+            const rot = node.transform.rotation;
+            // If rotation has 'w' component, it's a quaternion - convert to Euler
+            if ('w' in rot) {
+              node.transform.rotation = quaternionToEuler(rot as Quaternion);
+            }
+          }
+        });
+      }
+      
+      return scene;
     }),
 
-    deleteNode: wrapEngineCall('deleteNode', (_nodeId: number) => {
-      // TODO: Implement in C++
+    // ========== Node Management ==========
+    createNode: wrapAsyncEngineCall('createNode', async (_name: string, parentId?: number) => {
+      if (!window.cefQuery) {
+        console.warn('[createNode] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'createNode',
+          type: 'empty',
+          parentId: parentId ?? null
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (_response: string) => {
+            console.log('[createNode] Success');
+            resolve();
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            console.error('[createNode] Failed:', errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    deleteNode: wrapAsyncEngineCall('deleteNode', async (nodeId: number) => {
+      if (!window.cefQuery) {
+        console.warn('[deleteNode] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'deleteNode',
+          nodeId
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (_response: string) => {
+            console.log('[deleteNode] Success');
+            resolve();
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            console.error('[deleteNode] Failed:', errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
     }),
 
     renameNode: wrapEngineCall('renameNode', (_nodeId: number, _newName: string) => {
@@ -88,14 +138,39 @@ const createRealAPI = (): MoonEngineAPI => {
       // TODO: Implement in C++
     }),
 
-    setNodeParent: wrapEngineCall('setNodeParent', (_nodeId: number, _parentId: number | null) => {
-      // TODO: Implement in C++
+    setNodeParent: wrapAsyncEngineCall('setNodeParent', async (nodeId: number, parentId: number | null) => {
+      if (!window.cefQuery) {
+        console.warn('[setNodeParent] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setNodeParent',
+          nodeId,
+          parentId
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (_response: string) => {
+            console.log('[setNodeParent] Success');
+            resolve();
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            console.error('[setNodeParent] Failed:', errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
     }),
 
     // ========== Transform Operations ==========
     setTransform: wrapEngineCall('setTransform', (nodeId: number, transform: Transform) => {
       realEngine.setPosition(nodeId, transform.position);
-      realEngine.setRotation(nodeId, transform.rotation);
+      // Convert Euler angles (UI) to Quaternion (engine)
+      const quat = eulerToQuaternion(transform.rotation);
+      realEngine.setRotation(nodeId, quat);
       realEngine.setScale(nodeId, transform.scale);
     }),
 
@@ -104,7 +179,9 @@ const createRealAPI = (): MoonEngineAPI => {
     }),
 
     setRotation: wrapEngineCall('setRotation', (nodeId: number, rotation: Vector3) => {
-      realEngine.setRotation(nodeId, rotation);
+      // Convert Euler angles (UI) to Quaternion (engine)
+      const quat = eulerToQuaternion(rotation);
+      realEngine.setRotation(nodeId, quat);
     }),
 
     setScale: wrapEngineCall('setScale', (nodeId: number, scale: Vector3) => {
@@ -135,15 +212,15 @@ const createRealAPI = (): MoonEngineAPI => {
           mode: mode
         });
 
-        window.cefQuery({
+        window.cefQuery!({
           request: request,
           onSuccess: (response: string) => {
             console.log('[setGizmoCoordinateMode] Success:', response);
             resolve();
           },
-          onFailure: (error_code: number, error_message: string) => {
-            console.error('[setGizmoCoordinateMode] Failed:', error_message);
-            reject(new Error(error_message));
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            console.error('[setGizmoCoordinateMode] Failed:', errorMessage);
+            reject(new Error(errorMessage));
           }
         });
       });
@@ -231,7 +308,7 @@ export const isConnectedToEngine = (): boolean => {
 declare global {
   interface Window {
     onTransformChanged?: (nodeId: number, position: Vector3) => void;
-    onRotationChanged?: (nodeId: number, rotation: Vector3) => void;
+    onRotationChanged?: (nodeId: number, rotation: Quaternion) => void;
     onScaleChanged?: (nodeId: number, scale: Vector3) => void;
     onNodeSelected?: (nodeId: number | null) => void;
   }
@@ -251,11 +328,11 @@ export const registerTransformCallback = (callback: (nodeId: number, position: V
 
 /**
  * 注册 Rotation 更新监听器
- * C++ 在 Gizmo 旋转时调用 window.onRotationChanged
+ * C++ 在 Gizmo 旋转时调用 window.onRotationChanged（发送四元数）
  */
-export const registerRotationCallback = (callback: (nodeId: number, rotation: Vector3) => void) => {
-  window.onRotationChanged = (nodeId: number, rotation: Vector3) => {
-    console.log(`[C++ Callback] Rotation changed: node=${nodeId}, rot=(${rotation.x}, ${rotation.y}, ${rotation.z})`);
+export const registerRotationCallback = (callback: (nodeId: number, rotation: Quaternion) => void) => {
+  window.onRotationChanged = (nodeId: number, rotation: Quaternion) => {
+    console.log(`[C++ Callback] Rotation changed: node=${nodeId}, quat=(${rotation.x}, ${rotation.y}, ${rotation.z}, ${rotation.w})`);
     callback(nodeId, rotation);
   };
   console.log('[Engine Bridge] Rotation callback registered');

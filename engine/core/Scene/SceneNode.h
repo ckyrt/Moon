@@ -85,8 +85,9 @@ public:
     /**
      * @brief 设置父节点
      * @param parent 新的父节点（nullptr 表示设为根节点）
+     * @param worldPositionStays 是否保持世界坐标不变（默认为 true，与 Unity 一致）
      */
-    void SetParent(SceneNode* parent);
+    void SetParent(SceneNode* parent, bool worldPositionStays = true);
     
     /**
      * @brief 获取子节点数量

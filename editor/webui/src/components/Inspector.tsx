@@ -6,6 +6,7 @@
 import React from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { engine } from '@/utils/engine-bridge';
+import { eulerToQuaternion } from '@/utils/math';
 import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent } from '@/types/engine';
 import styles from './Inspector.module.css';
 
@@ -26,7 +27,9 @@ export const Inspector: React.FC = () => {
     if (!selectedNode) return;
     const newRotation = { ...selectedNode.transform.rotation, [axis]: value };
     updateNodeTransform(selectedNode.id, { rotation: newRotation });
-    engine.setRotation(selectedNode.id, newRotation);
+    // 将欧拉角转换为四元数再发送给引擎
+    const quaternion = eulerToQuaternion(newRotation);
+    engine.setRotation(selectedNode.id, quaternion);
   };
 
   const handleScaleChange = (axis: 'x' | 'y' | 'z', value: number) => {

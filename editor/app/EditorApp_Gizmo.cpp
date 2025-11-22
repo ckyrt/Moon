@@ -113,12 +113,12 @@ void RenderAndApplyGizmo(EngineCore* engine, EditorBridge& bridge)
     }
 
     //-------------------------------------------------------
-    // 拖动结束：通知 Web UI
+    // 拖动结束：通知 Web UI（发送四元数，不是欧拉角）
     //-------------------------------------------------------
     if (g_WasUsingGizmo && !usingGizmo)
     {
         auto localPos = tr->GetLocalPosition();
-        auto localRot = tr->GetLocalEulerAngles();
+        auto localRot = tr->GetLocalRotation();  // 获取四元数，不是欧拉角
         auto localScale = tr->GetLocalScale();
 
         if (bridge.GetClient() && bridge.GetClient()->GetBrowser())
@@ -126,10 +126,10 @@ void RenderAndApplyGizmo(EngineCore* engine, EditorBridge& bridge)
             char js[1024];
             snprintf(js, sizeof(js),
                 "if (window.onTransformChanged) { window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }"
-                "if (window.onRotationChanged) { window.onRotationChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }"
+                "if (window.onRotationChanged) { window.onRotationChanged(%d, {x:%.3f, y:%.3f, z:%.3f, w:%.3f}); }"
                 "if (window.onScaleChanged) { window.onScaleChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }",
                 g_SelectedObject->GetID(), localPos.x, localPos.y, localPos.z,
-                g_SelectedObject->GetID(), localRot.x, localRot.y, localRot.z,
+                g_SelectedObject->GetID(), localRot.x, localRot.y, localRot.z, localRot.w,
                 g_SelectedObject->GetID(), localScale.x, localScale.y, localScale.z
             );
 

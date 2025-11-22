@@ -17,6 +17,7 @@ import {
   registerScaleCallback, 
   registerSelectionCallback 
 } from '../utils/engine-bridge';
+import { quaternionToEuler } from '../utils/math';
 import '../styles/global.css';
 
 export const App: React.FC = () => {
@@ -51,10 +52,12 @@ export const App: React.FC = () => {
     });
   }, [updateNodeTransform]);
 
-  // Rotation 更新（Gizmo 旋转）
+  // Rotation 更新（Gizmo 旋转，接收四元数并转换为欧拉角）
   useEffect(() => {
-    registerRotationCallback((nodeId, rotation) => {
-      console.log(`[App] C++ → JS: Rotation changed (node=${nodeId})`, rotation);
+    registerRotationCallback((nodeId, quaternion) => {
+      console.log(`[App] C++ → JS: Rotation changed (node=${nodeId})`, quaternion);
+      // 将四元数转换为欧拉角（仅用于UI显示）
+      const rotation = quaternionToEuler(quaternion);
       updateNodeTransform(nodeId, { rotation });
     });
   }, [updateNodeTransform]);

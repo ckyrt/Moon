@@ -60,6 +60,7 @@ private:
     void UpdateLocalMatrix();
     void UpdateWorldMatrix();
     void MarkDirty();
+    void MarkChildrenWorldDirty();  // 递归标记所有子孙节点世界矩阵为脏
 
 private:
     SceneNode* m_owner;

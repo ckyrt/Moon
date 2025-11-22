@@ -11,9 +11,16 @@ export interface Vector3 {
   z: number;
 }
 
+export interface Quaternion {
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+}
+
 export interface Transform {
   position: Vector3;
-  rotation: Vector3; // Euler angles in degrees
+  rotation: Vector3; // Euler angles in degrees (UI only)
   scale: Vector3;
 }
 
@@ -69,18 +76,18 @@ export interface EditorState {
 export interface MoonEngineAPI {
   // Scene Management
   getScene(): Scene | Promise<Scene>;
-  createNode(name: string, parentId?: number): SceneNode;
-  deleteNode(nodeId: number): void;
+  createNode(name: string, parentId?: number): Promise<void>;
+  deleteNode(nodeId: number): Promise<void>;
   renameNode(nodeId: number, newName: string): void;
   setNodeActive(nodeId: number, active: boolean): void;
   
   // Hierarchy
-  setNodeParent(nodeId: number, parentId: number | null): void;
+  setNodeParent(nodeId: number, parentId: number | null): Promise<void>;
   
   // Transform
   setTransform(nodeId: number, transform: Transform): void;
   setPosition(nodeId: number, position: Vector3): void;
-  setRotation(nodeId: number, rotation: Vector3): void;
+  setRotation(nodeId: number, rotation: Quaternion): void;
   setScale(nodeId: number, scale: Vector3): void;
   
   // Selection

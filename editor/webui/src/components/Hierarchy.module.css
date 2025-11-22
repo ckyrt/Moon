@@ -49,7 +49,7 @@
 }
 
 .nodeContainer {
-  /* Container for node and its children */
+  position: relative;
 }
 
 .node {
@@ -71,10 +71,25 @@
   color: white;
 }
 
+.node.dragging {
+  opacity: 0.5;
+}
+
+.node.dragOver {
+  background: var(--accent-green);
+  border: 2px dashed var(--text-primary);
+}
+
 .arrow {
   font-size: 10px;
   width: 12px;
   text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.arrow.expanded {
+  transform: rotate(90deg);
 }
 
 .icon {
@@ -87,5 +102,5 @@
 }
 
 .children {
-  /* Children container */
+  margin-left: 0;
 }

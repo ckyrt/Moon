@@ -79,11 +79,28 @@ Moon::SceneNode* parent = scene->CreateNode("Parent");
 Moon::SceneNode* child1 = scene->CreateNode("Child1");
 Moon::SceneNode* child2 = scene->CreateNode("Child2");
 
-child1->SetParent(parent);
+// 默认保持世界坐标不变（与 Unity 一致）
+child1->SetParent(parent);  // worldPositionStays = true (默认)
 child2->SetParent(parent);
 
 // 父节点移动，子节点自动跟随
 parent->GetTransform()->SetLocalPosition(Moon::Vector3(5, 0, 0));
+
+// 可选：保持本地坐标不变（世界坐标会改变）
+child1->SetParent(parent, false);  // worldPositionStays = false
+```
+
+### SetParent 行为说明
+```cpp
+// 情况1：保持世界坐标不变（默认，推荐用于编辑器操作）
+// - 物体在场景中的世界位置/旋转/缩放保持不变
+// - 本地坐标会自动重新计算
+child->SetParent(newParent, true);  // 或简写为 child->SetParent(newParent);
+
+// 情况2：保持本地坐标不变（可选，用于特殊情况）
+// - 本地坐标保持不变
+// - 世界位置/旋转/缩放会改变
+child->SetParent(newParent, false);
 ```
 
 ## 坐标系约定 (Coordinate System)

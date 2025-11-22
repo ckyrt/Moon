@@ -52,9 +52,19 @@ void SceneNode::SetActive(bool active) {
 
 // === 父子层级关系 ===
 
-void SceneNode::SetParent(SceneNode* parent) {
+void SceneNode::SetParent(SceneNode* parent, bool worldPositionStays) {
     if (m_parent == parent) {
         return;
+    }
+    
+    // 如果需要保持世界坐标，先保存当前世界坐标
+    Vector3 worldPos, worldScale;
+    Quaternion worldRot;
+    
+    if (worldPositionStays) {
+        worldPos = m_transform.GetWorldPosition();
+        worldRot = m_transform.GetWorldRotation();
+        worldScale = m_transform.GetWorldScale();
     }
     
     // 从旧父节点移除
@@ -70,8 +80,15 @@ void SceneNode::SetParent(SceneNode* parent) {
         m_parent->AddChild(this);
     }
     
-    // 标记 Transform 为脏
-    m_transform.MarkDirty();
+    // 如果需要保持世界坐标，重新计算本地坐标
+    if (worldPositionStays) {
+        m_transform.SetWorldPosition(worldPos);
+        m_transform.SetWorldRotation(worldRot);
+        m_transform.SetWorldScale(worldScale);
+    } else {
+        // 标记 Transform 为脏
+        m_transform.MarkDirty();
+    }
     
     // 通知场景（用于更新根节点列表）
     if (m_scene) {

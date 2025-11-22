@@ -41,6 +41,15 @@ namespace {
             obj["z"].get<float>()
         };
     }
+
+    Moon::Quaternion ParseQuaternion(const json& obj) {
+        return {
+            obj["x"].get<float>(),
+            obj["y"].get<float>(),
+            obj["z"].get<float>(),
+            obj["w"].get<float>()
+        };
+    }
 }
 
 // ============================================================================
@@ -101,7 +110,7 @@ namespace CommandHandlers {
     // 设置旋转
     std::string HandleSetRotation(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
-        Moon::Vector3 rotation = ParseVector3(req["rotation"]);
+        Moon::Quaternion rotation = ParseQuaternion(req["rotation"]);
 
         Moon::SceneNode* node = scene->FindNodeByID(nodeId);
         if (!node) {
@@ -109,8 +118,8 @@ namespace CommandHandlers {
         }
 
         node->GetTransform()->SetLocalRotation(rotation);
-        MOON_LOG_INFO("MoonEngineMessage", "Set rotation of node %u to (%.2f, %.2f, %.2f)",
-                     nodeId, rotation.x, rotation.y, rotation.z);
+        MOON_LOG_INFO("MoonEngineMessage", "Set rotation of node %u to quaternion (%.2f, %.2f, %.2f, %.2f)",
+                     nodeId, rotation.x, rotation.y, rotation.z, rotation.w);
         
         return CreateSuccessResponse();
     }
@@ -218,8 +227,79 @@ namespace CommandHandlers {
             return CreateErrorResponse("Failed to create node");
         }
         
+        // 🎯 支持父节点设置
+        if (req.contains("parentId") && !req["parentId"].is_null()) {
+            uint32_t parentId = req["parentId"];
+            Moon::SceneNode* parent = scene->FindNodeByID(parentId);
+            if (parent) {
+                newNode->SetParent(parent);
+                MOON_LOG_INFO("MoonEngineMessage", "Set parent of node %u to %u", 
+                             newNode->GetID(), parentId);
+            } else {
+                MOON_LOG_WARN("MoonEngineMessage", "Parent node %u not found", parentId);
+            }
+        }
+        
         MOON_LOG_INFO("MoonEngineMessage", "Created node: %s (ID=%u)", 
                      newNode->GetName().c_str(), newNode->GetID());
+        
+        return CreateSuccessResponse();
+    }
+
+    // 删除节点
+    std::string HandleDeleteNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+        
+        MOON_LOG_INFO("MoonEngineMessage", "Deleting node: %s (ID=%u)", 
+                     node->GetName().c_str(), nodeId);
+        
+        // 如果当前删除的节点是选中的节点，清除选择
+        if (GetSelectedObject() == node) {
+            SetSelectedObject(nullptr);
+        }
+        
+        // 销毁节点（延迟删除，在帧结束时删除）
+        scene->DestroyNode(node);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置节点父级
+    std::string HandleSetNodeParent(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+        
+        Moon::SceneNode* newParent = nullptr;
+        if (req.contains("parentId") && !req["parentId"].is_null()) {
+            uint32_t parentId = req["parentId"];
+            newParent = scene->FindNodeByID(parentId);
+            if (!newParent) {
+                return CreateErrorResponse("Parent node not found");
+            }
+            
+            // 检查循环依赖：不能将父节点设为自己的子孙节点
+            Moon::SceneNode* checkNode = newParent;
+            while (checkNode) {
+                if (checkNode == node) {
+                    return CreateErrorResponse("Cannot set parent to descendant node");
+                }
+                checkNode = checkNode->GetParent();
+            }
+        }
+        
+        node->SetParent(newParent);
+        
+        MOON_LOG_INFO("MoonEngineMessage", "Set parent of node %u to %s", 
+                     nodeId, newParent ? std::to_string(newParent->GetID()).c_str() : "null");
         
         return CreateSuccessResponse();
     }
@@ -237,7 +317,9 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"setScale",                 CommandHandlers::HandleSetScale},
     {"setGizmoMode",             CommandHandlers::HandleSetGizmoMode},
     {"setGizmoCoordinateMode",   CommandHandlers::HandleSetGizmoCoordinateMode},  // 🎯 World/Local 切换
-    {"createNode",               CommandHandlers::HandleCreateNode}
+    {"createNode",               CommandHandlers::HandleCreateNode},
+    {"deleteNode",               CommandHandlers::HandleDeleteNode},  // 🎯 删除节点
+    {"setNodeParent",            CommandHandlers::HandleSetNodeParent}  // 🎯 设置父节点
 };
 
 MoonEngineMessageHandler::MoonEngineMessageHandler()

@@ -125,12 +125,13 @@ void SceneSerializer::SerializeTransform(Moon::Transform* transform, void* jsonO
         {"z", pos.z}
     };
 
-    // Rotation (Euler angles)
+    // Rotation (Quaternion)
     auto rot = transform->GetLocalRotation();
     transformData["rotation"] = {
         {"x", rot.x},
         {"y", rot.y},
-        {"z", rot.z}
+        {"z", rot.z},
+        {"w", rot.w}
     };
 
     // Scale
