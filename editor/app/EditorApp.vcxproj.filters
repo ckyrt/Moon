@@ -24,6 +24,9 @@
     <Filter Include="Source Files\Window">
       <UniqueIdentifier>{93995383-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Serialization">
+      <UniqueIdentifier>{93995384-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EditorApp.cpp">
@@ -47,10 +50,16 @@
     <ClCompile Include="EditorApp_Cleanup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SceneSerializer.cpp">
+      <Filter>Serialization</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EditorApp.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneSerializer.h">
+      <Filter>Serialization</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

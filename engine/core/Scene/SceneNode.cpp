@@ -17,6 +17,21 @@ SceneNode::SceneNode(const std::string& name)
 {
 }
 
+// 🎯 Undo/Redo 专用构造函数（指定 ID）
+SceneNode::SceneNode(uint32_t id, const std::string& name)
+    : m_id(id)
+    , m_name(name)
+    , m_active(true)
+    , m_transform(this)
+    , m_parent(nullptr)
+    , m_scene(nullptr)
+{
+    // 🚨 更新全局 ID 计数器（防止 ID 冲突）
+    if (id >= s_nextID) {
+        s_nextID = id + 1;
+    }
+}
+
 SceneNode::~SceneNode() {
     // 清理所有组件
     for (Component* comp : m_components) {

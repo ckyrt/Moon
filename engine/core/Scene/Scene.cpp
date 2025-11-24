@@ -33,6 +33,25 @@ SceneNode* Scene::CreateNode(const std::string& name) {
     return node;
 }
 
+// 🎯 Undo/Redo 专用：创建指定 ID 的节点
+SceneNode* Scene::CreateNodeWithID(uint32_t id, const std::string& name) {
+    // 🚨 检查 ID 是否已存在
+    if (FindNodeByID(id)) {
+        MOON_LOG_ERROR("Scene", "Cannot create node with ID %u: ID already exists", id);
+        return nullptr;
+    }
+    
+    SceneNode* node = new SceneNode(id, name);
+    node->SetScene(this);
+    
+    m_allNodes.push_back(node);
+    m_rootNodes.push_back(node);  // 默认作为根节点
+    
+    MOON_LOG_INFO("Scene", "Created node with ID=%u, name=%s", id, name.c_str());
+    
+    return node;
+}
+
 void Scene::DestroyNode(SceneNode* node) {
     if (!node) {
         return;

@@ -29,6 +29,16 @@ public:
     explicit SceneNode(const std::string& name = "GameObject");
     
     /**
+     * @brief 构造函数（指定 ID）
+     * @param id 节点 ID
+     * @param name 节点名称
+     * 
+     * ⚠️ 内部 API：仅供 Scene::CreateNodeWithID 使用（用于 Undo/Redo）
+     * ⚠️ 注意：调用者需要确保 ID 不重复，并更新 s_nextID
+     */
+    SceneNode(uint32_t id, const std::string& name);
+    
+    /**
      * @brief 析构函数
      */
     ~SceneNode();

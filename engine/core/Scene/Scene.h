@@ -47,6 +47,17 @@ public:
     SceneNode* CreateNode(const std::string& name = "GameObject");
     
     /**
+     * @brief 创建节点并指定 ID（用于 Undo/Redo 恢复节点）
+     * @param id 节点 ID
+     * @param name 节点名称
+     * @return 新创建的节点指针，如果 ID 已存在返回 nullptr
+     * 
+     * ⚠️ 内部 API：仅供 WebUI Undo/Redo 系统使用
+     * ⚠️ 注意：调用前需确保指定的 ID 不存在
+     */
+    SceneNode* CreateNodeWithID(uint32_t id, const std::string& name);
+    
+    /**
      * @brief 销毁节点（延迟删除）
      * @param node 要销毁的节点
      * 
