@@ -5,6 +5,7 @@
  * 1. 初始化加载场景数据
  * 2. 注册 C++ → JavaScript 回调
  * 3. 渲染编辑器布局
+ * 4. 注册 Undo/Redo 快捷键
  */
 
 import React, { useEffect } from 'react';
@@ -15,15 +16,21 @@ import {
   registerTransformCallback, 
   registerRotationCallback, 
   registerScaleCallback, 
-  registerSelectionCallback 
+  registerSelectionCallback,
+  registerGizmoStartCallback,
+  registerGizmoEndCallback,
 } from '../utils/engine-bridge';
 import { quaternionToEuler } from '../utils/math';
+import { useUndoShortcuts, onGizmoStart, onGizmoEnd } from '@/undo';
 import '../styles/global.css';
 
 export const App: React.FC = () => {
   const updateScene = useEditorStore((state) => state.updateScene);
   const updateNodeTransform = useEditorStore((state) => state.updateNodeTransform);
   const setSelectedNode = useEditorStore((state) => state.setSelectedNode);
+
+  // ========== Undo/Redo 快捷键 ==========
+  useUndoShortcuts();
 
   // ========== 场景初始化 ==========
   
@@ -77,6 +84,26 @@ export const App: React.FC = () => {
       setSelectedNode(nodeId);
     });
   }, [setSelectedNode]);
+
+  // ========== Gizmo Undo 集成 ==========
+
+  // Gizmo 开始拖拽
+  useEffect(() => {
+    registerGizmoStartCallback((nodeId) => {
+      console.log(`[App] C++ → JS: Gizmo drag started (node=${nodeId})`);
+      onGizmoStart(nodeId);
+    });
+  }, []);
+
+  // Gizmo 结束拖拽
+  useEffect(() => {
+    registerGizmoEndCallback((nodeId, position, quaternion, scale) => {
+      console.log(`[App] C++ → JS: Gizmo drag ended (node=${nodeId})`);
+      // 将四元数转换为欧拉角
+      const rotation = quaternionToEuler(quaternion);
+      onGizmoEnd(nodeId, position, rotation, scale, quaternion);
+    });
+  }, []);
 
   return <EditorLayout />;
 };

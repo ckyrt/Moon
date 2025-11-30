@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { engine } from '@/utils/engine-bridge';
+import { getUndoManager, DeleteNodeCommand, CreateNodeCommand, SetParentCommand } from '@/undo';
 import type { SceneNode } from '@/types/engine';
 import { ContextMenu, ContextMenuItem } from './ContextMenu';
 import styles from './Hierarchy.module.css';
@@ -50,14 +51,15 @@ export const Hierarchy: React.FC = () => {
 
   const handleDeleteNode = async (nodeId: number) => {
     try {
-      await engine.deleteNode(nodeId);
-      // Reload scene
-      const sceneData = await engine.getScene();
-      updateScene(sceneData);
-      // Clear selection if deleted node was selected
-      if (selectedNodeId === nodeId) {
-        setSelectedNode(null);
-      }
+      // 🎯 使用静态工厂方法创建命令（会预先序列化）
+      const command = await DeleteNodeCommand.create(nodeId);
+      const undoManager = getUndoManager();
+      
+      // 执行命令并推入 undo 栈
+      await command.execute();
+      undoManager.pushExecutedCommand(command);
+      
+      console.log('[Hierarchy] Node deleted with Undo support:', nodeId);
     } catch (error) {
       console.error('[Hierarchy] Failed to delete node:', error);
     }
@@ -65,12 +67,18 @@ export const Hierarchy: React.FC = () => {
 
   const handleAddChild = async (parentId: number) => {
     try {
-      await engine.createNode('New Node', parentId);
-      // Reload scene
-      const sceneData = await engine.getScene();
-      updateScene(sceneData);
+      // 使用 Undo 系统创建节点
+      const command = new CreateNodeCommand('New Node', parentId);
+      const undoManager = getUndoManager();
+      
+      // 手动执行并推入栈
+      await command.execute();
+      undoManager.pushExecutedCommand(command);
+      
       // Expand parent node to show new child
       setExpandedNodes(prev => new Set(prev).add(parentId));
+      
+      console.log('[Hierarchy] Node created with Undo support');
     } catch (error) {
       console.error('[Hierarchy] Failed to create child node:', error);
     }
@@ -132,12 +140,22 @@ export const Hierarchy: React.FC = () => {
     }
     
     try {
-      await engine.setNodeParent(draggedNodeId, targetNodeId);
-      // Reload scene
-      const sceneData = await engine.getScene();
-      updateScene(sceneData);
-      // Expand target node to show new child
+      // 获取旧的父级 ID
+      const draggedNode = scene.allNodes[draggedNodeId];
+      const oldParentId = draggedNode?.parentId ?? null;
+      
+      // Expand target node BEFORE executing command
       setExpandedNodes(prev => new Set(prev).add(targetNodeId));
+      
+      // 使用 Undo 系统改变父级
+      const command = new SetParentCommand(draggedNodeId, oldParentId, targetNodeId);
+      const undoManager = getUndoManager();
+      
+      // 手动执行并推入栈
+      await command.execute();
+      undoManager.pushExecutedCommand(command);
+      
+      console.log('[Hierarchy] Parent changed with Undo support');
     } catch (error) {
       console.error('[Hierarchy] Failed to change parent:', error);
     }

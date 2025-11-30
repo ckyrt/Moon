@@ -112,6 +112,41 @@ export interface MoonEngineAPI {
   
   // Primitive Creation
   createPrimitive(type: string): Promise<void>;
+
+  // ========================================================================
+  // 🎯 Undo/Redo 专用 API（内部使用）
+  // ========================================================================
+  
+  /**
+   * 序列化节点（完整数据，包含所有 Components）
+   * ⚠️ 内部 API：仅供 Undo/Redo 系统使用
+   */
+  serializeNode(nodeId: number): Promise<string>;
+  
+  /**
+   * 反序列化节点（从完整数据重建节点和所有 Components）
+   * ⚠️ 内部 API：仅供 Undo/Redo 系统使用
+   */
+  deserializeNode(serializedData: string): Promise<void>;
+  
+  /**
+   * 批量设置 Transform（用于 Undo 快速恢复）
+   * ⚠️ 内部 API：仅供 Undo/Redo 系统使用
+   */
+  setNodeTransform(nodeId: number, transform: Transform): Promise<void>;
+  
+  /**
+   * 创建节点并指定 ID（用于 Undo 恢复被删除的节点）
+   * ⚠️ 内部 API：仅供 Undo/Redo 系统使用
+   * ⚠️ 已弃用：请使用 deserializeNode 替代（更完整）
+   */
+  createNodeWithId(
+    nodeId: number,
+    name: string,
+    type: string,
+    parentId: number | null,
+    transform?: Transform
+  ): Promise<void>;
 }
 
 // ============ Window Extensions ============

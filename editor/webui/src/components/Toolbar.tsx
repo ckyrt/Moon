@@ -5,10 +5,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { engine } from '@/utils/engine-bridge';
+import { getUndoManager, CreatePrimitiveCommand } from '@/undo';
 import styles from './Toolbar.module.css';
 
 export const Toolbar: React.FC = () => {
-  const { gizmoMode, setGizmoMode, updateScene } = useEditorStore();
+  const { gizmoMode, setGizmoMode } = useEditorStore();
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [coordinateMode, setCoordinateMode] = useState<'world' | 'local'>('world');  // 🎯 World/Local 模式
   const menuRef = useRef<HTMLDivElement>(null);
@@ -33,22 +34,22 @@ export const Toolbar: React.FC = () => {
   const handleCreateObject = async (type: string) => {
     try {
       console.log(`[Toolbar] Creating ${type}...`);
-      console.log(`[Toolbar] engine.createPrimitive exists:`, !!engine.createPrimitive);
-      console.log(`[Toolbar] window.cefQuery exists:`, !!window.cefQuery);
       
       if (!engine.createPrimitive) {
         console.error('[Toolbar] engine.createPrimitive is not available');
         return;
       }
       
-      await engine.createPrimitive(type);
-      setShowCreateMenu(false);
-      console.log(`[Toolbar] Successfully created ${type}`);
+      // 使用 Undo 系统创建图元
+      const command = new CreatePrimitiveCommand(type);
+      const undoManager = getUndoManager();
       
-      // 创建成功后刷新场景
-      const sceneData = await engine.getScene();
-      updateScene(sceneData);
-      console.log(`[Toolbar] Scene refreshed after creating ${type}`);
+      // 手动执行并推入栈
+      await command.execute();
+      undoManager.pushExecutedCommand(command);
+      
+      setShowCreateMenu(false);
+      console.log(`[Toolbar] Successfully created ${type} with Undo support`);
     } catch (error) {
       console.error(`[Toolbar] Failed to create ${type}:`, error);
     }

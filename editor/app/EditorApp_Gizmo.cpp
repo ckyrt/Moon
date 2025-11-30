@@ -57,6 +57,24 @@ void RenderAndApplyGizmo(EngineCore* engine, EditorBridge& bridge)
     bool usingGizmo = ImGuizmo::IsUsing();
 
     //-------------------------------------------------------
+    // 🆕 拖动开始：通知 Web UI 记录初始状态
+    //-------------------------------------------------------
+    if (!g_WasUsingGizmo && usingGizmo)
+    {
+        if (bridge.GetClient() && bridge.GetClient()->GetBrowser())
+        {
+            char js[256];
+            snprintf(js, sizeof(js),
+                "if (window.onGizmoStart) { window.onGizmoStart(%d); }",
+                g_SelectedObject->GetID()
+            );
+
+            auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();
+            frame->ExecuteJavaScript(js, frame->GetURL(), 0);
+        }
+    }
+
+    //-------------------------------------------------------
     // 拖动中：实时应用变换到 Transform
     //-------------------------------------------------------
     if (usingGizmo)
@@ -113,7 +131,7 @@ void RenderAndApplyGizmo(EngineCore* engine, EditorBridge& bridge)
     }
 
     //-------------------------------------------------------
-    // 拖动结束：通知 Web UI（发送四元数，不是欧拉角）
+    // 🆕 拖动结束：通知 Web UI 创建 Undo Command
     //-------------------------------------------------------
     if (g_WasUsingGizmo && !usingGizmo)
     {
@@ -123,14 +141,17 @@ void RenderAndApplyGizmo(EngineCore* engine, EditorBridge& bridge)
 
         if (bridge.GetClient() && bridge.GetClient()->GetBrowser())
         {
-            char js[1024];
+            char js[512];
             snprintf(js, sizeof(js),
-                "if (window.onTransformChanged) { window.onTransformChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }"
-                "if (window.onRotationChanged) { window.onRotationChanged(%d, {x:%.3f, y:%.3f, z:%.3f, w:%.3f}); }"
-                "if (window.onScaleChanged) { window.onScaleChanged(%d, {x:%.3f, y:%.3f, z:%.3f}); }",
-                g_SelectedObject->GetID(), localPos.x, localPos.y, localPos.z,
-                g_SelectedObject->GetID(), localRot.x, localRot.y, localRot.z, localRot.w,
-                g_SelectedObject->GetID(), localScale.x, localScale.y, localScale.z
+                "if (window.onGizmoEnd) { window.onGizmoEnd(%d, "
+                "{x:%.3f, y:%.3f, z:%.3f}, "  // position
+                "{x:%.3f, y:%.3f, z:%.3f, w:%.3f}, "  // rotation (quaternion)
+                "{x:%.3f, y:%.3f, z:%.3f}"  // scale
+                "); }",
+                g_SelectedObject->GetID(),
+                localPos.x, localPos.y, localPos.z,
+                localRot.x, localRot.y, localRot.z, localRot.w,
+                localScale.x, localScale.y, localScale.z
             );
 
             auto frame = bridge.GetClient()->GetBrowser()->GetMainFrame();

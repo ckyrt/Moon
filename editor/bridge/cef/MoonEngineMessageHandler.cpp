@@ -1,11 +1,12 @@
 #include "MoonEngineMessageHandler.h"
-#include "../SceneSerializer.h"
+#include "../../app/SceneSerializer.h"
 #include "../../../engine/core/EngineCore.h"
 #include "../../../engine/core/Logging/Logger.h"
 #include "../../../engine/core/Scene/MeshRenderer.h"
 #include "../../../external/nlohmann/json.hpp"
 #include <functional>
 #include <unordered_map>
+#include <fstream>
 
 using json = nlohmann::json;
 
@@ -63,13 +64,13 @@ using CommandHandler = std::function<std::string(MoonEngineMessageHandler*, cons
 namespace CommandHandlers {
     // 获取场景层级
     std::string HandleGetScene(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
-        return SceneSerializer::GetSceneHierarchy(scene);
+        return Moon::SceneSerializer::GetSceneHierarchy(scene);
     }
 
     // 获取节点详情
     std::string HandleGetNodeDetails(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
-        return SceneSerializer::GetNodeDetails(scene, nodeId);
+        return Moon::SceneSerializer::GetNodeDetails(scene, nodeId);
     }
 
     // 选中节点
@@ -303,6 +304,278 @@ namespace CommandHandlers {
         
         return CreateSuccessResponse();
     }
+
+    // 重命名节点
+    std::string HandleRenameNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        std::string newName = req["newName"];
+        
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+        
+        node->SetName(newName);
+        
+        MOON_LOG_INFO("MoonEngineMessage", "Renamed node %u to \"%s\"", nodeId, newName.c_str());
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置节点激活状态
+    std::string HandleSetNodeActive(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        bool active = req["active"];
+        
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+        
+        node->SetActive(active);
+        
+        MOON_LOG_INFO("MoonEngineMessage", "Set node %u active = %s", nodeId, active ? "true" : "false");
+        
+        return CreateSuccessResponse();
+    }
+
+    // ========================================================================
+    // 🎯 Undo/Redo 专用 API（内部使用）
+    // ========================================================================
+    
+    /**
+     * 获取节点的完整序列化数据（用于 Delete Undo）
+     * 
+     * 请求格式：
+     * {
+     *   "command": "serializeNode",
+     *   "nodeId": 123
+     * }
+     * 
+     * 响应格式：
+     * {
+     *   "success": true,
+     *   "data": "{ ... 完整的节点 JSON 数据 ... }"
+     * }
+     * 
+     * ⚠️ 内部 API：仅供 WebUI Undo/Redo 系统使用
+     */
+    std::string HandleSerializeNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        
+        std::string serializedData = Moon::SceneSerializer::SerializeNode(scene, nodeId);
+        
+        json result;
+        result["success"] = true;
+        result["data"] = serializedData;
+        
+        return result.dump();
+    }
+
+    /**
+     * 从序列化数据重建节点（用于 Delete Undo）
+     * 
+     * 请求格式：
+     * {
+     *   "command": "deserializeNode",
+     *   "data": "{ ... 完整的节点 JSON 数据 ... }"
+     * }
+     * 
+     * ⚠️ 内部 API：仅供 WebUI Undo/Redo 系统使用
+     */
+    std::string HandleDeserializeNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        std::string serializedData = req["data"];
+        
+        EngineCore* engine = handler->GetEngineCore();
+        if (!engine) {
+            return CreateErrorResponse("Engine core not available");
+        }
+        
+        Moon::SceneNode* node = Moon::SceneSerializer::DeserializeNode(scene, engine, serializedData);
+        
+        if (!node) {
+            return CreateErrorResponse("Failed to deserialize node");
+        }
+        
+        MOON_LOG_INFO("MoonEngineMessage", "[Undo] Successfully deserialized node %u", node->GetID());
+        
+        return CreateSuccessResponse();
+    }
+
+    /**
+     * 批量设置 Transform（position + rotation + scale）
+     * 用于 Undo/Redo 快速恢复节点状态
+     * 
+     * 请求格式：
+     * {
+     *   "command": "setNodeTransform",
+     *   "nodeId": 123,
+     *   "transform": {
+     *     "position": {"x": 1.0, "y": 2.0, "z": 3.0},
+     *     "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
+     *     "scale": {"x": 1.0, "y": 1.0, "z": 1.0}
+     *   }
+     * }
+     * 
+     * ⚠️ 内部 API：仅供 WebUI Undo/Redo 系统使用
+     */
+    std::string HandleSetNodeTransform(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+        
+        const json& transform = req["transform"];
+        
+        // 批量设置 Transform（避免多次 API 调用）
+        if (transform.contains("position")) {
+            node->GetTransform()->SetLocalPosition(ParseVector3(transform["position"]));
+        }
+        if (transform.contains("rotation")) {
+            node->GetTransform()->SetLocalRotation(ParseQuaternion(transform["rotation"]));
+        }
+        if (transform.contains("scale")) {
+            node->GetTransform()->SetLocalScale(ParseVector3(transform["scale"]));
+        }
+        
+        MOON_LOG_INFO("MoonEngineMessage", "[Undo] Restored transform for node %u", nodeId);
+        
+        return CreateSuccessResponse();
+    }
+
+    /**
+     * 创建节点并指定 ID（用于 Undo 恢复被删除的节点）
+     * 
+     * 请求格式：
+     * {
+     *   "command": "createNodeWithId",
+     *   "nodeId": 123,  // 原始节点 ID
+     *   "name": "MyNode",
+     *   "type": "empty",  // "empty", "cube", "sphere", etc.
+     *   "parentId": 456,  // 可选
+     *   "transform": {    // 可选
+     *     "position": {...},
+     *     "rotation": {...},
+     *     "scale": {...}
+     *   }
+     * }
+     * 
+     * ⚠️ 内部 API：仅供 WebUI Undo/Redo 系统使用
+     * ⚠️ 注意：如果指定的 ID 已存在，会返回错误
+     */
+    std::string HandleCreateNodeWithId(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t targetId = req["nodeId"];
+        std::string name = req["name"];
+        std::string type = req.contains("type") ? req["type"].get<std::string>() : "empty";
+        
+        // 🚨 检查 ID 是否已存在
+        if (scene->FindNodeByID(targetId)) {
+            return CreateErrorResponse("Node with ID already exists: " + std::to_string(targetId));
+        }
+        
+        MOON_LOG_INFO("MoonEngineMessage", "[Undo] Creating node with ID=%u, name=%s, type=%s", 
+                     targetId, name.c_str(), type.c_str());
+        
+        // 获取引擎核心
+        EngineCore* engine = handler->GetEngineCore();
+        if (!engine) {
+            return CreateErrorResponse("Engine core not available");
+        }
+        
+        // 创建场景节点（使用指定 ID）
+        Moon::SceneNode* newNode = scene->CreateNodeWithID(targetId, name);
+        
+        if (!newNode) {
+            return CreateErrorResponse("Failed to create node with specified ID");
+        }
+        
+        // 根据类型添加组件
+        if (type == "cube") {
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(engine->GetMeshManager()->CreateCube(
+                1.0f, Moon::Vector3(1.0f, 0.5f, 0.2f)
+            ));
+        }
+        else if (type == "sphere") {
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(engine->GetMeshManager()->CreateSphere(
+                0.5f, 24, 16, Moon::Vector3(0.2f, 0.5f, 1.0f)
+            ));
+        }
+        else if (type == "cylinder") {
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(engine->GetMeshManager()->CreateCylinder(
+                0.5f, 0.5f, 1.0f, 24, Moon::Vector3(0.2f, 1.0f, 0.5f)
+            ));
+        }
+        else if (type == "plane") {
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(engine->GetMeshManager()->CreatePlane(
+                2.0f, 2.0f, 1, 1, Moon::Vector3(0.7f, 0.7f, 0.7f)
+            ));
+        }
+        
+        // 设置父节点
+        if (req.contains("parentId") && !req["parentId"].is_null()) {
+            uint32_t parentId = req["parentId"];
+            Moon::SceneNode* parent = scene->FindNodeByID(parentId);
+            if (parent) {
+                newNode->SetParent(parent);
+            } else {
+                MOON_LOG_WARN("MoonEngineMessage", "Parent node %u not found", parentId);
+            }
+        }
+        
+        // 设置 Transform
+        if (req.contains("transform")) {
+            const json& transform = req["transform"];
+            if (transform.contains("position")) {
+                newNode->GetTransform()->SetLocalPosition(ParseVector3(transform["position"]));
+            }
+            if (transform.contains("rotation")) {
+                newNode->GetTransform()->SetLocalRotation(ParseQuaternion(transform["rotation"]));
+            }
+            if (transform.contains("scale")) {
+                newNode->GetTransform()->SetLocalScale(ParseVector3(transform["scale"]));
+            }
+        }
+        
+        MOON_LOG_INFO("MoonEngineMessage", "[Undo] Successfully created node with ID=%u", targetId);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 写日志到文件
+    std::string HandleWriteLog(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        if (!req.contains("logContent")) {
+            return CreateErrorResponse("Missing 'logContent' field");
+        }
+
+        std::string logContent = req["logContent"];
+        
+        // 获取日志目录路径
+        std::string logDir = "E:\\game_engine\\Moon\\bin\\x64\\Debug\\logs";
+        std::string logFilePath = logDir + "\\frontend.log";
+        
+        try {
+            // 打开文件（追加模式）
+            std::ofstream logFile(logFilePath, std::ios::app);
+            if (!logFile.is_open()) {
+                return CreateErrorResponse("Failed to open log file: " + logFilePath);
+            }
+            
+            // 写入日志内容
+            logFile << logContent;
+            logFile.close();
+            
+            return CreateSuccessResponse();
+        }
+        catch (const std::exception& e) {
+            return CreateErrorResponse(std::string("Exception writing log: ") + e.what());
+        }
+    }
 }
 
 // ============================================================================
@@ -319,7 +592,14 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"setGizmoCoordinateMode",   CommandHandlers::HandleSetGizmoCoordinateMode},  // 🎯 World/Local 切换
     {"createNode",               CommandHandlers::HandleCreateNode},
     {"deleteNode",               CommandHandlers::HandleDeleteNode},  // 🎯 删除节点
-    {"setNodeParent",            CommandHandlers::HandleSetNodeParent}  // 🎯 设置父节点
+    {"setNodeParent",            CommandHandlers::HandleSetNodeParent},  // 🎯 设置父节点
+    {"renameNode",               CommandHandlers::HandleRenameNode},  // 🎯 重命名节点
+    {"setNodeActive",            CommandHandlers::HandleSetNodeActive},  // 🎯 设置节点激活状态
+    {"serializeNode",            CommandHandlers::HandleSerializeNode},  // 🎯 Undo: 序列化节点
+    {"deserializeNode",          CommandHandlers::HandleDeserializeNode},  // 🎯 Undo: 反序列化节点
+    {"setNodeTransform",         CommandHandlers::HandleSetNodeTransform},  // 🎯 Undo: 批量设置 Transform
+    {"createNodeWithId",         CommandHandlers::HandleCreateNodeWithId},  // 🎯 Undo: 创建指定 ID 的节点（已弃用，用 deserializeNode 替代）
+    {"writeLog",                 CommandHandlers::HandleWriteLog}  // 🎯 Logger: 写日志到文件
 };
 
 MoonEngineMessageHandler::MoonEngineMessageHandler()

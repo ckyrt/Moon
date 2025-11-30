@@ -5,38 +5,62 @@
 
 import React from 'react';
 import { useEditorStore } from '@/store/editorStore';
-import { engine } from '@/utils/engine-bridge';
 import { eulerToQuaternion } from '@/utils/math';
+import { getUndoManager } from '@/undo';
+import { SetPositionCommand, SetRotationCommand, SetScaleCommand } from '@/undo';
 import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent } from '@/types/engine';
 import styles from './Inspector.module.css';
 
 export const Inspector: React.FC = () => {
-  const { scene, selectedNodeId, updateNodeTransform } = useEditorStore();
+  const { scene, selectedNodeId } = useEditorStore();
   const selectedNode = selectedNodeId ? scene.allNodes[selectedNodeId] : null;
+
+  // 获取 UndoManager 单例
+  const undoManager = getUndoManager({ debug: true });
 
   // ========== Transform 修改处理器 ==========
   
   const handlePositionChange = (axis: 'x' | 'y' | 'z', value: number) => {
     if (!selectedNode) return;
-    const newPosition = { ...selectedNode.transform.position, [axis]: value };
-    updateNodeTransform(selectedNode.id, { position: newPosition });
-    engine.setPosition(selectedNode.id, newPosition);
+    
+    const oldPosition = { ...selectedNode.transform.position };
+    const newPosition = { ...oldPosition, [axis]: value };
+    
+    // 使用 Command 执行修改
+    const command = new SetPositionCommand(selectedNode.id, oldPosition, newPosition);
+    undoManager.execute(command);
   };
 
   const handleRotationChange = (axis: 'x' | 'y' | 'z', value: number) => {
     if (!selectedNode) return;
-    const newRotation = { ...selectedNode.transform.rotation, [axis]: value };
-    updateNodeTransform(selectedNode.id, { rotation: newRotation });
-    // 将欧拉角转换为四元数再发送给引擎
-    const quaternion = eulerToQuaternion(newRotation);
-    engine.setRotation(selectedNode.id, quaternion);
+    
+    const oldRotation = { ...selectedNode.transform.rotation };
+    const newRotation = { ...oldRotation, [axis]: value };
+    
+    // 将欧拉角转换为四元数
+    const oldQuaternion = eulerToQuaternion(oldRotation);
+    const newQuaternion = eulerToQuaternion(newRotation);
+    
+    // 使用 Command 执行修改
+    const command = new SetRotationCommand(
+      selectedNode.id,
+      oldRotation,
+      newRotation,
+      oldQuaternion,
+      newQuaternion
+    );
+    undoManager.execute(command);
   };
 
   const handleScaleChange = (axis: 'x' | 'y' | 'z', value: number) => {
     if (!selectedNode) return;
-    const newScale = { ...selectedNode.transform.scale, [axis]: value };
-    updateNodeTransform(selectedNode.id, { scale: newScale });
-    engine.setScale(selectedNode.id, newScale);
+    
+    const oldScale = { ...selectedNode.transform.scale };
+    const newScale = { ...oldScale, [axis]: value };
+    
+    // 使用 Command 执行修改
+    const command = new SetScaleCommand(selectedNode.id, oldScale, newScale);
+    undoManager.execute(command);
   };
 
   // ========== 渲染 ==========

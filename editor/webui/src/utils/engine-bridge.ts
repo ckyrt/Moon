@@ -86,7 +86,7 @@ const createRealAPI = (): MoonEngineAPI => {
       return new Promise<void>((resolve, reject) => {
         const request = JSON.stringify({
           command: 'createNode',
-          type: 'empty',
+          type: _name,
           parentId: parentId ?? null
         });
 
@@ -130,12 +130,56 @@ const createRealAPI = (): MoonEngineAPI => {
       });
     }),
 
-    renameNode: wrapEngineCall('renameNode', (_nodeId: number, _newName: string) => {
-      // TODO: Implement in C++
+    renameNode: wrapAsyncEngineCall('renameNode', async (nodeId: number, newName: string) => {
+      if (!window.cefQuery) {
+        console.warn('[renameNode] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'renameNode',
+          nodeId: nodeId,
+          newName: newName
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (_response: string) => {
+            resolve();
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            console.error('[renameNode] Failed:', errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
     }),
 
-    setNodeActive: wrapEngineCall('setNodeActive', (_nodeId: number, _active: boolean) => {
-      // TODO: Implement in C++
+    setNodeActive: wrapAsyncEngineCall('setNodeActive', async (nodeId: number, active: boolean) => {
+      if (!window.cefQuery) {
+        console.warn('[setNodeActive] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setNodeActive',
+          nodeId: nodeId,
+          active: active
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (_response: string) => {
+            resolve();
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            console.error('[setNodeActive] Failed:', errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
     }),
 
     setNodeParent: wrapAsyncEngineCall('setNodeParent', async (nodeId: number, parentId: number | null) => {
@@ -278,6 +322,154 @@ const createRealAPI = (): MoonEngineAPI => {
         });
       });
     }),
+
+    // ========================================================================
+    // 🎯 Undo/Redo 专用 API（内部使用）
+    // ========================================================================
+    
+    /**
+     * 序列化节点（完整数据，用于 Delete Undo）
+     * ⚠️ 内部 API：仅供 Undo/Redo 系统使用
+     */
+    serializeNode: wrapAsyncEngineCall('serializeNode', async (nodeId: number): Promise<string> => {
+      if (!window.cefQuery) {
+        console.warn('[serializeNode] cefQuery not available');
+        return '{}';
+      }
+
+      return new Promise<string>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'serializeNode',
+          nodeId
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const result = JSON.parse(response);
+            if (result.success) {
+              console.log('[serializeNode] Success');
+              resolve(result.data);
+            } else {
+              reject(new Error('Serialization failed'));
+            }
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            console.error('[serializeNode] Failed:', errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    /**
+     * 反序列化节点（从完整数据重建，用于 Delete Undo）
+     * ⚠️ 内部 API：仅供 Undo/Redo 系统使用
+     */
+    deserializeNode: wrapAsyncEngineCall('deserializeNode', async (serializedData: string) => {
+      if (!window.cefQuery) {
+        console.warn('[deserializeNode] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'deserializeNode',
+          data: serializedData
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (_response: string) => {
+            console.log('[deserializeNode] Success');
+            resolve();
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            console.error('[deserializeNode] Failed:', errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    /**
+     * 批量设置 Transform（用于 Undo 快速恢复）
+     * ⚠️ 内部 API：仅供 Undo/Redo 系统使用
+     */
+    setNodeTransform: wrapAsyncEngineCall('setNodeTransform', async (nodeId: number, transform: Transform) => {
+      if (!window.cefQuery) {
+        console.warn('[setNodeTransform] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setNodeTransform',
+          nodeId,
+          transform: {
+            position: transform.position,
+            rotation: eulerToQuaternion(transform.rotation), // 转换为四元数
+            scale: transform.scale
+          }
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (_response: string) => {
+            console.log('[setNodeTransform] Success');
+            resolve();
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            console.error('[setNodeTransform] Failed:', errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    /**
+     * 创建节点并指定 ID（用于 Undo 恢复被删除的节点）
+     * ⚠️ 内部 API：仅供 Undo/Redo 系统使用
+     */
+    createNodeWithId: wrapAsyncEngineCall('createNodeWithId', async (
+      nodeId: number,
+      name: string,
+      type: string,
+      parentId: number | null,
+      transform?: Transform
+    ) => {
+      if (!window.cefQuery) {
+        console.warn('[createNodeWithId] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'createNodeWithId',
+          nodeId,
+          name,
+          type,
+          parentId,
+          transform: transform ? {
+            position: transform.position,
+            rotation: eulerToQuaternion(transform.rotation),
+            scale: transform.scale
+          } : undefined
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (_response: string) => {
+            console.log('[createNodeWithId] Success');
+            resolve();
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            console.error('[createNodeWithId] Failed:', errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
   };
 };
 
@@ -311,6 +503,8 @@ declare global {
     onRotationChanged?: (nodeId: number, rotation: Quaternion) => void;
     onScaleChanged?: (nodeId: number, scale: Vector3) => void;
     onNodeSelected?: (nodeId: number | null) => void;
+    onGizmoStart?: (nodeId: number) => void;
+    onGizmoEnd?: (nodeId: number, position: Vector3, rotation: Quaternion, scale: Vector3) => void;
   }
 }
 
@@ -360,4 +554,30 @@ export const registerSelectionCallback = (callback: (nodeId: number | null) => v
     callback(nodeId);
   };
   console.log('[Engine Bridge] Selection callback registered');
+};
+
+/**
+ * 注册 Gizmo 开始拖拽监听器
+ * C++ 在 Gizmo 开始拖拽时调用 window.onGizmoStart
+ */
+export const registerGizmoStartCallback = (callback: (nodeId: number) => void) => {
+  window.onGizmoStart = (nodeId: number) => {
+    console.log(`[C++ Callback] Gizmo drag started: node=${nodeId}`);
+    callback(nodeId);
+  };
+  console.log('[Engine Bridge] Gizmo start callback registered');
+};
+
+/**
+ * 注册 Gizmo 结束拖拽监听器
+ * C++ 在 Gizmo 拖拽结束时调用 window.onGizmoEnd
+ */
+export const registerGizmoEndCallback = (
+  callback: (nodeId: number, position: Vector3, rotation: Quaternion, scale: Vector3) => void
+) => {
+  window.onGizmoEnd = (nodeId: number, position: Vector3, rotation: Quaternion, scale: Vector3) => {
+    console.log(`[C++ Callback] Gizmo drag ended: node=${nodeId}`);
+    callback(nodeId, position, rotation, scale);
+  };
+  console.log('[Engine Bridge] Gizmo end callback registered');
 };
