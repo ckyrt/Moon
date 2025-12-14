@@ -7,7 +7,13 @@ import React from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { eulerToQuaternion } from '@/utils/math';
 import { getUndoManager } from '@/undo';
-import { SetPositionCommand, SetRotationCommand, SetScaleCommand } from '@/undo';
+import { 
+  SetPositionCommand, 
+  SetRotationCommand, 
+  SetScaleCommand,
+  RenameNodeCommand,
+  SetNodeActiveCommand 
+} from '@/undo';
 import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent } from '@/types/engine';
 import styles from './Inspector.module.css';
 
@@ -19,6 +25,20 @@ export const Inspector: React.FC = () => {
   const undoManager = getUndoManager({ debug: true });
 
   // ========== Transform 修改处理器 ==========
+  
+  const handleNameChange = (newName: string) => {
+    if (!selectedNode || newName === selectedNode.name) return;
+    
+    const command = new RenameNodeCommand(selectedNode.id, selectedNode.name, newName);
+    undoManager.execute(command);
+  };
+
+  const handleActiveChange = (newActive: boolean) => {
+    if (!selectedNode) return;
+    
+    const command = new SetNodeActiveCommand(selectedNode.id, selectedNode.active, newActive);
+    undoManager.execute(command);
+  };
   
   const handlePositionChange = (axis: 'x' | 'y' | 'z', value: number) => {
     if (!selectedNode) return;
@@ -84,7 +104,12 @@ export const Inspector: React.FC = () => {
           <div className={styles.sectionTitle}>Node</div>
           <div className={styles.field}>
             <label>Name:</label>
-            <input type="text" value={selectedNode.name} readOnly />
+            <input 
+              type="text" 
+              value={selectedNode.name} 
+              onChange={(e) => handleNameChange(e.target.value)}
+              onBlur={(e) => handleNameChange(e.target.value)}
+            />
           </div>
           <div className={styles.field}>
             <label>ID:</label>
@@ -92,7 +117,11 @@ export const Inspector: React.FC = () => {
           </div>
           <div className={styles.field}>
             <label>Active:</label>
-            <input type="checkbox" checked={selectedNode.active} readOnly />
+            <input 
+              type="checkbox" 
+              checked={selectedNode.active} 
+              onChange={(e) => handleActiveChange(e.target.checked)}
+            />
           </div>
         </div>
 
