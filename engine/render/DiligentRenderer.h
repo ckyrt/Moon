@@ -50,6 +50,8 @@ public:
     void RenderFrame() override;
 
     void SetViewProjectionMatrix(const float* viewProj16) override;
+    void SetMaterialParameters(float metallic, float roughness);  // 设置 PBR 材质参数
+    void SetCameraPosition(const Moon::Vector3& position);        // 设置相机位置（用于高光计算）
     void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) override;
     void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
 
@@ -71,10 +73,20 @@ private:
         size_t VertexCount = 0;
     };
 
-    struct VSConstantsCPU { // 64B
+    struct VSConstantsCPU { // 128B
         Moon::Matrix4x4 WorldViewProjT;
+        Moon::Matrix4x4 WorldT;
     };
-    struct PSConstantsCPU { // 16B 对齐
+    struct PSMaterialCPU { // 16B 对齐（PBR 材质参数）
+        float metallic = 0.0f;
+        float roughness = 0.5f;
+        float padding[2] = { 0.0f, 0.0f };
+    };
+    struct PSSceneCPU { // 16B 对齐（场景参数：相机位置、光源等）
+        Moon::Vector3 cameraPosition;
+        float padding1 = 0.0f;
+    };
+    struct PSConstantsCPU { // 16B 对齐（Picking）
         uint32_t ObjectID = 0;
         uint32_t pad[3] = { 0,0,0 };
     };
@@ -95,6 +107,8 @@ private:
 
     // ======== 主渲染管线 ========
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pVSConstants;
+    Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pPSMaterialConstants;  // PBR 材质参数
+    Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pPSSceneConstants;     // 场景参数（相机位置等）
     Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pPSO;
     Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pSRB;
 

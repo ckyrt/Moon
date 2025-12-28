@@ -110,82 +110,52 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         return -1;
     }
     
-    // Setup Scene with multiple geometry types (Unity-like primitives showcase)
+    // ============================================================================
+    // PBR Material Ball Grid (行业标准 Debug Scene)
+    // ============================================================================
     Moon::Scene* scene = engine.GetScene();
     Moon::MeshManager* meshManager = engine.GetMeshManager();
     
-    MOON_LOG_INFO("Sample", "Creating geometry showcase scene with MeshManager...");
+    MOON_LOG_INFO("Sample", "Creating PBR Material Ball Grid...");
     
-    // Row 1: Basic shapes (Y = 0)
-    // Cube (Red)
-    Moon::SceneNode* cube = scene->CreateNode("Cube");
-    cube->GetTransform()->SetLocalPosition(Moon::Vector3(-6.0f, 0.0f, 0.0f));
-    Moon::MeshRenderer* cubeRenderer = cube->AddComponent<Moon::MeshRenderer>();
-    cubeRenderer->SetMesh(meshManager->CreateCube(1.0f, Moon::Vector3(1.0f, 0.3f, 0.3f)));
+    // 参数设置
+    const int ROWS = 5;        // Y 轴：Metallic 0 → 1
+    const int COLS = 5;        // X 轴：Roughness 0 → 1
+    const float SPACING = 2.5f;
+    const float RADIUS = 0.8f;
     
-    // Sphere (Green)
-    Moon::SceneNode* sphere = scene->CreateNode("Sphere");
-    sphere->GetTransform()->SetLocalPosition(Moon::Vector3(-3.0f, 0.0f, 0.0f));
-    Moon::MeshRenderer* sphereRenderer = sphere->AddComponent<Moon::MeshRenderer>();
-    sphereRenderer->SetMesh(meshManager->CreateSphere(0.6f, 32, 16, Moon::Vector3(0.3f, 1.0f, 0.3f)));
+    // 白色基础颜色（更好地展示 PBR 效果）
+    Moon::Vector3 baseColor(0.9f, 0.9f, 0.9f);
     
-    // Cylinder (Blue)
-    Moon::SceneNode* cylinder = scene->CreateNode("Cylinder");
-    cylinder->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 0.0f, 0.0f));
-    Moon::MeshRenderer* cylinderRenderer = cylinder->AddComponent<Moon::MeshRenderer>();
-    cylinderRenderer->SetMesh(meshManager->CreateCylinder(0.5f, 0.5f, 1.5f, 24, Moon::Vector3(0.3f, 0.5f, 1.0f)));
+    // 创建球阵列
+    for (int row = 0; row < ROWS; ++row) {
+        for (int col = 0; col < COLS; ++col) {
+            // 计算材质参数
+            float metallic = static_cast<float>(row) / (ROWS - 1);      // 0 → 1 (从下到上)
+            float roughness = static_cast<float>(col) / (COLS - 1);     // 0 → 1 (从左到右)
+            
+            // 计算位置（居中）
+            float x = (col - (COLS - 1) * 0.5f) * SPACING;
+            float y = (row - (ROWS - 1) * 0.5f) * SPACING;
+            float z = 0.0f;
+            
+            // 创建球体节点
+            char nodeName[64];
+            snprintf(nodeName, sizeof(nodeName), "Sphere_M%.2f_R%.2f", metallic, roughness);
+            
+            Moon::SceneNode* sphereNode = scene->CreateNode(nodeName);
+            sphereNode->GetTransform()->SetLocalPosition(Moon::Vector3(x, y, z));
+            
+            Moon::MeshRenderer* renderer = sphereNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(meshManager->CreateSphere(RADIUS, 32, 16, baseColor));
+            
+            // 存储材质参数（暂时通过用户数据或标签，后续会用材质系统）
+            // TODO: 实现材质系统后替换为 Material Component
+        }
+    }
     
-    // Cone (Yellow)
-    Moon::SceneNode* cone = scene->CreateNode("Cone");
-    cone->GetTransform()->SetLocalPosition(Moon::Vector3(3.0f, 0.0f, 0.0f));
-    Moon::MeshRenderer* coneRenderer = cone->AddComponent<Moon::MeshRenderer>();
-    coneRenderer->SetMesh(meshManager->CreateCone(0.6f, 1.5f, 24, Moon::Vector3(1.0f, 1.0f, 0.3f)));
-    
-    // Capsule (Magenta)
-    Moon::SceneNode* capsule = scene->CreateNode("Capsule");
-    capsule->GetTransform()->SetLocalPosition(Moon::Vector3(6.0f, 0.0f, 0.0f));
-    Moon::MeshRenderer* capsuleRenderer = capsule->AddComponent<Moon::MeshRenderer>();
-    capsuleRenderer->SetMesh(meshManager->CreateCapsule(0.4f, 2.0f, 16, 8, Moon::Vector3(1.0f, 0.3f, 1.0f)));
-    
-    // Row 2: Advanced shapes (Y = -3)
-    // Torus (Cyan)
-    Moon::SceneNode* torus = scene->CreateNode("Torus");
-    torus->GetTransform()->SetLocalPosition(Moon::Vector3(-4.5f, -3.0f, 0.0f));
-    Moon::MeshRenderer* torusRenderer = torus->AddComponent<Moon::MeshRenderer>();
-    torusRenderer->SetMesh(meshManager->CreateTorus(0.6f, 0.2f, 32, 16, Moon::Vector3(0.3f, 1.0f, 1.0f)));
-    
-    // Plane (White)
-    Moon::SceneNode* plane = scene->CreateNode("Plane");
-    plane->GetTransform()->SetLocalPosition(Moon::Vector3(-1.5f, -3.0f, 0.0f));
-    plane->GetTransform()->SetLocalRotation(Moon::Vector3(0.0f, 0.0f, 0.0f));
-    Moon::MeshRenderer* planeRenderer = plane->AddComponent<Moon::MeshRenderer>();
-    planeRenderer->SetMesh(meshManager->CreatePlane(1.5f, 1.5f, 2, 2, Moon::Vector3(0.9f, 0.9f, 0.9f)));
-    
-    // Quad (Orange)
-    Moon::SceneNode* quad = scene->CreateNode("Quad");
-    quad->GetTransform()->SetLocalPosition(Moon::Vector3(1.5f, -3.0f, 0.0f));
-    quad->GetTransform()->SetLocalRotation(Moon::Vector3(0.0f, 45.0f, 0.0f));
-    Moon::MeshRenderer* quadRenderer = quad->AddComponent<Moon::MeshRenderer>();
-    quadRenderer->SetMesh(meshManager->CreateQuad(1.2f, 1.2f, Moon::Vector3(1.0f, 0.6f, 0.2f)));
-    
-    // Parent-child hierarchy demo (Right side, elevated)
-    Moon::SceneNode* parent = scene->CreateNode("Parent");
-    parent->GetTransform()->SetLocalPosition(Moon::Vector3(4.5f, -3.0f, 0.0f));
-    
-    Moon::SceneNode* child1 = scene->CreateNode("Child1");
-    child1->SetParent(parent);
-    child1->GetTransform()->SetLocalPosition(Moon::Vector3(-0.8f, 0.0f, 0.0f));
-    Moon::MeshRenderer* child1Renderer = child1->AddComponent<Moon::MeshRenderer>();
-    child1Renderer->SetMesh(meshManager->CreateCube(0.5f, Moon::Vector3(0.8f, 0.4f, 0.2f)));
-    
-    Moon::SceneNode* child2 = scene->CreateNode("Child2");
-    child2->SetParent(parent);
-    child2->GetTransform()->SetLocalPosition(Moon::Vector3(0.8f, 0.0f, 0.0f));
-    Moon::MeshRenderer* child2Renderer = child2->AddComponent<Moon::MeshRenderer>();
-    child2Renderer->SetMesh(meshManager->CreateSphere(0.3f, 16, 8, Moon::Vector3(0.2f, 0.8f, 0.4f)));
-    
-    MOON_LOG_INFO("Sample", "Scene created with 11 geometry primitives (managed by MeshManager, %zu meshes in cache)", 
-                  meshManager->GetMeshCount());
+    MOON_LOG_INFO("Sample", "PBR Grid created: %dx%d spheres (%d total)", 
+                  COLS, ROWS, COLS * ROWS);
 
     // 4) Main loop
     bool running = true;
@@ -206,42 +176,34 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         
         // Update Camera Controller
         cameraController.Update(static_cast<float>(dt));
-        
-        // Animate shapes for visual variety (注释掉以停止旋转)
-        /*
-        float rotationSpeed = 45.0f; // degrees per second
-        
-        // Rotate cube around Y axis
-        Moon::Vector3 cubeRot = cube->GetTransform()->GetLocalEulerAngles();
-        cubeRot.y += rotationSpeed * (float)dt;
-        cube->GetTransform()->SetLocalRotation(cubeRot);
-
-        // Rotate sphere around X axis
-        Moon::Vector3 sphereRot = sphere->GetTransform()->GetLocalEulerAngles();
-        sphereRot.x += rotationSpeed * 0.5f * (float)dt;
-        sphere->GetTransform()->SetLocalRotation(sphereRot);
-
-        // Rotate torus around Y axis
-        Moon::Vector3 torusRot = torus->GetTransform()->GetLocalEulerAngles();
-        torusRot.y += rotationSpeed * 1.5f * (float)dt;
-        torus->GetTransform()->SetLocalRotation(torusRot);
-
-        // Rotate parent
-        Moon::Vector3 parentRot = parent->GetTransform()->GetLocalEulerAngles();
-        parentRot.y += 30.0f * (float)dt;
-        parent->GetTransform()->SetLocalRotation(parentRot);
-        */
 
         // Set camera for rendering
         Moon::Matrix4x4 viewProj = camera->GetViewProjectionMatrix();
         renderer.SetViewProjectionMatrix(&viewProj.m[0][0]);
         
-        // Render all scene objects
+        // Set camera position for PBR specular calculation
+        Moon::Vector3 cameraPos = camera->GetPosition();
+        renderer.SetCameraPosition(cameraPos);
+        
+        // Render all scene objects with PBR material parameters
         renderer.BeginFrame();
         
         scene->Traverse([&](Moon::SceneNode* node) {
             Moon::MeshRenderer* meshRenderer = node->GetComponent<Moon::MeshRenderer>();
             if (meshRenderer && meshRenderer->IsVisible() && meshRenderer->IsEnabled()) {
+                // 从节点名称解析材质参数 (格式: "Sphere_M0.25_R0.75")
+                float metallic = 0.0f;
+                float roughness = 0.5f;
+                
+                const std::string& nodeName = node->GetName();
+                if (nodeName.find("Sphere_M") != std::string::npos) {
+                    sscanf_s(nodeName.c_str(), "Sphere_M%f_R%f", &metallic, &roughness);
+                }
+                
+                // 设置材质参数
+                renderer.SetMaterialParameters(metallic, roughness);
+                
+                // 渲染
                 meshRenderer->Render(&renderer);
             }
         });

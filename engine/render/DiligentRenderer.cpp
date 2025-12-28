@@ -152,13 +152,34 @@ void DiligentRenderer::CreateVSConstants()
     cb.CPUAccessFlags = CPU_ACCESS_WRITE;
     cb.Size = sizeof(VSConstantsCPU);
     m_pDevice->CreateBuffer(cb, nullptr, &m_pVSConstants);
+    
+    // 创建 PS 材质常量缓冲区
+    BufferDesc psCB{};
+    psCB.Name = "PS Material Constants";
+    psCB.BindFlags = BIND_UNIFORM_BUFFER;
+    psCB.Usage = USAGE_DYNAMIC;
+    psCB.CPUAccessFlags = CPU_ACCESS_WRITE;
+    psCB.Size = sizeof(PSMaterialCPU);
+    m_pDevice->CreateBuffer(psCB, nullptr, &m_pPSMaterialConstants);
+    
+    // 创建 PS 场景常量缓冲区
+    BufferDesc psSceneCB{};
+    psSceneCB.Name = "PS Scene Constants";
+    psSceneCB.BindFlags = BIND_UNIFORM_BUFFER;
+    psSceneCB.Usage = USAGE_DYNAMIC;
+    psSceneCB.CPUAccessFlags = CPU_ACCESS_WRITE;
+    psSceneCB.Size = sizeof(PSSceneCPU);
+    m_pDevice->CreateBuffer(psSceneCB, nullptr, &m_pPSSceneConstants);
 }
 
 void DiligentRenderer::CreateMainPass()
 {
     // PBR 着色器（Cook-Torrance BRDF，无贴图，无 IBL）
     const char* vsCode = R"(
-cbuffer Constants { float4x4 g_WorldViewProj; };
+cbuffer Constants { 
+    float4x4 g_WorldViewProj;
+    float4x4 g_World;
+};
 struct VSInput { 
     float3 Pos    : ATTRIB0; 
     float3 Normal : ATTRIB1;
@@ -166,12 +187,14 @@ struct VSInput {
 };
 struct PSInput { 
     float4 Pos      : SV_POSITION;
+    float3 WorldPos : POSITION;
     float3 NormalWS : NORMAL;
     float4 Color    : COLOR;
 };
 void main(in VSInput i, out PSInput o) {
     o.Pos = mul(float4(i.Pos, 1.0), g_WorldViewProj);
-    o.NormalWS = i.Normal;
+    o.WorldPos = mul(float4(i.Pos, 1.0), g_World).xyz;
+    o.NormalWS = normalize(mul(i.Normal, (float3x3)g_World));
     o.Color = i.Color;
 }
 )";
@@ -179,8 +202,22 @@ void main(in VSInput i, out PSInput o) {
     const char* psCode = R"(
 static const float PI = 3.14159265359;
 
+// 材质参数常量缓冲区
+cbuffer MaterialConstants { 
+    float g_Metallic;
+    float g_Roughness;
+    float2 g_Padding;
+};
+
+// 场景参数常量缓冲区
+cbuffer SceneConstants {
+    float3 g_CameraPosition;
+    float g_Padding2;
+};
+
 struct PSInput { 
     float4 Pos      : SV_POSITION;
+    float3 WorldPos : POSITION;
     float3 NormalWS : NORMAL;
     float4 Color    : COLOR;
 };
@@ -238,23 +275,23 @@ float3 FresnelSchlick(float cosTheta, float3 F0)
 // 主着色器：Cook-Torrance BRDF
 // ============================================================================
 float4 main(in PSInput i) : SV_TARGET {
-    // 材质参数（常量，未来可以从 Constant Buffer 传入）
+    // 材质参数（从常量缓冲区读取）
     float3 albedo = i.Color.rgb;
-    float metallic = 0.0;   // 0 = 非金属，1 = 金属
-    float roughness = 0.5;  // 0 = 光滑，1 = 粗糙
+    float metallic = g_Metallic;   // 从 CB 读取
+    float roughness = g_Roughness; // 从 CB 读取
     
-    // 光源参数
-    float3 lightDir = normalize(float3(0.5, -1.0, 0.3));  // 光源方向
-    float3 lightColor = float3(1.0, 1.0, 1.0);            // 光源颜色
+    // 视角方向（从相机位置计算真实方向）
+    float3 viewDir = normalize(g_CameraPosition - i.WorldPos);
     
-    // 视角方向（简化：假设相机在远处，所有像素使用相同的视角方向）
-    float3 viewDir = float3(0.0, 0.0, 1.0);  // 简化：朝向屏幕
+    // 固定方向光：从左上偏前方照射（更靠前，避免遮挡左上角）
+    float3 lightDir = normalize(float3(-0.5, 1.0, 2.0));  // 方向：主要从前方来，略微左上偏移
+    float3 lightColor = float3(8.0, 8.0, 8.0);  // 强光源
     
     // 向量准备
     float3 N = normalize(i.NormalWS);
-    float3 V = normalize(viewDir);
-    float3 L = normalize(-lightDir);  // 指向光源
-    float3 H = normalize(V + L);      // 半角向量
+    float3 V = viewDir;
+    float3 L = -lightDir;  // 指向光源（方向光需要取反）
+    float3 H = normalize(V + L);  // 半角向量
     
     // F0：基础反射率（金属用 albedo，非金属用 0.04）
     float3 F0 = float3(0.04, 0.04, 0.04);
@@ -278,9 +315,12 @@ float4 main(in PSInput i) : SV_TARGET {
     float NdotL = max(dot(N, L), 0.0);
     float3 Lo = (kD * albedo / PI + specular) * lightColor * NdotL;
     
-    // 环境光（简单的常量环境光，避免全黑）
-    float3 ambient = float3(0.03, 0.03, 0.03) * albedo;
-    float3 color = ambient + Lo;
+    // 环境光（简单模拟 IBL 的效果）
+    float3 ambientColor = float3(0.4, 0.4, 0.45);  // 天空蓝色调
+    float3 ambient = kD * albedo * ambientColor;   // 漫反射环境光
+    float3 ambientSpecular = kS * ambientColor * (1.0 - roughness * 0.5);  // 简化的环境镜面反射
+    
+    float3 color = ambient + ambientSpecular + Lo;
     
     // Gamma 校正（简化）
     // color = pow(color, float3(1.0/2.2, 1.0/2.2, 1.0/2.2));
@@ -335,6 +375,8 @@ float4 main(in PSInput i) : SV_TARGET {
 
     m_pDevice->CreateGraphicsPipelineState(pci, &m_pPSO);
     m_pPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants")->Set(m_pVSConstants);
+    m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "MaterialConstants")->Set(m_pPSMaterialConstants);
+    m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "SceneConstants")->Set(m_pPSSceneConstants);
     m_pPSO->CreateShaderResourceBinding(&m_pSRB, true);
 
     MOON_LOG_INFO("DiligentRenderer", "Main PSO created");
@@ -398,6 +440,23 @@ void DiligentRenderer::SetViewProjectionMatrix(const float* m16)
             m_ViewProj.m[r][c] = m16[r * 4 + c];
 }
 
+// ======= PBR 材质参数 =======
+void DiligentRenderer::SetMaterialParameters(float metallic, float roughness)
+{
+    PSMaterialCPU material{};
+    material.metallic = metallic;
+    material.roughness = roughness;
+    UpdateCB(m_pPSMaterialConstants, material);
+}
+
+// ======= 相机位置 =======
+void DiligentRenderer::SetCameraPosition(const Moon::Vector3& position)
+{
+    PSSceneCPU scene{};
+    scene.cameraPosition = position;
+    UpdateCB(m_pPSSceneConstants, scene);
+}
+
 // ======= Mesh 缓存 =======
 DiligentRenderer::MeshGPUResources* DiligentRenderer::GetOrCreateMeshResources(Moon::Mesh* mesh)
 {
@@ -442,7 +501,9 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
 
     // 更新 VS 常量
     Moon::Matrix4x4 wvp = world * m_ViewProj;
-    VSConstantsCPU cbuf{}; cbuf.WorldViewProjT = Transpose(wvp);
+    VSConstantsCPU cbuf{};
+    cbuf.WorldViewProjT = Transpose(wvp);
+    cbuf.WorldT = Transpose(world);
     UpdateCB(m_pVSConstants, cbuf);
 
     // 设置管线状态
@@ -494,7 +555,10 @@ void DiligentRenderer::CreatePickingStatic()
         ci.Desc.Name = "Picking VS";
         ci.EntryPoint = "main_vs";
         ci.Source = R"(
-cbuffer VSConstants { float4x4 g_WorldViewProj; };
+cbuffer VSConstants { 
+    float4x4 g_WorldViewProj;
+    float4x4 g_World;  // 保持 CB 布局一致
+};
 struct VSInput { 
     float3 Position : ATTRIB0; 
     float3 Normal   : ATTRIB1;  // 必须声明以匹配 stride
@@ -636,7 +700,9 @@ void DiligentRenderer::RenderSceneForPicking(Moon::Scene* scene)
         // VS 常量（注意 row-major → 列主序 需转置）
         Moon::Matrix4x4 world = node->GetTransform()->GetWorldMatrix();
         Moon::Matrix4x4 wvp = world * m_ViewProj;
-        VSConstantsCPU vsc{}; vsc.WorldViewProjT = Transpose(wvp);
+        VSConstantsCPU vsc{};
+        vsc.WorldViewProjT = Transpose(wvp);
+        vsc.WorldT = Transpose(world);
         UpdateCB(m_pVSConstants, vsc);
 
         // PS 常量：ObjectID
