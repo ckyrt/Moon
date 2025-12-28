@@ -27,31 +27,41 @@ Mesh* MeshGenerator::CreateCube(float size, const Vector3& color) {
         Vector3(-half,  half,  half)   // 7: 左上前
     };
     
+    // 6个面的法线（朝外）
+    Vector3 normals[6] = {
+        Vector3(0, 0, 1),   // 前 +Z
+        Vector3(0, 0, -1),  // 后 -Z
+        Vector3(-1, 0, 0),  // 左 -X
+        Vector3(1, 0, 0),   // 右 +X
+        Vector3(0, 1, 0),   // 上 +Y
+        Vector3(0, -1, 0)   // 下 -Y
+    };
+    
     // 24个顶点（每个面4个顶点，共6个面）
     std::vector<Vertex> vertices = {
         // 前面 (+Z)
-        Vertex(positions[4], color), Vertex(positions[5], color), 
-        Vertex(positions[6], color), Vertex(positions[7], color),
+        Vertex(positions[4], normals[0], color), Vertex(positions[5], normals[0], color), 
+        Vertex(positions[6], normals[0], color), Vertex(positions[7], normals[0], color),
         
         // 后面 (-Z)
-        Vertex(positions[1], color), Vertex(positions[0], color), 
-        Vertex(positions[3], color), Vertex(positions[2], color),
+        Vertex(positions[1], normals[1], color), Vertex(positions[0], normals[1], color), 
+        Vertex(positions[3], normals[1], color), Vertex(positions[2], normals[1], color),
         
         // 左面 (-X)
-        Vertex(positions[0], color), Vertex(positions[4], color), 
-        Vertex(positions[7], color), Vertex(positions[3], color),
+        Vertex(positions[0], normals[2], color), Vertex(positions[4], normals[2], color), 
+        Vertex(positions[7], normals[2], color), Vertex(positions[3], normals[2], color),
         
         // 右面 (+X)
-        Vertex(positions[5], color), Vertex(positions[1], color), 
-        Vertex(positions[2], color), Vertex(positions[6], color),
+        Vertex(positions[5], normals[3], color), Vertex(positions[1], normals[3], color), 
+        Vertex(positions[2], normals[3], color), Vertex(positions[6], normals[3], color),
         
         // 上面 (+Y)
-        Vertex(positions[7], color), Vertex(positions[6], color), 
-        Vertex(positions[2], color), Vertex(positions[3], color),
+        Vertex(positions[7], normals[4], color), Vertex(positions[6], normals[4], color), 
+        Vertex(positions[2], normals[4], color), Vertex(positions[3], normals[4], color),
         
         // 下面 (-Y)
-        Vertex(positions[4], color), Vertex(positions[0], color), 
-        Vertex(positions[1], color), Vertex(positions[5], color)
+        Vertex(positions[4], normals[5], color), Vertex(positions[0], normals[5], color), 
+        Vertex(positions[1], normals[5], color), Vertex(positions[5], normals[5], color)
     };
     
     // 36个索引（6个面 * 2个三角形 * 3个顶点）
@@ -89,7 +99,17 @@ Mesh* MeshGenerator::CreateSphere(float radius, int segments, int rings, const V
             float theta = TWO_PI * float(seg) / float(segments);  // 经度角 [0, 2π]
             
             Vector3 pos = SphericalToCartesian(radius, theta, phi);
-            vertices.push_back(Vertex(pos, color));
+            
+            // 球体法线 = 归一化的径向向量（从球心指向表面）
+            Vector3 normal = pos;
+            float length = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+            if (length > 0.0001f) {
+                normal.x /= length;
+                normal.y /= length;
+                normal.z /= length;
+            }
+            
+            vertices.push_back(Vertex(pos, normal, color));
         }
     }
     
@@ -134,13 +154,16 @@ Mesh* MeshGenerator::CreatePlane(float width, float depth, int subdivisionsX, in
     int vertsX = subdivisionsX + 1;
     int vertsZ = subdivisionsZ + 1;
     
+    // 平面法线向上（+Y）
+    Vector3 normal(0, 1, 0);
+    
     // 顶点生成
     for (int z = 0; z < vertsZ; ++z) {
         for (int x = 0; x < vertsX; ++x) {
             float px = -halfW + (width * x) / subdivisionsX;
             float pz = -halfD + (depth * z) / subdivisionsZ;
             
-            vertices.push_back(Vertex(Vector3(px, 0, pz), color));
+            vertices.push_back(Vertex(Vector3(px, 0, pz), normal, color));
         }
     }
     
@@ -182,28 +205,66 @@ Mesh* MeshGenerator::CreateCylinder(float radiusTop, float radiusBottom, float h
     
     float halfH = height * 0.5f;
     
-    // 顶部圆心
+    // 顶部圆心（法线向上）
     uint32_t topCenterIdx = static_cast<uint32_t>(vertices.size());
-    vertices.push_back(Vertex(Vector3(0, halfH, 0), color));
+    vertices.push_back(Vertex(Vector3(0, halfH, 0), Vector3(0, 1, 0), color));
     
-    // 顶部圆周顶点
+    // 顶部圆周顶点（法线向上）
     uint32_t topStartIdx = static_cast<uint32_t>(vertices.size());
-    GenerateCircleVertices(vertices, radiusTop, halfH, segments, color);
+    for (int i = 0; i < segments; ++i) {
+        float angle = TWO_PI * float(i) / float(segments);
+        float x = radiusTop * cosf(angle);
+        float z = radiusTop * sinf(angle);
+        vertices.push_back(Vertex(Vector3(x, halfH, z), Vector3(0, 1, 0), color));
+    }
     
-    // 底部圆心
+    // 底部圆心（法线向下）
     uint32_t bottomCenterIdx = static_cast<uint32_t>(vertices.size());
-    vertices.push_back(Vertex(Vector3(0, -halfH, 0), color));
+    vertices.push_back(Vertex(Vector3(0, -halfH, 0), Vector3(0, -1, 0), color));
     
-    // 底部圆周顶点
+    // 底部圆周顶点（法线向下）
     uint32_t bottomStartIdx = static_cast<uint32_t>(vertices.size());
-    GenerateCircleVertices(vertices, radiusBottom, -halfH, segments, color);
+    for (int i = 0; i < segments; ++i) {
+        float angle = TWO_PI * float(i) / float(segments);
+        float x = radiusBottom * cosf(angle);
+        float z = radiusBottom * sinf(angle);
+        vertices.push_back(Vertex(Vector3(x, -halfH, z), Vector3(0, -1, 0), color));
+    }
     
-    // 侧面顶点（需要重复顶点以支持不同法线）
+    // 侧面顶点（需要重复顶点以支持径向法线）
     uint32_t sideTopStartIdx = static_cast<uint32_t>(vertices.size());
-    GenerateCircleVertices(vertices, radiusTop, halfH, segments, color);
+    for (int i = 0; i < segments; ++i) {
+        float angle = TWO_PI * float(i) / float(segments);
+        float x = radiusTop * cosf(angle);
+        float z = radiusTop * sinf(angle);
+        
+        // 侧面法线：径向向外（归一化的 XZ 分量）
+        Vector3 normal(x, 0, z);
+        float length = sqrtf(normal.x * normal.x + normal.z * normal.z);
+        if (length > 0.0001f) {
+            normal.x /= length;
+            normal.z /= length;
+        }
+        
+        vertices.push_back(Vertex(Vector3(x, halfH, z), normal, color));
+    }
     
     uint32_t sideBottomStartIdx = static_cast<uint32_t>(vertices.size());
-    GenerateCircleVertices(vertices, radiusBottom, -halfH, segments, color);
+    for (int i = 0; i < segments; ++i) {
+        float angle = TWO_PI * float(i) / float(segments);
+        float x = radiusBottom * cosf(angle);
+        float z = radiusBottom * sinf(angle);
+        
+        // 侧面法线：径向向外
+        Vector3 normal(x, 0, z);
+        float length = sqrtf(normal.x * normal.x + normal.z * normal.z);
+        if (length > 0.0001f) {
+            normal.x /= length;
+            normal.z /= length;
+        }
+        
+        vertices.push_back(Vertex(Vector3(x, -halfH, z), normal, color));
+    }
     
     // 顶面三角形（从圆心发散）
     for (int i = 0; i < segments; ++i) {
@@ -280,7 +341,20 @@ Mesh* MeshGenerator::CreateTorus(float majorRadius, float minorRadius, int major
             float y = minorRadius * sinv;
             float z = (majorRadius + minorRadius * cosv) * sinu;
             
-            vertices.push_back(Vertex(Vector3(x, y, z), color));
+            // 圆环法线：从管道中心指向表面
+            // 管道中心在 (majorRadius * cosu, 0, majorRadius * sinu)
+            Vector3 tubeCenter(majorRadius * cosu, 0, majorRadius * sinu);
+            Vector3 position(x, y, z);
+            Vector3 normal(position.x - tubeCenter.x, position.y - tubeCenter.y, position.z - tubeCenter.z);
+            
+            float length = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+            if (length > 0.0001f) {
+                normal.x /= length;
+                normal.y /= length;
+                normal.z /= length;
+            }
+            
+            vertices.push_back(Vertex(position, normal, color));
         }
     }
     
@@ -333,7 +407,19 @@ Mesh* MeshGenerator::CreateCapsule(float radius, float height, int segments, int
             float x = ringRadius * cosf(theta);
             float z = ringRadius * sinf(theta);
             
-            vertices.push_back(Vertex(Vector3(x, y, z), color));
+            // 半球法线：从半球中心指向表面
+            Vector3 sphereCenter(0, halfCylinder, 0);
+            Vector3 position(x, y, z);
+            Vector3 normal(position.x - sphereCenter.x, position.y - sphereCenter.y, position.z - sphereCenter.z);
+            
+            float length = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+            if (length > 0.0001f) {
+                normal.x /= length;
+                normal.y /= length;
+                normal.z /= length;
+            }
+            
+            vertices.push_back(Vertex(position, normal, color));
         }
     }
     
@@ -343,8 +429,16 @@ Mesh* MeshGenerator::CreateCapsule(float radius, float height, int segments, int
         float x = radius * cosf(theta);
         float z = radius * sinf(theta);
         
-        vertices.push_back(Vertex(Vector3(x, halfCylinder, z), color));
-        vertices.push_back(Vertex(Vector3(x, -halfCylinder, z), color));
+        // 圆柱侧面法线：径向向外
+        Vector3 normal(x, 0, z);
+        float length = sqrtf(normal.x * normal.x + normal.z * normal.z);
+        if (length > 0.0001f) {
+            normal.x /= length;
+            normal.z /= length;
+        }
+        
+        vertices.push_back(Vertex(Vector3(x, halfCylinder, z), normal, color));
+        vertices.push_back(Vertex(Vector3(x, -halfCylinder, z), normal, color));
     }
     
     int cylinderStartIdx = (rings + 1) * (segments + 1);
@@ -361,7 +455,19 @@ Mesh* MeshGenerator::CreateCapsule(float radius, float height, int segments, int
             float x = ringRadius * cosf(theta);
             float z = ringRadius * sinf(theta);
             
-            vertices.push_back(Vertex(Vector3(x, y, z), color));
+            // 半球法线：从半球中心指向表面
+            Vector3 sphereCenter(0, -halfCylinder, 0);
+            Vector3 position(x, y, z);
+            Vector3 normal(position.x - sphereCenter.x, position.y - sphereCenter.y, position.z - sphereCenter.z);
+            
+            float length = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+            if (length > 0.0001f) {
+                normal.x /= length;
+                normal.y /= length;
+                normal.z /= length;
+            }
+            
+            vertices.push_back(Vertex(position, normal, color));
         }
     }
     
@@ -428,11 +534,14 @@ Mesh* MeshGenerator::CreateQuad(float width, float height, const Vector3& color)
     float halfW = width * 0.5f;
     float halfH = height * 0.5f;
     
+    // Quad 法线朝向 +Z
+    Vector3 normal(0, 0, 1);
+    
     std::vector<Vertex> vertices = {
-        Vertex(Vector3(-halfW, -halfH, 0), color),  // 左下
-        Vertex(Vector3( halfW, -halfH, 0), color),  // 右下
-        Vertex(Vector3( halfW,  halfH, 0), color),  // 右上
-        Vertex(Vector3(-halfW,  halfH, 0), color)   // 左上
+        Vertex(Vector3(-halfW, -halfH, 0), normal, color),  // 左下
+        Vertex(Vector3( halfW, -halfH, 0), normal, color),  // 右下
+        Vertex(Vector3( halfW,  halfH, 0), normal, color),  // 右上
+        Vertex(Vector3(-halfW,  halfH, 0), normal, color)   // 左上
     };
     
     std::vector<uint32_t> indices = {
@@ -456,15 +565,6 @@ Vector3 MeshGenerator::SphericalToCartesian(float radius, float theta, float phi
         radius * cosf(phi),              // y
         radius * sinPhi * sinf(theta)   // z
     );
-}
-
-void MeshGenerator::GenerateCircleVertices(std::vector<Vertex>& vertices, float radius, float y, int segments, const Vector3& color) {
-    for (int i = 0; i < segments; ++i) {
-        float angle = TWO_PI * float(i) / float(segments);
-        float x = radius * cosf(angle);
-        float z = radius * sinf(angle);
-        vertices.push_back(Vertex(Vector3(x, y, z), color));
-    }
 }
 
 } // namespace Moon

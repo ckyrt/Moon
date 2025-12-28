@@ -131,11 +131,6 @@ public:
 private:
     // 辅助函数：计算球面坐标
     static Vector3 SphericalToCartesian(float radius, float theta, float phi);
-    
-    // 辅助函数：生成圆周顶点
-    static void GenerateCircleVertices(std::vector<Vertex>& vertices, 
-                                      float radius, float y, int segments, 
-                                      const Vector3& color);
 };
 
 } // namespace Moon

@@ -16,12 +16,13 @@ struct VertexAttributeDesc {
 /**
  * @brief 顶点数据结构（简化版）
  * 
- * 目前只包含位置和颜色，不包含纹理坐标、法线等
+ * 包含位置、法线和颜色
  * 
  * 该结构提供静态方法来描述自身的内存布局，用于生成 GPU InputLayout
  */
 struct Vertex {
     Vector3 position;  ///< 顶点位置 (3 floats, 12 bytes)
+    Vector3 normal;    ///< 法线向量 (3 floats, 12 bytes)
     float colorR;      ///< 红色分量 (0-1)
     float colorG;      ///< 绿色分量 (0-1)
     float colorB;      ///< 蓝色分量 (0-1)
@@ -29,11 +30,13 @@ struct Vertex {
     
     Vertex() 
         : position(0, 0, 0)
+        , normal(0, 1, 0)
         , colorR(1.0f), colorG(1.0f), colorB(1.0f), colorA(1.0f) 
     {}
     
-    Vertex(const Vector3& pos, const Vector3& col, float alpha = 1.0f) 
+    Vertex(const Vector3& pos, const Vector3& norm, const Vector3& col, float alpha = 1.0f) 
         : position(pos)
+        , normal(norm)
         , colorR(col.x), colorG(col.y), colorB(col.z), colorA(alpha)
     {}
     
@@ -53,9 +56,10 @@ struct Vertex {
     static const VertexAttributeDesc* GetLayoutDesc(int& outCount) {
         static const VertexAttributeDesc layout[] = {
             {"POSITION", 3, offsetof(Vertex, position)},  // Vector3: 3 floats at offset 0
-            {"COLOR",    4, offsetof(Vertex, colorR)}     // RGBA: 4 floats at offset 12
+            {"NORMAL",   3, offsetof(Vertex, normal)},    // Vector3: 3 floats at offset 12
+            {"COLOR",    4, offsetof(Vertex, colorR)}     // RGBA: 4 floats at offset 24
         };
-        outCount = 2;
+        outCount = 3;
         return layout;
     }
     
@@ -64,9 +68,10 @@ struct Vertex {
 };
 
 // 编译时验证 Vertex 结构大小（防止意外修改导致 GPU layout 不匹配）
-static_assert(sizeof(Vertex) == 28, "Vertex size must be 28 bytes (Vector3=12 + 4*float=16)");
+static_assert(sizeof(Vertex) == 40, "Vertex size must be 40 bytes (2*Vector3=24 + 4*float=16)");
 static_assert(offsetof(Vertex, position) == 0, "Position must be at offset 0");
-static_assert(offsetof(Vertex, colorR) == 12, "Color must be at offset 12");
+static_assert(offsetof(Vertex, normal) == 12, "Normal must be at offset 12");
+static_assert(offsetof(Vertex, colorR) == 24, "Color must be at offset 24");
 
 /**
  * @brief Mesh 类 - 存储几何网格数据

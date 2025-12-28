@@ -19,6 +19,16 @@ Mesh* CreateCubeMesh(float size) {
         { -halfSize,  halfSize,  halfSize }   // 7: 左上前
     };
     
+    // 6 个面的法线（朝外）
+    Vector3 normals[6] = {
+        { 0.0f, 0.0f, 1.0f },   // 前面 +Z
+        { 0.0f, 0.0f, -1.0f },  // 后面 -Z
+        { 0.0f, 1.0f, 0.0f },   // 上面 +Y
+        { 0.0f, -1.0f, 0.0f },  // 下面 -Y
+        { 1.0f, 0.0f, 0.0f },   // 右面 +X
+        { -1.0f, 0.0f, 0.0f }   // 左面 -X
+    };
+    
     // 6 个面的颜色（RGB）
     Vector3 faceColors[6] = {
         { 1.0f, 0.0f, 0.0f },  // 前面 - 红色
@@ -34,40 +44,40 @@ Mesh* CreateCubeMesh(float size) {
     vertices.reserve(24);
     
     // 前面 (Z+)
-    vertices.emplace_back(positions[4], faceColors[0]);
-    vertices.emplace_back(positions[5], faceColors[0]);
-    vertices.emplace_back(positions[6], faceColors[0]);
-    vertices.emplace_back(positions[7], faceColors[0]);
+    vertices.emplace_back(positions[4], normals[0], faceColors[0]);
+    vertices.emplace_back(positions[5], normals[0], faceColors[0]);
+    vertices.emplace_back(positions[6], normals[0], faceColors[0]);
+    vertices.emplace_back(positions[7], normals[0], faceColors[0]);
     
     // 后面 (Z-)
-    vertices.emplace_back(positions[1], faceColors[1]);
-    vertices.emplace_back(positions[0], faceColors[1]);
-    vertices.emplace_back(positions[3], faceColors[1]);
-    vertices.emplace_back(positions[2], faceColors[1]);
+    vertices.emplace_back(positions[1], normals[1], faceColors[1]);
+    vertices.emplace_back(positions[0], normals[1], faceColors[1]);
+    vertices.emplace_back(positions[3], normals[1], faceColors[1]);
+    vertices.emplace_back(positions[2], normals[1], faceColors[1]);
     
     // 上面 (Y+)
-    vertices.emplace_back(positions[7], faceColors[2]);
-    vertices.emplace_back(positions[6], faceColors[2]);
-    vertices.emplace_back(positions[2], faceColors[2]);
-    vertices.emplace_back(positions[3], faceColors[2]);
+    vertices.emplace_back(positions[7], normals[2], faceColors[2]);
+    vertices.emplace_back(positions[6], normals[2], faceColors[2]);
+    vertices.emplace_back(positions[2], normals[2], faceColors[2]);
+    vertices.emplace_back(positions[3], normals[2], faceColors[2]);
     
     // 下面 (Y-)
-    vertices.emplace_back(positions[4], faceColors[3]);
-    vertices.emplace_back(positions[0], faceColors[3]);
-    vertices.emplace_back(positions[1], faceColors[3]);
-    vertices.emplace_back(positions[5], faceColors[3]);
+    vertices.emplace_back(positions[4], normals[3], faceColors[3]);
+    vertices.emplace_back(positions[0], normals[3], faceColors[3]);
+    vertices.emplace_back(positions[1], normals[3], faceColors[3]);
+    vertices.emplace_back(positions[5], normals[3], faceColors[3]);
     
     // 右面 (X+)
-    vertices.emplace_back(positions[5], faceColors[4]);
-    vertices.emplace_back(positions[1], faceColors[4]);
-    vertices.emplace_back(positions[2], faceColors[4]);
-    vertices.emplace_back(positions[6], faceColors[4]);
+    vertices.emplace_back(positions[5], normals[4], faceColors[4]);
+    vertices.emplace_back(positions[1], normals[4], faceColors[4]);
+    vertices.emplace_back(positions[2], normals[4], faceColors[4]);
+    vertices.emplace_back(positions[6], normals[4], faceColors[4]);
     
     // 左面 (X-)
-    vertices.emplace_back(positions[0], faceColors[5]);
-    vertices.emplace_back(positions[4], faceColors[5]);
-    vertices.emplace_back(positions[7], faceColors[5]);
-    vertices.emplace_back(positions[3], faceColors[5]);
+    vertices.emplace_back(positions[0], normals[5], faceColors[5]);
+    vertices.emplace_back(positions[4], normals[5], faceColors[5]);
+    vertices.emplace_back(positions[7], normals[5], faceColors[5]);
+    vertices.emplace_back(positions[3], normals[5], faceColors[5]);
     
     // 构建索引（每个面 2 个三角形，共 36 个索引）
     std::vector<uint32_t> indices;

@@ -156,30 +156,34 @@ void DiligentRenderer::CreateVSConstants()
 
 void DiligentRenderer::CreateMainPass()
 {
-    // 通用 Mesh 着色器（位置 + 颜色）
+    // 通用 Mesh 着色器（位置 + 法线 + 颜色）
     const char* vsCode = R"(
 cbuffer Constants { float4x4 g_WorldViewProj; };
 struct VSInput { 
-    float3 Pos : ATTRIB0; 
-    float4 Color : ATTRIB1;
+    float3 Pos    : ATTRIB0; 
+    float3 Normal : ATTRIB1;
+    float4 Color  : ATTRIB2;
 };
 struct PSInput { 
-    float4 Pos : SV_POSITION; 
-    float4 Color : COLOR;
+    float4 Pos    : SV_POSITION;
+    float3 Normal : NORMAL;
+    float4 Color  : COLOR;
 };
 void main(in VSInput i, out PSInput o) {
     o.Pos = mul(float4(i.Pos, 1.0), g_WorldViewProj);
+    o.Normal = i.Normal;  // 简单传递（后续可以做法线变换）
     o.Color = i.Color;
 }
 )";
 
     const char* psCode = R"(
 struct PSInput { 
-    float4 Pos : SV_POSITION; 
-    float4 Color : COLOR;
+    float4 Pos    : SV_POSITION;
+    float3 Normal : NORMAL;
+    float4 Color  : COLOR;
 };
 float4 main(in PSInput i) : SV_TARGET {
-    return i.Color;
+    return i.Color;  // 暂时只用颜色（后续加光照）
 }
 )";
 
@@ -206,7 +210,7 @@ float4 main(in PSInput i) : SV_TARGET {
     }
 
     // 使用统一的 Vertex Layout（避免手写重复声明）
-    LayoutElement layout[2];
+    LayoutElement layout[3];  // ⭐ 从2改成3
     Uint32 numElements;
     GetVertexLayout(layout, numElements);
 
@@ -390,10 +394,11 @@ void DiligentRenderer::CreatePickingStatic()
         ci.Source = R"(
 cbuffer VSConstants { float4x4 g_WorldViewProj; };
 struct VSInput { 
-    float3 Position:ATTRIB0; 
-    float4 Color:ATTRIB1;      // 必须声明但不使用，以匹配 VB 的 stride
+    float3 Position : ATTRIB0; 
+    float3 Normal   : ATTRIB1;  // 必须声明以匹配 stride
+    float4 Color    : ATTRIB2;  // 必须声明以匹配 stride
 };
-struct PSInput { float4 Position:SV_Position; };
+struct PSInput { float4 Position : SV_Position; };
 PSInput main_vs(VSInput i){
     PSInput o; o.Position = mul(float4(i.Position,1), g_WorldViewProj); return o;
 })";
@@ -427,7 +432,7 @@ uint main_ps(PSInput i) : SV_Target { return g_ObjectID; })";
 
     // 使用统一的 Vertex Layout（避免手写重复声明）
     // 注意：即使 picking shader 只使用 position，也必须声明完整的 layout 来保证 stride 正确
-    LayoutElement layout[2];
+    LayoutElement layout[3];  // ⭐ 从2改成3
     Uint32 numElements;
     GetVertexLayout(layout, numElements);
     pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
