@@ -104,6 +104,7 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
         CreateDeviceAndSwapchain(params);
         CreateVSConstants();
         CreateMainPass();  // 主渲染管线（用于正常场景渲染）
+        CreateSkyboxPass(); // Skybox 渲染管线
 
         // Picking：一次性创建静态资源；并按当前分辨率创建 RT/DS + 读回
         CreatePickingStatic();
@@ -528,6 +529,219 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
 void DiligentRenderer::DrawCube(const Moon::Matrix4x4& world)
 {
     // Legacy method - not used with scene system
+}
+
+// ======= Skybox 渲染管线 =======
+void DiligentRenderer::CreateSkyboxPass()
+{
+    // 1. 创建 Skybox 立方体顶点缓冲（中心在原点，边长很大以"包围"场景）
+    struct SkyboxVertex {
+        float x, y, z;
+    };
+    
+    const float skyboxSize = 1000.0f; // 很大的立方体
+    
+    // Skybox 立方体顶点（8个顶点）
+    SkyboxVertex skyboxVertices[] = {
+        // 前面（+Z）
+        {-skyboxSize, -skyboxSize,  skyboxSize}, // 0
+        { skyboxSize, -skyboxSize,  skyboxSize}, // 1
+        { skyboxSize,  skyboxSize,  skyboxSize}, // 2
+        {-skyboxSize,  skyboxSize,  skyboxSize}, // 3
+        // 后面（-Z）
+        {-skyboxSize, -skyboxSize, -skyboxSize}, // 4
+        { skyboxSize, -skyboxSize, -skyboxSize}, // 5
+        { skyboxSize,  skyboxSize, -skyboxSize}, // 6
+        {-skyboxSize,  skyboxSize, -skyboxSize}  // 7
+    };
+    
+    BufferDesc vbDesc{};
+    vbDesc.Name = "Skybox VB";
+    vbDesc.BindFlags = BIND_VERTEX_BUFFER;
+    vbDesc.Usage = USAGE_IMMUTABLE;
+    vbDesc.Size = sizeof(skyboxVertices);
+    
+    BufferData vbData;
+    vbData.pData = skyboxVertices;
+    vbData.DataSize = sizeof(skyboxVertices);
+    m_pDevice->CreateBuffer(vbDesc, &vbData, &m_pSkyboxVB);
+    
+    // 2. 创建 Skybox 立方体索引缓冲
+    uint32_t skyboxIndices[] = {
+        // 前面
+        0, 1, 2,  0, 2, 3,
+        // 右面
+        1, 5, 6,  1, 6, 2,
+        // 后面
+        5, 4, 7,  5, 7, 6,
+        // 左面
+        4, 0, 3,  4, 3, 7,
+        // 顶面
+        3, 2, 6,  3, 6, 7,
+        // 底面
+        4, 5, 1,  4, 1, 0
+    };
+    
+    BufferDesc ibDesc{};
+    ibDesc.Name = "Skybox IB";
+    ibDesc.BindFlags = BIND_INDEX_BUFFER;
+    ibDesc.Usage = USAGE_IMMUTABLE;
+    ibDesc.Size = sizeof(skyboxIndices);
+    
+    BufferData ibData;
+    ibData.pData = skyboxIndices;
+    ibData.DataSize = sizeof(skyboxIndices);
+    m_pDevice->CreateBuffer(ibDesc, &ibData, &m_pSkyboxIB);
+    
+    // 3. 创建 Skybox VS 常量缓冲（VP 矩阵，移除平移）
+    BufferDesc cbDesc{};
+    cbDesc.Name = "Skybox VS Constants";
+    cbDesc.BindFlags = BIND_UNIFORM_BUFFER;
+    cbDesc.Usage = USAGE_DYNAMIC;
+    cbDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
+    cbDesc.Size = 64; // 4x4 matrix
+    m_pDevice->CreateBuffer(cbDesc, nullptr, &m_pSkyboxVSConstants);
+    
+    // 4. 创建 Skybox 着色器
+    const char* skyboxVS = R"(
+cbuffer SkyboxConstants {
+    float4x4 g_ViewProj; // ViewProj with translation removed
+};
+
+struct VSInput {
+    float3 Pos : ATTRIB0;
+};
+
+struct PSInput {
+    float4 Pos : SV_POSITION;
+    float3 TexCoord : TEXCOORD0; // 使用顶点位置作为 cubemap 采样方向
+};
+
+void main(in VSInput i, out PSInput o) {
+    // 使用顶点位置作为 cubemap 采样坐标
+    o.TexCoord = i.Pos;
+    
+    // 变换到裁剪空间
+    o.Pos = mul(float4(i.Pos, 1.0), g_ViewProj);
+    
+    // 设置 z = w，确保 Skybox 在最远处（深度 = 1.0）
+    o.Pos.z = o.Pos.w;
+}
+)";
+    
+    const char* skyboxPS = R"(
+struct PSInput {
+    float4 Pos : SV_POSITION;
+    float3 TexCoord : TEXCOORD0;
+};
+
+float4 main(in PSInput i) : SV_Target {
+    // 暂时使用渐变色模拟天空
+    // 上方（+Y）偏蓝，下方（-Y）偏白
+    float3 dir = normalize(i.TexCoord);
+    float t = dir.y * 0.5 + 0.5; // 将 [-1,1] 映射到 [0,1]
+    
+    // 天空蓝色（上）到浅灰色（下）
+    float3 topColor = float3(0.5, 0.7, 1.0);    // 浅蓝
+    float3 bottomColor = float3(0.9, 0.9, 0.95); // 浅灰
+    
+    float3 color = lerp(bottomColor, topColor, t);
+    return float4(color, 1.0);
+}
+)";
+    
+    ShaderCreateInfo vsInfo;
+    vsInfo.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
+    vsInfo.Desc.ShaderType = SHADER_TYPE_VERTEX;
+    vsInfo.Desc.Name = "Skybox VS";
+    vsInfo.Source = skyboxVS;
+    vsInfo.EntryPoint = "main";
+    
+    RefCntAutoPtr<IShader> pSkyboxVS;
+    m_pDevice->CreateShader(vsInfo, &pSkyboxVS);
+    
+    ShaderCreateInfo psInfo;
+    psInfo.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
+    psInfo.Desc.ShaderType = SHADER_TYPE_PIXEL;
+    psInfo.Desc.Name = "Skybox PS";
+    psInfo.Source = skyboxPS;
+    psInfo.EntryPoint = "main";
+    
+    RefCntAutoPtr<IShader> pSkyboxPS;
+    m_pDevice->CreateShader(psInfo, &pSkyboxPS);
+    
+    // 5. 创建 Skybox PSO
+    GraphicsPipelineStateCreateInfo psoInfo;
+    psoInfo.PSODesc.Name = "Skybox PSO";
+    psoInfo.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
+    
+    psoInfo.pVS = pSkyboxVS;
+    psoInfo.pPS = pSkyboxPS;
+    
+    // 输入布局（只有位置）
+    LayoutElement skyboxLayout[] = {
+        {0, 0, 3, VT_FLOAT32, False}
+    };
+    psoInfo.GraphicsPipeline.InputLayout.LayoutElements = skyboxLayout;
+    psoInfo.GraphicsPipeline.InputLayout.NumElements = 1;
+    
+    psoInfo.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    
+    // 光栅化状态
+    psoInfo.GraphicsPipeline.RasterizerDesc.FillMode = FILL_MODE_SOLID;
+    psoInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_NONE; // 不剔除（从内部看天空盒）
+    
+    // 深度测试：LESS_EQUAL（因为 Skybox z=w，深度为1.0）
+    psoInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
+    psoInfo.GraphicsPipeline.DepthStencilDesc.DepthWriteEnable = False; // 不写入深度
+    psoInfo.GraphicsPipeline.DepthStencilDesc.DepthFunc = COMPARISON_FUNC_LESS_EQUAL;
+    
+    // 混合状态
+    psoInfo.GraphicsPipeline.BlendDesc.RenderTargets[0].BlendEnable = False;
+    
+    // RT 格式
+    psoInfo.GraphicsPipeline.NumRenderTargets = 1;
+    psoInfo.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
+    psoInfo.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
+    
+    // 资源签名（常量缓冲）
+    psoInfo.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
+    
+    m_pDevice->CreateGraphicsPipelineState(psoInfo, &m_pSkyboxPSO);
+    
+    // 6. 创建 SRB 并绑定常量缓冲
+    m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "SkyboxConstants")->Set(m_pSkyboxVSConstants);
+    m_pSkyboxPSO->CreateShaderResourceBinding(&m_pSkyboxSRB, true);
+    
+    MOON_LOG_INFO("DiligentRenderer", "Skybox pass created successfully!");
+}
+
+void DiligentRenderer::RenderSkybox()
+{
+    if (!m_pSkyboxPSO || !m_pSkyboxSRB) return;
+    
+    // 1. 使用当前的 ViewProj 矩阵（Skybox 足够大，不需要移除平移）
+    Moon::Matrix4x4 vpT = Transpose(m_ViewProj);
+    
+    // 更新常量缓冲
+    UpdateCB(m_pSkyboxVSConstants, vpT);
+    
+    // 2. 设置 PSO 和 SRB
+    m_pImmediateContext->SetPipelineState(m_pSkyboxPSO);
+    m_pImmediateContext->CommitShaderResources(m_pSkyboxSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    
+    // 3. 绑定顶点和索引缓冲
+    IBuffer* pVBs[] = { m_pSkyboxVB };
+    m_pImmediateContext->SetVertexBuffers(0, 1, pVBs, nullptr, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
+    m_pImmediateContext->SetIndexBuffer(m_pSkyboxIB, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    
+    // 4. 绘制
+    DrawIndexedAttribs drawAttrs;
+    drawAttrs.IndexType = VT_UINT32;
+    drawAttrs.NumIndices = 36; // 6 faces * 2 triangles * 3 vertices
+    drawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
+    
+    m_pImmediateContext->DrawIndexed(drawAttrs);
 }
 
 // ======= Picking：静态资源（一次性） =======

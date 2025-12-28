@@ -208,6 +208,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
             }
         });
         
+        // 渲染 Skybox（在所有不透明物体之后）
+        renderer.RenderSkybox();
+        
         renderer.EndFrame();
 
         // simple throttle

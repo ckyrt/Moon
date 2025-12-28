@@ -54,6 +54,8 @@ public:
     void SetCameraPosition(const Moon::Vector3& position);        // 设置相机位置（用于高光计算）
     void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) override;
     void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
+    
+    void RenderSkybox();  // 渲染 Skybox（在所有不透明物体之后调用）
 
     // 提供给 ImGui 等
     Diligent::IRenderDevice* GetDevice()   const { return m_pDevice; }
@@ -112,6 +114,13 @@ private:
     Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pPSO;
     Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pSRB;
 
+    // ======== Skybox 渲染管线 ========
+    Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pSkyboxVB;         // Skybox 立方体顶点缓冲
+    Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pSkyboxIB;         // Skybox 立方体索引缓冲
+    Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pSkyboxVSConstants; // VP 矩阵（移除平移）
+    Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pSkyboxPSO;
+    Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pSkyboxSRB;
+
     // ======== Picking 管线 ========
     // 纹理本体 + 视图
     Diligent::RefCntAutoPtr<Diligent::ITexture>     m_pPickingRT;
@@ -136,6 +145,7 @@ private:
     void CreateDeviceAndSwapchain(const RenderInitParams& params);
     void CreateVSConstants();
     void CreateMainPass();  // 主渲染管线 PSO
+    void CreateSkyboxPass(); // Skybox 渲染管线 PSO
 
     void CreatePickingStatic();      // 常量缓冲、PSO、SRB
     void CreateOrResizePickingRTs(); // RT/DS + 读回纹理
