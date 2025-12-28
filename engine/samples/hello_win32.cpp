@@ -207,7 +207,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         // Update Camera Controller
         cameraController.Update(static_cast<float>(dt));
         
-        // Animate shapes for visual variety
+        // Animate shapes for visual variety (注释掉以停止旋转)
+        /*
         float rotationSpeed = 45.0f; // degrees per second
         
         // Rotate cube around Y axis
@@ -229,6 +230,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         Moon::Vector3 parentRot = parent->GetTransform()->GetLocalEulerAngles();
         parentRot.y += 30.0f * (float)dt;
         parent->GetTransform()->SetLocalRotation(parentRot);
+        */
 
         // Set camera for rendering
         Moon::Matrix4x4 viewProj = camera->GetViewProjectionMatrix();

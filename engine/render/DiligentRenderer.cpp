@@ -156,7 +156,7 @@ void DiligentRenderer::CreateVSConstants()
 
 void DiligentRenderer::CreateMainPass()
 {
-    // 通用 Mesh 着色器（位置 + 法线 + 颜色）
+    // 通用 Mesh 着色器（位置 + 法线 + 颜色 + Lambert 光照）
     const char* vsCode = R"(
 cbuffer Constants { float4x4 g_WorldViewProj; };
 struct VSInput { 
@@ -165,25 +165,33 @@ struct VSInput {
     float4 Color  : ATTRIB2;
 };
 struct PSInput { 
-    float4 Pos    : SV_POSITION;
-    float3 Normal : NORMAL;
-    float4 Color  : COLOR;
+    float4 Pos      : SV_POSITION;
+    float3 NormalWS : NORMAL;      // World Space Normal
+    float4 Color    : COLOR;
 };
 void main(in VSInput i, out PSInput o) {
     o.Pos = mul(float4(i.Pos, 1.0), g_WorldViewProj);
-    o.Normal = i.Normal;  // 简单传递（后续可以做法线变换）
+    o.NormalWS = i.Normal;  // 简化：假设没有非均匀缩放，直接传递
     o.Color = i.Color;
 }
 )";
 
     const char* psCode = R"(
 struct PSInput { 
-    float4 Pos    : SV_POSITION;
-    float3 Normal : NORMAL;
-    float4 Color  : COLOR;
+    float4 Pos      : SV_POSITION;
+    float3 NormalWS : NORMAL;
+    float4 Color    : COLOR;
 };
 float4 main(in PSInput i) : SV_TARGET {
-    return i.Color;  // 暂时只用颜色（后续加光照）
+    // Lambert 光照模型
+    float3 lightDir = normalize(float3(0.5, -1.0, 0.3));  // 光源方向（指向光源）
+    float NdotL = saturate(dot(normalize(i.NormalWS), -lightDir));  // 计算漫反射系数
+    
+    // 环境光 + 漫反射光
+    float3 baseColor = i.Color.rgb;
+    float3 color = baseColor * (0.2 + 0.8 * NdotL);  // 20% 环境光 + 80% 漫反射
+    
+    return float4(color, i.Color.a);
 }
 )";
 
