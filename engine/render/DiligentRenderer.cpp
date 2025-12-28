@@ -156,7 +156,7 @@ void DiligentRenderer::CreateVSConstants()
 
 void DiligentRenderer::CreateMainPass()
 {
-    // 通用 Mesh 着色器（位置 + 法线 + 颜色 + Lambert 光照）
+    // PBR 着色器（Cook-Torrance BRDF，无贴图，无 IBL）
     const char* vsCode = R"(
 cbuffer Constants { float4x4 g_WorldViewProj; };
 struct VSInput { 
@@ -166,30 +166,124 @@ struct VSInput {
 };
 struct PSInput { 
     float4 Pos      : SV_POSITION;
-    float3 NormalWS : NORMAL;      // World Space Normal
+    float3 NormalWS : NORMAL;
     float4 Color    : COLOR;
 };
 void main(in VSInput i, out PSInput o) {
     o.Pos = mul(float4(i.Pos, 1.0), g_WorldViewProj);
-    o.NormalWS = i.Normal;  // 简化：假设没有非均匀缩放，直接传递
+    o.NormalWS = i.Normal;
     o.Color = i.Color;
 }
 )";
 
     const char* psCode = R"(
+static const float PI = 3.14159265359;
+
 struct PSInput { 
     float4 Pos      : SV_POSITION;
     float3 NormalWS : NORMAL;
     float4 Color    : COLOR;
 };
-float4 main(in PSInput i) : SV_TARGET {
-    // Lambert 光照模型
-    float3 lightDir = normalize(float3(0.5, -1.0, 0.3));  // 光源方向（指向光源）
-    float NdotL = saturate(dot(normalize(i.NormalWS), -lightDir));  // 计算漫反射系数
+
+// ============================================================================
+// PBR 函数：Distribution (D) - GGX / Trowbridge-Reitz
+// ============================================================================
+float DistributionGGX(float3 N, float3 H, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
     
-    // 环境光 + 漫反射光
-    float3 baseColor = i.Color.rgb;
-    float3 color = baseColor * (0.2 + 0.8 * NdotL);  // 20% 环境光 + 80% 漫反射
+    float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+    
+    return nom / denom;
+}
+
+// ============================================================================
+// PBR 函数：Geometry (G) - Smith's method with Schlick-GGX
+// ============================================================================
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
+    
+    float nom = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+    
+    return nom / denom;
+}
+
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+    
+    return ggx1 * ggx2;
+}
+
+// ============================================================================
+// PBR 函数：Fresnel (F) - Schlick approximation
+// ============================================================================
+float3 FresnelSchlick(float cosTheta, float3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+// ============================================================================
+// 主着色器：Cook-Torrance BRDF
+// ============================================================================
+float4 main(in PSInput i) : SV_TARGET {
+    // 材质参数（常量，未来可以从 Constant Buffer 传入）
+    float3 albedo = i.Color.rgb;
+    float metallic = 0.0;   // 0 = 非金属，1 = 金属
+    float roughness = 0.5;  // 0 = 光滑，1 = 粗糙
+    
+    // 光源参数
+    float3 lightDir = normalize(float3(0.5, -1.0, 0.3));  // 光源方向
+    float3 lightColor = float3(1.0, 1.0, 1.0);            // 光源颜色
+    
+    // 视角方向（简化：假设相机在远处，所有像素使用相同的视角方向）
+    float3 viewDir = float3(0.0, 0.0, 1.0);  // 简化：朝向屏幕
+    
+    // 向量准备
+    float3 N = normalize(i.NormalWS);
+    float3 V = normalize(viewDir);
+    float3 L = normalize(-lightDir);  // 指向光源
+    float3 H = normalize(V + L);      // 半角向量
+    
+    // F0：基础反射率（金属用 albedo，非金属用 0.04）
+    float3 F0 = float3(0.04, 0.04, 0.04);
+    F0 = lerp(F0, albedo, metallic);
+    
+    // Cook-Torrance BRDF
+    float D = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, L, roughness);
+    float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+    
+    // 镜面反射项
+    float3 numerator = D * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001;
+    float3 specular = numerator / denominator;
+    
+    // 能量守恒：kS + kD = 1
+    float3 kS = F;                          // 镜面反射比例
+    float3 kD = (1.0 - kS) * (1.0 - metallic);  // 漫反射比例（金属没有漫反射）
+    
+    // 最终颜色：漫反射 + 镜面反射
+    float NdotL = max(dot(N, L), 0.0);
+    float3 Lo = (kD * albedo / PI + specular) * lightColor * NdotL;
+    
+    // 环境光（简单的常量环境光，避免全黑）
+    float3 ambient = float3(0.03, 0.03, 0.03) * albedo;
+    float3 color = ambient + Lo;
+    
+    // Gamma 校正（简化）
+    // color = pow(color, float3(1.0/2.2, 1.0/2.2, 1.0/2.2));
     
     return float4(color, i.Color.a);
 }
