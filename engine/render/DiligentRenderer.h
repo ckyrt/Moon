@@ -121,6 +121,23 @@ private:
     Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pSkyboxPSO;
     Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pSkyboxSRB;
 
+    // ======== IBL（Image-Based Lighting）资源 ========
+    Diligent::RefCntAutoPtr<Diligent::ITexture>         m_pBRDF_LUT;         // BRDF 积分查找表（256x256 RG16F）
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pBRDF_LUT_SRV;     // BRDF LUT Shader Resource View
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pBRDF_LUT_RTV;     // BRDF LUT Render Target View
+    
+    Diligent::RefCntAutoPtr<Diligent::ITexture>         m_pEquirectHDR;      // Equirectangular HDR 2D 纹理
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pEquirectHDR_SRV;  // Equirectangular HDR SRV
+    
+    Diligent::RefCntAutoPtr<Diligent::ITexture>         m_pEnvironmentMap;   // 环境贴图 Cubemap
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pEnvironmentMapSRV; // 环境贴图 SRV
+    
+    Diligent::RefCntAutoPtr<Diligent::ITexture>         m_pIrradianceMap;    // 漫反射 Irradiance Cubemap
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pIrradianceMapSRV;
+    
+    Diligent::RefCntAutoPtr<Diligent::ITexture>         m_pPrefilteredEnvMap; // 预过滤镜面环境贴图（带 mip levels）
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pPrefilteredEnvMapSRV;
+
     // ======== Picking 管线 ========
     // 纹理本体 + 视图
     Diligent::RefCntAutoPtr<Diligent::ITexture>     m_pPickingRT;
@@ -146,6 +163,9 @@ private:
     void CreateVSConstants();
     void CreateMainPass();  // 主渲染管线 PSO
     void CreateSkyboxPass(); // Skybox 渲染管线 PSO
+    void PrecomputeIBL();    // 预计算 IBL 资源（BRDF LUT, Irradiance Map, Prefiltered Env Map）
+    void LoadEnvironmentMap(const char* filepath); // 加载 HDR 环境贴图
+    void ConvertEquirectangularToCubemap(Diligent::ITexture* pEquirectangularMap); // 将 equirectangular HDR 转换为 Cubemap
 
     void CreatePickingStatic();      // 常量缓冲、PSO、SRB
     void CreateOrResizePickingRTs(); // RT/DS + 读回纹理

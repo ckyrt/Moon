@@ -156,6 +156,25 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     MOON_LOG_INFO("Sample", "PBR Grid created: %dx%d spheres (%d total)", 
                   COLS, ROWS, COLS * ROWS);
+    
+    // ============================================================================
+    // 创建地面平面
+    // ============================================================================
+    MOON_LOG_INFO("Sample", "Creating ground plane...");
+    
+    Moon::SceneNode* groundNode = scene->CreateNode("Ground");
+    groundNode->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, -5.0f, 0.0f));  // 在球体下方
+    
+    Moon::MeshRenderer* groundRenderer = groundNode->AddComponent<Moon::MeshRenderer>();
+    groundRenderer->SetMesh(meshManager->CreatePlane(
+        50.0f,   // width (X轴)
+        50.0f,   // depth (Z轴)
+        1,       // subdivisionsX
+        1,       // subdivisionsZ
+        Moon::Vector3(0.3f, 0.3f, 0.3f)  // 深灰色（降低反射率）
+    ));
+    
+    MOON_LOG_INFO("Sample", "Ground plane created (50x50 units)");
 
     // 4) Main loop
     bool running = true;
@@ -198,6 +217,11 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
                 const std::string& nodeName = node->GetName();
                 if (nodeName.find("Sphere_M") != std::string::npos) {
                     sscanf_s(nodeName.c_str(), "Sphere_M%f_R%f", &metallic, &roughness);
+                }
+                else if (nodeName == "Ground") {
+                    // 地面：非金属，非常粗糙（类似混凝土/粗糙石材）
+                    metallic = 0.0f;
+                    roughness = 0.95f;
                 }
                 
                 // 设置材质参数
