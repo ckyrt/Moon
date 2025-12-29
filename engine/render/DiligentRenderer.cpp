@@ -21,6 +21,7 @@
 #include "Graphics/GraphicsEngine/interface/ShaderResourceBinding.h"
 #include "Graphics/GraphicsEngine/interface/Texture.h"
 #include "Graphics/GraphicsEngine/interface/TextureView.h"
+#include "Graphics/GraphicsEngine/interface/Sampler.h"
 
 // stb_image for loading HDR files
 #define STB_IMAGE_IMPLEMENTATION
@@ -134,6 +135,12 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
         LoadEnvironmentMap("assets/textures/environment.hdr");
         
         PrecomputeIBL();    // 预计算 IBL 资源
+        
+        // 绑定 IBL 纹理到主渲染管线
+        if (m_pEquirectHDR_SRV) {
+            m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")->Set(m_pEquirectHDR_SRV);
+            MOON_LOG_INFO("DiligentRenderer", "IBL equirectangular texture bound to main pipeline");
+        }
 
         // Picking：一次性创建静态资源；并按当前分辨率创建 RT/DS + 读回
         CreatePickingStatic();
@@ -245,6 +252,10 @@ cbuffer SceneConstants {
     float g_Padding2;
 };
 
+// IBL 纹理资源
+Texture2D g_EquirectMap;
+SamplerState g_EquirectMap_sampler;
+
 struct PSInput { 
     float4 Pos      : SV_POSITION;
     float3 WorldPos : POSITION;
@@ -302,6 +313,16 @@ float3 FresnelSchlick(float cosTheta, float3 F0)
 }
 
 // ============================================================================
+// 辅助函数：将方向向量转换为 Equirectangular UV
+// ============================================================================
+float2 DirToEquirectUV(float3 dir)
+{
+    float phi = atan2(dir.z, dir.x);
+    float theta = acos(dir.y);
+    return float2(phi / (2.0 * PI) + 0.5, theta / PI);
+}
+
+// ============================================================================
 // 主着色器：Cook-Torrance BRDF
 // ============================================================================
 float4 main(in PSInput i) : SV_TARGET {
@@ -346,10 +367,17 @@ float4 main(in PSInput i) : SV_TARGET {
     float NdotL = max(dot(N, L), 0.0);
     float3 Lo = (kD * albedo / PI + specular) * lightColor * NdotL;
     
+    // IBL 环境反射
+    float3 R = reflect(-V, N);  // 反射向量
+    float2 envUV = DirToEquirectUV(normalize(R));  // 转换为 UV
+    float3 envColor = g_EquirectMap.Sample(g_EquirectMap_sampler, envUV).rgb;
+    
     // 环境光（简单模拟 IBL 的效果）
     float3 ambientColor = float3(0.4, 0.4, 0.45);  // 天空蓝色调
     float3 ambient = kD * albedo * ambientColor;   // 漫反射环境光
-    float3 ambientSpecular = kS * ambientColor * (1.0 - roughness * 0.5);  // 简化的环境镜面反射
+    
+    // 环境镜面反射：使用采样的环境贴图颜色，受粗糙度影响
+    float3 ambientSpecular = kS * envColor * (1.0 - roughness * 0.7);
     
     float3 color = ambient + ambientSpecular + Lo;
     
@@ -387,10 +415,28 @@ float4 main(in PSInput i) : SV_TARGET {
     Uint32 numElements;
     GetVertexLayout(layout, numElements);
 
+    // 定义着色器资源变量（纹理需要设置为 MUTABLE 或 DYNAMIC）
+    ShaderResourceVariableDesc Vars[] = {
+        {SHADER_TYPE_PIXEL, "g_EquirectMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
+    };
+
     GraphicsPipelineStateCreateInfo pci{};
     pci.PSODesc.Name = "Main PSO";
     pci.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
     pci.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
+    pci.PSODesc.ResourceLayout.Variables = Vars;
+    pci.PSODesc.ResourceLayout.NumVariables = _countof(Vars);
+    
+    // 定义静态采样器
+    SamplerDesc SamLinearClampDesc{
+        FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR,
+        TEXTURE_ADDRESS_CLAMP, TEXTURE_ADDRESS_CLAMP, TEXTURE_ADDRESS_CLAMP
+    };
+    ImmutableSamplerDesc ImtblSamplers[] = {
+        {SHADER_TYPE_PIXEL, "g_EquirectMap", SamLinearClampDesc}
+    };
+    pci.PSODesc.ResourceLayout.ImmutableSamplers = ImtblSamplers;
+    pci.PSODesc.ResourceLayout.NumImmutableSamplers = _countof(ImtblSamplers);
 
     pci.GraphicsPipeline.NumRenderTargets = 1;
     pci.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
@@ -408,6 +454,8 @@ float4 main(in PSInput i) : SV_TARGET {
     m_pPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants")->Set(m_pVSConstants);
     m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "MaterialConstants")->Set(m_pPSMaterialConstants);
     m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "SceneConstants")->Set(m_pPSSceneConstants);
+    
+    // 绑定环境贴图（需要在 PrecomputeIBL 后才有效，这里先创建 SRB）
     m_pPSO->CreateShaderResourceBinding(&m_pSRB, true);
 
     MOON_LOG_INFO("DiligentRenderer", "Main PSO created");
