@@ -33,7 +33,27 @@
 #include "Platforms/Win32/interface/Win32NativeWindow.h"
 #endif
 
+#include <string>
+
 using namespace Diligent;
+
+// ======= 辅助函数：获取 exe 所在目录 =======
+static std::string GetExecutableDirectory()
+{
+#ifdef _WIN32
+    char exePath[MAX_PATH];
+    GetModuleFileNameA(NULL, exePath, MAX_PATH);
+    std::string path(exePath);
+    size_t lastSlash = path.find_last_of("\\/");
+    if (lastSlash != std::string::npos) {
+        return path.substr(0, lastSlash + 1);
+    }
+    return "";
+#else
+    // Linux/Mac 实现可以使用 readlink("/proc/self/exe") 等
+    return "";
+#endif
+}
 
 // ======= 工具函数 =======
 Moon::Matrix4x4 DiligentRenderer::Transpose(const Moon::Matrix4x4& a)
@@ -770,14 +790,18 @@ void DiligentRenderer::RenderSkybox()
 // ======= 加载 HDR 环境贴图 =======
 void DiligentRenderer::LoadEnvironmentMap(const char* filepath)
 {
-    MOON_LOG_INFO("DiligentRenderer", "Loading environment map from: %s", filepath);
+    // 构建相对于 exe 的完整路径
+    std::string exeDir = GetExecutableDirectory();
+    std::string fullPath = exeDir + filepath;
+    
+    MOON_LOG_INFO("DiligentRenderer", "Loading environment map from: %s", fullPath.c_str());
     
     // 使用 stb_image 加载 HDR 文件
     int width, height, channels;
-    float* hdrData = stbi_loadf(filepath, &width, &height, &channels, 4); // 强制 4 通道 RGBA
+    float* hdrData = stbi_loadf(fullPath.c_str(), &width, &height, &channels, 4); // 强制 4 通道 RGBA
     
     if (!hdrData) {
-        MOON_LOG_ERROR("DiligentRenderer", "Failed to load HDR file: %s", filepath);
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to load HDR file: %s", fullPath.c_str());
         return;
     }
     
