@@ -132,13 +132,13 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     for (int row = 0; row < ROWS; ++row) {
         for (int col = 0; col < COLS; ++col) {
             // 计算材质参数
-            float metallic = static_cast<float>(row) / (ROWS - 1);      // 0 → 1 (从下到上)
+            float metallic = static_cast<float>(row) / (ROWS - 1);      // 0 → 1 (从前到后)
             float roughness = static_cast<float>(col) / (COLS - 1);     // 0 → 1 (从左到右)
             
-            // 计算位置（居中）
+            // 计算位置（平铺在地面上，Y = RADIUS 让球体刚好接触地面）
             float x = (col - (COLS - 1) * 0.5f) * SPACING;
-            float y = (row - (ROWS - 1) * 0.5f) * SPACING;
-            float z = 0.0f;
+            float y = RADIUS;  // 球心在地面上方一个半径的高度
+            float z = (row - (ROWS - 1) * 0.5f) * SPACING;
             
             // 创建球体节点
             char nodeName[64];
@@ -168,7 +168,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     MOON_LOG_INFO("Sample", "Creating ground plane...");
     
     Moon::SceneNode* groundNode = scene->CreateNode("Ground");
-    groundNode->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, -5.0f, 0.0f));  // 在球体下方
+    groundNode->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 0.0f, 0.0f));  // 地面在 Y=0
     
     // 添加 MeshRenderer 组件
     Moon::MeshRenderer* groundRenderer = groundNode->AddComponent<Moon::MeshRenderer>();
