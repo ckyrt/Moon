@@ -6,6 +6,7 @@
 #include "../core/Scene/Scene.h"
 #include "../core/Scene/SceneNode.h"
 #include "../core/Scene/MeshRenderer.h"
+#include "../core/Scene/Light.h"
 #include "../core/Mesh/Mesh.h"
 
 #include <cmath>
@@ -528,12 +529,49 @@ void DiligentRenderer::SetMaterialParameters(float metallic, float roughness)
     UpdateCB(m_pPSMaterialConstants, material);
 }
 
-// ======= 相机位置 =======
+// ======= 场景参数更新 =======
 void DiligentRenderer::SetCameraPosition(const Moon::Vector3& position)
 {
-    PSSceneCPU scene{};
-    scene.cameraPosition = position;
-    UpdateCB(m_pPSSceneConstants, scene);
+    // 更新缓存中的相机位置
+    m_SceneDataCache.cameraPosition = position;
+    
+    // 上传到 GPU
+    UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
+}
+
+// ======= 更新场景光源 =======
+void DiligentRenderer::UpdateSceneLights(Moon::Scene* scene)
+{
+    if (!scene) {
+        // 无场景，清空光源
+        m_SceneDataCache.lightDirection = Moon::Vector3(0.0f, -1.0f, 0.0f);
+        m_SceneDataCache.lightColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
+        m_SceneDataCache.lightIntensity = 0.0f;
+        UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
+        return;
+    }
+    
+    // 默认无光源
+    m_SceneDataCache.lightDirection = Moon::Vector3(0.0f, -1.0f, 0.0f);
+    m_SceneDataCache.lightColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
+    m_SceneDataCache.lightIntensity = 0.0f;  // 0 = 无光源，shader 中会检测这个值
+    
+    // 查找第一个启用的方向光
+    scene->Traverse([&](Moon::SceneNode* node) {
+        if (m_SceneDataCache.lightIntensity > 0.0f) return;  // 已找到光源
+        
+        Moon::Light* light = node->GetComponent<Moon::Light>();
+        if (light && light->IsEnabled() && 
+            light->GetType() == Moon::Light::Type::Directional) {
+            
+            m_SceneDataCache.lightDirection = light->GetDirection();
+            m_SceneDataCache.lightColor = light->GetColor();
+            m_SceneDataCache.lightIntensity = light->GetIntensity();
+        }
+    });
+    
+    // 上传到 GPU（保留了 cameraPosition）
+    UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
 }
 
 // ======= Mesh 缓存 =======

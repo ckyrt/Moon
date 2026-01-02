@@ -52,6 +52,7 @@ public:
     void SetViewProjectionMatrix(const float* viewProj16) override;
     void SetMaterialParameters(float metallic, float roughness);  // 设置 PBR 材质参数
     void SetCameraPosition(const Moon::Vector3& position);        // 设置相机位置（用于高光计算）
+    void UpdateSceneLights(Moon::Scene* scene);                   // 更新场景光源数据
     void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) override;
     void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
     
@@ -87,6 +88,12 @@ private:
     struct PSSceneCPU { // 16B 对齐（场景参数：相机位置、光源等）
         Moon::Vector3 cameraPosition;
         float padding1 = 0.0f;
+        
+        // 主方向光（Directional Light）
+        Moon::Vector3 lightDirection;      // 光源方向
+        float padding2 = 0.0f;
+        Moon::Vector3 lightColor;          // 光源颜色
+        float lightIntensity = 0.0f;       // 光源强度（0 = 无光源）
     };
     struct PSConstantsCPU { // 16B 对齐（Picking）
         uint32_t ObjectID = 0;
@@ -157,6 +164,9 @@ private:
 
     // ======== 相机 ========
     Moon::Matrix4x4 m_ViewProj; // row-major 输入
+    
+    // ======== 场景数据缓存 ========
+    PSSceneCPU m_SceneDataCache;  // 缓存场景数据（相机位置 + 光源）
 
     // ======== 帮助函数 ========
     void CreateDeviceAndSwapchain(const RenderInitParams& params);

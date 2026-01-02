@@ -8,6 +8,7 @@
 #include "../core/Scene/SceneNode.h"
 #include "../core/Scene/MeshRenderer.h"
 #include "../core/Scene/Material.h"
+#include "../core/Scene/Light.h"
 #include "../core/Mesh/Mesh.h"
 #include "../core/Geometry/MeshGenerator.h"
 #include "../render/IRenderer.h"
@@ -185,6 +186,26 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     groundMaterial->SetPresetConcrete();
     
     MOON_LOG_INFO("Sample", "Ground plane created (50x50 units)");
+    
+    // ============================================================================
+    // 创建主方向光（模拟太阳光）
+    // ============================================================================
+    MOON_LOG_INFO("Sample", "Creating main directional light...");
+    
+    Moon::SceneNode* mainLightNode = scene->CreateNode("Main Light");
+    
+    // 设置光源方向：从右上前方照射（类似正午太阳）
+    // Rotation: (45°, -30°, 0°) 表示向下 45° 并向左转 30°
+    mainLightNode->GetTransform()->SetLocalRotation(Moon::Vector3(45.0f, -30.0f, 0.0f));
+    
+    // 添加 Light 组件
+    Moon::Light* mainLight = mainLightNode->AddComponent<Moon::Light>();
+    mainLight->SetType(Moon::Light::Type::Directional);
+    mainLight->SetColor(Moon::Vector3(1.0f, 0.95f, 0.9f));  // 暖白色（太阳光）
+    mainLight->SetIntensity(1.5f);  // 强度（0 = 无光，1.0 = 正常，> 1.0 = 明亮）
+    
+    MOON_LOG_INFO("Sample", "Main directional light created (Intensity: %.1f)", 
+                  mainLight->GetIntensity());
 
     // 4) Main loop
     bool running = true;
@@ -210,7 +231,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         Moon::Matrix4x4 viewProj = camera->GetViewProjectionMatrix();
         renderer.SetViewProjectionMatrix(&viewProj.m[0][0]);
         
-        // Set camera position for PBR specular calculation
+        // Update scene lights (收集场景中所有 Light 组件)
+        renderer.UpdateSceneLights(scene);
+        
+        // Set camera position for PBR specular calculation (在 UpdateSceneLights 之后调用)
         Moon::Vector3 cameraPos = camera->GetPosition();
         renderer.SetCameraPosition(cameraPos);
         

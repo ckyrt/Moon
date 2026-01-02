@@ -110,6 +110,9 @@
     <ClInclude Include="Scene\Material.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\Light.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Mesh\Mesh.h">
       <Filter>Mesh</Filter>
     </ClInclude>
@@ -161,6 +164,9 @@
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Material.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Light.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Mesh\Mesh.cpp">
