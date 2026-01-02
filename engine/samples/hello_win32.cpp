@@ -113,7 +113,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     }
     
     // ============================================================================
-    // 各种常见材质的球体展示（Material Showcase）
+    // 各种常见材质的场景展示（Material Showcase Scene）
     // ============================================================================
     Moon::Scene* scene = engine.GetScene();
     Moon::MeshManager* meshManager = engine.GetMeshManager();
@@ -121,90 +121,83 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     MOON_LOG_INFO("Sample", "Creating Material Showcase Scene...");
     
-    // 参数设置
-    const float SPACING = 3.0f;   // 球体间距
-    const float RADIUS = 1.0f;    // 球体半径
-    
-    // 定义材质球体数组（名称 + 设置函数）
-    struct MaterialBall {
-        const char* name;
-        Moon::Vector3 position;
-        void (*setupFunc)(Moon::Material*);
-    };
-    
-    // 材质设置函数
-    auto setupBrick = [](Moon::Material* m) { m->SetPresetBrick(); };
-    auto setupWood = [](Moon::Material* m) { m->SetPresetWood(); };
-    auto setupPlastic = [](Moon::Material* m) { m->SetPresetPlastic(); };
-    auto setupIron = [](Moon::Material* m) { m->SetPresetIron(); };
-    auto setupRubber = [](Moon::Material* m) { m->SetPresetRubber(); };
-    auto setupPlaster = [](Moon::Material* m) { m->SetPresetPlaster(); };
-    auto setupConcrete = [](Moon::Material* m) { m->SetPresetConcrete(); };
-    auto setupPolishedMetal = [](Moon::Material* m) { m->SetPresetPolishedMetal(); };
-    auto setupRoughMetal = [](Moon::Material* m) { m->SetPresetMetal(0.8f); };
-    
-    // 布局：3行3列
-    MaterialBall materialBalls[] = {
-        // 第一排（前排）
-        {"Brick",          {-SPACING, RADIUS, -SPACING}, setupBrick},
-        {"Wood",           {0.0f,     RADIUS, -SPACING}, setupWood},
-        {"Plastic",        {SPACING,  RADIUS, -SPACING}, setupPlastic},
-        
-        // 第二排（中排）
-        {"Iron",           {-SPACING, RADIUS, 0.0f},     setupIron},
-        {"Polished Metal", {0.0f,     RADIUS, 0.0f},     setupPolishedMetal},
-        {"Rubber",         {SPACING,  RADIUS, 0.0f},     setupRubber},
-        
-        // 第三排（后排）
-        {"Plaster",        {-SPACING, RADIUS, SPACING},  setupPlaster},
-        {"Concrete",       {0.0f,     RADIUS, SPACING},  setupConcrete},
-        {"Rough Metal",    {SPACING,  RADIUS, SPACING},  setupRoughMetal},
-    };
-    
-    // 创建材质球体
-    for (const auto& ball : materialBalls) {
-        Moon::SceneNode* sphereNode = scene->CreateNode(ball.name);
-        sphereNode->GetTransform()->SetLocalPosition(ball.position);
-        
-        // 添加 MeshRenderer 组件
-        Moon::MeshRenderer* renderer = sphereNode->AddComponent<Moon::MeshRenderer>();
-        renderer->SetMesh(meshManager->CreateSphere(RADIUS, 64, 32, Moon::Vector3(1.0f, 1.0f, 1.0f)));
-        
-        // 添加 Material 组件并设置材质
-        Moon::Material* material = sphereNode->AddComponent<Moon::Material>();
-        ball.setupFunc(material);
-        
-        MOON_LOG_INFO("Sample", "Created %s sphere at (%.1f, %.1f, %.1f)", 
-                      ball.name, ball.position.x, ball.position.y, ball.position.z);
-    }
-    
-    MOON_LOG_INFO("Sample", "Material Showcase created: %d spheres with different materials", 
-                  sizeof(materialBalls) / sizeof(materialBalls[0]));
-
-    
     // ============================================================================
-    // 创建地面平面
+    // 1. 地面 - rock_terrain (大平面)
     // ============================================================================
-    MOON_LOG_INFO("Sample", "Creating ground plane...");
+    Moon::SceneNode* groundNode = scene->CreateNode("Ground_RockTerrain");
+    groundNode->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 0.0f, 0.0f));
+    groundNode->GetTransform()->SetLocalScale(Moon::Vector3(2.0f, 1.0f, 2.0f));  // 放大地面
     
-    Moon::SceneNode* groundNode = scene->CreateNode("Ground");
-    groundNode->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 0.0f, 0.0f));  // 地面在 Y=0
-    
-    // 添加 MeshRenderer 组件
     Moon::MeshRenderer* groundRenderer = groundNode->AddComponent<Moon::MeshRenderer>();
-    groundRenderer->SetMesh(meshManager->CreatePlane(
-        50.0f,   // width (X轴)
-        50.0f,   // depth (Z轴)
-        1,       // subdivisionsX
-        1,       // subdivisionsZ
-        Moon::Vector3(0.3f, 0.3f, 0.3f)  // 深灰色（降低反射率）
-    ));
+    groundRenderer->SetMesh(meshManager->CreatePlane(25.0f, 25.0f, 1, 1, Moon::Vector3(0.5f, 0.5f, 0.5f)));
     
-    // 添加 Material 组件（混凝土材质）
     Moon::Material* groundMaterial = groundNode->AddComponent<Moon::Material>();
-    groundMaterial->SetPresetConcrete();
+    groundMaterial->SetPresetConcrete();  // 使用 rock_terrain 材质
     
-    MOON_LOG_INFO("Sample", "Ground plane created (50x50 units)");
+    // ============================================================================
+    // 2. 石膏墙立方体 - painted_plaster_wall
+    // ============================================================================
+    Moon::SceneNode* plasterCubeNode = scene->CreateNode("PlasterWall_Cube");
+    plasterCubeNode->GetTransform()->SetLocalPosition(Moon::Vector3(-5.0f, 2.0f, 0.0f));
+    plasterCubeNode->GetTransform()->SetLocalScale(Moon::Vector3(2.0f, 4.0f, 0.5f));  // 墙的形状
+    
+    Moon::MeshRenderer* plasterRenderer = plasterCubeNode->AddComponent<Moon::MeshRenderer>();
+    plasterRenderer->SetMesh(meshManager->CreateCube(1.0f, Moon::Vector3(0.95f, 0.95f, 0.92f)));
+    
+    Moon::Material* plasterMaterial = plasterCubeNode->AddComponent<Moon::Material>();
+    plasterMaterial->SetPresetPlaster();
+    
+    // ============================================================================
+    // 3. 红砖墙立方体 - red_brick
+    // ============================================================================
+    Moon::SceneNode* brickWallNode = scene->CreateNode("BrickWall_Cube");
+    brickWallNode->GetTransform()->SetLocalPosition(Moon::Vector3(5.0f, 2.0f, 0.0f));
+    brickWallNode->GetTransform()->SetLocalScale(Moon::Vector3(2.0f, 4.0f, 0.5f));  // 墙的形状
+    
+    Moon::MeshRenderer* brickRenderer = brickWallNode->AddComponent<Moon::MeshRenderer>();
+    brickRenderer->SetMesh(meshManager->CreateCube(1.0f, Moon::Vector3(0.6f, 0.3f, 0.2f)));
+    
+    Moon::Material* brickMaterial = brickWallNode->AddComponent<Moon::Material>();
+    brickMaterial->SetPresetBrick();
+    
+    // ============================================================================
+    // 4. 橡胶跑道矩形 - rubberized_track
+    // ============================================================================
+    Moon::SceneNode* trackNode = scene->CreateNode("RubberTrack_Rectangle");
+    trackNode->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 0.05f, -5.0f));  // 稍微抬高避免 z-fighting
+    trackNode->GetTransform()->SetLocalScale(Moon::Vector3(8.0f, 1.0f, 3.0f));  // 跑道形状
+    
+    Moon::MeshRenderer* trackRenderer = trackNode->AddComponent<Moon::MeshRenderer>();
+    trackRenderer->SetMesh(meshManager->CreatePlane(1.0f, 1.0f, 1, 1, Moon::Vector3(0.2f, 0.2f, 0.2f)));
+    
+    Moon::Material* trackMaterial = trackNode->AddComponent<Moon::Material>();
+    trackMaterial->SetPresetRubber();
+    
+    // ============================================================================
+    // 5. 生锈金属球 - rusty_metal
+    // ============================================================================
+    Moon::SceneNode* metalSphereNode = scene->CreateNode("RustyMetal_Sphere");
+    metalSphereNode->GetTransform()->SetLocalPosition(Moon::Vector3(-2.0f, 1.5f, 3.0f));
+    
+    Moon::MeshRenderer* metalRenderer = metalSphereNode->AddComponent<Moon::MeshRenderer>();
+    metalRenderer->SetMesh(meshManager->CreateSphere(1.0f, 64, 32, Moon::Vector3(0.5f, 0.5f, 0.5f)));
+    
+    Moon::Material* metalMaterial = metalSphereNode->AddComponent<Moon::Material>();
+    metalMaterial->SetPresetIron();
+    
+    // ============================================================================
+    // 6. 木头球 - wood_floor
+    // ============================================================================
+    Moon::SceneNode* woodSphereNode = scene->CreateNode("Wood_Sphere");
+    woodSphereNode->GetTransform()->SetLocalPosition(Moon::Vector3(2.0f, 1.5f, 3.0f));
+    
+    Moon::MeshRenderer* woodRenderer = woodSphereNode->AddComponent<Moon::MeshRenderer>();
+    woodRenderer->SetMesh(meshManager->CreateSphere(1.0f, 64, 32, Moon::Vector3(0.6f, 0.4f, 0.2f)));
+    
+    Moon::Material* woodMaterial = woodSphereNode->AddComponent<Moon::Material>();
+    woodMaterial->SetPresetWood();
+    
+    MOON_LOG_INFO("Sample", "Material Showcase Scene created with 6 objects");
     
     // ============================================================================
     // 创建主方向光（模拟太阳光）

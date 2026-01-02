@@ -82,6 +82,10 @@ void Material::SetPresetConcrete()
     m_metallic = 0.0f;   // 非金属
     m_roughness = 0.95f; // 非常粗糙
     m_baseColor = Vector3(0.5f, 0.5f, 0.5f);  // 灰色混凝土
+    
+    // 设置贴图路径 (使用 rock_terrain 作为混凝土/地形)
+    SetAlbedoMap("materials/rock_terrain/rock_terrain_diff_1k.jpg");
+    SetNormalMap("materials/rock_terrain/rock_terrain_nor_dx_1k.jpg");
 }
 
 void Material::SetPresetRubber()
@@ -89,6 +93,10 @@ void Material::SetPresetRubber()
     m_metallic = 0.0f;   // 非金属
     m_roughness = 0.9f;  // 很粗糙
     m_baseColor = Vector3(0.2f, 0.2f, 0.2f);  // 深灰色橡胶
+    
+    // 设置贴图路径
+    SetAlbedoMap("materials/rubberized_track/rubberized_track_diff_1k.jpg");
+    SetNormalMap("materials/rubberized_track/rubberized_track_nor_dx_1k.jpg");
 }
 
 void Material::SetPresetBrick()
@@ -96,6 +104,10 @@ void Material::SetPresetBrick()
     m_metallic = 0.0f;   // 非金属
     m_roughness = 0.9f;  // 粗糙表面
     m_baseColor = Vector3(0.6f, 0.3f, 0.2f);  // 红褐色砖头
+    
+    // 设置贴图路径
+    SetAlbedoMap("materials/red_brick/red_brick_diff_1k.jpg");
+    SetNormalMap("materials/red_brick/red_brick_nor_dx_1k.jpg");
 }
 
 void Material::SetPresetWood()
@@ -103,6 +115,10 @@ void Material::SetPresetWood()
     m_metallic = 0.0f;   // 非金属
     m_roughness = 0.7f;  // 中等粗糙度
     m_baseColor = Vector3(0.6f, 0.4f, 0.2f);  // 木头色
+    
+    // 设置贴图路径
+    SetAlbedoMap("materials/wood_floor/wood_floor_diff_1k.jpg");
+    SetNormalMap("materials/wood_floor/wood_floor_nor_dx_1k.jpg");
 }
 
 void Material::SetPresetPlaster()
@@ -110,6 +126,10 @@ void Material::SetPresetPlaster()
     m_metallic = 0.0f;   // 非金属
     m_roughness = 0.85f; // 较粗糙
     m_baseColor = Vector3(0.95f, 0.95f, 0.92f);  // 接近白色的石膏
+    
+    // 设置贴图路径
+    SetAlbedoMap("materials/painted_plaster_wall/painted_plaster_wall_diff_1k.jpg");
+    SetNormalMap("materials/painted_plaster_wall/painted_plaster_wall_nor_dx_1k.jpg");
 }
 
 void Material::SetPresetIron()
@@ -117,6 +137,10 @@ void Material::SetPresetIron()
     m_metallic = 0.8f;   // 高金属度（略有氧化）
     m_roughness = 0.5f;  // 中等粗糙度（生锈效果）
     m_baseColor = Vector3(0.5f, 0.5f, 0.5f);  // 灰色铁
+    
+    // 设置贴图路径
+    SetAlbedoMap("materials/rusty_metal/rusty_metal_diff_1k.jpg");
+    SetNormalMap("materials/rusty_metal/rusty_metal_nor_dx_1k.jpg");
 }
 
 void Material::SetPresetPolishedMetal()
