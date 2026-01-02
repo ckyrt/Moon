@@ -84,8 +84,8 @@ void Material::SetPresetConcrete()
     m_baseColor = Vector3(0.5f, 0.5f, 0.5f);  // 灰色混凝土
     
     // 设置贴图路径 (使用 rock_terrain 作为混凝土/地形)
-    SetAlbedoMap("materials/rock_terrain/rock_terrain_diff_1k.jpg");
-    SetNormalMap("materials/rock_terrain/rock_terrain_nor_dx_1k.jpg");
+    SetAlbedoMap("materials/rock_terrain/rocky_terrain_02_diff_4k.jpg");
+    SetNormalMap("materials/rock_terrain/rocky_terrain_02_nor_dx_4k.jpg");
 }
 
 void Material::SetPresetRubber()
@@ -139,8 +139,8 @@ void Material::SetPresetIron()
     m_baseColor = Vector3(0.5f, 0.5f, 0.5f);  // 灰色铁
     
     // 设置贴图路径
-    SetAlbedoMap("materials/rusty_metal/rusty_metal_diff_1k.jpg");
-    SetNormalMap("materials/rusty_metal/rusty_metal_nor_dx_1k.jpg");
+    SetAlbedoMap("materials/rusty_metal/rusty_metal_04_diff_1k.jpg");
+    SetNormalMap("materials/rusty_metal/rusty_metal_04_nor_dx_1k.jpg");
 }
 
 void Material::SetPresetPolishedMetal()

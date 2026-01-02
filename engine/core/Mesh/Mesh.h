@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "../Camera/Camera.h"  // For Vector3
+#include "../Input/InputTypes.h"  // For Vector2
 
 namespace Moon {
 
@@ -14,9 +15,9 @@ struct VertexAttributeDesc {
 };
 
 /**
- * @brief 顶点数据结构（简化版）
+ * @brief 顶点数据结构
  * 
- * 包含位置、法线和颜色
+ * 包含位置、法线、颜色和UV坐标
  * 
  * 该结构提供静态方法来描述自身的内存布局，用于生成 GPU InputLayout
  */
@@ -27,17 +28,20 @@ struct Vertex {
     float colorG;      ///< 绿色分量 (0-1)
     float colorB;      ///< 蓝色分量 (0-1)
     float colorA;      ///< Alpha 通道 (0-1, 1=不透明)
+    Vector2 uv;        ///< 纹理坐标 (2 floats, 8 bytes)
     
     Vertex() 
         : position(0, 0, 0)
         , normal(0, 1, 0)
-        , colorR(1.0f), colorG(1.0f), colorB(1.0f), colorA(1.0f) 
+        , colorR(1.0f), colorG(1.0f), colorB(1.0f), colorA(1.0f)
+        , uv(0.0f, 0.0f)
     {}
     
-    Vertex(const Vector3& pos, const Vector3& norm, const Vector3& col, float alpha = 1.0f) 
+    Vertex(const Vector3& pos, const Vector3& norm, const Vector3& col, float alpha = 1.0f, const Vector2& texCoord = Vector2(0.0f, 0.0f)) 
         : position(pos)
         , normal(norm)
         , colorR(col.x), colorG(col.y), colorB(col.z), colorA(alpha)
+        , uv(texCoord)
     {}
     
     /**
@@ -57,9 +61,10 @@ struct Vertex {
         static const VertexAttributeDesc layout[] = {
             {"POSITION", 3, offsetof(Vertex, position)},  // Vector3: 3 floats at offset 0
             {"NORMAL",   3, offsetof(Vertex, normal)},    // Vector3: 3 floats at offset 12
-            {"COLOR",    4, offsetof(Vertex, colorR)}     // RGBA: 4 floats at offset 24
+            {"COLOR",    4, offsetof(Vertex, colorR)},    // RGBA: 4 floats at offset 24
+            {"TEXCOORD", 2, offsetof(Vertex, uv)}         // Vector2: 2 floats at offset 40
         };
-        outCount = 3;
+        outCount = 4;
         return layout;
     }
     
@@ -68,10 +73,11 @@ struct Vertex {
 };
 
 // 编译时验证 Vertex 结构大小（防止意外修改导致 GPU layout 不匹配）
-static_assert(sizeof(Vertex) == 40, "Vertex size must be 40 bytes (2*Vector3=24 + 4*float=16)");
+static_assert(sizeof(Vertex) == 48, "Vertex size must be 48 bytes (2*Vector3=24 + 4*float=16 + Vector2=8)");
 static_assert(offsetof(Vertex, position) == 0, "Position must be at offset 0");
 static_assert(offsetof(Vertex, normal) == 12, "Normal must be at offset 12");
 static_assert(offsetof(Vertex, colorR) == 24, "Color must be at offset 24");
+static_assert(offsetof(Vertex, uv) == 40, "UV must be at offset 40");
 
 /**
  * @brief Mesh 类 - 存储几何网格数据

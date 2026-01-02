@@ -129,6 +129,7 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
     MOON_LOG_INFO("DiligentRenderer", "Starting initialization...");
     try {
         CreateDeviceAndSwapchain(params);
+        CreateDefaultWhiteTexture();  // 创建默认白色纹理
         CreateVSConstants();
         CreateMainPass();  // 主渲染管线（用于正常场景渲染）
         CreateSkyboxPass(); // Skybox 渲染管线
@@ -142,7 +143,14 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
         if (m_pEquirectHDR_SRV) {
             m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")->Set(m_pEquirectHDR_SRV);
             MOON_LOG_INFO("DiligentRenderer", "IBL equirectangular texture bound to main pipeline");
+        } else {
+            // 如果 HDR 加载失败，使用默认纹理
+            if (m_pDefaultWhiteTextureSRV) {
+                m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")->Set(m_pDefaultWhiteTextureSRV);
+            }
         }
+        
+        // 注意：g_AlbedoMap 是 MUTABLE 变量，必须在每次渲染前通过 BindAlbedoTexture() 设置，不在这里初始化
 
         // Picking：一次性创建静态资源；并按当前分辨率创建 RT/DS + 读回
         CreatePickingStatic();
@@ -211,9 +219,37 @@ void DiligentRenderer::CreateVSConstants()
     m_pDevice->CreateBuffer(psSceneCB, nullptr, &m_pPSSceneConstants);
 }
 
+void DiligentRenderer::CreateDefaultWhiteTexture()
+{
+    // 创建 1x1 白色纹理（RGBA8 SRGB）
+    unsigned char whitePixel[4] = { 255, 255, 255, 255 };
+    
+    TextureDesc desc{};
+    desc.Name = "Default White Texture";
+    desc.Type = RESOURCE_DIM_TEX_2D;
+    desc.Width = 1;
+    desc.Height = 1;
+    desc.Format = TEX_FORMAT_RGBA8_UNORM_SRGB;
+    desc.MipLevels = 1;
+    desc.Usage = USAGE_IMMUTABLE;
+    desc.BindFlags = BIND_SHADER_RESOURCE;
+    
+    TextureData initData{};
+    TextureSubResData subRes{};
+    subRes.pData = whitePixel;
+    subRes.Stride = 4;  // 4 bytes per pixel
+    initData.pSubResources = &subRes;
+    initData.NumSubresources = 1;
+    
+    m_pDevice->CreateTexture(desc, &initData, &m_pDefaultWhiteTexture);
+    m_pDefaultWhiteTextureSRV = m_pDefaultWhiteTexture->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+    
+    MOON_LOG_INFO("DiligentRenderer", "Default white texture created");
+}
+
 void DiligentRenderer::CreateMainPass()
 {
-    // PBR 着色器（Cook-Torrance BRDF，无贴图，无 IBL）
+    // PBR 着色器（Cook-Torrance BRDF，支持 Albedo 贴图和 IBL）
     const char* vsCode = R"(
 cbuffer Constants { 
     float4x4 g_WorldViewProj;
@@ -223,18 +259,21 @@ struct VSInput {
     float3 Pos    : ATTRIB0; 
     float3 Normal : ATTRIB1;
     float4 Color  : ATTRIB2;
+    float2 UV     : ATTRIB3;
 };
 struct PSInput { 
     float4 Pos      : SV_POSITION;
     float3 WorldPos : POSITION;
     float3 NormalWS : NORMAL;
     float4 Color    : COLOR;
+    float2 UV       : TEXCOORD0;
 };
 void main(in VSInput i, out PSInput o) {
     o.Pos = mul(float4(i.Pos, 1.0), g_WorldViewProj);
     o.WorldPos = mul(float4(i.Pos, 1.0), g_World).xyz;
     o.NormalWS = normalize(mul(i.Normal, (float3x3)g_World));
     o.Color = i.Color;
+    o.UV = i.UV;
 }
 )";
 
@@ -250,13 +289,21 @@ cbuffer MaterialConstants {
     float g_Padding2;
 };
 
-// 场景参数常量缓冲区
-cbuffer SceneConstants {
+// 场景参数常量缓冲区（相机位置、光源等）
+cbuffer SceneConstants { 
     float3 g_CameraPosition;
     float g_Padding3;
+    float3 g_LightDirection;
+    float g_Padding4;
+    float3 g_LightColor;
+    float g_LightIntensity;
 };
 
-// IBL 纹理资源
+// Albedo 贴图
+Texture2D g_AlbedoMap;
+SamplerState g_AlbedoMap_sampler;
+
+// 环境贴图（equirectangular）
 Texture2D g_EquirectMap;
 SamplerState g_EquirectMap_sampler;
 
@@ -265,13 +312,23 @@ struct PSInput {
     float3 WorldPos : POSITION;
     float3 NormalWS : NORMAL;
     float4 Color    : COLOR;
+    float2 UV       : TEXCOORD0;
 };
 
-// ============================================================================
-// PBR 函数：Distribution (D) - GGX / Trowbridge-Reitz
-// ============================================================================
-float DistributionGGX(float3 N, float3 H, float roughness)
-{
+// 将 3D 方向转换为 equirectangular UV 坐标
+float2 DirToEquirectUV(float3 dir) {
+    float u = atan2(dir.z, dir.x) / (2.0 * PI) + 0.5;
+    float v = 1.0 - (asin(dir.y) / PI + 0.5);
+    return float2(u, v);
+}
+
+// Fresnel-Schlick 近似（菲涅尔效应）
+float3 FresnelSchlick(float cosTheta, float3 F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+// GGX/Trowbridge-Reitz 法线分布函数（NDF）
+float DistributionGGX(float3 N, float3 H, float roughness) {
     float a = roughness * roughness;
     float a2 = a * a;
     float NdotH = max(dot(N, H), 0.0);
@@ -281,25 +338,21 @@ float DistributionGGX(float3 N, float3 H, float roughness)
     float denom = (NdotH2 * (a2 - 1.0) + 1.0);
     denom = PI * denom * denom;
     
-    return nom / denom;
+    return nom / max(denom, 0.0001);
 }
 
-// ============================================================================
-// PBR 函数：Geometry (G) - Smith's method with Schlick-GGX
-// ============================================================================
-float GeometrySchlickGGX(float NdotV, float roughness)
-{
+// Smith GGX 几何遮挡函数
+float GeometrySchlickGGX(float NdotV, float roughness) {
     float r = (roughness + 1.0);
     float k = (r * r) / 8.0;
     
     float nom = NdotV;
     float denom = NdotV * (1.0 - k) + k;
     
-    return nom / denom;
+    return nom / max(denom, 0.0001);
 }
 
-float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
-{
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness) {
     float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
     float ggx2 = GeometrySchlickGGX(NdotV, roughness);
@@ -308,75 +361,73 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-// ============================================================================
-// PBR 函数：Fresnel (F) - Schlick approximation
-// ============================================================================
-float3 FresnelSchlick(float cosTheta, float3 F0)
-{
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
-// ============================================================================
-// 辅助函数：将方向向量转换为 Equirectangular UV
-// ============================================================================
-float2 DirToEquirectUV(float3 dir)
-{
-    float phi = atan2(dir.z, dir.x);
-    float theta = acos(dir.y);
-    return float2(phi / (2.0 * PI) + 0.5, theta / PI);
-}
-
-// ============================================================================
-// 主着色器：Cook-Torrance BRDF
-// ============================================================================
-float4 main(in PSInput i) : SV_TARGET {
-    // 材质参数（从常量缓冲区读取）
-    float3 albedo = g_BaseColor;   // 使用材质的基础颜色而非顶点颜色
-    float metallic = g_Metallic;   // 从 CB 读取
-    float roughness = g_Roughness; // 从 CB 读取
+float4 main(in PSInput i) : SV_Target {
+    // 从贴图采样 Albedo
+    float3 albedo = g_AlbedoMap.Sample(g_AlbedoMap_sampler, i.UV).rgb;
     
-    // 视角方向（从相机位置计算真实方向）
-    float3 viewDir = normalize(g_CameraPosition - i.WorldPos);
+    // 调试：直接返回纹理颜色，看看纹理是否正确采样
+    // return float4(albedo, 1.0);
     
-    // 固定方向光：从左上偏前方照射（更靠前，避免遮挡左上角）
-    // lightDir 是光的传播方向（从光源出发），所以 Y 为负表示从上往下
-    float3 lightDir = normalize(float3(-0.5, -1.0, 2.0));  // 方向：主要从前方来，从左上往下照
-    float3 lightColor = float3(8.0, 8.0, 8.0);  // 强光源
+    // 调试：显示 UV 坐标
+    // return float4(i.UV.x, i.UV.y, 0.0, 1.0);
     
-    // 向量准备
+    // 如果贴图为黑色（未绑定或无效），使用材质基础颜色
+    if (dot(albedo, albedo) < 0.001) {
+        albedo = g_BaseColor;
+    }
+    
+    // 不要用顶点颜色调制纹理！这会让纹理变暗
+    // albedo *= i.Color.rgb;
+    
+    float metallic = g_Metallic;
+    float roughness = max(g_Roughness, 0.04); // 防止除零
+    
     float3 N = normalize(i.NormalWS);
-    float3 V = viewDir;
-    float3 L = -lightDir;  // 指向光源（方向光需要取反）
-    float3 H = normalize(V + L);  // 半角向量
+    float3 V = normalize(g_CameraPosition - i.WorldPos);
     
-    // F0：基础反射率（金属用 albedo，非金属用 0.04）
-    float3 F0 = float3(0.04, 0.04, 0.04);
-    F0 = lerp(F0, albedo, metallic);
+    // 基础反射率（F0）
+    float3 F0 = float3(0.04, 0.04, 0.04);  // 非金属默认值
+    F0 = lerp(F0, albedo, metallic);       // 金属使用 albedo 作为 F0
     
-    // Cook-Torrance BRDF
-    float D = DistributionGGX(N, H, roughness);
-    float G = GeometrySmith(N, V, L, roughness);
-    float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+    // 反射方向（用于环境光采样）
+    float3 R = reflect(-V, N);
     
-    // 镜面反射项
-    float3 numerator = D * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001;
-    float3 specular = numerator / denominator;
-    
-    // 能量守恒：kS + kD = 1
-    float3 kS = F;                          // 镜面反射比例
-    float3 kD = (1.0 - kS) * (1.0 - metallic);  // 漫反射比例（金属没有漫反射）
-    
-    // 最终颜色：漫反射 + 镜面反射
-    float NdotL = max(dot(N, L), 0.0);
-    float3 Lo = (kD * albedo / PI + specular) * lightColor * NdotL;
-    
-    // IBL 环境反射
-    float3 R = reflect(-V, N);  // 反射向量
-    float2 envUV = DirToEquirectUV(normalize(R));  // 转换为 UV
+    // 采样环境贴图
+    float2 envUV = DirToEquirectUV(R);
     float3 envColor = g_EquirectMap.Sample(g_EquirectMap_sampler, envUV).rgb;
     
-    // 环境光（简单模拟 IBL 的效果）
+    // === 直接光照（方向光）===
+    float3 Lo = float3(0.0, 0.0, 0.0);
+    
+    if (g_LightIntensity > 0.0) {
+        float3 L = normalize(-g_LightDirection);  // 光源方向（指向光源）
+        float3 H = normalize(V + L);              // 半程向量
+        float3 radiance = g_LightColor * g_LightIntensity;
+        
+        // Cook-Torrance BRDF
+        float NDF = DistributionGGX(N, H, roughness);
+        float G = GeometrySmith(N, V, L, roughness);
+        float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+        
+        float3 numerator = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+        float3 specular = numerator / max(denominator, 0.001);
+        
+        float3 kS = F;
+        float3 kD = float3(1.0, 1.0, 1.0) - kS;
+        kD *= 1.0 - metallic;  // 金属没有漫反射
+        
+        float NdotL = max(dot(N, L), 0.0);
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+    }
+    
+    // === 环境光照（简化 IBL）===
+    float3 F = FresnelSchlick(max(dot(N, V), 0.0), F0);
+    float3 kS = F;
+    float3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;
+    
+    // 简化的环境光（使用固定的天空颜色 + 采样的环境贴图）
     float3 ambientColor = float3(0.4, 0.4, 0.45);  // 天空蓝色调
     float3 ambient = kD * albedo * ambientColor;   // 漫反射环境光
     
@@ -415,12 +466,13 @@ float4 main(in PSInput i) : SV_TARGET {
     }
 
     // 使用统一的 Vertex Layout（避免手写重复声明）
-    LayoutElement layout[3];  // ⭐ 从2改成3
+    LayoutElement layout[4];  // ⭐ 从3改成4（添加了UV）
     Uint32 numElements;
     GetVertexLayout(layout, numElements);
 
     // 定义着色器资源变量（纹理需要设置为 MUTABLE 或 DYNAMIC）
     ShaderResourceVariableDesc Vars[] = {
+        {SHADER_TYPE_PIXEL, "g_AlbedoMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
         {SHADER_TYPE_PIXEL, "g_EquirectMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
     };
 
@@ -431,12 +483,20 @@ float4 main(in PSInput i) : SV_TARGET {
     pci.PSODesc.ResourceLayout.Variables = Vars;
     pci.PSODesc.ResourceLayout.NumVariables = _countof(Vars);
     
+    // 允许动态绑定纹理
+    pci.Flags = PSO_CREATE_FLAG_NONE;
+    
     // 定义静态采样器
+    SamplerDesc SamLinearWrapDesc{
+        FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR,
+        TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP
+    };
     SamplerDesc SamLinearClampDesc{
         FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR,
         TEXTURE_ADDRESS_CLAMP, TEXTURE_ADDRESS_CLAMP, TEXTURE_ADDRESS_CLAMP
     };
     ImmutableSamplerDesc ImtblSamplers[] = {
+        {SHADER_TYPE_PIXEL, "g_AlbedoMap", SamLinearWrapDesc},
         {SHADER_TYPE_PIXEL, "g_EquirectMap", SamLinearClampDesc}
     };
     pci.PSODesc.ResourceLayout.ImmutableSamplers = ImtblSamplers;
@@ -459,7 +519,7 @@ float4 main(in PSInput i) : SV_TARGET {
     m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "MaterialConstants")->Set(m_pPSMaterialConstants);
     m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "SceneConstants")->Set(m_pPSSceneConstants);
     
-    // 绑定环境贴图（需要在 PrecomputeIBL 后才有效，这里先创建 SRB）
+    // 创建 SRB（MUTABLE 变量会在渲染时动态绑定）
     m_pPSO->CreateShaderResourceBinding(&m_pSRB, true);
 
     MOON_LOG_INFO("DiligentRenderer", "Main PSO created");
@@ -721,7 +781,7 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
     m_pImmediateContext->SetVertexBuffers(0, 1, vbs, &offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
     m_pImmediateContext->SetIndexBuffer(gpu->IB, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-    // 提交着色器资源
+    // 提交着色器资源（包括纹理）
     m_pImmediateContext->CommitShaderResources(m_pSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     DrawIndexedAttribs da{};
@@ -729,6 +789,34 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
     da.NumIndices = static_cast<Uint32>(gpu->IndexCount);
     da.Flags = DRAW_FLAG_VERIFY_ALL;
     m_pImmediateContext->DrawIndexed(da);
+}
+
+// 新增：绑定纹理到当前 SRB
+void DiligentRenderer::BindAlbedoTexture(const std::string& texturePath)
+{
+    if (texturePath.empty() || !m_pSRB) {
+        // 绑定默认白色纹理
+        MOON_LOG_WARN("DiligentRenderer", "BindAlbedoTexture: texturePath is empty or SRB is null, using default white texture");
+        if (m_pDefaultWhiteTextureSRV) {
+            m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlbedoMap")->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+        }
+        return;
+    }
+    
+    MOON_LOG_INFO("DiligentRenderer", "BindAlbedoTexture: attempting to load texture: %s", texturePath.c_str());
+    
+    // 加载并缓存纹理
+    auto* texGPU = GetOrCreateTextureResources(texturePath, true);  // true = sRGB for albedo
+    if (texGPU && texGPU->SRV) {
+        m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlbedoMap")->Set(texGPU->SRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+        MOON_LOG_INFO("DiligentRenderer", "BindAlbedoTexture: successfully bound texture: %s", texturePath.c_str());
+    } else {
+        // 加载失败，使用默认纹理
+        MOON_LOG_ERROR("DiligentRenderer", "BindAlbedoTexture: failed to load texture: %s, using default white", texturePath.c_str());
+        if (m_pDefaultWhiteTextureSRV) {
+            m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlbedoMap")->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+        }
+    }
 }
 
 void DiligentRenderer::DrawCube(const Moon::Matrix4x4& world)
@@ -1298,6 +1386,7 @@ struct VSInput {
     float3 Position : ATTRIB0; 
     float3 Normal   : ATTRIB1;  // 必须声明以匹配 stride
     float4 Color    : ATTRIB2;  // 必须声明以匹配 stride
+    float2 UV       : ATTRIB3;  // 必须声明以匹配 stride（新增的UV坐标）
 };
 struct PSInput { float4 Position : SV_Position; };
 PSInput main_vs(VSInput i){
@@ -1333,7 +1422,7 @@ uint main_ps(PSInput i) : SV_Target { return g_ObjectID; })";
 
     // 使用统一的 Vertex Layout（避免手写重复声明）
     // 注意：即使 picking shader 只使用 position，也必须声明完整的 layout 来保证 stride 正确
-    LayoutElement layout[3];  // ⭐ 从2改成3
+    LayoutElement layout[4];  // ⭐ 更新为4（Position + Normal + Color + UV）
     Uint32 numElements;
     GetVertexLayout(layout, numElements);
     pci.GraphicsPipeline.InputLayout.LayoutElements = layout;

@@ -11,6 +11,12 @@ extern "C" {
 #include <cstring>
 #include <fstream>
 
+#ifdef _WIN32
+#include <direct.h>  // for _getcwd
+#else
+#include <unistd.h>  // for getcwd
+#endif
+
 namespace Moon {
 
 std::shared_ptr<Texture> TextureManager::LoadTexture(const std::string& filepath, bool sRGB)
@@ -60,20 +66,19 @@ void TextureManager::ClearCache()
 
 std::shared_ptr<TextureData> TextureManager::LoadTextureData(const std::string& filepath, bool sRGB)
 {
-    // 构建完整路径（简单检查文件是否存在）
-    std::string fullPath = filepath;
-    std::ifstream testFile(fullPath);
-    if (!testFile.good()) {
-        // 尝试相对于 assets 目录
-        fullPath = "assets/textures/" + filepath;
-        testFile.close();
-        testFile.open(fullPath);
-        if (!testFile.good()) {
-            MOON_LOG_ERROR("TextureManager", "Texture file not found: %s", filepath.c_str());
-            return nullptr;
-        }
-    }
-    testFile.close();
+    // 直接构建完整路径
+    std::string fullPath = "assets/textures/" + filepath;
+    
+    // 获取当前工作目录用于调试
+    char cwd[1024];
+    #ifdef _WIN32
+    _getcwd(cwd, sizeof(cwd));
+    #else
+    getcwd(cwd, sizeof(cwd));
+    #endif
+    
+    MOON_LOG_INFO("TextureManager", "Current working directory: %s", cwd);
+    MOON_LOG_INFO("TextureManager", "Attempting to load texture: %s", fullPath.c_str());
     
     // 使用 stb_image 加载图像
     int width, height, channels;
@@ -84,6 +89,9 @@ std::shared_ptr<TextureData> TextureManager::LoadTextureData(const std::string& 
                        fullPath.c_str(), stbi_failure_reason());
         return nullptr;
     }
+    
+    MOON_LOG_INFO("TextureManager", "Successfully loaded texture: %s (%dx%d, %d channels)", 
+                  fullPath.c_str(), width, height, channels);
     
     // 创建纹理数据
     auto textureData = std::make_shared<TextureData>();

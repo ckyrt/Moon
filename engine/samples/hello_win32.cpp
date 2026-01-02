@@ -47,6 +47,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
 {
+    // 设置工作目录到 exe 所在目录
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileNameW(NULL, exePath, MAX_PATH);
+    wchar_t* lastSlash = wcsrchr(exePath, L'\\');
+    if (lastSlash) {
+        *lastSlash = L'\0';
+        SetCurrentDirectoryW(exePath);
+    }
+    
     // 1) Register class
     WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
     wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -180,7 +189,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     metalSphereNode->GetTransform()->SetLocalPosition(Moon::Vector3(-2.0f, 1.5f, 3.0f));
     
     Moon::MeshRenderer* metalRenderer = metalSphereNode->AddComponent<Moon::MeshRenderer>();
-    metalRenderer->SetMesh(meshManager->CreateSphere(1.0f, 64, 32, Moon::Vector3(0.5f, 0.5f, 0.5f)));
+    // 使用白色顶点颜色，让纹理完整显示
+    metalRenderer->SetMesh(meshManager->CreateSphere(1.0f, 64, 32, Moon::Vector3(1.0f, 1.0f, 1.0f)));
     
     Moon::Material* metalMaterial = metalSphereNode->AddComponent<Moon::Material>();
     metalMaterial->SetPresetIron();
@@ -192,7 +202,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     woodSphereNode->GetTransform()->SetLocalPosition(Moon::Vector3(2.0f, 1.5f, 3.0f));
     
     Moon::MeshRenderer* woodRenderer = woodSphereNode->AddComponent<Moon::MeshRenderer>();
-    woodRenderer->SetMesh(meshManager->CreateSphere(1.0f, 64, 32, Moon::Vector3(0.6f, 0.4f, 0.2f)));
+    // 使用白色顶点颜色，让纹理完整显示
+    woodRenderer->SetMesh(meshManager->CreateSphere(1.0f, 64, 32, Moon::Vector3(1.0f, 1.0f, 1.0f)));
     
     Moon::Material* woodMaterial = woodSphereNode->AddComponent<Moon::Material>();
     woodMaterial->SetPresetWood();
@@ -259,14 +270,28 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
                 // ✅ 从 Material 组件获取材质参数
                 Moon::Material* material = node->GetComponent<Moon::Material>();
                 if (material && material->IsEnabled()) {
+                    // 设置材质参数
                     renderer.SetMaterialParameters(
                         material->GetMetallic(), 
                         material->GetRoughness(),
                         material->GetBaseColor()
                     );
+                    
+                    // 绑定 Albedo 贴图
+                    if (material->HasAlbedoMap()) {
+                        const std::string& albedoPath = material->GetAlbedoMap();
+                        MOON_LOG_INFO("HelloEngine", "Node '%s' has albedo map: %s", 
+                                      node->GetName().c_str(), albedoPath.c_str());
+                        renderer.BindAlbedoTexture(albedoPath);
+                    } else {
+                        MOON_LOG_INFO("HelloEngine", "Node '%s' has no albedo map, using default white", 
+                                      node->GetName().c_str());
+                        renderer.BindAlbedoTexture("");  // 使用默认白色纹理
+                    }
                 } else {
                     // 默认材质参数
                     renderer.SetMaterialParameters(0.0f, 0.5f, Moon::Vector3(1.0f, 1.0f, 1.0f));
+                    renderer.BindAlbedoTexture("");  // 使用默认白色纹理
                 }
                 
                 // 渲染

@@ -37,31 +37,51 @@ Mesh* MeshGenerator::CreateCube(float size, const Vector3& color) {
         Vector3(0, -1, 0)   // 下 -Y
     };
     
+    // 每个面的UV坐标（标准映射：左下(0,1)、右下(1,1)、右上(1,0)、左上(0,0)）
+    Vector2 uvs[4] = {
+        Vector2(0.0f, 1.0f),  // 左下
+        Vector2(1.0f, 1.0f),  // 右下
+        Vector2(1.0f, 0.0f),  // 右上
+        Vector2(0.0f, 0.0f)   // 左上
+    };
+    
     // 24个顶点（每个面4个顶点，共6个面）
     std::vector<Vertex> vertices = {
-        // 前面 (+Z)
-        Vertex(positions[4], normals[0], color), Vertex(positions[5], normals[0], color), 
-        Vertex(positions[6], normals[0], color), Vertex(positions[7], normals[0], color),
+        // 前面 (+Z) - 顶点索引：4, 5, 6, 7
+        Vertex(positions[4], normals[0], color, 1.0f, uvs[0]), 
+        Vertex(positions[5], normals[0], color, 1.0f, uvs[1]), 
+        Vertex(positions[6], normals[0], color, 1.0f, uvs[2]), 
+        Vertex(positions[7], normals[0], color, 1.0f, uvs[3]),
         
-        // 后面 (-Z)
-        Vertex(positions[1], normals[1], color), Vertex(positions[0], normals[1], color), 
-        Vertex(positions[3], normals[1], color), Vertex(positions[2], normals[1], color),
+        // 后面 (-Z) - 顶点索引：1, 0, 3, 2
+        Vertex(positions[1], normals[1], color, 1.0f, uvs[0]), 
+        Vertex(positions[0], normals[1], color, 1.0f, uvs[1]), 
+        Vertex(positions[3], normals[1], color, 1.0f, uvs[2]), 
+        Vertex(positions[2], normals[1], color, 1.0f, uvs[3]),
         
-        // 左面 (-X)
-        Vertex(positions[0], normals[2], color), Vertex(positions[4], normals[2], color), 
-        Vertex(positions[7], normals[2], color), Vertex(positions[3], normals[2], color),
+        // 左面 (-X) - 顶点索引：0, 4, 7, 3
+        Vertex(positions[0], normals[2], color, 1.0f, uvs[0]), 
+        Vertex(positions[4], normals[2], color, 1.0f, uvs[1]), 
+        Vertex(positions[7], normals[2], color, 1.0f, uvs[2]), 
+        Vertex(positions[3], normals[2], color, 1.0f, uvs[3]),
         
-        // 右面 (+X)
-        Vertex(positions[5], normals[3], color), Vertex(positions[1], normals[3], color), 
-        Vertex(positions[2], normals[3], color), Vertex(positions[6], normals[3], color),
+        // 右面 (+X) - 顶点索引：5, 1, 2, 6
+        Vertex(positions[5], normals[3], color, 1.0f, uvs[0]), 
+        Vertex(positions[1], normals[3], color, 1.0f, uvs[1]), 
+        Vertex(positions[2], normals[3], color, 1.0f, uvs[2]), 
+        Vertex(positions[6], normals[3], color, 1.0f, uvs[3]),
         
-        // 上面 (+Y)
-        Vertex(positions[7], normals[4], color), Vertex(positions[6], normals[4], color), 
-        Vertex(positions[2], normals[4], color), Vertex(positions[3], normals[4], color),
+        // 上面 (+Y) - 顶点索引：7, 6, 2, 3
+        Vertex(positions[7], normals[4], color, 1.0f, uvs[0]), 
+        Vertex(positions[6], normals[4], color, 1.0f, uvs[1]), 
+        Vertex(positions[2], normals[4], color, 1.0f, uvs[2]), 
+        Vertex(positions[3], normals[4], color, 1.0f, uvs[3]),
         
-        // 下面 (-Y)
-        Vertex(positions[4], normals[5], color), Vertex(positions[0], normals[5], color), 
-        Vertex(positions[1], normals[5], color), Vertex(positions[5], normals[5], color)
+        // 下面 (-Y) - 顶点索引：4, 0, 1, 5
+        Vertex(positions[4], normals[5], color, 1.0f, uvs[0]), 
+        Vertex(positions[0], normals[5], color, 1.0f, uvs[1]), 
+        Vertex(positions[1], normals[5], color, 1.0f, uvs[2]), 
+        Vertex(positions[5], normals[5], color, 1.0f, uvs[3])
     };
     
     // 36个索引（6个面 * 2个三角形 * 3个顶点）
@@ -109,7 +129,14 @@ Mesh* MeshGenerator::CreateSphere(float radius, int segments, int rings, const V
                 normal.z /= length;
             }
             
-            vertices.push_back(Vertex(pos, normal, color));
+            // UV 坐标：球面映射
+            // u: 经度 [0, 1]
+            // v: 纬度 [0, 1]
+            float u = float(seg) / float(segments);
+            float v = float(ring) / float(rings);
+            Vector2 uv(u, v);
+            
+            vertices.push_back(Vertex(pos, normal, color, 1.0f, uv));
         }
     }
     
@@ -163,7 +190,11 @@ Mesh* MeshGenerator::CreatePlane(float width, float depth, int subdivisionsX, in
             float px = -halfW + (width * x) / subdivisionsX;
             float pz = -halfD + (depth * z) / subdivisionsZ;
             
-            vertices.push_back(Vertex(Vector3(px, 0, pz), normal, color));
+            // UV 坐标：从 (0,0) 到 (1,1)，注意 Z 轴对应 V 坐标
+            float u = static_cast<float>(x) / subdivisionsX;
+            float v = static_cast<float>(z) / subdivisionsZ;
+            
+            vertices.push_back(Vertex(Vector3(px, 0, pz), normal, color, 1.0f, Vector2(u, v)));
         }
     }
     

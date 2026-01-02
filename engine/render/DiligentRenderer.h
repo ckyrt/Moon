@@ -56,6 +56,8 @@ public:
     void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) override;
     void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
     
+    void BindAlbedoTexture(const std::string& texturePath);       // 绑定 Albedo 贴图到当前 SRB
+    
     void RenderSkybox();  // 渲染 Skybox（在所有不透明物体之后调用）
 
     // 提供给 ImGui 等
@@ -170,6 +172,10 @@ private:
         Diligent::RefCntAutoPtr<Diligent::ITextureView> SRV;
     };
     std::unordered_map<std::string, TextureGPUResources> m_TextureCache; // key: texture path
+    
+    // 默认白色纹理（用于没有贴图的材质）
+    Diligent::RefCntAutoPtr<Diligent::ITexture>     m_pDefaultWhiteTexture;
+    Diligent::RefCntAutoPtr<Diligent::ITextureView> m_pDefaultWhiteTextureSRV;
 
     // ======== 相机 ========
     Moon::Matrix4x4 m_ViewProj; // row-major 输入
@@ -180,6 +186,7 @@ private:
     // ======== 帮助函数 ========
     void CreateDeviceAndSwapchain(const RenderInitParams& params);
     void CreateVSConstants();
+    void CreateDefaultWhiteTexture();  // 创建默认白色纹理
     void CreateMainPass();  // 主渲染管线 PSO
     void CreateSkyboxPass(); // Skybox 渲染管线 PSO
     void PrecomputeIBL();    // 预计算 IBL 资源（BRDF LUT, Irradiance Map, Prefiltered Env Map）
