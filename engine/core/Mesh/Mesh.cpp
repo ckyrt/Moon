@@ -43,41 +43,49 @@ Mesh* CreateCubeMesh(float size) {
     std::vector<Vertex> vertices;
     vertices.reserve(24);
     
+    // UV坐标（标准纹理映射：每个面独立映射到[0,1]x[0,1]）
+    Vector2 uvs[4] = {
+        { 0.0f, 1.0f },  // 左下
+        { 1.0f, 1.0f },  // 右下
+        { 1.0f, 0.0f },  // 右上
+        { 0.0f, 0.0f }   // 左上
+    };
+    
     // 前面 (Z+)
-    vertices.emplace_back(positions[4], normals[0], faceColors[0]);
-    vertices.emplace_back(positions[5], normals[0], faceColors[0]);
-    vertices.emplace_back(positions[6], normals[0], faceColors[0]);
-    vertices.emplace_back(positions[7], normals[0], faceColors[0]);
+    vertices.emplace_back(positions[4], normals[0], faceColors[0], 1.0f, uvs[0]);
+    vertices.emplace_back(positions[5], normals[0], faceColors[0], 1.0f, uvs[1]);
+    vertices.emplace_back(positions[6], normals[0], faceColors[0], 1.0f, uvs[2]);
+    vertices.emplace_back(positions[7], normals[0], faceColors[0], 1.0f, uvs[3]);
     
     // 后面 (Z-)
-    vertices.emplace_back(positions[1], normals[1], faceColors[1]);
-    vertices.emplace_back(positions[0], normals[1], faceColors[1]);
-    vertices.emplace_back(positions[3], normals[1], faceColors[1]);
-    vertices.emplace_back(positions[2], normals[1], faceColors[1]);
+    vertices.emplace_back(positions[1], normals[1], faceColors[1], 1.0f, uvs[0]);
+    vertices.emplace_back(positions[0], normals[1], faceColors[1], 1.0f, uvs[1]);
+    vertices.emplace_back(positions[3], normals[1], faceColors[1], 1.0f, uvs[2]);
+    vertices.emplace_back(positions[2], normals[1], faceColors[1], 1.0f, uvs[3]);
     
     // 上面 (Y+)
-    vertices.emplace_back(positions[7], normals[2], faceColors[2]);
-    vertices.emplace_back(positions[6], normals[2], faceColors[2]);
-    vertices.emplace_back(positions[2], normals[2], faceColors[2]);
-    vertices.emplace_back(positions[3], normals[2], faceColors[2]);
+    vertices.emplace_back(positions[7], normals[2], faceColors[2], 1.0f, uvs[0]);
+    vertices.emplace_back(positions[6], normals[2], faceColors[2], 1.0f, uvs[1]);
+    vertices.emplace_back(positions[2], normals[2], faceColors[2], 1.0f, uvs[2]);
+    vertices.emplace_back(positions[3], normals[2], faceColors[2], 1.0f, uvs[3]);
     
     // 下面 (Y-)
-    vertices.emplace_back(positions[4], normals[3], faceColors[3]);
-    vertices.emplace_back(positions[0], normals[3], faceColors[3]);
-    vertices.emplace_back(positions[1], normals[3], faceColors[3]);
-    vertices.emplace_back(positions[5], normals[3], faceColors[3]);
+    vertices.emplace_back(positions[4], normals[3], faceColors[3], 1.0f, uvs[0]);
+    vertices.emplace_back(positions[0], normals[3], faceColors[3], 1.0f, uvs[1]);
+    vertices.emplace_back(positions[1], normals[3], faceColors[3], 1.0f, uvs[2]);
+    vertices.emplace_back(positions[5], normals[3], faceColors[3], 1.0f, uvs[3]);
     
     // 右面 (X+)
-    vertices.emplace_back(positions[5], normals[4], faceColors[4]);
-    vertices.emplace_back(positions[1], normals[4], faceColors[4]);
-    vertices.emplace_back(positions[2], normals[4], faceColors[4]);
-    vertices.emplace_back(positions[6], normals[4], faceColors[4]);
+    vertices.emplace_back(positions[5], normals[4], faceColors[4], 1.0f, uvs[0]);
+    vertices.emplace_back(positions[1], normals[4], faceColors[4], 1.0f, uvs[1]);
+    vertices.emplace_back(positions[2], normals[4], faceColors[4], 1.0f, uvs[2]);
+    vertices.emplace_back(positions[6], normals[4], faceColors[4], 1.0f, uvs[3]);
     
     // 左面 (X-)
-    vertices.emplace_back(positions[0], normals[5], faceColors[5]);
-    vertices.emplace_back(positions[4], normals[5], faceColors[5]);
-    vertices.emplace_back(positions[7], normals[5], faceColors[5]);
-    vertices.emplace_back(positions[3], normals[5], faceColors[5]);
+    vertices.emplace_back(positions[0], normals[5], faceColors[5], 1.0f, uvs[0]);
+    vertices.emplace_back(positions[4], normals[5], faceColors[5], 1.0f, uvs[1]);
+    vertices.emplace_back(positions[7], normals[5], faceColors[5], 1.0f, uvs[2]);
+    vertices.emplace_back(positions[3], normals[5], faceColors[5], 1.0f, uvs[3]);
     
     // 构建索引（每个面 2 个三角形，共 36 个索引）
     std::vector<uint32_t> indices;

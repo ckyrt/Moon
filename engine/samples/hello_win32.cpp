@@ -141,7 +141,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     groundRenderer->SetMesh(meshManager->CreatePlane(25.0f, 25.0f, 1, 1, Moon::Vector3(0.5f, 0.5f, 0.5f)));
     
     Moon::Material* groundMaterial = groundNode->AddComponent<Moon::Material>();
-    groundMaterial->SetPresetConcrete();  // 使用 rock_terrain 材质
+    groundMaterial->SetPresetConcrete();  // 使用岩石地形材质
     
     // ============================================================================
     // 2. 石膏墙立方体 - painted_plaster_wall
@@ -288,10 +288,32 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
                                       node->GetName().c_str());
                         renderer.BindAlbedoTexture("");  // 使用默认白色纹理
                     }
+                    
+                    // 绑定 ARM 贴图 (使用 MetallicMap 字段存储 ARM 贴图路径)
+                    if (material->HasMetallicMap()) {
+                        const std::string& armPath = material->GetMetallicMap();
+                        MOON_LOG_INFO("HelloEngine", "Node '%s' has ARM map: %s", 
+                                      node->GetName().c_str(), armPath.c_str());
+                        renderer.BindARMTexture(armPath);
+                    } else {
+                        renderer.BindARMTexture("");  // 使用默认纹理（白色 = AO=1, Roughness=1, Metallic=1）
+                    }
+                    
+                    // 绑定法线贴图
+                    if (material->HasNormalMap()) {
+                        const std::string& normalPath = material->GetNormalMap();
+                        MOON_LOG_INFO("HelloEngine", "Node '%s' has Normal map: %s", 
+                                      node->GetName().c_str(), normalPath.c_str());
+                        renderer.BindNormalTexture(normalPath);
+                    } else {
+                        renderer.BindNormalTexture("");  // 使用默认纹理（平面法线）
+                    }
                 } else {
                     // 默认材质参数
                     renderer.SetMaterialParameters(0.0f, 0.5f, Moon::Vector3(1.0f, 1.0f, 1.0f));
                     renderer.BindAlbedoTexture("");  // 使用默认白色纹理
+                    renderer.BindARMTexture("");     // 使用默认纹理
+                    renderer.BindNormalTexture("");  // 使用默认法线
                 }
                 
                 // 渲染

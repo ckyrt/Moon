@@ -79,68 +79,76 @@ void Material::SetPresetPlastic(float roughness)
 
 void Material::SetPresetConcrete()
 {
-    m_metallic = 0.0f;   // 非金属
-    m_roughness = 0.95f; // 非常粗糙
-    m_baseColor = Vector3(0.5f, 0.5f, 0.5f);  // 灰色混凝土
+    // Unity 标准做法：这些值作为贴图的乘数/调色器
+    m_metallic = 1.0f;   // 乘数 = 1.0 表示完全使用贴图值
+    m_roughness = 1.0f;  // 乘数 = 1.0 表示完全使用贴图值
+    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);  // 白色 = 不改变贴图颜色
     
     // 设置贴图路径 (使用 rock_terrain 作为混凝土/地形)
     SetAlbedoMap("materials/rock_terrain/rocky_terrain_02_diff_4k.jpg");
     SetNormalMap("materials/rock_terrain/rocky_terrain_02_nor_dx_4k.jpg");
+    SetMetallicMap("materials/rock_terrain/rocky_terrain_02_arm_4k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetRubber()
 {
-    m_metallic = 0.0f;   // 非金属
-    m_roughness = 0.9f;  // 很粗糙
-    m_baseColor = Vector3(0.2f, 0.2f, 0.2f);  // 深灰色橡胶
+    m_metallic = 1.0f;   
+    m_roughness = 1.0f;  
+    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     
     // 设置贴图路径
     SetAlbedoMap("materials/rubberized_track/rubberized_track_diff_1k.jpg");
     SetNormalMap("materials/rubberized_track/rubberized_track_nor_dx_1k.jpg");
+    SetMetallicMap("materials/rubberized_track/rubberized_track_arm_1k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetBrick()
 {
-    m_metallic = 0.0f;   // 非金属
-    m_roughness = 0.9f;  // 粗糙表面
-    m_baseColor = Vector3(0.6f, 0.3f, 0.2f);  // 红褐色砖头
+    m_metallic = 1.0f;   
+    m_roughness = 1.0f;  
+    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     
     // 设置贴图路径
     SetAlbedoMap("materials/red_brick/red_brick_diff_1k.jpg");
     SetNormalMap("materials/red_brick/red_brick_nor_dx_1k.jpg");
+    SetMetallicMap("materials/red_brick/red_brick_arm_1k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetWood()
 {
-    m_metallic = 0.0f;   // 非金属
-    m_roughness = 0.7f;  // 中等粗糙度
-    m_baseColor = Vector3(0.6f, 0.4f, 0.2f);  // 木头色
+    // 木头是非金属材质
+    m_metallic = 0.0f;   // 贴图存在时会被贴图覆盖，这是fallback值
+    m_roughness = 1.0f;  // 作为乘数，1.0表示不修改贴图值
+    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);  // 白色，不调整贴图颜色
     
     // 设置贴图路径
     SetAlbedoMap("materials/wood_floor/wood_floor_diff_1k.jpg");
     SetNormalMap("materials/wood_floor/wood_floor_nor_dx_1k.jpg");
+    SetMetallicMap("materials/wood_floor/wood_floor_arm_1k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetPlaster()
 {
-    m_metallic = 0.0f;   // 非金属
-    m_roughness = 0.85f; // 较粗糙
-    m_baseColor = Vector3(0.95f, 0.95f, 0.92f);  // 接近白色的石膏
+    m_metallic = 1.0f;   
+    m_roughness = 1.0f;  
+    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     
     // 设置贴图路径
     SetAlbedoMap("materials/painted_plaster_wall/painted_plaster_wall_diff_1k.jpg");
     SetNormalMap("materials/painted_plaster_wall/painted_plaster_wall_nor_dx_1k.jpg");
+    SetMetallicMap("materials/painted_plaster_wall/painted_plaster_wall_arm_1k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetIron()
 {
-    m_metallic = 0.8f;   // 高金属度（略有氧化）
-    m_roughness = 0.5f;  // 中等粗糙度（生锈效果）
-    m_baseColor = Vector3(0.5f, 0.5f, 0.5f);  // 灰色铁
+    m_metallic = 1.0f;   
+    m_roughness = 1.0f;  
+    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     
     // 设置贴图路径
     SetAlbedoMap("materials/rusty_metal/rusty_metal_04_diff_1k.jpg");
     SetNormalMap("materials/rusty_metal/rusty_metal_04_nor_dx_1k.jpg");
+    SetMetallicMap("materials/rusty_metal/rusty_metal_04_arm_1k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetPolishedMetal()

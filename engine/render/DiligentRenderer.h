@@ -57,6 +57,8 @@ public:
     void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
     
     void BindAlbedoTexture(const std::string& texturePath);       // 绑定 Albedo 贴图到当前 SRB
+    void BindARMTexture(const std::string& texturePath);          // 绑定 ARM (AO+Roughness+Metallic) 贴图到当前 SRB
+    void BindNormalTexture(const std::string& texturePath);       // 绑定法线贴图到当前 SRB
     
     void RenderSkybox();  // 渲染 Skybox（在所有不透明物体之后调用）
 
