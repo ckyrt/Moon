@@ -8,6 +8,7 @@
 #include "../core/Scene/MeshRenderer.h"
 #include "../core/Scene/Light.h"
 #include "../core/Mesh/Mesh.h"
+#include "../core/Texture/TextureManager.h"
 
 #include <cmath>
 #include <cstring>
@@ -610,6 +611,91 @@ DiligentRenderer::MeshGPUResources* DiligentRenderer::GetOrCreateMeshResources(M
 
     auto [insIt, ok] = m_MeshCache.emplace(mesh, std::move(gpu));
     MOON_LOG_INFO("DiligentRenderer", "Mesh uploaded: %zu verts, %zu indices", insIt->second.VertexCount, insIt->second.IndexCount);
+    return &insIt->second;
+}
+
+// ======= 纹理缓存 =======
+DiligentRenderer::TextureGPUResources* DiligentRenderer::GetOrCreateTextureResources(const std::string& path, bool isSRGB)
+{
+    auto it = m_TextureCache.find(path);
+    if (it != m_TextureCache.end()) return &it->second;
+
+    // 使用 TextureManager 加载纹理数据
+    Moon::TextureManager texMgr;
+    std::shared_ptr<Moon::Texture> texture = texMgr.LoadTexture(path, isSRGB);
+    if (!texture || !texture->GetData()) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to load texture: %s", path.c_str());
+        return nullptr;
+    }
+
+    const Moon::TextureData* texData = texture->GetData().get();
+
+    // 根据 TextureFormat 选择 Diligent 纹理格式
+    TEXTURE_FORMAT diligentFormat = TEX_FORMAT_RGBA8_UNORM;
+    Uint32 pixelStride = 4;
+    
+    switch (texData->format) {
+        case Moon::TextureFormat::R8:
+            diligentFormat = TEX_FORMAT_R8_UNORM;
+            pixelStride = 1;
+            break;
+        case Moon::TextureFormat::RG8:
+            diligentFormat = TEX_FORMAT_RG8_UNORM;
+            pixelStride = 2;
+            break;
+        case Moon::TextureFormat::RGB8:
+            // Diligent 不支持 RGB8，需要转换为 RGBA8
+            diligentFormat = isSRGB ? TEX_FORMAT_RGBA8_UNORM_SRGB : TEX_FORMAT_RGBA8_UNORM;
+            pixelStride = 4;
+            // TODO: 需要转换 RGB -> RGBA
+            MOON_LOG_WARN("DiligentRenderer", "RGB8 format needs conversion to RGBA8: %s", path.c_str());
+            break;
+        case Moon::TextureFormat::RGBA8:
+            diligentFormat = isSRGB ? TEX_FORMAT_RGBA8_UNORM_SRGB : TEX_FORMAT_RGBA8_UNORM;
+            pixelStride = 4;
+            break;
+        case Moon::TextureFormat::RGBA16F:
+            diligentFormat = TEX_FORMAT_RGBA16_FLOAT;
+            pixelStride = 8;
+            break;
+        case Moon::TextureFormat::RGBA32F:
+            diligentFormat = TEX_FORMAT_RGBA32_FLOAT;
+            pixelStride = 16;
+            break;
+    }
+
+    // 创建 Diligent 纹理
+    TextureDesc desc{};
+    desc.Name = path.c_str();
+    desc.Type = RESOURCE_DIM_TEX_2D;
+    desc.Width = texData->width;
+    desc.Height = texData->height;
+    desc.Format = diligentFormat;
+    desc.MipLevels = 1; // 暂时不生成 mipmap，避免 subresource 数量问题
+    desc.Usage = USAGE_DEFAULT;
+    desc.BindFlags = BIND_SHADER_RESOURCE;
+
+    TextureData initData{};
+    TextureSubResData subRes{};
+    subRes.pData = texData->pixels.data();
+    subRes.Stride = texData->width * pixelStride;
+    initData.pSubResources = &subRes;
+    initData.NumSubresources = 1;
+
+    TextureGPUResources gpu{};
+    m_pDevice->CreateTexture(desc, &initData, &gpu.Texture);
+
+    if (!gpu.Texture) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create GPU texture: %s", path.c_str());
+        return nullptr;
+    }
+
+    // 创建 SRV
+    gpu.SRV = gpu.Texture->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+
+    auto [insIt, ok] = m_TextureCache.emplace(path, std::move(gpu));
+    MOON_LOG_INFO("DiligentRenderer", "Texture uploaded: %s (%dx%d, format=%d, sRGB=%d)", 
+                  path.c_str(), texData->width, texData->height, (int)texData->format, (int)isSRGB);
     return &insIt->second;
 }
 

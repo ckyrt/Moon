@@ -164,6 +164,13 @@ private:
     // ======== Mesh 缓存 ========
     std::unordered_map<Moon::Mesh*, MeshGPUResources> m_MeshCache;
 
+    // ======== 纹理缓存 ========
+    struct TextureGPUResources {
+        Diligent::RefCntAutoPtr<Diligent::ITexture>     Texture;
+        Diligent::RefCntAutoPtr<Diligent::ITextureView> SRV;
+    };
+    std::unordered_map<std::string, TextureGPUResources> m_TextureCache; // key: texture path
+
     // ======== 相机 ========
     Moon::Matrix4x4 m_ViewProj; // row-major 输入
     
@@ -183,6 +190,9 @@ private:
     void CreateOrResizePickingRTs(); // RT/DS + 读回纹理
 
     MeshGPUResources* GetOrCreateMeshResources(Moon::Mesh* mesh);
+
+    // 纹理管理
+    TextureGPUResources* GetOrCreateTextureResources(const std::string& path, bool isSRGB);
 
     // 工具
     static Moon::Matrix4x4 Transpose(const Moon::Matrix4x4& m);
