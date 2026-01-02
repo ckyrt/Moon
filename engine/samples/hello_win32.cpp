@@ -7,6 +7,7 @@
 #include "../core/Scene/Scene.h"
 #include "../core/Scene/SceneNode.h"
 #include "../core/Scene/MeshRenderer.h"
+#include "../core/Scene/Material.h"
 #include "../core/Mesh/Mesh.h"
 #include "../core/Geometry/MeshGenerator.h"
 #include "../render/IRenderer.h"
@@ -141,16 +142,20 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
             
             // 创建球体节点
             char nodeName[64];
-            snprintf(nodeName, sizeof(nodeName), "Sphere_M%.2f_R%.2f", metallic, roughness);
+            snprintf(nodeName, sizeof(nodeName), "Sphere_R%d_C%d", row, col);
             
             Moon::SceneNode* sphereNode = scene->CreateNode(nodeName);
             sphereNode->GetTransform()->SetLocalPosition(Moon::Vector3(x, y, z));
             
+            // 添加 MeshRenderer 组件
             Moon::MeshRenderer* renderer = sphereNode->AddComponent<Moon::MeshRenderer>();
             renderer->SetMesh(meshManager->CreateSphere(RADIUS, 32, 16, baseColor));
             
-            // 存储材质参数（暂时通过用户数据或标签，后续会用材质系统）
-            // TODO: 实现材质系统后替换为 Material Component
+            // 添加 Material 组件（✅ 使用组件系统而非临时方案）
+            Moon::Material* material = sphereNode->AddComponent<Moon::Material>();
+            material->SetMetallic(metallic);
+            material->SetRoughness(roughness);
+            material->SetBaseColor(baseColor);
         }
     }
     
@@ -165,6 +170,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     Moon::SceneNode* groundNode = scene->CreateNode("Ground");
     groundNode->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, -5.0f, 0.0f));  // 在球体下方
     
+    // 添加 MeshRenderer 组件
     Moon::MeshRenderer* groundRenderer = groundNode->AddComponent<Moon::MeshRenderer>();
     groundRenderer->SetMesh(meshManager->CreatePlane(
         50.0f,   // width (X轴)
@@ -173,6 +179,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         1,       // subdivisionsZ
         Moon::Vector3(0.3f, 0.3f, 0.3f)  // 深灰色（降低反射率）
     ));
+    
+    // 添加 Material 组件（混凝土材质）
+    Moon::Material* groundMaterial = groundNode->AddComponent<Moon::Material>();
+    groundMaterial->SetPresetConcrete();
     
     MOON_LOG_INFO("Sample", "Ground plane created (50x50 units)");
 
@@ -210,22 +220,17 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         scene->Traverse([&](Moon::SceneNode* node) {
             Moon::MeshRenderer* meshRenderer = node->GetComponent<Moon::MeshRenderer>();
             if (meshRenderer && meshRenderer->IsVisible() && meshRenderer->IsEnabled()) {
-                // 从节点名称解析材质参数 (格式: "Sphere_M0.25_R0.75")
-                float metallic = 0.0f;
-                float roughness = 0.5f;
-                
-                const std::string& nodeName = node->GetName();
-                if (nodeName.find("Sphere_M") != std::string::npos) {
-                    sscanf_s(nodeName.c_str(), "Sphere_M%f_R%f", &metallic, &roughness);
+                // ✅ 从 Material 组件获取材质参数
+                Moon::Material* material = node->GetComponent<Moon::Material>();
+                if (material && material->IsEnabled()) {
+                    renderer.SetMaterialParameters(
+                        material->GetMetallic(), 
+                        material->GetRoughness()
+                    );
+                } else {
+                    // 默认材质参数
+                    renderer.SetMaterialParameters(0.0f, 0.5f);
                 }
-                else if (nodeName == "Ground") {
-                    // 地面：非金属，非常粗糙（类似混凝土/粗糙石材）
-                    metallic = 0.0f;
-                    roughness = 0.95f;
-                }
-                
-                // 设置材质参数
-                renderer.SetMaterialParameters(metallic, roughness);
                 
                 // 渲染
                 meshRenderer->Render(&renderer);

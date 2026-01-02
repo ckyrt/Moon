@@ -116,6 +116,7 @@
     <ClInclude Include="Scene\SceneNode.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Scene\MeshRenderer.h" />
+    <ClInclude Include="Scene\Material.h" />
     <ClInclude Include="Mesh\Mesh.h" />
     <ClInclude Include="Geometry\MeshGenerator.h" />
     <ClInclude Include="Assets\MeshManager.h" />
@@ -134,6 +135,7 @@
     <ClCompile Include="Scene\SceneNode.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Scene\MeshRenderer.cpp" />
+    <ClCompile Include="Scene\Material.cpp" />
     <ClCompile Include="Mesh\Mesh.cpp" />
     <ClCompile Include="Geometry\MeshGenerator.cpp" />
     <ClCompile Include="Assets\MeshManager.cpp" />
