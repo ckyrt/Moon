@@ -19,6 +19,10 @@ void EngineCore::Initialize() {
     m_meshManager = std::make_unique<Moon::MeshManager>();
     MOON_LOG_INFO("EngineCore", "MeshManager initialized");
     
+    // Initialize Texture Manager (CPU 端，不依赖渲染设备)
+    m_textureManager = std::make_unique<Moon::TextureManager>();
+    MOON_LOG_INFO("EngineCore", "TextureManager initialized");
+    
     // Initialize Main Scene
     m_mainScene = std::make_unique<Moon::Scene>("Main Scene");
     MOON_LOG_INFO("EngineCore", "Main Scene initialized");

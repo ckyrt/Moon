@@ -50,7 +50,7 @@ public:
     void RenderFrame() override;
 
     void SetViewProjectionMatrix(const float* viewProj16) override;
-    void SetMaterialParameters(float metallic, float roughness);  // 设置 PBR 材质参数
+    void SetMaterialParameters(float metallic, float roughness, const Moon::Vector3& baseColor);  // 设置 PBR 材质参数
     void SetCameraPosition(const Moon::Vector3& position);        // 设置相机位置（用于高光计算）
     void UpdateSceneLights(Moon::Scene* scene);                   // 更新场景光源数据
     void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) override;
@@ -83,7 +83,9 @@ private:
     struct PSMaterialCPU { // 16B 对齐（PBR 材质参数）
         float metallic = 0.0f;
         float roughness = 0.5f;
-        float padding[2] = { 0.0f, 0.0f };
+        float padding1[2] = { 0.0f, 0.0f };
+        Moon::Vector3 baseColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
+        float padding2 = 0.0f;
     };
     struct PSSceneCPU { // 16B 对齐（场景参数：相机位置、光源等）
         Moon::Vector3 cameraPosition;

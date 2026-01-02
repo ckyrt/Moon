@@ -1,8 +1,12 @@
 #pragma once
 #include "Component.h"
 #include "../Camera/Camera.h"
+#include <string>
 
 namespace Moon {
+
+// 前向声明
+class Texture;
 
 /**
  * @brief Material 组件 - 定义对象的材质属性
@@ -55,6 +59,88 @@ public:
      */
     const Vector3& GetBaseColor() const { return m_baseColor; }
 
+    // === 纹理贴图（标准 PBR 工作流）===
+    
+    /**
+     * @brief 设置 Albedo（基础颜色）贴图
+     * @param texturePath 贴图文件路径
+     */
+    void SetAlbedoMap(const std::string& texturePath);
+    
+    /**
+     * @brief 设置法线贴图
+     * @param texturePath 贴图文件路径
+     */
+    void SetNormalMap(const std::string& texturePath);
+    
+    /**
+     * @brief 设置金属度贴图
+     * @param texturePath 贴图文件路径
+     */
+    void SetMetallicMap(const std::string& texturePath);
+    
+    /**
+     * @brief 设置粗糙度贴图
+     * @param texturePath 贴图文件路径
+     */
+    void SetRoughnessMap(const std::string& texturePath);
+    
+    /**
+     * @brief 设置环境光遮蔽（AO）贴图
+     * @param texturePath 贴图文件路径
+     */
+    void SetAOMap(const std::string& texturePath);
+    
+    /**
+     * @brief 获取 Albedo 贴图路径
+     */
+    const std::string& GetAlbedoMap() const { return m_albedoMap; }
+    
+    /**
+     * @brief 获取法线贴图路径
+     */
+    const std::string& GetNormalMap() const { return m_normalMap; }
+    
+    /**
+     * @brief 获取金属度贴图路径
+     */
+    const std::string& GetMetallicMap() const { return m_metallicMap; }
+    
+    /**
+     * @brief 获取粗糙度贴图路径
+     */
+    const std::string& GetRoughnessMap() const { return m_roughnessMap; }
+    
+    /**
+     * @brief 获取 AO 贴图路径
+     */
+    const std::string& GetAOMap() const { return m_aoMap; }
+    
+    /**
+     * @brief 检查是否有 Albedo 贴图
+     */
+    bool HasAlbedoMap() const { return !m_albedoMap.empty(); }
+    
+    /**
+     * @brief 检查是否有法线贴图
+     */
+    bool HasNormalMap() const { return !m_normalMap.empty(); }
+    
+    /**
+     * @brief 检查是否有金属度贴图
+     */
+    bool HasMetallicMap() const { return !m_metallicMap.empty(); }
+    
+    /**
+     * @brief 检查是否有粗糙度贴图
+     */
+    bool HasRoughnessMap() const { return !m_roughnessMap.empty(); }
+    
+    /**
+     * @brief 检查是否有 AO 贴图
+     */
+    bool HasAOMap() const { return !m_aoMap.empty(); }
+
     // === 预设材质 ===
     
     /**
@@ -78,11 +164,43 @@ public:
      * @brief 设置为橡胶材质预设
      */
     void SetPresetRubber();
+    
+    /**
+     * @brief 设置为砖头材质预设
+     */
+    void SetPresetBrick();
+    
+    /**
+     * @brief 设置为木头材质预设
+     */
+    void SetPresetWood();
+    
+    /**
+     * @brief 设置为石膏材质预设
+     */
+    void SetPresetPlaster();
+    
+    /**
+     * @brief 设置为铁球材质预设（生锈的铁）
+     */
+    void SetPresetIron();
+    
+    /**
+     * @brief 设置为抛光金属材质预设（如铬合金）
+     */
+    void SetPresetPolishedMetal();
 
 private:
     float m_metallic;      ///< 金属度 [0.0 - 1.0]
     float m_roughness;     ///< 粗糙度 [0.0 - 1.0]
     Vector3 m_baseColor;   ///< 基础颜色（反照率）
+    
+    // 纹理贴图路径（标准 PBR 工作流）
+    std::string m_albedoMap;    ///< Albedo/Base Color 贴图路径
+    std::string m_normalMap;    ///< 法线贴图路径
+    std::string m_metallicMap;  ///< 金属度贴图路径
+    std::string m_roughnessMap; ///< 粗糙度贴图路径
+    std::string m_aoMap;        ///< 环境光遮蔽贴图路径
 };
 
 } // namespace Moon

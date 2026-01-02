@@ -121,6 +121,7 @@
     <ClInclude Include="Mesh\Mesh.h" />
     <ClInclude Include="Geometry\MeshGenerator.h" />
     <ClInclude Include="Assets\MeshManager.h" />
+    <ClInclude Include="Texture\TextureManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineCore.cpp" />
@@ -141,6 +142,7 @@
     <ClCompile Include="Mesh\Mesh.cpp" />
     <ClCompile Include="Geometry\MeshGenerator.cpp" />
     <ClCompile Include="Assets\MeshManager.cpp" />
+    <ClCompile Include="Texture\TextureManager.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

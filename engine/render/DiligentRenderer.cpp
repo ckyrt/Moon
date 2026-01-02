@@ -244,13 +244,15 @@ static const float PI = 3.14159265359;
 cbuffer MaterialConstants { 
     float g_Metallic;
     float g_Roughness;
-    float2 g_Padding;
+    float2 g_Padding1;
+    float3 g_BaseColor;
+    float g_Padding2;
 };
 
 // 场景参数常量缓冲区
 cbuffer SceneConstants {
     float3 g_CameraPosition;
-    float g_Padding2;
+    float g_Padding3;
 };
 
 // IBL 纹理资源
@@ -328,7 +330,7 @@ float2 DirToEquirectUV(float3 dir)
 // ============================================================================
 float4 main(in PSInput i) : SV_TARGET {
     // 材质参数（从常量缓冲区读取）
-    float3 albedo = i.Color.rgb;
+    float3 albedo = g_BaseColor;   // 使用材质的基础颜色而非顶点颜色
     float metallic = g_Metallic;   // 从 CB 读取
     float roughness = g_Roughness; // 从 CB 读取
     
@@ -521,11 +523,12 @@ void DiligentRenderer::SetViewProjectionMatrix(const float* m16)
 }
 
 // ======= PBR 材质参数 =======
-void DiligentRenderer::SetMaterialParameters(float metallic, float roughness)
+void DiligentRenderer::SetMaterialParameters(float metallic, float roughness, const Moon::Vector3& baseColor)
 {
     PSMaterialCPU material{};
     material.metallic = metallic;
     material.roughness = roughness;
+    material.baseColor = baseColor;
     UpdateCB(m_pPSMaterialConstants, material);
 }
 

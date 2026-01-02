@@ -113,55 +113,74 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     }
     
     // ============================================================================
-    // PBR Material Ball Grid (行业标准 Debug Scene)
+    // 各种常见材质的球体展示（Material Showcase）
     // ============================================================================
     Moon::Scene* scene = engine.GetScene();
     Moon::MeshManager* meshManager = engine.GetMeshManager();
+    Moon::TextureManager* textureManager = engine.GetTextureManager();
     
-    MOON_LOG_INFO("Sample", "Creating PBR Material Ball Grid...");
+    MOON_LOG_INFO("Sample", "Creating Material Showcase Scene...");
     
     // 参数设置
-    const int ROWS = 5;        // Y 轴：Metallic 0 → 1
-    const int COLS = 5;        // X 轴：Roughness 0 → 1
-    const float SPACING = 2.5f;
-    const float RADIUS = 0.8f;
+    const float SPACING = 3.0f;   // 球体间距
+    const float RADIUS = 1.0f;    // 球体半径
     
-    // 白色基础颜色（更好地展示 PBR 效果）
-    Moon::Vector3 baseColor(0.9f, 0.9f, 0.9f);
+    // 定义材质球体数组（名称 + 设置函数）
+    struct MaterialBall {
+        const char* name;
+        Moon::Vector3 position;
+        void (*setupFunc)(Moon::Material*);
+    };
     
-    // 创建球阵列
-    for (int row = 0; row < ROWS; ++row) {
-        for (int col = 0; col < COLS; ++col) {
-            // 计算材质参数
-            float metallic = static_cast<float>(row) / (ROWS - 1);      // 0 → 1 (从前到后)
-            float roughness = static_cast<float>(col) / (COLS - 1);     // 0 → 1 (从左到右)
-            
-            // 计算位置（平铺在地面上，Y = RADIUS 让球体刚好接触地面）
-            float x = (col - (COLS - 1) * 0.5f) * SPACING;
-            float y = RADIUS;  // 球心在地面上方一个半径的高度
-            float z = (row - (ROWS - 1) * 0.5f) * SPACING;
-            
-            // 创建球体节点
-            char nodeName[64];
-            snprintf(nodeName, sizeof(nodeName), "Sphere_R%d_C%d", row, col);
-            
-            Moon::SceneNode* sphereNode = scene->CreateNode(nodeName);
-            sphereNode->GetTransform()->SetLocalPosition(Moon::Vector3(x, y, z));
-            
-            // 添加 MeshRenderer 组件
-            Moon::MeshRenderer* renderer = sphereNode->AddComponent<Moon::MeshRenderer>();
-            renderer->SetMesh(meshManager->CreateSphere(RADIUS, 32, 16, baseColor));
-            
-            // 添加 Material 组件（✅ 使用组件系统而非临时方案）
-            Moon::Material* material = sphereNode->AddComponent<Moon::Material>();
-            material->SetMetallic(metallic);
-            material->SetRoughness(roughness);
-            material->SetBaseColor(baseColor);
-        }
+    // 材质设置函数
+    auto setupBrick = [](Moon::Material* m) { m->SetPresetBrick(); };
+    auto setupWood = [](Moon::Material* m) { m->SetPresetWood(); };
+    auto setupPlastic = [](Moon::Material* m) { m->SetPresetPlastic(); };
+    auto setupIron = [](Moon::Material* m) { m->SetPresetIron(); };
+    auto setupRubber = [](Moon::Material* m) { m->SetPresetRubber(); };
+    auto setupPlaster = [](Moon::Material* m) { m->SetPresetPlaster(); };
+    auto setupConcrete = [](Moon::Material* m) { m->SetPresetConcrete(); };
+    auto setupPolishedMetal = [](Moon::Material* m) { m->SetPresetPolishedMetal(); };
+    auto setupRoughMetal = [](Moon::Material* m) { m->SetPresetMetal(0.8f); };
+    
+    // 布局：3行3列
+    MaterialBall materialBalls[] = {
+        // 第一排（前排）
+        {"Brick",          {-SPACING, RADIUS, -SPACING}, setupBrick},
+        {"Wood",           {0.0f,     RADIUS, -SPACING}, setupWood},
+        {"Plastic",        {SPACING,  RADIUS, -SPACING}, setupPlastic},
+        
+        // 第二排（中排）
+        {"Iron",           {-SPACING, RADIUS, 0.0f},     setupIron},
+        {"Polished Metal", {0.0f,     RADIUS, 0.0f},     setupPolishedMetal},
+        {"Rubber",         {SPACING,  RADIUS, 0.0f},     setupRubber},
+        
+        // 第三排（后排）
+        {"Plaster",        {-SPACING, RADIUS, SPACING},  setupPlaster},
+        {"Concrete",       {0.0f,     RADIUS, SPACING},  setupConcrete},
+        {"Rough Metal",    {SPACING,  RADIUS, SPACING},  setupRoughMetal},
+    };
+    
+    // 创建材质球体
+    for (const auto& ball : materialBalls) {
+        Moon::SceneNode* sphereNode = scene->CreateNode(ball.name);
+        sphereNode->GetTransform()->SetLocalPosition(ball.position);
+        
+        // 添加 MeshRenderer 组件
+        Moon::MeshRenderer* renderer = sphereNode->AddComponent<Moon::MeshRenderer>();
+        renderer->SetMesh(meshManager->CreateSphere(RADIUS, 64, 32, Moon::Vector3(1.0f, 1.0f, 1.0f)));
+        
+        // 添加 Material 组件并设置材质
+        Moon::Material* material = sphereNode->AddComponent<Moon::Material>();
+        ball.setupFunc(material);
+        
+        MOON_LOG_INFO("Sample", "Created %s sphere at (%.1f, %.1f, %.1f)", 
+                      ball.name, ball.position.x, ball.position.y, ball.position.z);
     }
     
-    MOON_LOG_INFO("Sample", "PBR Grid created: %dx%d spheres (%d total)", 
-                  COLS, ROWS, COLS * ROWS);
+    MOON_LOG_INFO("Sample", "Material Showcase created: %d spheres with different materials", 
+                  sizeof(materialBalls) / sizeof(materialBalls[0]));
+
     
     // ============================================================================
     // 创建地面平面
@@ -249,11 +268,12 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
                 if (material && material->IsEnabled()) {
                     renderer.SetMaterialParameters(
                         material->GetMetallic(), 
-                        material->GetRoughness()
+                        material->GetRoughness(),
+                        material->GetBaseColor()
                     );
                 } else {
                     // 默认材质参数
-                    renderer.SetMaterialParameters(0.0f, 0.5f);
+                    renderer.SetMaterialParameters(0.0f, 0.5f, Moon::Vector3(1.0f, 1.0f, 1.0f));
                 }
                 
                 // 渲染

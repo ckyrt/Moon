@@ -4,6 +4,7 @@
 #include "Camera/PerspectiveCamera.h"
 #include "Scene/Scene.h"
 #include "Assets/MeshManager.h"
+#include "Texture/TextureManager.h"
 #include <memory>
 
 class EngineCore : public IEngine {
@@ -17,10 +18,12 @@ public:
     Moon::PerspectiveCamera* GetCamera() { return m_camera.get(); }
     Moon::Scene* GetScene() { return m_mainScene.get(); }
     Moon::MeshManager* GetMeshManager() { return m_meshManager.get(); }
+    Moon::TextureManager* GetTextureManager() { return m_textureManager.get(); }
     
 private:
     std::unique_ptr<Moon::InputSystem> m_inputSystem;
     std::unique_ptr<Moon::PerspectiveCamera> m_camera;
     std::unique_ptr<Moon::Scene> m_mainScene;
     std::unique_ptr<Moon::MeshManager> m_meshManager;
+    std::unique_ptr<Moon::TextureManager> m_textureManager;
 };
