@@ -5,7 +5,7 @@
 #include <chrono>
 
 // Moon Engine
-#include "../core/Camera/Camera.h"
+#include "../../core/Camera/Camera.h"
 
 // Moon forward declarations
 namespace Moon {
@@ -17,7 +17,7 @@ namespace Moon {
 }
 
 // IRenderer 接口
-#include "IRenderer.h"
+#include "../IRenderer.h"
 
 // Diligent Engine
 #include "../../external/DiligentEngine/DiligentCore/Common/interface/RefCntAutoPtr.hpp"

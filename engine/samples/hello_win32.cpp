@@ -13,7 +13,7 @@
 #include "../core/Mesh/Mesh.h"
 #include "../core/Geometry/MeshGenerator.h"
 #include "../render/IRenderer.h"
-#include "../render/DiligentRenderer.h"
+#include "../render/diligent/DiligentRenderer.h"
 #include "../render/RenderCommon.h"
 
 static const wchar_t* kWndClass = L"UGC_Editor_WndClass";

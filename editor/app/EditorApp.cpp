@@ -25,7 +25,7 @@
 #include "../engine/core/Camera/FPSCameraController.h"
 
 // 渲染系统
-#include "../engine/render/DiligentRenderer.h"
+#include "../engine/render/diligent/DiligentRenderer.h"
 
 // 物理系统
 #include "../engine/physics/PhysicsSystem.h"

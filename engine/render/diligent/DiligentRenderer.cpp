@@ -2,12 +2,12 @@
 #include "DiligentRendererUtils.h"
 
 // Moon Engine
-#include "../core/Logging/Logger.h"
-#include "../core/Scene/Scene.h"
-#include "../core/Scene/SceneNode.h"
-#include "../core/Scene/Light.h"
-#include "../core/Scene/Skybox.h"
-#include "../core/Mesh/Mesh.h"
+#include "../../core/Logging/Logger.h"
+#include "../../core/Scene/Scene.h"
+#include "../../core/Scene/SceneNode.h"
+#include "../../core/Scene/Light.h"
+#include "../../core/Scene/Skybox.h"
+#include "../../core/Mesh/Mesh.h"
 
 #include <cmath>
 #include <cstring>

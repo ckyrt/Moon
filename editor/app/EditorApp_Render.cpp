@@ -8,7 +8,7 @@
 #include "../engine/core/Scene/SceneNode.h"
 #include "../engine/core/Scene/MeshRenderer.h"
 #include "../engine/core/Camera/Camera.h"
-#include "../engine/render/DiligentRenderer.h"
+#include "../engine/render/diligent/DiligentRenderer.h"
 
 // ============================================================================
 // 渲染场景中的所有 MeshRenderer

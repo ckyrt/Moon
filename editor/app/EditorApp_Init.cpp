@@ -11,7 +11,7 @@
 #include "../engine/core/Scene/MeshRenderer.h"
 #include "../../engine/core/Assets/MeshManager.h"
 #include "../engine/core/Logging/Logger.h"
-#include "../engine/render/DiligentRenderer.h"
+#include "../engine/render/diligent/DiligentRenderer.h"
 #include "../engine/render/RenderCommon.h"
 #include "../engine/physics/PhysicsSystem.h"
 #include "../engine/physics/RigidBody.h"

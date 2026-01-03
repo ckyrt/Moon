@@ -1,7 +1,7 @@
 #include "DiligentRenderer.h"
-#include "../core/Logging/Logger.h"
-#include "../core/Mesh/Mesh.h"
-#include "../core/Texture/TextureManager.h"
+#include "../../core/Logging/Logger.h"
+#include "../../core/Mesh/Mesh.h"
+#include "../../core/Texture/TextureManager.h"
 
 #include "Graphics/GraphicsEngine/interface/RenderDevice.h"
 #include "Graphics/GraphicsEngine/interface/Buffer.h"

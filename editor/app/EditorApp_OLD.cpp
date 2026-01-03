@@ -31,7 +31,7 @@
 #include "../engine/core/Scene/MeshRenderer.h"
 
 // 渲染系统
-#include "../engine/render/DiligentRenderer.h"
+#include "../engine/render/diligent/DiligentRenderer.h"
 #include "../engine/render/RenderCommon.h"
 
 // ImGui & ImGuizmo

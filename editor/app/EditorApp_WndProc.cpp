@@ -6,7 +6,7 @@
 #include "../engine/core/Scene/Scene.h"
 #include "../engine/core/Scene/SceneNode.h"
 #include "../engine/core/Logging/Logger.h"
-#include "../engine/render/DiligentRenderer.h"
+#include "../engine/render/diligent/DiligentRenderer.h"
 #include "EditorBridge.h"
 #include "ImGuiImplWin32.hpp"
 #include "imgui.h"

@@ -1,9 +1,9 @@
 #include "DiligentRenderer.h"
 #include "DiligentRendererUtils.h"
-#include "../core/Logging/Logger.h"
-#include "../core/Scene/Scene.h"
-#include "../core/Scene/SceneNode.h"
-#include "../core/Scene/MeshRenderer.h"
+#include "../../core/Logging/Logger.h"
+#include "../../core/Scene/Scene.h"
+#include "../../core/Scene/SceneNode.h"
+#include "../../core/Scene/MeshRenderer.h"
 
 #include "Graphics/GraphicsEngine/interface/RenderDevice.h"
 #include "Graphics/GraphicsEngine/interface/DeviceContext.h"
