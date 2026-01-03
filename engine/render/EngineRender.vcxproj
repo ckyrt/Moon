@@ -104,6 +104,7 @@
   <ItemGroup>
     <ClInclude Include="BgfxRenderer.h" />
     <ClInclude Include="DiligentRenderer.h" />
+    <ClInclude Include="DiligentRendererUtils.h" />
     <ClInclude Include="IRenderer.h" />
     <ClInclude Include="NullRenderer.h" />
     <ClInclude Include="RenderCommon.h" />
@@ -111,6 +112,8 @@
   <ItemGroup>
     <ClCompile Include="BgfxRendererStub.cpp" />
     <ClCompile Include="DiligentRenderer.cpp" />
+    <ClCompile Include="DiligentRendererInit.cpp" />
+    <ClCompile Include="DiligentRendererUtils.cpp" />
     <ClCompile Include="NullRenderer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

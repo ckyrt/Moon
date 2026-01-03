@@ -1,4 +1,5 @@
 ﻿#include "DiligentRenderer.h"
+#include "DiligentRendererUtils.h"
 
 // Moon Engine
 #include "../core/Logging/Logger.h"
@@ -40,65 +41,7 @@
 
 using namespace Diligent;
 
-// ======= 辅助函数：获取 exe 所在目录 =======
-static std::string GetExecutableDirectory()
-{
-#ifdef _WIN32
-    char exePath[MAX_PATH];
-    GetModuleFileNameA(NULL, exePath, MAX_PATH);
-    std::string path(exePath);
-    size_t lastSlash = path.find_last_of("\\/");
-    if (lastSlash != std::string::npos) {
-        return path.substr(0, lastSlash + 1);
-    }
-    return "";
-#else
-    // Linux/Mac 实现可以使用 readlink("/proc/self/exe") 等
-    return "";
-#endif
-}
-
-// ======= 工具函数 =======
-Moon::Matrix4x4 DiligentRenderer::Transpose(const Moon::Matrix4x4& a)
-{
-    Moon::Matrix4x4 t{};
-    for (int i = 0; i < 4; ++i)
-        for (int j = 0; j < 4; ++j)
-            t.m[i][j] = a.m[j][i];
-    return t;
-}
-
-/**
- * @brief 从 Vertex 结构自动生成 Diligent Engine 的 InputLayout
- * 
- * 该函数根据 Vertex::GetLayoutDesc() 提供的布局信息，自动生成 LayoutElement 数组。
- * 这样当 Vertex 结构修改时（例如添加法线、UV），只需更新 Vertex::GetLayoutDesc()，
- * 所有 PSO 的 InputLayout 会自动同步更新。
- * 
- * 优势：
- * - ✅ 单一真实来源（Single Source of Truth）在 Vertex 结构内部
- * - ✅ 使用 offsetof() 自动计算偏移，无需手动维护
- * - ✅ 编译时 static_assert 验证布局正确性
- * 
- * @param[out] outLayout 指向至少能容纳 Vertex 属性数量的 LayoutElement 数组
- * @param[out] outNumElements 返回属性数量
- */
-void DiligentRenderer::GetVertexLayout(LayoutElement* outLayout, Uint32& outNumElements)
-{
-    int attrCount = 0;
-    const Moon::VertexAttributeDesc* attrs = Moon::Vertex::GetLayoutDesc(attrCount);
-    
-    for (int i = 0; i < attrCount; ++i) {
-        outLayout[i].InputIndex = i;                              // ATTRIB0, ATTRIB1, ... 的索引
-        outLayout[i].BufferSlot = 0;                              // 使用第 0 个 vertex buffer
-        outLayout[i].NumComponents = attrs[i].numComponents;      // 从 Vertex 读取分量数
-        outLayout[i].ValueType = VT_FLOAT32;                      // 目前都是 float
-        outLayout[i].IsNormalized = False;                        // 不归一化
-        outLayout[i].RelativeOffset = attrs[i].offsetInBytes;     // 从 Vertex 读取偏移
-    }
-    
-    outNumElements = static_cast<Uint32>(attrCount);
-}
+// ======= 工具函数模板实现 =======
 template<typename T>
 void DiligentRenderer::UpdateCB(IBuffer* buf, const T& data)
 {
@@ -173,87 +116,11 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
     }
 }
 
-void DiligentRenderer::CreateDeviceAndSwapchain(const RenderInitParams& params)
-{
-    auto* pFactory = GetEngineFactoryD3D11();
-
-    EngineD3D11CreateInfo ci{};
-    pFactory->CreateDeviceAndContextsD3D11(ci, &m_pDevice, &m_pImmediateContext);
-    MOON_LOG_INFO("DiligentRenderer", "D3D11 device/context created");
-
-    SwapChainDesc sc{};
-    sc.ColorBufferFormat = TEX_FORMAT_RGBA8_UNORM_SRGB;
-    sc.DepthBufferFormat = TEX_FORMAT_D32_FLOAT;
-    sc.Usage = SWAP_CHAIN_USAGE_RENDER_TARGET;
-    sc.BufferCount = 2;
-#ifdef _WIN32
-    Win32NativeWindow wnd{ static_cast<HWND>(params.windowHandle) };
-    pFactory->CreateSwapChainD3D11(m_pDevice, m_pImmediateContext, sc, FullScreenModeDesc{}, wnd, &m_pSwapChain);
-#else
-#error "This sample currently targets Win32 only."
-#endif
-    MOON_LOG_INFO("DiligentRenderer", "SwapChain created");
-
-    m_pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
-    m_pDSV = m_pSwapChain->GetDepthBufferDSV();
-}
-
-void DiligentRenderer::CreateVSConstants()
-{
-    BufferDesc cb{};
-    cb.Name = "VS Constants";
-    cb.BindFlags = BIND_UNIFORM_BUFFER;
-    cb.Usage = USAGE_DYNAMIC;
-    cb.CPUAccessFlags = CPU_ACCESS_WRITE;
-    cb.Size = sizeof(VSConstantsCPU);
-    m_pDevice->CreateBuffer(cb, nullptr, &m_pVSConstants);
-    
-    // 创建 PS 材质常量缓冲区
-    BufferDesc psCB{};
-    psCB.Name = "PS Material Constants";
-    psCB.BindFlags = BIND_UNIFORM_BUFFER;
-    psCB.Usage = USAGE_DYNAMIC;
-    psCB.CPUAccessFlags = CPU_ACCESS_WRITE;
-    psCB.Size = sizeof(PSMaterialCPU);
-    m_pDevice->CreateBuffer(psCB, nullptr, &m_pPSMaterialConstants);
-    
-    // 创建 PS 场景常量缓冲区
-    BufferDesc psSceneCB{};
-    psSceneCB.Name = "PS Scene Constants";
-    psSceneCB.BindFlags = BIND_UNIFORM_BUFFER;
-    psSceneCB.Usage = USAGE_DYNAMIC;
-    psSceneCB.CPUAccessFlags = CPU_ACCESS_WRITE;
-    psSceneCB.Size = sizeof(PSSceneCPU);
-    m_pDevice->CreateBuffer(psSceneCB, nullptr, &m_pPSSceneConstants);
-}
-
-void DiligentRenderer::CreateDefaultWhiteTexture()
-{
-    // 创建 1x1 白色纹理（RGBA8 SRGB）
-    unsigned char whitePixel[4] = { 255, 255, 255, 255 };
-    
-    TextureDesc desc{};
-    desc.Name = "Default White Texture";
-    desc.Type = RESOURCE_DIM_TEX_2D;
-    desc.Width = 1;
-    desc.Height = 1;
-    desc.Format = TEX_FORMAT_RGBA8_UNORM_SRGB;
-    desc.MipLevels = 1;
-    desc.Usage = USAGE_IMMUTABLE;
-    desc.BindFlags = BIND_SHADER_RESOURCE;
-    
-    TextureData initData{};
-    TextureSubResData subRes{};
-    subRes.pData = whitePixel;
-    subRes.Stride = 4;  // 4 bytes per pixel
-    initData.pSubResources = &subRes;
-    initData.NumSubresources = 1;
-    
-    m_pDevice->CreateTexture(desc, &initData, &m_pDefaultWhiteTexture);
-    m_pDefaultWhiteTextureSRV = m_pDefaultWhiteTexture->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-    
-    MOON_LOG_INFO("DiligentRenderer", "Default white texture created");
-}
+// Forward declarations to separate compilation units
+// These functions are now implemented in DiligentRendererInit.cpp
+// void DiligentRenderer::CreateDeviceAndSwapchain(const RenderInitParams& params);
+// void DiligentRenderer::CreateVSConstants();
+// void DiligentRenderer::CreateDefaultWhiteTexture();
 
 void DiligentRenderer::CreateMainPass()
 {
@@ -653,7 +520,7 @@ float4 main(in PSInput i) : SV_Target {
     // 使用统一的 Vertex Layout（避免手写重复声明）
     LayoutElement layout[4];  // ⭐ 从3改成4（添加了UV）
     Uint32 numElements;
-    GetVertexLayout(layout, numElements);
+    DiligentRendererUtils::GetVertexLayout(layout, numElements);
 
     // 定义着色器资源变量（纹理需要设置为 MUTABLE 或 DYNAMIC）
     ShaderResourceVariableDesc Vars[] = {
@@ -962,8 +829,8 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
     // 更新 VS 常量
     Moon::Matrix4x4 wvp = world * m_ViewProj;
     VSConstantsCPU cbuf{};
-    cbuf.WorldViewProjT = Transpose(wvp);
-    cbuf.WorldT = Transpose(world);
+    cbuf.WorldViewProjT = DiligentRendererUtils::Transpose(wvp);
+    cbuf.WorldT = DiligentRendererUtils::Transpose(world);
     UpdateCB(m_pVSConstants, cbuf);
 
     // 设置管线状态
@@ -1314,7 +1181,7 @@ void DiligentRenderer::RenderSkybox()
     if (!m_pSkyboxPSO || !m_pSkyboxSRB) return;
     
     // 1. 使用当前的 ViewProj 矩阵（Skybox 足够大，不需要移除平移）
-    Moon::Matrix4x4 vpT = Transpose(m_ViewProj);
+    Moon::Matrix4x4 vpT = DiligentRendererUtils::Transpose(m_ViewProj);
     
     // 更新常量缓冲
     UpdateCB(m_pSkyboxVSConstants, vpT);
@@ -1341,7 +1208,7 @@ void DiligentRenderer::RenderSkybox()
 void DiligentRenderer::LoadEnvironmentMap(const char* filepath)
 {
     // 构建相对于 exe 的完整路径
-    std::string exeDir = GetExecutableDirectory();
+    std::string exeDir = DiligentRendererUtils::GetExecutableDirectory();
     std::string fullPath = exeDir + filepath;
     
     MOON_LOG_INFO("DiligentRenderer", "Loading environment map from: %s", fullPath.c_str());
@@ -1711,7 +1578,7 @@ uint main_ps(PSInput i) : SV_Target { return g_ObjectID; })";
     // 注意：即使 picking shader 只使用 position，也必须声明完整的 layout 来保证 stride 正确
     LayoutElement layout[4];  // ⭐ 更新为4（Position + Normal + Color + UV）
     Uint32 numElements;
-    GetVertexLayout(layout, numElements);
+    DiligentRendererUtils::GetVertexLayout(layout, numElements);
     pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
     pci.GraphicsPipeline.InputLayout.NumElements = numElements;
 
@@ -1812,8 +1679,8 @@ void DiligentRenderer::RenderSceneForPicking(Moon::Scene* scene)
         Moon::Matrix4x4 world = node->GetTransform()->GetWorldMatrix();
         Moon::Matrix4x4 wvp = world * m_ViewProj;
         VSConstantsCPU vsc{};
-        vsc.WorldViewProjT = Transpose(wvp);
-        vsc.WorldT = Transpose(world);
+        vsc.WorldViewProjT = DiligentRendererUtils::Transpose(wvp);
+        vsc.WorldT = DiligentRendererUtils::Transpose(world);
         UpdateCB(m_pVSConstants, vsc);
 
         // PS 常量：ObjectID
