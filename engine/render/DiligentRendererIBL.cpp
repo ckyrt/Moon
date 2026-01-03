@@ -19,6 +19,7 @@
 #include "Graphics/GraphicsEngine/interface/TextureView.h"
 
 // stb_image for loading HDR files
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 using namespace Diligent;

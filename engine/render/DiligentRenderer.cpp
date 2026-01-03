@@ -3,13 +3,10 @@
 
 // Moon Engine
 #include "../core/Logging/Logger.h"
-#include "../core/Camera/Camera.h"
 #include "../core/Scene/Scene.h"
 #include "../core/Scene/SceneNode.h"
-#include "../core/Scene/MeshRenderer.h"
 #include "../core/Scene/Light.h"
 #include "../core/Mesh/Mesh.h"
-#include "../core/Texture/TextureManager.h"
 
 #include <cmath>
 #include <cstring>
@@ -22,20 +19,7 @@
 #include "Graphics/GraphicsEngine/interface/Shader.h"
 #include "Graphics/GraphicsEngine/interface/PipelineState.h"
 #include "Graphics/GraphicsEngine/interface/ShaderResourceBinding.h"
-#include "Graphics/GraphicsEngine/interface/Texture.h"
 #include "Graphics/GraphicsEngine/interface/TextureView.h"
-#include "Graphics/GraphicsEngine/interface/Sampler.h"
-
-// stb_image for loading HDR files
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-#include "Graphics/GraphicsEngineD3D11/interface/EngineFactoryD3D11.h"
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include "Platforms/Win32/interface/Win32NativeWindow.h"
-#endif
 
 #include <string>
 
