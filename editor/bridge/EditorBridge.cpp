@@ -8,6 +8,7 @@
 
 #include "EditorBridge.h"
 #include "cef/CefApp.h"
+#include "cef/CefRenderHandler.h"
 #include "include/cef_browser.h"
 
 #include <iostream>

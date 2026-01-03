@@ -24,6 +24,9 @@ using json = nlohmann::json;
 // ✅ Moon Engine Message Handler
 #include "MoonEngineMessageHandler.h"
 
+// ✅ OSR Render Handler
+#include "CefRenderHandler.h"
+
 // ============================================================================
 // MessageHandler - Browser Side Message Router Handler
 // ============================================================================
@@ -103,7 +106,7 @@ private:
 // CefClientHandler - Browser Lifecycle + Router
 // ============================================================================
 CefClientHandler::CefClientHandler()
-    : m_moonEngineHandler(nullptr)
+    : m_moonEngineHandler(nullptr), m_renderHandler(nullptr)  // ✅ 初始化为 nullptr（暂不启用 OSR）
 {
     // 创建 Message Router
     CefMessageRouterConfig config;
@@ -123,6 +126,26 @@ void CefClientHandler::SetEngineCore(EngineCore* engine) {
     if (m_moonEngineHandler) {
         m_moonEngineHandler->SetEngineCore(engine);
         MOON_LOG_INFO("CEF", "EngineCore set for MoonEngineMessageHandler");
+    }
+}
+
+// ============================================================================
+// OSR 模式支持
+// ============================================================================
+CefRefPtr<CefRenderHandler> CefClientHandler::GetRenderHandler() {
+    // 如果 RenderHandler 已创建，返回它（OSR 模式）
+    // 否则返回 nullptr（窗口模式）
+    return m_renderHandler;
+}
+
+void CefClientHandler::SetViewportSize(int width, int height) {
+    if (m_renderHandler) {
+        m_renderHandler->SetViewportSize(width, height);
+        
+        // 通知浏览器窗口大小变化
+        if (m_browser && m_browser->GetHost()) {
+            m_browser->GetHost()->WasResized();
+        }
     }
 }
 

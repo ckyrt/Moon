@@ -4,6 +4,7 @@
 #include "include/cef_load_handler.h"
 #include "include/wrapper/cef_helpers.h"
 #include "include/wrapper/cef_message_router.h"
+#include "CefRenderHandler.h"
 #include <list>
 #include <functional>
 
@@ -34,6 +35,9 @@ public:
     virtual CefRefPtr<CefLoadHandler> GetLoadHandler() override {
         return this;
     }
+
+    // ✅ OSR 模式：返回 RenderHandler（如果启用）
+    virtual CefRefPtr<CefRenderHandler> GetRenderHandler() override;
 
     // ✅ 处理 JavaScript 消息
     virtual bool OnProcessMessageReceived(
@@ -71,9 +75,18 @@ public:
         m_viewportRectCallback = callback;
     }
 
+    // ✅ OSR 模式：获取 RenderHandler
+    CefRefPtr<CefRenderHandlerImpl> GetRenderHandlerImpl() const { return m_renderHandler; }
+    
+    // ✅ OSR 模式：设置视口大小
+    void SetViewportSize(int width, int height);
+
     // ✅ 设置引擎核心指针（用于 MoonEngine API）
     void SetEngineCore(EngineCore* engine);
 
+    
+    // OSR 模式支持（暂时为 nullptr，不启用）
+    CefRefPtr<CefRenderHandlerImpl> m_renderHandler;
 private:
     CefRefPtr<CefBrowser> m_browser;
     bool m_isClosing = false;
