@@ -115,6 +115,7 @@
     <ClCompile Include="DiligentRendererInit.cpp" />
     <ClCompile Include="DiligentRendererPicking.cpp" />
     <ClCompile Include="DiligentRendererResources.cpp" />
+    <ClCompile Include="DiligentRendererIBL.cpp" />
     <ClCompile Include="DiligentRendererUtils.cpp" />
     <ClCompile Include="NullRenderer.cpp" />
   </ItemGroup>
