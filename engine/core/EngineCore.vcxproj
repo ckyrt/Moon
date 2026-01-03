@@ -118,6 +118,7 @@
     <ClInclude Include="Scene\MeshRenderer.h" />
     <ClInclude Include="Scene\Material.h" />
     <ClInclude Include="Scene\Light.h" />
+    <ClInclude Include="Scene\Skybox.h" />
     <ClInclude Include="Mesh\Mesh.h" />
     <ClInclude Include="Geometry\MeshGenerator.h" />
     <ClInclude Include="Assets\MeshManager.h" />
@@ -139,6 +140,7 @@
     <ClCompile Include="Scene\MeshRenderer.cpp" />
     <ClCompile Include="Scene\Material.cpp" />
     <ClCompile Include="Scene\Light.cpp" />
+    <ClCompile Include="Scene\Skybox.cpp" />
     <ClCompile Include="Mesh\Mesh.cpp" />
     <ClCompile Include="Geometry\MeshGenerator.cpp" />
     <ClCompile Include="Assets\MeshManager.cpp" />

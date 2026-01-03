@@ -9,6 +9,7 @@
 #include "../core/Scene/MeshRenderer.h"
 #include "../core/Scene/Material.h"
 #include "../core/Scene/Light.h"
+#include "../core/Scene/Skybox.h"
 #include "../core/Mesh/Mesh.h"
 #include "../core/Geometry/MeshGenerator.h"
 #include "../render/IRenderer.h"
@@ -230,6 +231,21 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     MOON_LOG_INFO("Sample", "Main directional light created (Intensity: %.1f)", 
                   mainLight->GetIntensity());
 
+    // ============================================================================
+    // 创建 Skybox（天空盒）
+    // ============================================================================
+    MOON_LOG_INFO("Sample", "Creating skybox...");
+    
+    Moon::SceneNode* skyboxNode = scene->CreateNode("Skybox");
+    
+    // 添加 Skybox 组件
+    Moon::Skybox* skybox = skyboxNode->AddComponent<Moon::Skybox>();
+    skybox->LoadEnvironmentMap("assets/textures/environment.hdr");
+    skybox->SetIntensity(1.0f);  // 天空盒亮度
+    skybox->SetEnableIBL(true);  // 启用基于图像的照明
+    
+    MOON_LOG_INFO("Sample", "Skybox created with HDR environment map");
+
     // 4) Main loop
     bool running = true;
     MSG msg;
@@ -256,6 +272,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         
         // Update scene lights (收集场景中所有 Light 组件)
         renderer.UpdateSceneLights(scene);
+        
+        // Update scene skybox (收集场景中的 Skybox 组件)
+        renderer.UpdateSceneSkybox(scene);
         
         // Set camera position for PBR specular calculation (在 UpdateSceneLights 之后调用)
         Moon::Vector3 cameraPos = camera->GetPosition();

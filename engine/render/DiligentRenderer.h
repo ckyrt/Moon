@@ -13,6 +13,7 @@ namespace Moon {
     class Scene;
     class SceneNode;
     class MeshRenderer;
+    class Skybox;
 }
 
 // IRenderer 接口
@@ -60,6 +61,7 @@ public:
     void BindARMTexture(const std::string& texturePath);          // 绑定 ARM (AO+Roughness+Metallic) 贴图到当前 SRB
     void BindNormalTexture(const std::string& texturePath);       // 绑定法线贴图到当前 SRB
     
+    void UpdateSceneSkybox(Moon::Scene* scene);                   // 从场景中查找并更新 Skybox 组件
     void RenderSkybox();  // 渲染 Skybox（在所有不透明物体之后调用）
 
     // 提供给 ImGui 等

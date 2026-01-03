@@ -6,6 +6,7 @@
 #include "../core/Scene/Scene.h"
 #include "../core/Scene/SceneNode.h"
 #include "../core/Scene/Light.h"
+#include "../core/Scene/Skybox.h"
 #include "../core/Mesh/Mesh.h"
 
 #include <cmath>
@@ -67,10 +68,6 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
         CreateVSConstants();
         CreateMainPass();  // 主渲染管线（用于正常场景渲染）
         CreateSkyboxPass(); // Skybox 渲染管线
-        
-        // 加载 HDR 环境贴图
-        LoadEnvironmentMap("assets/textures/environment.hdr");
-        
         PrecomputeIBL();    // 预计算 IBL 资源
         
         // 绑定 IBL 纹理到主渲染管线
@@ -328,6 +325,33 @@ void DiligentRenderer::UpdateSceneLights(Moon::Scene* scene)
     
     // 上传到 GPU（保留了 cameraPosition）
     UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
+}
+
+// ======= 更新场景 Skybox =======
+void DiligentRenderer::UpdateSceneSkybox(Moon::Scene* scene)
+{
+    if (!scene) return;
+    
+    // 查找第一个启用的 Skybox 组件
+    Moon::Skybox* activeSkybox = nullptr;
+    scene->Traverse([&](Moon::SceneNode* node) {
+        if (activeSkybox) return;  // 已找到
+        
+        Moon::Skybox* skybox = node->GetComponent<Moon::Skybox>();
+        if (skybox && skybox->IsEnabled()) {
+            activeSkybox = skybox;
+        }
+    });
+    
+    // 如果找到 Skybox 且需要重新加载
+    if (activeSkybox && activeSkybox->NeedsReload()) {
+        const std::string& path = activeSkybox->GetEnvironmentMapPath();
+        if (!path.empty()) {
+            LoadEnvironmentMap(path.c_str());
+            activeSkybox->ClearReloadFlag();
+            MOON_LOG_INFO("DiligentRenderer", "Loaded environment map from Skybox component: {}", path);
+        }
+    }
 }
 
 // Resource management functions are now in DiligentRendererResources.cpp
