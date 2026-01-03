@@ -1,10 +1,13 @@
 #include "DiligentRendererUtils.h"
 #include "../core/Math/Matrix4x4.h"
 #include "../core/Mesh/Mesh.h"
+#include "../core/Logging/Logger.h"
 #include "Graphics/GraphicsEngine/interface/DeviceContext.h"
 #include "Graphics/GraphicsEngine/interface/Buffer.h"
 #include "Graphics/GraphicsEngine/interface/GraphicsTypes.h"
 #include <cstring>
+#include <fstream>
+#include <sstream>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -79,6 +82,24 @@ void UpdateConstantBuffer(Diligent::IBuffer* buf, Diligent::IDeviceContext* cont
     context->MapBuffer(buf, Diligent::MAP_WRITE, Diligent::MAP_FLAG_DISCARD, p);
     std::memcpy(p, data, size);
     context->UnmapBuffer(buf, Diligent::MAP_WRITE);
+}
+
+std::string LoadShaderSource(const char* filename)
+{
+    std::string shaderPath = GetExecutableDirectory() + "assets\\shaders\\" + filename;
+    
+    std::ifstream file(shaderPath);
+    if (!file.is_open()) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to load shader: %s", shaderPath.c_str());
+        return "";
+    }
+    
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string content = buffer.str();
+    
+    MOON_LOG_INFO("DiligentRenderer", "Loaded shader: %s (%zu bytes)", shaderPath.c_str(), content.size());
+    return content;
 }
 
 } // namespace DiligentRendererUtils

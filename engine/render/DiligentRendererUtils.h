@@ -30,4 +30,7 @@ void GetVertexLayout(Diligent::LayoutElement* outLayout, Diligent::Uint32& outNu
 // 更新常量缓冲区（非模板版本，用于跨编译单元）
 void UpdateConstantBuffer(Diligent::IBuffer* buf, Diligent::IDeviceContext* context, const void* data, size_t size);
 
+// 加载 Shader 源代码
+std::string LoadShaderSource(const char* filename);
+
 } // namespace DiligentRendererUtils

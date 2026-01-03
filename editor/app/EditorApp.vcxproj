@@ -85,7 +85,7 @@
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)editor\webui\dist" "$(TargetDir)dist" /E /Y /I</Command>
+      <Command>xcopy "$(SolutionDir)editor\webui\dist" "$(TargetDir)dist" /E /Y /I &amp; xcopy "$(SolutionDir)assets" "$(TargetDir)assets\" /E /Y /I /Q</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
