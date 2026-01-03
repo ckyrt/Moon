@@ -118,7 +118,21 @@ DiligentRenderer::TextureGPUResources* DiligentRenderer::GetOrCreateTextureResou
         return nullptr;
     }
 
+    // 创建采样器
+    SamplerDesc samplerDesc{};
+    samplerDesc.MinFilter = FILTER_TYPE_LINEAR;
+    samplerDesc.MagFilter = FILTER_TYPE_LINEAR;
+    samplerDesc.MipFilter = FILTER_TYPE_LINEAR;
+    samplerDesc.AddressU = TEXTURE_ADDRESS_WRAP;
+    samplerDesc.AddressV = TEXTURE_ADDRESS_WRAP;
+    samplerDesc.AddressW = TEXTURE_ADDRESS_WRAP;
+    
+    RefCntAutoPtr<ISampler> pSampler;
+    m_pDevice->CreateSampler(samplerDesc, &pSampler);
+
+    // 创建带采样器的纹理视图
     gpu.SRV = gpu.Texture->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+    gpu.SRV->SetSampler(pSampler);
 
     auto [insIt, ok] = m_TextureCache.emplace(path, std::move(gpu));
     MOON_LOG_INFO("DiligentRenderer", "Texture uploaded: %s (%dx%d, format=%d, sRGB=%d)", 

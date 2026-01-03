@@ -95,7 +95,27 @@ void DiligentRenderer::CreateDefaultWhiteTexture()
     initData.NumSubresources = 1;
     
     m_pDevice->CreateTexture(desc, &initData, &m_pDefaultWhiteTexture);
-    m_pDefaultWhiteTextureSRV = m_pDefaultWhiteTexture->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
     
-    MOON_LOG_INFO("DiligentRenderer", "Default white texture created");
+    // 创建采样器
+    SamplerDesc samplerDesc{};
+    samplerDesc.MinFilter = FILTER_TYPE_LINEAR;
+    samplerDesc.MagFilter = FILTER_TYPE_LINEAR;
+    samplerDesc.MipFilter = FILTER_TYPE_LINEAR;
+    samplerDesc.AddressU = TEXTURE_ADDRESS_WRAP;
+    samplerDesc.AddressV = TEXTURE_ADDRESS_WRAP;
+    samplerDesc.AddressW = TEXTURE_ADDRESS_WRAP;
+    
+    RefCntAutoPtr<ISampler> pDefaultSampler;
+    m_pDevice->CreateSampler(samplerDesc, &pDefaultSampler);
+    
+    // 创建带采样器的纹理视图
+    TextureViewDesc viewDesc{};
+    viewDesc.ViewType = TEXTURE_VIEW_SHADER_RESOURCE;
+    viewDesc.TextureDim = RESOURCE_DIM_TEX_2D;
+    viewDesc.Format = desc.Format;
+    
+    m_pDefaultWhiteTexture->CreateView(viewDesc, &m_pDefaultWhiteTextureSRV);
+    m_pDefaultWhiteTextureSRV->SetSampler(pDefaultSampler);
+    
+    MOON_LOG_INFO("DiligentRenderer", "Default white texture created with sampler");
 }

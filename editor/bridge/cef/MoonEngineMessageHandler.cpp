@@ -3,6 +3,7 @@
 #include "../../../engine/core/EngineCore.h"
 #include "../../../engine/core/Logging/Logger.h"
 #include "../../../engine/core/Scene/MeshRenderer.h"
+#include "../../../engine/core/Scene/Material.h"
 #include "../../../external/nlohmann/json.hpp"
 #include <functional>
 #include <unordered_map>
@@ -187,6 +188,12 @@ namespace CommandHandlers {
                 1.0f,  // size
                 Moon::Vector3(1.0f, 0.5f, 0.2f)  // orange color
             ));
+            
+            // 添加默认 Material 组件（与 HelloEngine 保持一致）
+            Moon::Material* material = newNode->AddComponent<Moon::Material>();
+            material->SetMetallic(0.0f);
+            material->SetRoughness(0.5f);
+            material->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
         }
         else if (type == "sphere") {
             newNode = scene->CreateNode("Sphere");
@@ -197,6 +204,12 @@ namespace CommandHandlers {
                 16,    // rings
                 Moon::Vector3(0.2f, 0.5f, 1.0f)  // blue color
             ));
+            
+            // 添加默认 Material 组件
+            Moon::Material* material = newNode->AddComponent<Moon::Material>();
+            material->SetMetallic(0.0f);
+            material->SetRoughness(0.5f);
+            material->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
         }
         else if (type == "cylinder") {
             newNode = scene->CreateNode("Cylinder");
@@ -208,6 +221,12 @@ namespace CommandHandlers {
                 24,    // segments
                 Moon::Vector3(0.2f, 1.0f, 0.5f)  // green color
             ));
+            
+            // 添加默认 Material 组件
+            Moon::Material* material = newNode->AddComponent<Moon::Material>();
+            material->SetMetallic(0.0f);
+            material->SetRoughness(0.5f);
+            material->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
         }
         else if (type == "plane") {
             newNode = scene->CreateNode("Plane");
@@ -219,6 +238,12 @@ namespace CommandHandlers {
                 1,     // subdivisionsZ
                 Moon::Vector3(0.7f, 0.7f, 0.7f)  // gray color
             ));
+            
+            // 添加默认 Material 组件
+            Moon::Material* material = newNode->AddComponent<Moon::Material>();
+            material->SetMetallic(0.0f);
+            material->SetRoughness(0.5f);
+            material->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
         }
         else {
             return CreateErrorResponse("Unknown node type: " + type);
