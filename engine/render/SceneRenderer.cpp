@@ -67,8 +67,8 @@ void RenderMeshes(DiligentRenderer* renderer, Scene* scene)
             }
             
             // 绑定 ARM 贴图 (AO + Roughness + Metallic)
-            if (material->HasMetallicMap()) {
-                renderer->BindARMTexture(material->GetMetallicMap());
+            if (material->HasARMMap()) {
+                renderer->BindARMTexture(material->GetARMMap());
             } else {
                 renderer->BindARMTexture("");  // 使用默认纹理
             }

@@ -74,22 +74,10 @@ public:
     void SetNormalMap(const std::string& texturePath);
     
     /**
-     * @brief 设置金属度贴图
-     * @param texturePath 贴图文件路径
+     * @brief 设置 ARM 贴图（AO + Roughness + Metallic 三通道合一）
+     * @param texturePath 贴图文件路径（R=AO, G=Roughness, B=Metallic）
      */
-    void SetMetallicMap(const std::string& texturePath);
-    
-    /**
-     * @brief 设置粗糙度贴图
-     * @param texturePath 贴图文件路径
-     */
-    void SetRoughnessMap(const std::string& texturePath);
-    
-    /**
-     * @brief 设置环境光遮蔽（AO）贴图
-     * @param texturePath 贴图文件路径
-     */
-    void SetAOMap(const std::string& texturePath);
+    void SetARMMap(const std::string& texturePath);
     
     /**
      * @brief 获取 Albedo 贴图路径
@@ -102,19 +90,9 @@ public:
     const std::string& GetNormalMap() const { return m_normalMap; }
     
     /**
-     * @brief 获取金属度贴图路径
+     * @brief 获取 ARM 贴图路径
      */
-    const std::string& GetMetallicMap() const { return m_metallicMap; }
-    
-    /**
-     * @brief 获取粗糙度贴图路径
-     */
-    const std::string& GetRoughnessMap() const { return m_roughnessMap; }
-    
-    /**
-     * @brief 获取 AO 贴图路径
-     */
-    const std::string& GetAOMap() const { return m_aoMap; }
+    const std::string& GetARMMap() const { return m_armMap; }
     
     /**
      * @brief 检查是否有 Albedo 贴图
@@ -127,19 +105,9 @@ public:
     bool HasNormalMap() const { return !m_normalMap.empty(); }
     
     /**
-     * @brief 检查是否有金属度贴图
+     * @brief 检查是否有 ARM 贴图
      */
-    bool HasMetallicMap() const { return !m_metallicMap.empty(); }
-    
-    /**
-     * @brief 检查是否有粗糙度贴图
-     */
-    bool HasRoughnessMap() const { return !m_roughnessMap.empty(); }
-    
-    /**
-     * @brief 检查是否有 AO 贴图
-     */
-    bool HasAOMap() const { return !m_aoMap.empty(); }
+    bool HasARMMap() const { return !m_armMap.empty(); }
 
     // === 预设材质 ===
     
@@ -198,9 +166,7 @@ private:
     // 纹理贴图路径（标准 PBR 工作流）
     std::string m_albedoMap;    ///< Albedo/Base Color 贴图路径
     std::string m_normalMap;    ///< 法线贴图路径
-    std::string m_metallicMap;  ///< 金属度贴图路径
-    std::string m_roughnessMap; ///< 粗糙度贴图路径
-    std::string m_aoMap;        ///< 环境光遮蔽贴图路径
+    std::string m_armMap;       ///< ARM 贴图路径（R=AO, G=Roughness, B=Metallic）
 };
 
 } // namespace Moon

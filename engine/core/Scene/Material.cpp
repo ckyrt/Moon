@@ -46,19 +46,9 @@ void Material::SetNormalMap(const std::string& texturePath)
     m_normalMap = texturePath;
 }
 
-void Material::SetMetallicMap(const std::string& texturePath)
+void Material::SetARMMap(const std::string& texturePath)
 {
-    m_metallicMap = texturePath;
-}
-
-void Material::SetRoughnessMap(const std::string& texturePath)
-{
-    m_roughnessMap = texturePath;
-}
-
-void Material::SetAOMap(const std::string& texturePath)
-{
-    m_aoMap = texturePath;
+    m_armMap = texturePath;
 }
 
 // === 预设材质 ===
@@ -87,7 +77,7 @@ void Material::SetPresetConcrete()
     // 设置贴图路径 (使用 rock_terrain 作为混凝土/地形)
     SetAlbedoMap("materials/rock_terrain/rocky_terrain_02_diff_4k.jpg");
     SetNormalMap("materials/rock_terrain/rocky_terrain_02_nor_dx_4k.jpg");
-    SetMetallicMap("materials/rock_terrain/rocky_terrain_02_arm_4k.jpg");  // ARM 贴图
+    SetARMMap("materials/rock_terrain/rocky_terrain_02_arm_4k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetRubber()
@@ -99,7 +89,7 @@ void Material::SetPresetRubber()
     // 设置贴图路径
     SetAlbedoMap("materials/rubberized_track/rubberized_track_diff_1k.jpg");
     SetNormalMap("materials/rubberized_track/rubberized_track_nor_dx_1k.jpg");
-    SetMetallicMap("materials/rubberized_track/rubberized_track_arm_1k.jpg");  // ARM 贴图
+    SetARMMap("materials/rubberized_track/rubberized_track_arm_1k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetBrick()
@@ -111,7 +101,7 @@ void Material::SetPresetBrick()
     // 设置贴图路径
     SetAlbedoMap("materials/red_brick/red_brick_diff_1k.jpg");
     SetNormalMap("materials/red_brick/red_brick_nor_dx_1k.jpg");
-    SetMetallicMap("materials/red_brick/red_brick_arm_1k.jpg");  // ARM 贴图
+    SetARMMap("materials/red_brick/red_brick_arm_1k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetWood()
@@ -124,7 +114,7 @@ void Material::SetPresetWood()
     // 设置贴图路径
     SetAlbedoMap("materials/wood_floor/wood_floor_diff_1k.jpg");
     SetNormalMap("materials/wood_floor/wood_floor_nor_dx_1k.jpg");
-    SetMetallicMap("materials/wood_floor/wood_floor_arm_1k.jpg");  // ARM 贴图
+    SetARMMap("materials/wood_floor/wood_floor_arm_1k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetPlaster()
@@ -136,7 +126,7 @@ void Material::SetPresetPlaster()
     // 设置贴图路径
     SetAlbedoMap("materials/painted_plaster_wall/painted_plaster_wall_diff_1k.jpg");
     SetNormalMap("materials/painted_plaster_wall/painted_plaster_wall_nor_dx_1k.jpg");
-    SetMetallicMap("materials/painted_plaster_wall/painted_plaster_wall_arm_1k.jpg");  // ARM 贴图
+    SetARMMap("materials/painted_plaster_wall/painted_plaster_wall_arm_1k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetIron()
@@ -148,7 +138,7 @@ void Material::SetPresetIron()
     // 设置贴图路径
     SetAlbedoMap("materials/rusty_metal/rusty_metal_04_diff_1k.jpg");
     SetNormalMap("materials/rusty_metal/rusty_metal_04_nor_dx_1k.jpg");
-    SetMetallicMap("materials/rusty_metal/rusty_metal_04_arm_1k.jpg");  // ARM 贴图
+    SetARMMap("materials/rusty_metal/rusty_metal_04_arm_1k.jpg");  // ARM 贴图
 }
 
 void Material::SetPresetPolishedMetal()
