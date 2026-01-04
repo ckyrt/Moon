@@ -16,9 +16,14 @@ import {
   SetLightColorCommand,
   SetLightIntensityCommand,
   SetLightRangeCommand,
-  SetLightTypeCommand
+  SetLightTypeCommand,
+  SetSkyboxIntensityCommand,
+  SetSkyboxRotationCommand,
+  SetSkyboxTintCommand,
+  SetSkyboxIBLCommand,
+  SetSkyboxEnvironmentMapCommand
 } from '@/undo';
-import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent } from '@/types/engine';
+import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent } from '@/types/engine';
 import styles from './Inspector.module.css';
 
 export const Inspector: React.FC = () => {
@@ -232,6 +237,9 @@ const ComponentView: React.FC<{ component: Component }> = ({ component }) => {
       
       case 'Light':
         return <LightEditor component={component as LightComponent} />;
+      
+      case 'Skybox':
+        return <SkyboxEditor component={component as SkyboxComponent} />;
       
       default:
         return null;
@@ -524,4 +532,208 @@ const LightEditor: React.FC<LightEditorProps> = ({ component }) => {
   );
 };
 
+// ========== Skybox 编辑组件 ==========
 
+interface SkyboxEditorProps {
+  component: SkyboxComponent;
+}
+
+const SkyboxEditor: React.FC<SkyboxEditorProps> = ({ component }) => {
+  const selectedNode = useEditorStore((state) => 
+    state.selectedNodeId ? state.scene.allNodes[state.selectedNodeId] : null
+  );
+  const undoManager = getUndoManager();
+  const [showTintPicker, setShowTintPicker] = useState(false);
+
+  if (!selectedNode) return null;
+
+  const handleIntensityChange = (value: number) => {
+    if (isNaN(value)) return;
+    const command = new SetSkyboxIntensityCommand(selectedNode.id, component.intensity, value);
+    undoManager.execute(command);
+  };
+
+  const handleRotationChange = (value: number) => {
+    if (isNaN(value)) return;
+    const command = new SetSkyboxRotationCommand(selectedNode.id, component.rotation, value);
+    undoManager.execute(command);
+  };
+
+  const handleTintClick = (r: number, g: number, b: number) => {
+    const oldTint = { x: component.tint[0], y: component.tint[1], z: component.tint[2] };
+    const newTint = { x: r, y: g, z: b };
+    const command = new SetSkyboxTintCommand(selectedNode.id, oldTint, newTint);
+    undoManager.execute(command);
+  };
+
+  const handleIBLChange = (enabled: boolean) => {
+    const command = new SetSkyboxIBLCommand(selectedNode.id, component.enableIBL, enabled);
+    undoManager.execute(command);
+  };
+
+  const handlePathChange = (path: string) => {
+    if (path === component.environmentMapPath) return;
+    const command = new SetSkyboxEnvironmentMapCommand(selectedNode.id, component.environmentMapPath, path);
+    undoManager.execute(command);
+  };
+
+  const rgbToHex = (r: number, g: number, b: number): string => {
+    const toHex = (v: number) => {
+      const hex = Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16);
+      return hex.padStart(2, '0');
+    };
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  };
+
+  return (
+    <div className={styles.componentDetails} style={{ position: 'relative', zIndex: 100 }}>
+      {/* Environment Map Path */}
+      <div className={styles.propertyRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
+        <label>Environment Map:</label>
+        <input
+          type="text"
+          value={component.environmentMapPath}
+          onChange={(e) => handlePathChange(e.target.value)}
+          onBlur={(e) => handlePathChange(e.target.value)}
+          placeholder="assets/textures/environment.hdr"
+          style={{ 
+            flex: 1,
+            padding: '4px 8px', 
+            borderRadius: '4px', 
+            border: '1px solid var(--border-color)', 
+            background: 'var(--bg-tertiary)',
+            fontSize: '11px',
+            fontFamily: 'monospace'
+          }}
+        />
+      </div>
+
+      {/* Intensity */}
+      <div className={styles.propertyRow}>
+        <label style={{ minWidth: '70px' }}>Intensity:</label>
+        <input
+          type="number"
+          value={component.intensity}
+          onChange={(e) => handleIntensityChange(parseFloat(e.target.value))}
+          onBlur={(e) => handleIntensityChange(parseFloat(e.target.value))}
+          step={0.1}
+          min={0}
+          style={{ 
+            flex: 1,
+            padding: '4px 8px', 
+            borderRadius: '4px', 
+            border: '1px solid var(--border-color)', 
+            background: 'var(--bg-tertiary)'
+          }}
+        />
+      </div>
+
+      {/* Rotation */}
+      <div className={styles.propertyRow}>
+        <label style={{ minWidth: '70px' }}>Rotation:</label>
+        <input
+          type="number"
+          value={component.rotation}
+          onChange={(e) => handleRotationChange(parseFloat(e.target.value))}
+          onBlur={(e) => handleRotationChange(parseFloat(e.target.value))}
+          step={1}
+          min={0}
+          max={360}
+          style={{ 
+            flex: 1,
+            padding: '4px 8px', 
+            borderRadius: '4px', 
+            border: '1px solid var(--border-color)', 
+            background: 'var(--bg-tertiary)'
+          }}
+        />
+      </div>
+
+      {/* Tint - Custom Color Picker */}
+      <div className={styles.propertyRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
+        <label>Tint:</label>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div
+            onClick={() => setShowTintPicker(!showTintPicker)}
+            style={{
+              width: '60px',
+              height: '32px',
+              borderRadius: '4px',
+              border: '1px solid var(--border-color)',
+              cursor: 'pointer',
+              background: rgbToHex(component.tint[0], component.tint[1], component.tint[2]),
+              flexShrink: 0,
+              position: 'relative'
+            }}
+          />
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+            ({(component.tint[0] * 255).toFixed(0)}, {(component.tint[1] * 255).toFixed(0)}, {(component.tint[2] * 255).toFixed(0)})
+          </span>
+        </div>
+        {showTintPicker && (
+          <div style={{
+            padding: '8px',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '4px',
+            marginTop: '4px'
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px', marginBottom: '8px' }}>
+              {[
+                [1, 1, 1], [0.9, 0.9, 0.9], [0.7, 0.7, 0.7], [0.5, 0.5, 0.5],
+                [1, 0, 0], [1, 0.5, 0], [1, 1, 0], [0.5, 1, 0],
+                [0, 1, 0], [0, 1, 0.5], [0, 1, 1], [0, 0.5, 1],
+                [0, 0, 1], [0.5, 0, 1], [1, 0, 1], [1, 0, 0.5]
+              ].map((rgb, i) => (
+                <div
+                  key={i}
+                  onClick={() => {
+                    handleTintClick(rgb[0], rgb[1], rgb[2]);
+                    setShowTintPicker(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    paddingBottom: '100%',
+                    background: rgbToHex(rgb[0], rgb[1], rgb[2]),
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-color)'
+                  }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => setShowTintPicker(false)}
+              style={{
+                width: '100%',
+                padding: '4px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '11px'
+              }}
+            >
+              Close
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Enable IBL */}
+      <div className={styles.propertyRow}>
+        <label style={{ minWidth: '70px' }}>Enable IBL:</label>
+        <input
+          type="checkbox"
+          checked={component.enableIBL}
+          onChange={(e) => handleIBLChange(e.target.checked)}
+          style={{ 
+            width: '16px',
+            height: '16px',
+            cursor: 'pointer'
+          }}
+        />
+      </div>
+    </div>
+  );
+};

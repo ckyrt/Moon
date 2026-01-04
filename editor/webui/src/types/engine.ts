@@ -71,6 +71,16 @@ export interface LightComponent extends Component {
   attenuationQuadratic?: number;
 }
 
+export interface SkyboxComponent extends Component {
+  type: 'Skybox';
+  skyboxType: 'None' | 'EquirectangularHDR' | 'Cubemap' | 'Procedural';
+  environmentMapPath: string; // HDR file path
+  intensity: number; // Brightness multiplier
+  rotation: number; // Y-axis rotation in degrees
+  tint: [number, number, number]; // RGB tint [0-1]
+  enableIBL: boolean; // Image-based lighting
+}
+
 export interface Scene {
   name: string;
   rootNodes: number[]; // Root node IDs

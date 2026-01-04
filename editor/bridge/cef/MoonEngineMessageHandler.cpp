@@ -5,6 +5,7 @@
 #include "../../../engine/core/Scene/MeshRenderer.h"
 #include "../../../engine/core/Scene/Material.h"
 #include "../../../engine/core/Scene/Light.h"
+#include "../../../engine/core/Scene/Skybox.h"
 #include "../../../external/nlohmann/json.hpp"
 #include <functional>
 #include <unordered_map>
@@ -255,6 +256,123 @@ namespace CommandHandlers {
     }
 
     // ========================================================================
+    // Skybox 组件属性设置
+    // ========================================================================
+
+    // 设置 Skybox 强度
+    std::string HandleSetSkyboxIntensity(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        float intensity = req["intensity"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Skybox* skybox = node->GetComponent<Moon::Skybox>();
+        if (!skybox) {
+            return CreateErrorResponse("Node does not have Skybox component");
+        }
+
+        skybox->SetIntensity(intensity);
+        MOON_LOG_INFO("MoonEngineMessage", "Set skybox intensity of node %u to %.2f", nodeId, intensity);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Skybox 旋转
+    std::string HandleSetSkyboxRotation(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        float rotation = req["rotation"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Skybox* skybox = node->GetComponent<Moon::Skybox>();
+        if (!skybox) {
+            return CreateErrorResponse("Node does not have Skybox component");
+        }
+
+        skybox->SetRotation(rotation);
+        MOON_LOG_INFO("MoonEngineMessage", "Set skybox rotation of node %u to %.2f", nodeId, rotation);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Skybox 色调
+    std::string HandleSetSkyboxTint(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        Moon::Vector3 tint = ParseVector3(req["tint"]);
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Skybox* skybox = node->GetComponent<Moon::Skybox>();
+        if (!skybox) {
+            return CreateErrorResponse("Node does not have Skybox component");
+        }
+
+        skybox->SetTint(tint);
+        MOON_LOG_INFO("MoonEngineMessage", "Set skybox tint of node %u to (%.2f, %.2f, %.2f)",
+                     nodeId, tint.x, tint.y, tint.z);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Skybox IBL
+    std::string HandleSetSkyboxIBL(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        bool enableIBL = req["enableIBL"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Skybox* skybox = node->GetComponent<Moon::Skybox>();
+        if (!skybox) {
+            return CreateErrorResponse("Node does not have Skybox component");
+        }
+
+        skybox->SetEnableIBL(enableIBL);
+        MOON_LOG_INFO("MoonEngineMessage", "Set skybox IBL of node %u to %s", 
+                     nodeId, enableIBL ? "enabled" : "disabled");
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Skybox 环境贴图路径
+    std::string HandleSetSkyboxEnvironmentMap(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        std::string path = req["path"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Skybox* skybox = node->GetComponent<Moon::Skybox>();
+        if (!skybox) {
+            return CreateErrorResponse("Node does not have Skybox component");
+        }
+
+        bool success = skybox->LoadEnvironmentMap(path);
+        if (!success) {
+            MOON_LOG_WARN("MoonEngineMessage", "Failed to load environment map: %s", path.c_str());
+            return CreateErrorResponse("Failed to load environment map: " + path);
+        }
+
+        MOON_LOG_INFO("MoonEngineMessage", "Set skybox environment map of node %u to %s", 
+                     nodeId, path.c_str());
+        
+        return CreateSuccessResponse();
+    }
+
+    // ========================================================================
 
     // 🎯 设置 Gizmo 坐标系模式（world/local）
     std::string HandleSetGizmoCoordinateMode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
@@ -364,10 +482,25 @@ namespace CommandHandlers {
             MOON_LOG_INFO("MoonEngineMessage", "Created directional light (Intensity: %.1f)", 
                          light->GetIntensity());
         }
+        else if (type == "skybox") {
+            newNode = scene->CreateNode("Skybox");
+
+            // 添加 Skybox 组件
+            Moon::Skybox* skybox = newNode->AddComponent<Moon::Skybox>();
+            skybox->SetType(Moon::Skybox::Type::EquirectangularHDR);
+            skybox->LoadEnvironmentMap("assets/textures/environment.hdr");
+            skybox->SetIntensity(1.0f);
+            skybox->SetRotation(0.0f);
+            skybox->SetTint(Moon::Vector3(1.0f, 1.0f, 1.0f));  // No tint by default
+            skybox->SetEnableIBL(true);  // Enable IBL by default
+
+            MOON_LOG_INFO("MoonEngineMessage", "Created skybox (Intensity: %.1f, IBL: %s)", 
+                         skybox->GetIntensity(), skybox->IsIBLEnabled() ? "enabled" : "disabled");
+        }
         else {
             return CreateErrorResponse("Unknown node type: " + type);
         }
-        
+
         if (!newNode) {
             return CreateErrorResponse("Failed to create node");
         }
@@ -738,6 +871,11 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"setLightIntensity",        CommandHandlers::HandleSetLightIntensity},  // 🎯 Light: 设置强度
     {"setLightRange",            CommandHandlers::HandleSetLightRange},  // 🎯 Light: 设置范围
     {"setLightType",             CommandHandlers::HandleSetLightType},  // 🎯 Light: 设置类型
+    {"setSkyboxIntensity",       CommandHandlers::HandleSetSkyboxIntensity},  // 🎯 Skybox: 设置强度
+    {"setSkyboxRotation",        CommandHandlers::HandleSetSkyboxRotation},  // 🎯 Skybox: 设置旋转
+    {"setSkyboxTint",            CommandHandlers::HandleSetSkyboxTint},  // 🎯 Skybox: 设置色调
+    {"setSkyboxIBL",             CommandHandlers::HandleSetSkyboxIBL},  // 🎯 Skybox: 设置IBL
+    {"setSkyboxEnvironmentMap",  CommandHandlers::HandleSetSkyboxEnvironmentMap},  // 🎯 Skybox: 设置环境贴图
     {"createNode",               CommandHandlers::HandleCreateNode},
     {"deleteNode",               CommandHandlers::HandleDeleteNode},  // 🎯 删除节点
     {"setNodeParent",            CommandHandlers::HandleSetNodeParent},  // 🎯 设置父节点

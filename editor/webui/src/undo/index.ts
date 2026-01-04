@@ -32,5 +32,13 @@ export {
   SetLightRangeCommand,
 } from './LightCommands';
 
+export {
+  SetSkyboxIntensityCommand,
+  SetSkyboxRotationCommand,
+  SetSkyboxTintCommand,
+  SetSkyboxIBLCommand,
+  SetSkyboxEnvironmentMapCommand,
+} from './SkyboxCommands';
+
 export { useUndoShortcuts } from './useUndoShortcuts';
 export { onGizmoStart, onGizmoEnd } from './gizmoUndo';

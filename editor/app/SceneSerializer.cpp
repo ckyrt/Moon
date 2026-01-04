@@ -4,6 +4,7 @@
 #include "../../engine/core/Scene/Transform.h"
 #include "../../engine/core/Scene/MeshRenderer.h"
 #include "../../engine/core/Scene/Light.h"
+#include "../../engine/core/Scene/Skybox.h"
 #include "../../engine/physics/RigidBody.h"
 #include "../../engine/physics/PhysicsSystem.h"
 #include "../../engine/core/Logging/Logger.h"
@@ -487,6 +488,33 @@ void SceneSerializer::SerializeComponents(SceneNode* node, void* jsonArray) {
         components.push_back(comp);
     }
 
+    // Skybox
+    if (auto* skybox = node->GetComponent<Skybox>()) {
+        json comp;
+        comp["type"] = "Skybox";
+        comp["enabled"] = skybox->IsEnabled();
+
+        // Skybox type
+        const char* skyboxTypeName = "None";
+        switch (skybox->GetType()) {
+            case Skybox::Type::None:                 skyboxTypeName = "None"; break;
+            case Skybox::Type::EquirectangularHDR:   skyboxTypeName = "EquirectangularHDR"; break;
+            case Skybox::Type::Cubemap:              skyboxTypeName = "Cubemap"; break;
+            case Skybox::Type::Procedural:           skyboxTypeName = "Procedural"; break;
+        }
+        comp["skyboxType"] = skyboxTypeName;
+
+        // Properties
+        comp["environmentMapPath"] = skybox->GetEnvironmentMapPath();
+        comp["intensity"] = skybox->GetIntensity();
+        comp["rotation"] = skybox->GetRotation();
+        const Vector3& tint = skybox->GetTint();
+        comp["tint"] = json::array({ tint.x, tint.y, tint.z });
+        comp["enableIBL"] = skybox->IsIBLEnabled();
+
+        components.push_back(comp);
+    }
+
     // TODO: 添加其他组件类型
 }
 
@@ -583,6 +611,33 @@ void SceneSerializer::SerializeComponentsFull(SceneNode* node, void* jsonArray) 
         comp["innerConeAngle"] = innerCone;
         comp["outerConeAngle"] = outerCone;
         
+        components.push_back(comp);
+    }
+
+    // Skybox（完整数据）
+    if (auto* skybox = node->GetComponent<Skybox>()) {
+        json comp;
+        comp["type"] = "Skybox";
+        comp["enabled"] = skybox->IsEnabled();
+
+        // Skybox type
+        const char* skyboxTypeName = "None";
+        switch (skybox->GetType()) {
+            case Skybox::Type::None:                 skyboxTypeName = "None"; break;
+            case Skybox::Type::EquirectangularHDR:   skyboxTypeName = "EquirectangularHDR"; break;
+            case Skybox::Type::Cubemap:              skyboxTypeName = "Cubemap"; break;
+            case Skybox::Type::Procedural:           skyboxTypeName = "Procedural"; break;
+        }
+        comp["skyboxType"] = skyboxTypeName;
+
+        // Properties
+        comp["environmentMapPath"] = skybox->GetEnvironmentMapPath();
+        comp["intensity"] = skybox->GetIntensity();
+        comp["rotation"] = skybox->GetRotation();
+        const Vector3& tint = skybox->GetTint();
+        comp["tint"] = json::array({ tint.x, tint.y, tint.z });
+        comp["enableIBL"] = skybox->IsIBLEnabled();
+
         components.push_back(comp);
     }
 
@@ -734,6 +789,61 @@ void SceneSerializer::DeserializeComponents(SceneNode* node, EngineCore* engine,
             }
             
             MOON_LOG_INFO("SceneSerializer", "Restored Light component");
+        }
+        else if (type == "Skybox") {
+            Skybox* skybox = node->AddComponent<Skybox>();
+
+            if (compData.contains("enabled")) {
+                skybox->SetEnabled(compData["enabled"]);
+            }
+
+            // Skybox type
+            if (compData.contains("skyboxType")) {
+                std::string skyboxTypeName = compData["skyboxType"];
+                if (skyboxTypeName == "None") {
+                    skybox->SetType(Skybox::Type::None);
+                } else if (skyboxTypeName == "EquirectangularHDR") {
+                    skybox->SetType(Skybox::Type::EquirectangularHDR);
+                } else if (skyboxTypeName == "Cubemap") {
+                    skybox->SetType(Skybox::Type::Cubemap);
+                } else if (skyboxTypeName == "Procedural") {
+                    skybox->SetType(Skybox::Type::Procedural);
+                }
+            }
+
+            // Environment map path
+            if (compData.contains("environmentMapPath")) {
+                std::string path = compData["environmentMapPath"];
+                if (!path.empty()) {
+                    skybox->LoadEnvironmentMap(path);
+                }
+            }
+
+            // Intensity
+            if (compData.contains("intensity")) {
+                skybox->SetIntensity(compData["intensity"]);
+            }
+
+            // Rotation
+            if (compData.contains("rotation")) {
+                skybox->SetRotation(compData["rotation"]);
+            }
+
+            // Tint
+            if (compData.contains("tint") && compData["tint"].is_array()) {
+                auto tintArray = compData["tint"];
+                if (tintArray.size() >= 3) {
+                    Vector3 tint(tintArray[0], tintArray[1], tintArray[2]);
+                    skybox->SetTint(tint);
+                }
+            }
+
+            // Enable IBL
+            if (compData.contains("enableIBL")) {
+                skybox->SetEnableIBL(compData["enableIBL"]);
+            }
+
+            MOON_LOG_INFO("SceneSerializer", "Restored Skybox component");
         }
         
         // TODO: 添加其他组件类型的反序列化

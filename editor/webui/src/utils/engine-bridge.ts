@@ -433,6 +433,145 @@ const createRealAPI = (): MoonEngineAPI => {
     }),
 
     // ========================================================================
+    // Skybox 组件操作
+    // ========================================================================
+
+    setSkyboxIntensity: wrapAsyncEngineCall('setSkyboxIntensity', async (nodeId: number, intensity: number) => {
+      if (!window.cefQuery) {
+        console.warn('[setSkyboxIntensity] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setSkyboxIntensity',
+          nodeId,
+          intensity
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setSkyboxIntensity] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setSkyboxIntensity] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setSkyboxRotation: wrapAsyncEngineCall('setSkyboxRotation', async (nodeId: number, rotation: number) => {
+      if (!window.cefQuery) {
+        console.warn('[setSkyboxRotation] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setSkyboxRotation',
+          nodeId,
+          rotation
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setSkyboxRotation] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setSkyboxRotation] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setSkyboxTint: wrapAsyncEngineCall('setSkyboxTint', async (nodeId: number, tint: Vector3) => {
+      if (!window.cefQuery) {
+        console.warn('[setSkyboxTint] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setSkyboxTint',
+          nodeId,
+          tint: { x: tint.x, y: tint.y, z: tint.z }
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setSkyboxTint] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setSkyboxTint] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setSkyboxIBL: wrapAsyncEngineCall('setSkyboxIBL', async (nodeId: number, enableIBL: boolean) => {
+      if (!window.cefQuery) {
+        console.warn('[setSkyboxIBL] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setSkyboxIBL',
+          nodeId,
+          enableIBL
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setSkyboxIBL] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setSkyboxIBL] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setSkyboxEnvironmentMap: wrapAsyncEngineCall('setSkyboxEnvironmentMap', async (nodeId: number, path: string) => {
+      if (!window.cefQuery) {
+        console.warn('[setSkyboxEnvironmentMap] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setSkyboxEnvironmentMap',
+          nodeId,
+          path
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setSkyboxEnvironmentMap] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setSkyboxEnvironmentMap] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    // ========================================================================
     // 🎯 Undo/Redo 专用 API（内部使用）
     // ========================================================================
     

@@ -140,6 +140,9 @@ export const Toolbar: React.FC = () => {
             <button onClick={() => handleCreateObject('light')} className={styles.dropdownItem}>
               💡 Light
             </button>
+            <button onClick={() => handleCreateObject('skybox')} className={styles.dropdownItem}>
+              🌌 Skybox
+            </button>
           </div>
         )}
       </div>
