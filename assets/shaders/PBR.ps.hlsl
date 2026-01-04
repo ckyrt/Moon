@@ -33,6 +33,10 @@ SamplerState g_NormalMap_sampler;
 Texture2D g_EquirectMap;
 SamplerState g_EquirectMap_sampler;
 
+// BRDF LUT for IBL (256x256 RG16F)
+Texture2D g_BRDF_LUT;
+SamplerState g_BRDF_LUT_sampler;
+
 struct PSInput { 
     float4 Pos      : SV_POSITION;
     float3 WorldPos : POSITION;
@@ -380,19 +384,17 @@ float4 main(in PSInput i) : SV_Target {
     // 镜面反射环境光：只在有有效环境贴图时启用
     float3 specular = float3(0.0, 0.0, 0.0);
     if (hasIBL) {
-        // Unity/Unreal 标准：环境镜面反射 BRDF
+        // Unity/Unreal 标准：环境镜面反射 BRDF with Split-Sum Approximation
         float NdotV = max(dot(N, V), 0.0);
-        float3 F = FresnelSchlick(NdotV, F0);
         
         // ⚠️ TODO: 当前使用equirect直接采样，存在以下问题：
         // 1. Equirect的mip不是按solid angle分布，高roughness时能量不对
         // 2. 应该预计算 Equirect → Cubemap → Prefiltered Cubemap
-        // 3. 需要BRDF LUT实现完整的split-sum approximation
         //
         // 标准流程（Unreal/Unity）：
-        // specular = prefilteredColor * (F * brdf.x + brdf.y);
-        //
-        // 当前临时方案：直接从equirect采样 + 能量补偿
+        // prefilteredColor = PrefilteredCubemap.SampleLevel(R, mipLevel)
+        // brdf = BRDF_LUT.Sample(float2(NdotV, roughness))
+        // specular = prefilteredColor * (F0 * brdf.r + brdf.g)
         
         // ✅ Unreal Engine 标准：根据粗糙度采样不同 mipmap level
         // Roughness 0 → mipmap 0（清晰反射）
@@ -403,12 +405,18 @@ float4 main(in PSInput i) : SV_Target {
         float2 specularUV = DirToEquirectUV(R);
         float3 prefilteredColor = g_EquirectMap.SampleLevel(g_EquirectMap_sampler, specularUV, mipLevel).rgb;
         
-        // ✅ 临时BRDF能量补偿（在引入BRDF LUT之前）
-        // 调整能量以防止过亮，同时保持合理的镜面反射
-        float energyCompensation = saturate(1.0 - roughness * 0.7);
+        // ✅ Split-Sum Approximation with BRDF LUT
+        // BRDF LUT存储了 ∫(F * G * V) dω 的预计算结果
+        // .r = scale (F0 multiplier)
+        // .g = bias (constant offset)
+        float2 brdf = g_BRDF_LUT.Sample(g_BRDF_LUT_sampler, float2(NdotV, roughness)).rg;
         
-        // 降低整体镜面反射强度，避免过度曝光
-        specular = prefilteredColor * F * energyCompensation * 0.6;
+        // Epic Games标准公式：L = prefilteredColor * (F0 * brdf.x + brdf.y)
+        // 这正确地处理了Fresnel和几何遮挡
+        specular = prefilteredColor * (F0 * brdf.r + brdf.g);
+        
+        // 临时降低强度防止过曝（后续使用prefiltered cubemap后可移除）
+        specular *= 0.7;
     }
     
     // 组合环境光（间接光）

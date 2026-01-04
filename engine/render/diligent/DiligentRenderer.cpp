@@ -89,6 +89,19 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
             }
         }
         
+        // 绑定 BRDF LUT 到主渲染管线
+        if (m_pBRDF_LUT_SRV) {
+            auto* brdfVar = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_BRDF_LUT");
+            if (brdfVar) {
+                brdfVar->Set(m_pBRDF_LUT_SRV);
+                MOON_LOG_INFO("DiligentRenderer", "BRDF LUT bound to main pipeline");
+            } else {
+                MOON_LOG_ERROR("DiligentRenderer", "Failed to get g_BRDF_LUT variable from SRB");
+            }
+        } else {
+            MOON_LOG_WARN("DiligentRenderer", "BRDF LUT not available");
+        }
+        
         // 注意：g_AlbedoMap 是 MUTABLE 变量，必须在每次渲染前通过 BindAlbedoTexture() 设置，不在这里初始化
 
         // Picking：一次性创建静态资源；并按当前分辨率创建 RT/DS + 读回
@@ -155,7 +168,8 @@ void DiligentRenderer::CreateMainPass()
         {SHADER_TYPE_PIXEL, "g_AlbedoMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
         {SHADER_TYPE_PIXEL, "g_ARMMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
         {SHADER_TYPE_PIXEL, "g_NormalMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_EquirectMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
+        {SHADER_TYPE_PIXEL, "g_EquirectMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_BRDF_LUT", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
     };
 
     GraphicsPipelineStateCreateInfo pci{};

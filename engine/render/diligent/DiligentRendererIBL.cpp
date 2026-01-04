@@ -400,123 +400,21 @@ void DiligentRenderer::PrecomputeIBL()
     m_pBRDF_LUT_SRV = m_pBRDF_LUT->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
     m_pBRDF_LUT_RTV = m_pBRDF_LUT->GetDefaultView(TEXTURE_VIEW_RENDER_TARGET);
     
-    // ========== 2. 创建 BRDF LUT 预计算 Shader ==========
-    // Vertex Shader：全屏三角形
-    const char* brdfVS = R"(
-struct VSOutput {
-    float4 Pos : SV_POSITION;
-    float2 UV  : TEXCOORD0;
-};
-
-void main(uint VertexID : SV_VertexID, out VSOutput output) {
-    // 全屏三角形技巧
-    float2 uv = float2((VertexID << 1) & 2, VertexID & 2);
-    output.UV = uv;
-    output.Pos = float4(uv * float2(2, -2) + float2(-1, 1), 0, 1);
-}
-)";
+    // ========== 2. 加载 BRDF LUT Shader ==========
+    // 从文件加载shader而不是内嵌
+    std::string brdfVS = DiligentRendererUtils::LoadShaderSource("BRDFIntegration.vs.hlsl");
+    std::string brdfPS = DiligentRendererUtils::LoadShaderSource("BRDFIntegration.ps.hlsl");
     
-    // Pixel Shader：BRDF 积分计算（参考 Epic Games 的实现）
-    const char* brdfPS = R"(
-#define PI 3.14159265359
-#define NUM_SAMPLES 512u
-
-// Hammersley 2D 序列（低差异序列）
-float2 Hammersley2D(uint i, uint N) {
-    // Van der Corput sequence
-    uint bits = i;
-    bits = (bits << 16u) | (bits >> 16u);
-    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    float radicalInverse = float(bits) * 2.3283064365386963e-10; // / 0x100000000
-    return float2(float(i) / float(N), radicalInverse);
-}
-
-// GGX 重要性采样
-float3 ImportanceSampleGGX(float2 Xi, float roughness, float3 N) {
-    float a = roughness * roughness;
-    float phi = 2.0 * PI * Xi.x;
-    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a * a - 1.0) * Xi.y));
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
-    
-    // 球面坐标转笛卡尔坐标
-    float3 H;
-    H.x = sinTheta * cos(phi);
-    H.y = sinTheta * sin(phi);
-    H.z = cosTheta;
-    
-    // 切线空间 -> 世界空间
-    float3 up = abs(N.z) < 0.999 ? float3(0, 0, 1) : float3(1, 0, 0);
-    float3 tangentX = normalize(cross(up, N));
-    float3 tangentY = cross(N, tangentX);
-    
-    return tangentX * H.x + tangentY * H.y + N * H.z;
-}
-
-// Smith GGX Visibility（几何遮挡项）
-float GeometrySmith_GGX(float NdotV, float NdotL, float roughness) {
-    float a = roughness * roughness;
-    float a2 = a * a;
-    
-    float ggxV = NdotL * sqrt(NdotV * NdotV * (1.0 - a2) + a2);
-    float ggxL = NdotV * sqrt(NdotL * NdotL * (1.0 - a2) + a2);
-    
-    return 0.5 / max(ggxV + ggxL, 0.001);
-}
-
-// BRDF 积分（Split-Sum Approximation 的第二部分）
-float2 IntegrateBRDF(float roughness, float NdotV) {
-    float3 V;
-    V.x = sqrt(1.0 - NdotV * NdotV); // sin
-    V.y = 0.0;
-    V.z = NdotV; // cos
-    
-    float3 N = float3(0, 0, 1);
-    
-    float A = 0.0;
-    float B = 0.0;
-    
-    for (uint i = 0u; i < NUM_SAMPLES; ++i) {
-        float2 Xi = Hammersley2D(i, NUM_SAMPLES);
-        float3 H = ImportanceSampleGGX(Xi, roughness, N);
-        float3 L = 2.0 * dot(V, H) * H - V;
-        
-        float NdotL = saturate(L.z);
-        float NdotH = saturate(H.z);
-        float VdotH = saturate(dot(V, H));
-        
-        if (NdotL > 0.0) {
-            float G = GeometrySmith_GGX(NdotV, NdotL, roughness);
-            float G_Vis = G * VdotH / (NdotH * NdotV);
-            float Fc = pow(1.0 - VdotH, 5.0);
-            
-            A += (1.0 - Fc) * G_Vis;
-            B += Fc * G_Vis;
-        }
+    if (brdfVS.empty() || brdfPS.empty()) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to load BRDF Integration shaders");
+        return;
     }
-    
-    return float2(A, B) / float(NUM_SAMPLES);
-}
-
-struct PSInput {
-    float4 Pos : SV_POSITION;
-    float2 UV  : TEXCOORD0;
-};
-
-float2 main(PSInput input) : SV_Target {
-    float NdotV = input.UV.x;
-    float roughness = input.UV.y;
-    return IntegrateBRDF(roughness, NdotV);
-}
-)";
     
     ShaderCreateInfo vsInfo;
     vsInfo.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
     vsInfo.Desc.ShaderType = SHADER_TYPE_VERTEX;
     vsInfo.Desc.Name = "BRDF LUT VS";
-    vsInfo.Source = brdfVS;
+    vsInfo.Source = brdfVS.c_str();
     vsInfo.EntryPoint = "main";
     
     RefCntAutoPtr<IShader> pBRDF_VS;
@@ -526,7 +424,7 @@ float2 main(PSInput input) : SV_Target {
     psInfo.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
     psInfo.Desc.ShaderType = SHADER_TYPE_PIXEL;
     psInfo.Desc.Name = "BRDF LUT PS";
-    psInfo.Source = brdfPS;
+    psInfo.Source = brdfPS.c_str();
     psInfo.EntryPoint = "main";
     
     RefCntAutoPtr<IShader> pBRDF_PS;
