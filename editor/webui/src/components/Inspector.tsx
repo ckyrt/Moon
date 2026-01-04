@@ -21,9 +21,13 @@ import {
   SetSkyboxRotationCommand,
   SetSkyboxTintCommand,
   SetSkyboxIBLCommand,
-  SetSkyboxEnvironmentMapCommand
+  SetSkyboxEnvironmentMapCommand,
+  SetMaterialMetallicCommand,
+  SetMaterialRoughnessCommand,
+  SetMaterialBaseColorCommand,
+  SetMaterialTextureCommand
 } from '@/undo';
-import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent } from '@/types/engine';
+import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent, MaterialComponent } from '@/types/engine';
 import styles from './Inspector.module.css';
 
 export const Inspector: React.FC = () => {
@@ -240,6 +244,9 @@ const ComponentView: React.FC<{ component: Component }> = ({ component }) => {
       
       case 'Skybox':
         return <SkyboxEditor component={component as SkyboxComponent} />;
+      
+      case 'Material':
+        return <MaterialEditor component={component as MaterialComponent} />;
       
       default:
         return null;
@@ -733,6 +740,284 @@ const SkyboxEditor: React.FC<SkyboxEditorProps> = ({ component }) => {
             cursor: 'pointer'
           }}
         />
+      </div>
+    </div>
+  );
+};
+// ========== Material 编辑组件 ==========
+
+interface MaterialEditorProps {
+  component: MaterialComponent;
+}
+
+const MaterialEditor: React.FC<MaterialEditorProps> = ({ component }) => {
+  const selectedNode = useEditorStore((state) => 
+    state.selectedNodeId ? state.scene.allNodes[state.selectedNodeId] : null
+  );
+  const undoManager = getUndoManager();
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  if (!selectedNode) return null;
+
+  const handleMetallicChange = (value: number) => {
+    if (isNaN(value)) return;
+    const command = new SetMaterialMetallicCommand(selectedNode.id, component.metallic, value);
+    undoManager.execute(command);
+  };
+
+  const handleRoughnessChange = (value: number) => {
+    if (isNaN(value)) return;
+    const command = new SetMaterialRoughnessCommand(selectedNode.id, component.roughness, value);
+    undoManager.execute(command);
+  };
+
+  const handleBaseColorChange = (r: number, g: number, b: number) => {
+    const oldColor = { x: component.baseColor[0], y: component.baseColor[1], z: component.baseColor[2] };
+    const newColor = { x: r, y: g, z: b };
+    const command = new SetMaterialBaseColorCommand(selectedNode.id, oldColor, newColor);
+    undoManager.execute(command);
+  };
+
+  const handleTextureChange = (textureType: 'albedo' | 'normal' | 'arm', path: string) => {
+    const oldPath = textureType === 'albedo' ? component.albedoMap :
+                    textureType === 'normal' ? component.normalMap : component.armMap;
+    const command = new SetMaterialTextureCommand(selectedNode.id, textureType, oldPath || '', path);
+    undoManager.execute(command);
+  };
+
+  // RGB to Hex
+  const rgbToHex = (r: number, g: number, b: number): string => {
+    const toHex = (v: number) => {
+      const hex = Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16);
+      return hex.padStart(2, '0');
+    };
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  };
+
+  // Hex to RGB
+  const hexToRgb = (hex: string): [number, number, number] => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (result) {
+      return [
+        parseInt(result[1], 16) / 255,
+        parseInt(result[2], 16) / 255,
+        parseInt(result[3], 16) / 255,
+      ];
+    }
+    return [1, 1, 1];
+  };
+
+  const handleColorClick = (r: number, g: number, b: number) => {
+    handleBaseColorChange(r, g, b);
+    setShowColorPicker(false);
+  };
+
+  // 常用颜色预设
+  const colorPresets: [number, number, number][] = [
+    [1, 1, 1],      // White
+    [0.8, 0.8, 0.8], // Light Gray
+    [0.5, 0.5, 0.5], // Gray
+    [0.2, 0.2, 0.2], // Dark Gray
+    [1, 0, 0],      // Red
+    [0, 1, 0],      // Green
+    [0, 0, 1],      // Blue
+    [1, 1, 0],      // Yellow
+    [1, 0, 1],      // Magenta
+    [0, 1, 1],      // Cyan
+    [1, 0.5, 0],    // Orange
+    [0.5, 0, 0.5],  // Purple
+  ];
+
+  return (
+    <div className={styles.componentDetails}>
+      {/* Metallic */}
+      <div className={styles.propertyRow}>
+        <label style={{ minWidth: '70px' }}>Metallic:</label>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={component.metallic}
+          onChange={(e) => handleMetallicChange(parseFloat(e.target.value))}
+          style={{ flex: 1, marginRight: '8px' }}
+        />
+        <input
+          type="number"
+          value={component.metallic.toFixed(2)}
+          onChange={(e) => handleMetallicChange(parseFloat(e.target.value))}
+          step={0.01}
+          min={0}
+          max={1}
+          style={{ 
+            width: '60px',
+            padding: '4px 8px', 
+            borderRadius: '4px', 
+            border: '1px solid var(--border-color)', 
+            background: 'var(--bg-tertiary)'
+          }}
+        />
+      </div>
+
+      {/* Roughness */}
+      <div className={styles.propertyRow}>
+        <label style={{ minWidth: '70px' }}>Roughness:</label>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={component.roughness}
+          onChange={(e) => handleRoughnessChange(parseFloat(e.target.value))}
+          style={{ flex: 1, marginRight: '8px' }}
+        />
+        <input
+          type="number"
+          value={component.roughness.toFixed(2)}
+          onChange={(e) => handleRoughnessChange(parseFloat(e.target.value))}
+          step={0.01}
+          min={0}
+          max={1}
+          style={{ 
+            width: '60px',
+            padding: '4px 8px', 
+            borderRadius: '4px', 
+            border: '1px solid var(--border-color)', 
+            background: 'var(--bg-tertiary)'
+          }}
+        />
+      </div>
+
+      {/* Base Color */}
+      <div className={styles.propertyRow} style={{ position: 'relative' }}>
+        <label style={{ minWidth: '70px' }}>Base Color:</label>
+        <div
+          onClick={() => setShowColorPicker(!showColorPicker)}
+          style={{
+            width: '40px',
+            height: '24px',
+            background: rgbToHex(component.baseColor[0], component.baseColor[1], component.baseColor[2]),
+            borderRadius: '4px',
+            cursor: 'pointer',
+            border: '1px solid var(--border-color)'
+          }}
+        />
+        <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+          RGB({component.baseColor[0].toFixed(2)}, {component.baseColor[1].toFixed(2)}, {component.baseColor[2].toFixed(2)})
+        </span>
+        
+        {/* Color Picker Dropdown */}
+        {showColorPicker && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: '70px',
+            zIndex: 1000,
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '4px',
+            padding: '8px',
+            marginTop: '4px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(4, 1fr)', 
+              gap: '6px',
+              marginBottom: '8px'
+            }}>
+              {colorPresets.map((rgb, i) => (
+                <div
+                  key={i}
+                  onClick={() => handleColorClick(rgb[0], rgb[1], rgb[2])}
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    background: rgbToHex(rgb[0], rgb[1], rgb[2]),
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-color)'
+                  }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => setShowColorPicker(false)}
+              style={{
+                width: '100%',
+                padding: '4px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '11px'
+              }}
+            >
+              Close
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Albedo Map (Diffuse) */}
+      <div className={styles.propertyRow}>
+        <label style={{ minWidth: '70px' }}>Albedo Map:</label>
+        <input
+          type="text"
+          value={component.albedoMap || ''}
+          onChange={(e) => handleTextureChange('albedo', e.target.value)}
+          placeholder="assets/textures/materials/xxx/xxx_diff_1k.jpg"
+          style={{ 
+            flex: 1,
+            padding: '4px 8px', 
+            borderRadius: '4px', 
+            border: '1px solid var(--border-color)', 
+            background: 'var(--bg-tertiary)',
+            fontSize: '11px'
+          }}
+        />
+      </div>
+
+      {/* Normal Map */}
+      <div className={styles.propertyRow}>
+        <label style={{ minWidth: '70px' }}>Normal Map:</label>
+        <input
+          type="text"
+          value={component.normalMap || ''}
+          onChange={(e) => handleTextureChange('normal', e.target.value)}
+          placeholder="assets/textures/materials/xxx/xxx_nor_dx_1k.jpg"
+          style={{ 
+            flex: 1,
+            padding: '4px 8px', 
+            borderRadius: '4px', 
+            border: '1px solid var(--border-color)', 
+            background: 'var(--bg-tertiary)',
+            fontSize: '11px'
+          }}
+        />
+      </div>
+
+      {/* ARM Map (AO + Roughness + Metallic) */}
+      <div className={styles.propertyRow}>
+        <label style={{ minWidth: '70px' }}>ARM Map:</label>
+        <input
+          type="text"
+          value={component.armMap || ''}
+          onChange={(e) => handleTextureChange('arm', e.target.value)}
+          placeholder="assets/textures/materials/xxx/xxx_arm_1k.jpg"
+          style={{ 
+            flex: 1,
+            padding: '4px 8px', 
+            borderRadius: '4px', 
+            border: '1px solid var(--border-color)', 
+            background: 'var(--bg-tertiary)',
+            fontSize: '11px'
+          }}
+        />
+      </div>
+      
+      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+        ARM: R=AO, G=Roughness, B=Metallic
       </div>
     </div>
   );

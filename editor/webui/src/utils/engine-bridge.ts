@@ -571,6 +571,116 @@ const createRealAPI = (): MoonEngineAPI => {
       });
     }),
 
+    // ========== Material Component ==========
+    setMaterialMetallic: wrapAsyncEngineCall('setMaterialMetallic', async (nodeId: number, metallic: number) => {
+      if (!window.cefQuery) {
+        console.warn('[setMaterialMetallic] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setMaterialMetallic',
+          nodeId,
+          metallic
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setMaterialMetallic] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setMaterialMetallic] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setMaterialRoughness: wrapAsyncEngineCall('setMaterialRoughness', async (nodeId: number, roughness: number) => {
+      if (!window.cefQuery) {
+        console.warn('[setMaterialRoughness] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setMaterialRoughness',
+          nodeId,
+          roughness
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setMaterialRoughness] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setMaterialRoughness] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setMaterialBaseColor: wrapAsyncEngineCall('setMaterialBaseColor', async (nodeId: number, baseColor: Vector3) => {
+      if (!window.cefQuery) {
+        console.warn('[setMaterialBaseColor] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setMaterialBaseColor',
+          nodeId,
+          baseColor: { x: baseColor.x, y: baseColor.y, z: baseColor.z }
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setMaterialBaseColor] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setMaterialBaseColor] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setMaterialTexture: wrapAsyncEngineCall('setMaterialTexture', async (nodeId: number, textureType: string, path: string) => {
+      if (!window.cefQuery) {
+        console.warn('[setMaterialTexture] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setMaterialTexture',
+          nodeId,
+          textureType,
+          path
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setMaterialTexture] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setMaterialTexture] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
     // ========================================================================
     // 🎯 Undo/Redo 专用 API（内部使用）
     // ========================================================================

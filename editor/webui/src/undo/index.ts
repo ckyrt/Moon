@@ -40,5 +40,12 @@ export {
   SetSkyboxEnvironmentMapCommand,
 } from './SkyboxCommands';
 
+export {
+  SetMaterialMetallicCommand,
+  SetMaterialRoughnessCommand,
+  SetMaterialBaseColorCommand,
+  SetMaterialTextureCommand,
+} from './MaterialCommands';
+
 export { useUndoShortcuts } from './useUndoShortcuts';
 export { onGizmoStart, onGizmoEnd } from './gizmoUndo';

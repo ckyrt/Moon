@@ -373,6 +373,106 @@ namespace CommandHandlers {
     }
 
     // ========================================================================
+    // Material 组件命令处理器
+    // ========================================================================
+
+    // 设置 Material 金属度
+    std::string HandleSetMaterialMetallic(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        float metallic = req["metallic"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Material* material = node->GetComponent<Moon::Material>();
+        if (!material) {
+            return CreateErrorResponse("Node does not have Material component");
+        }
+
+        material->SetMetallic(metallic);
+        MOON_LOG_INFO("MoonEngineMessage", "Set material metallic of node %u to %.2f", nodeId, metallic);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Material 粗糙度
+    std::string HandleSetMaterialRoughness(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        float roughness = req["roughness"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Material* material = node->GetComponent<Moon::Material>();
+        if (!material) {
+            return CreateErrorResponse("Node does not have Material component");
+        }
+
+        material->SetRoughness(roughness);
+        MOON_LOG_INFO("MoonEngineMessage", "Set material roughness of node %u to %.2f", nodeId, roughness);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Material 基础颜色
+    std::string HandleSetMaterialBaseColor(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        Moon::Vector3 baseColor = ParseVector3(req["baseColor"]);
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Material* material = node->GetComponent<Moon::Material>();
+        if (!material) {
+            return CreateErrorResponse("Node does not have Material component");
+        }
+
+        material->SetBaseColor(baseColor);
+        MOON_LOG_INFO("MoonEngineMessage", "Set material base color of node %u to (%.2f, %.2f, %.2f)",
+                     nodeId, baseColor.x, baseColor.y, baseColor.z);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Material 贴图
+    std::string HandleSetMaterialTexture(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        std::string textureType = req["textureType"];  // "albedo", "normal", "arm"
+        std::string path = req["path"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Material* material = node->GetComponent<Moon::Material>();
+        if (!material) {
+            return CreateErrorResponse("Node does not have Material component");
+        }
+
+        if (textureType == "albedo") {
+            material->SetAlbedoMap(path);
+        } else if (textureType == "normal") {
+            material->SetNormalMap(path);
+        } else if (textureType == "arm") {
+            material->SetARMMap(path);
+        } else {
+            return CreateErrorResponse("Unknown texture type: " + textureType);
+        }
+
+        MOON_LOG_INFO("MoonEngineMessage", "Set material %s texture of node %u to %s",
+                     textureType.c_str(), nodeId, path.c_str());
+        
+        return CreateSuccessResponse();
+    }
+
+    // ========================================================================
 
     // 🎯 设置 Gizmo 坐标系模式（world/local）
     std::string HandleSetGizmoCoordinateMode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
@@ -876,6 +976,10 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"setSkyboxTint",            CommandHandlers::HandleSetSkyboxTint},  // 🎯 Skybox: 设置色调
     {"setSkyboxIBL",             CommandHandlers::HandleSetSkyboxIBL},  // 🎯 Skybox: 设置IBL
     {"setSkyboxEnvironmentMap",  CommandHandlers::HandleSetSkyboxEnvironmentMap},  // 🎯 Skybox: 设置环境贴图
+    {"setMaterialMetallic",      CommandHandlers::HandleSetMaterialMetallic},  // 🎯 Material: 设置金属度
+    {"setMaterialRoughness",     CommandHandlers::HandleSetMaterialRoughness},  // 🎯 Material: 设置粗糙度
+    {"setMaterialBaseColor",     CommandHandlers::HandleSetMaterialBaseColor},  // 🎯 Material: 设置基础颜色
+    {"setMaterialTexture",       CommandHandlers::HandleSetMaterialTexture},  // 🎯 Material: 设置贴图
     {"createNode",               CommandHandlers::HandleCreateNode},
     {"deleteNode",               CommandHandlers::HandleDeleteNode},  // 🎯 删除节点
     {"setNodeParent",            CommandHandlers::HandleSetNodeParent},  // 🎯 设置父节点

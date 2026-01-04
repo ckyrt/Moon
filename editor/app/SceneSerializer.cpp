@@ -3,6 +3,7 @@
 #include "../../engine/core/Scene/SceneNode.h"
 #include "../../engine/core/Scene/Transform.h"
 #include "../../engine/core/Scene/MeshRenderer.h"
+#include "../../engine/core/Scene/Material.h"
 #include "../../engine/core/Scene/Light.h"
 #include "../../engine/core/Scene/Skybox.h"
 #include "../../engine/physics/RigidBody.h"
@@ -515,6 +516,26 @@ void SceneSerializer::SerializeComponents(SceneNode* node, void* jsonArray) {
         components.push_back(comp);
     }
 
+    // Material
+    if (auto* material = node->GetComponent<Material>()) {
+        json comp;
+        comp["type"] = "Material";
+        comp["enabled"] = material->IsEnabled();
+        
+        // PBR properties
+        comp["metallic"] = material->GetMetallic();
+        comp["roughness"] = material->GetRoughness();
+        const Vector3& baseColor = material->GetBaseColor();
+        comp["baseColor"] = json::array({ baseColor.x, baseColor.y, baseColor.z });
+        
+        // Texture maps
+        comp["albedoMap"] = material->GetAlbedoMap();
+        comp["normalMap"] = material->GetNormalMap();
+        comp["armMap"] = material->GetARMMap();
+        
+        components.push_back(comp);
+    }
+
     // TODO: 添加其他组件类型
 }
 
@@ -574,6 +595,26 @@ void SceneSerializer::SerializeComponentsFull(SceneNode* node, void* jsonArray) 
         const Vector3& size = rigidBody->GetSize();
         comp["size"] = json::array({ size.x, size.y, size.z });
 
+        components.push_back(comp);
+    }
+
+    // Material（完整数据）
+    if (auto* material = node->GetComponent<Material>()) {
+        json comp;
+        comp["type"] = "Material";
+        comp["enabled"] = material->IsEnabled();
+        
+        // PBR properties
+        comp["metallic"] = material->GetMetallic();
+        comp["roughness"] = material->GetRoughness();
+        const Vector3& baseColor = material->GetBaseColor();
+        comp["baseColor"] = json::array({ baseColor.x, baseColor.y, baseColor.z });
+        
+        // Texture maps
+        comp["albedoMap"] = material->GetAlbedoMap();
+        comp["normalMap"] = material->GetNormalMap();
+        comp["armMap"] = material->GetARMMap();
+        
         components.push_back(comp);
     }
 
@@ -844,6 +885,58 @@ void SceneSerializer::DeserializeComponents(SceneNode* node, EngineCore* engine,
             }
 
             MOON_LOG_INFO("SceneSerializer", "Restored Skybox component");
+        }
+        else if (type == "Material") {
+            Material* material = node->AddComponent<Material>();
+
+            if (compData.contains("enabled")) {
+                material->SetEnabled(compData["enabled"]);
+            }
+
+            // Metallic
+            if (compData.contains("metallic")) {
+                material->SetMetallic(compData["metallic"]);
+            }
+
+            // Roughness
+            if (compData.contains("roughness")) {
+                material->SetRoughness(compData["roughness"]);
+            }
+
+            // Base Color
+            if (compData.contains("baseColor") && compData["baseColor"].is_array()) {
+                auto colorArray = compData["baseColor"];
+                if (colorArray.size() >= 3) {
+                    Vector3 baseColor(colorArray[0], colorArray[1], colorArray[2]);
+                    material->SetBaseColor(baseColor);
+                }
+            }
+
+            // Albedo Map (Diffuse)
+            if (compData.contains("albedoMap")) {
+                std::string path = compData["albedoMap"];
+                if (!path.empty()) {
+                    material->SetAlbedoMap(path);
+                }
+            }
+
+            // Normal Map
+            if (compData.contains("normalMap")) {
+                std::string path = compData["normalMap"];
+                if (!path.empty()) {
+                    material->SetNormalMap(path);
+                }
+            }
+
+            // ARM Map
+            if (compData.contains("armMap")) {
+                std::string path = compData["armMap"];
+                if (!path.empty()) {
+                    material->SetARMMap(path);
+                }
+            }
+
+            MOON_LOG_INFO("SceneSerializer", "Restored Material component");
         }
         
         // TODO: 添加其他组件类型的反序列化

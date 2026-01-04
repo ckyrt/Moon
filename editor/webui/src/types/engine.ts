@@ -81,6 +81,16 @@ export interface SkyboxComponent extends Component {
   enableIBL: boolean; // Image-based lighting
 }
 
+export interface MaterialComponent extends Component {
+  type: 'Material';
+  metallic: number; // [0-1]
+  roughness: number; // [0-1]
+  baseColor: [number, number, number]; // RGB [0-1]
+  albedoMap: string; // Diffuse texture path (_diff)
+  normalMap: string; // Normal texture path (_norm)
+  armMap: string; // ARM texture path (_arm: R=AO, G=Roughness, B=Metallic)
+}
+
 export interface Scene {
   name: string;
   rootNodes: number[]; // Root node IDs
@@ -137,6 +147,16 @@ export interface MoonEngineAPI {
   
   // Primitive Creation
   createPrimitive(type: string): Promise<void>;
+
+  // ========================================================================
+  // 🎯 Component Properties API
+  // ========================================================================
+  
+  // Material Component
+  setMaterialMetallic(nodeId: number, metallic: number): Promise<void>;
+  setMaterialRoughness(nodeId: number, roughness: number): Promise<void>;
+  setMaterialBaseColor(nodeId: number, baseColor: Vector3): Promise<void>;
+  setMaterialTexture(nodeId: number, textureType: string, path: string): Promise<void>;
 
   // ========================================================================
   // 🎯 Undo/Redo 专用 API（内部使用）
