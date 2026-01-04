@@ -172,13 +172,7 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
         // 渲染开始
         g_Renderer->BeginFrame();
 
-        // 1. 先渲染 UI 层（fullscreen，作为背景）
-        if (g_UIRenderer && g_UITextureManager) {
-            auto* pRTV = g_Renderer->GetSwapChain()->GetCurrentBackBufferRTV();
-            g_UIRenderer->RenderUI(g_UITextureManager, pRTV);
-        }
-
-        // 2. 设置viewport，只在viewport区域渲染3D内容
+        // 1. 设置viewport，只在viewport区域渲染3D内容
         if (g_ViewportRect.width > 0 && g_ViewportRect.height > 0) {
             auto* ctx = g_Renderer->GetContext();
             
@@ -203,7 +197,7 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
             // 渲染3D场景
             RenderScene(engine, g_Renderer);
             
-            // 重置 scissor rect 为全屏，让 ImGui/ImGuizmo 不被裁剪
+            // 重置 scissor rect 为全屏，让后续渲染不被裁剪
             Diligent::Rect fullScreenScissor;
             fullScreenScissor.left = 0;
             fullScreenScissor.top = 0;
@@ -237,6 +231,38 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
 
                 g_ImGuiWin32->Render(g_Renderer->GetContext());
             }
+        }
+        
+        // 2. 最后渲染 UI 层（fullscreen，带alpha混合，覆盖在3D场景上）
+        if (g_UIRenderer && g_UITextureManager) {
+            auto* ctx = g_Renderer->GetContext();
+            
+            // 获取CEF窗口的真实大小（全屏渲染UI）
+            RECT cefRect;
+            GetClientRect(g_CefWindow, &cefRect);
+            int cefWindowWidth = cefRect.right - cefRect.left;
+            int cefWindowHeight = cefRect.bottom - cefRect.top;
+            
+            // 恢复viewport到全屏
+            Diligent::Viewport fullVp;
+            fullVp.TopLeftX = 0.0f;
+            fullVp.TopLeftY = 0.0f;
+            fullVp.Width = static_cast<float>(cefWindowWidth);
+            fullVp.Height = static_cast<float>(cefWindowHeight);
+            fullVp.MinDepth = 0.0f;
+            fullVp.MaxDepth = 1.0f;
+            ctx->SetViewports(1, &fullVp, 0, 0);
+            
+            // 恢复scissor rect到全屏
+            Diligent::Rect fullScissor;
+            fullScissor.left = 0;
+            fullScissor.top = 0;
+            fullScissor.right = cefWindowWidth;
+            fullScissor.bottom = cefWindowHeight;
+            ctx->SetScissorRects(1, &fullScissor, 0, 0);
+            
+            auto* pRTV = g_Renderer->GetSwapChain()->GetCurrentBackBufferRTV();
+            g_UIRenderer->RenderUI(g_UITextureManager, pRTV);
         }
 
         g_Renderer->EndFrame();

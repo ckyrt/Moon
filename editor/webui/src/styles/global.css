@@ -60,7 +60,7 @@ html, body, #root {
   font-family: var(--font-family);
   font-size: var(--font-size-md);
   color: var(--text-primary);
-  background: var(--bg-primary);
+  background: transparent;  /* 透明，让各个panel独立控制背景 */
 }
 
 button {
