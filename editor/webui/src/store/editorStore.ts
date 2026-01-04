@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { EditorState, SceneNode, Scene, Vector3, Transform } from '@/types/engine';
+import type { EditorState, SceneNode, Scene, Vector3, Transform, Component } from '@/types/engine';
 import { logger } from '@/utils/logger';
 
 interface EditorStore extends EditorState {
@@ -14,6 +14,7 @@ interface EditorStore extends EditorState {
   setGizmoMode: (mode: 'translate' | 'rotate' | 'scale') => void;
   updateScene: (scene: Scene) => void;
   updateNodeTransform: (nodeId: number, transform: Partial<Transform>) => void;
+  updateNodeComponent: (nodeId: number, componentType: string, updates: Partial<Component>) => void;
 }
 
 // 创建初始场景
@@ -79,6 +80,34 @@ export const useEditorStore = create<EditorStore>((set) => ({
                 ...node.transform,
                 ...transform,
               },
+            },
+          },
+        },
+      };
+    }),
+
+  updateNodeComponent: (nodeId, componentType, updates) =>
+    set((state) => {
+      const node = state.scene.allNodes[nodeId];
+      if (!node) return state;
+
+      const componentIndex = node.components.findIndex(c => c.type === componentType);
+      if (componentIndex === -1) return state;
+
+      const updatedComponents = [...node.components];
+      updatedComponents[componentIndex] = {
+        ...updatedComponents[componentIndex],
+        ...updates,
+      };
+
+      return {
+        scene: {
+          ...state.scene,
+          allNodes: {
+            ...state.scene.allNodes,
+            [nodeId]: {
+              ...node,
+              components: updatedComponents,
             },
           },
         },

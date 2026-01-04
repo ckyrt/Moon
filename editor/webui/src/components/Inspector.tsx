@@ -3,7 +3,7 @@
  * 显示选中节点的属性并支持编辑
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { eulerToQuaternion } from '@/utils/math';
 import { getUndoManager } from '@/undo';
@@ -12,9 +12,13 @@ import {
   SetRotationCommand, 
   SetScaleCommand,
   RenameNodeCommand,
-  SetNodeActiveCommand 
+  SetNodeActiveCommand,
+  SetLightColorCommand,
+  SetLightIntensityCommand,
+  SetLightRangeCommand,
+  SetLightTypeCommand
 } from '@/undo';
-import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent } from '@/types/engine';
+import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent } from '@/types/engine';
 import styles from './Inspector.module.css';
 
 export const Inspector: React.FC = () => {
@@ -226,6 +230,9 @@ const ComponentView: React.FC<{ component: Component }> = ({ component }) => {
           </div>
         );
       
+      case 'Light':
+        return <LightEditor component={component as LightComponent} />;
+      
       default:
         return null;
     }
@@ -274,4 +281,247 @@ const Vector3Input: React.FC<Vector3InputProps> = ({ label, value, onChange, ste
     </div>
   );
 };
+
+// ========== Light 编辑组件 ==========
+
+interface LightEditorProps {
+  component: LightComponent;
+}
+
+const LightEditor: React.FC<LightEditorProps> = ({ component }) => {
+  const selectedNode = useEditorStore((state) => 
+    state.selectedNodeId ? state.scene.allNodes[state.selectedNodeId] : null
+  );
+  const undoManager = getUndoManager();
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  if (!selectedNode) return null;
+
+  const handleLightTypeChange = (newType: 'Directional' | 'Point' | 'Spot') => {
+    console.log('[LightEditor] Type change:', component.lightType, '->', newType);
+    const command = new SetLightTypeCommand(selectedNode.id, component.lightType, newType);
+    undoManager.execute(command);
+    setShowTypeDropdown(false);
+  };
+
+  // RGB to Hex
+  const rgbToHex = (r: number, g: number, b: number): string => {
+    const toHex = (v: number) => {
+      const hex = Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16);
+      return hex.padStart(2, '0');
+    };
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  };
+
+  // Hex to RGB
+  const hexToRgb = (hex: string): { x: number; y: number; z: number } => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (result) {
+      return {
+        x: parseInt(result[1], 16) / 255,
+        y: parseInt(result[2], 16) / 255,
+        z: parseInt(result[3], 16) / 255,
+      };
+    }
+    return { x: 1, y: 1, z: 1 };
+  };
+
+  const handleColorClick = (r: number, g: number, b: number) => {
+    const oldColor = { x: component.color[0], y: component.color[1], z: component.color[2] };
+    const newColor = { x: r, y: g, z: b };
+    const command = new SetLightColorCommand(selectedNode.id, oldColor, newColor);
+    undoManager.execute(command);
+  };
+
+  const handleIntensityChange = (value: number) => {
+    if (isNaN(value)) return;
+    const command = new SetLightIntensityCommand(selectedNode.id, component.intensity, value);
+    undoManager.execute(command);
+  };
+
+  const handleRangeChange = (value: number) => {
+    if (isNaN(value)) return;
+    const command = new SetLightRangeCommand(selectedNode.id, component.range || 10, value);
+    undoManager.execute(command);
+  };
+
+  return (
+    <div className={styles.componentDetails} style={{ position: 'relative', zIndex: 100 }}>
+      {/* Light Type - Custom Dropdown */}
+      <div className={styles.propertyRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
+        <label>Type:</label>
+        <div style={{ position: 'relative' }}>
+          <div
+            onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+            style={{
+              padding: '6px 24px 6px 8px',
+              borderRadius: '4px',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-tertiary)',
+              cursor: 'pointer',
+              position: 'relative',
+              userSelect: 'none'
+            }}
+          >
+            {component.lightType}
+            <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}>▼</span>
+          </div>
+          {showTypeDropdown && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '4px',
+              marginTop: '2px',
+              zIndex: 1000,
+              boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+            }}>
+              {(['Directional', 'Point', 'Spot'] as const).map((type) => (
+                <div
+                  key={type}
+                  onClick={() => handleLightTypeChange(type)}
+                  style={{
+                    padding: '6px 8px',
+                    cursor: 'pointer',
+                    background: component.lightType === type ? 'var(--accent-blue)' : 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (component.lightType !== type) {
+                      e.currentTarget.style.background = 'var(--bg-tertiary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (component.lightType !== type) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
+                >
+                  {type}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Color - Custom Color Picker */}
+      <div className={styles.propertyRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
+        <label>Color:</label>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div
+            onClick={() => setShowColorPicker(!showColorPicker)}
+            style={{
+              width: '60px',
+              height: '32px',
+              borderRadius: '4px',
+              border: '1px solid var(--border-color)',
+              cursor: 'pointer',
+              background: rgbToHex(component.color[0], component.color[1], component.color[2]),
+              flexShrink: 0,
+              position: 'relative'
+            }}
+          />
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+            ({(component.color[0] * 255).toFixed(0)}, {(component.color[1] * 255).toFixed(0)}, {(component.color[2] * 255).toFixed(0)})
+          </span>
+        </div>
+        {showColorPicker && (
+          <div style={{
+            padding: '8px',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '4px',
+            marginTop: '4px'
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px', marginBottom: '8px' }}>
+              {[
+                [1, 1, 1], [0.9, 0.9, 0.9], [0.7, 0.7, 0.7], [0.5, 0.5, 0.5],
+                [1, 0, 0], [1, 0.5, 0], [1, 1, 0], [0.5, 1, 0],
+                [0, 1, 0], [0, 1, 0.5], [0, 1, 1], [0, 0.5, 1],
+                [0, 0, 1], [0.5, 0, 1], [1, 0, 1], [1, 0, 0.5]
+              ].map((rgb, i) => (
+                <div
+                  key={i}
+                  onClick={() => {
+                    handleColorClick(rgb[0], rgb[1], rgb[2]);
+                    setShowColorPicker(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    paddingBottom: '100%',
+                    background: rgbToHex(rgb[0], rgb[1], rgb[2]),
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-color)'
+                  }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => setShowColorPicker(false)}
+              style={{
+                width: '100%',
+                padding: '4px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '11px'
+              }}
+            >
+              Close
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Intensity */}
+      <div className={styles.propertyRow}>
+        <label style={{ minWidth: '70px' }}>Intensity:</label>
+        <input
+          type="number"
+          value={component.intensity}
+          onChange={(e) => handleIntensityChange(parseFloat(e.target.value))}
+          onBlur={(e) => handleIntensityChange(parseFloat(e.target.value))}
+          step={0.1}
+          min={0}
+          style={{ 
+            flex: 1,
+            padding: '4px 8px', 
+            borderRadius: '4px', 
+            border: '1px solid var(--border-color)', 
+            background: 'var(--bg-tertiary)'
+          }}
+        />
+      </div>
+
+      {/* Range (for Point and Spot lights) */}
+      {component.lightType !== 'Directional' && (
+        <div className={styles.propertyRow}>
+          <label style={{ minWidth: '70px' }}>Range:</label>
+          <input
+            type="number"
+            value={component.range || 10}
+            onChange={(e) => handleRangeChange(parseFloat(e.target.value))}
+            onBlur={(e) => handleRangeChange(parseFloat(e.target.value))}
+            step={0.5}
+            min={0.1}
+            style={{ 
+              flex: 1,
+              padding: '4px 8px', 
+              borderRadius: '4px', 
+              border: '1px solid var(--border-color)', 
+              background: 'var(--bg-tertiary)'
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
 

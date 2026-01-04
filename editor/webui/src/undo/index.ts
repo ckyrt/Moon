@@ -25,5 +25,12 @@ export {
 
 export { CreatePrimitiveCommand } from './PrimitiveCommands';
 
+export {
+  SetLightColorCommand,
+  SetLightIntensityCommand,
+  SetLightTypeCommand,
+  SetLightRangeCommand,
+} from './LightCommands';
+
 export { useUndoShortcuts } from './useUndoShortcuts';
 export { onGizmoStart, onGizmoEnd } from './gizmoUndo';

@@ -323,6 +323,115 @@ const createRealAPI = (): MoonEngineAPI => {
       });
     }),
 
+    // ========== Light Properties ==========
+    setLightColor: wrapAsyncEngineCall('setLightColor', async (nodeId: number, color: Vector3) => {
+      if (!window.cefQuery) {
+        console.warn('[setLightColor] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setLightColor',
+          nodeId,
+          color: { x: color.x, y: color.y, z: color.z }
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setLightColor] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setLightColor] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setLightIntensity: wrapAsyncEngineCall('setLightIntensity', async (nodeId: number, intensity: number) => {
+      if (!window.cefQuery) {
+        console.warn('[setLightIntensity] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setLightIntensity',
+          nodeId,
+          intensity
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setLightIntensity] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setLightIntensity] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setLightRange: wrapAsyncEngineCall('setLightRange', async (nodeId: number, range: number) => {
+      if (!window.cefQuery) {
+        console.warn('[setLightRange] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setLightRange',
+          nodeId,
+          range
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setLightRange] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setLightRange] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setLightType: wrapAsyncEngineCall('setLightType', async (nodeId: number, lightType: 'Directional' | 'Point' | 'Spot') => {
+      if (!window.cefQuery) {
+        console.warn('[setLightType] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setLightType',
+          nodeId,
+          lightType
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setLightType] Success for node ${nodeId}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setLightType] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
     // ========================================================================
     // 🎯 Undo/Redo 专用 API（内部使用）
     // ========================================================================

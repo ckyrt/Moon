@@ -137,6 +137,9 @@ export const Toolbar: React.FC = () => {
             <button onClick={() => handleCreateObject('plane')} className={styles.dropdownItem}>
               ▭ Plane
             </button>
+            <button onClick={() => handleCreateObject('light')} className={styles.dropdownItem}>
+              💡 Light
+            </button>
           </div>
         )}
       </div>

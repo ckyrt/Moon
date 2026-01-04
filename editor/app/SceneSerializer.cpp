@@ -3,6 +3,7 @@
 #include "../../engine/core/Scene/SceneNode.h"
 #include "../../engine/core/Scene/Transform.h"
 #include "../../engine/core/Scene/MeshRenderer.h"
+#include "../../engine/core/Scene/Light.h"
 #include "../../engine/physics/RigidBody.h"
 #include "../../engine/physics/PhysicsSystem.h"
 #include "../../engine/core/Logging/Logger.h"
@@ -462,6 +463,30 @@ void SceneSerializer::SerializeComponents(SceneNode* node, void* jsonArray) {
         components.push_back(comp);
     }
 
+    // Light
+    if (auto* light = node->GetComponent<Light>()) {
+        json comp;
+        comp["type"] = "Light";
+        comp["enabled"] = light->IsEnabled();
+        
+        // Light type
+        const char* lightTypeName = "Unknown";
+        switch (light->GetType()) {
+            case Light::Type::Directional: lightTypeName = "Directional"; break;
+            case Light::Type::Point:       lightTypeName = "Point"; break;
+            case Light::Type::Spot:        lightTypeName = "Spot"; break;
+        }
+        comp["lightType"] = lightTypeName;
+        
+        // Basic properties
+        const Vector3& color = light->GetColor();
+        comp["color"] = json::array({ color.x, color.y, color.z });
+        comp["intensity"] = light->GetIntensity();
+        comp["range"] = light->GetRange();
+        
+        components.push_back(comp);
+    }
+
     // TODO: 添加其他组件类型
 }
 
@@ -521,6 +546,43 @@ void SceneSerializer::SerializeComponentsFull(SceneNode* node, void* jsonArray) 
         const Vector3& size = rigidBody->GetSize();
         comp["size"] = json::array({ size.x, size.y, size.z });
 
+        components.push_back(comp);
+    }
+
+    // Light（完整数据）
+    if (auto* light = node->GetComponent<Light>()) {
+        json comp;
+        comp["type"] = "Light";
+        comp["enabled"] = light->IsEnabled();
+        
+        // Light type
+        const char* lightTypeName = "Unknown";
+        switch (light->GetType()) {
+            case Light::Type::Directional: lightTypeName = "Directional"; break;
+            case Light::Type::Point:       lightTypeName = "Point"; break;
+            case Light::Type::Spot:        lightTypeName = "Spot"; break;
+        }
+        comp["lightType"] = lightTypeName;
+        
+        // Basic properties
+        const Vector3& color = light->GetColor();
+        comp["color"] = json::array({ color.x, color.y, color.z });
+        comp["intensity"] = light->GetIntensity();
+        comp["range"] = light->GetRange();
+        
+        // Attenuation (for Point and Spot lights)
+        float constant, linear, quadratic;
+        light->GetAttenuation(constant, linear, quadratic);
+        comp["attenuationConstant"] = constant;
+        comp["attenuationLinear"] = linear;
+        comp["attenuationQuadratic"] = quadratic;
+        
+        // Spot light angles
+        float innerCone, outerCone;
+        light->GetSpotAngles(innerCone, outerCone);
+        comp["innerConeAngle"] = innerCone;
+        comp["outerConeAngle"] = outerCone;
+        
         components.push_back(comp);
     }
 
@@ -613,6 +675,65 @@ void SceneSerializer::DeserializeComponents(SceneNode* node, EngineCore* engine,
                     MOON_LOG_ERROR("SceneSerializer", "PhysicsSystem is nullptr, cannot restore RigidBody");
                 }
             }
+        }
+        else if (type == "Light") {
+            Light* light = node->AddComponent<Light>();
+            
+            if (compData.contains("enabled")) {
+                light->SetEnabled(compData["enabled"]);
+            }
+            
+            // Light type
+            if (compData.contains("lightType")) {
+                std::string lightTypeName = compData["lightType"];
+                if (lightTypeName == "Directional") {
+                    light->SetType(Light::Type::Directional);
+                } else if (lightTypeName == "Point") {
+                    light->SetType(Light::Type::Point);
+                } else if (lightTypeName == "Spot") {
+                    light->SetType(Light::Type::Spot);
+                }
+            }
+            
+            // Color
+            if (compData.contains("color") && compData["color"].is_array()) {
+                auto colorArray = compData["color"];
+                if (colorArray.size() >= 3) {
+                    Vector3 color(colorArray[0], colorArray[1], colorArray[2]);
+                    light->SetColor(color);
+                }
+            }
+            
+            // Intensity
+            if (compData.contains("intensity")) {
+                light->SetIntensity(compData["intensity"]);
+            }
+            
+            // Range (for Point and Spot lights)
+            if (compData.contains("range")) {
+                light->SetRange(compData["range"]);
+            }
+            
+            // Attenuation
+            if (compData.contains("attenuationConstant") && 
+                compData.contains("attenuationLinear") && 
+                compData.contains("attenuationQuadratic")) {
+                light->SetAttenuation(
+                    compData["attenuationConstant"],
+                    compData["attenuationLinear"],
+                    compData["attenuationQuadratic"]
+                );
+            }
+            
+            // Spot light angles
+            if (compData.contains("innerConeAngle") && compData.contains("outerConeAngle")) {
+                light->SetSpotAngles(
+                    compData["innerConeAngle"],
+                    compData["outerConeAngle"]
+                );
+            }
+            
+            MOON_LOG_INFO("SceneSerializer", "Restored Light component");
         }
         
         // TODO: 添加其他组件类型的反序列化

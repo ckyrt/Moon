@@ -56,6 +56,21 @@ export interface RigidBodyComponent extends Component {
   angularVelocity?: [number, number, number];
 }
 
+export interface LightComponent extends Component {
+  type: 'Light';
+  lightType: 'Directional' | 'Point' | 'Spot';
+  color: [number, number, number]; // RGB [0-1]
+  intensity: number;
+  range?: number; // For Point and Spot lights
+  // Spot light specific
+  innerConeAngle?: number;
+  outerConeAngle?: number;
+  // Attenuation (Point and Spot)
+  attenuationConstant?: number;
+  attenuationLinear?: number;
+  attenuationQuadratic?: number;
+}
+
 export interface Scene {
   name: string;
   rootNodes: number[]; // Root node IDs

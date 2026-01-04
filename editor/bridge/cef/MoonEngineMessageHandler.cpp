@@ -4,6 +4,7 @@
 #include "../../../engine/core/Logging/Logger.h"
 #include "../../../engine/core/Scene/MeshRenderer.h"
 #include "../../../engine/core/Scene/Material.h"
+#include "../../../engine/core/Scene/Light.h"
 #include "../../../external/nlohmann/json.hpp"
 #include <functional>
 #include <unordered_map>
@@ -153,6 +154,108 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
+    // ========================================================================
+    // Light 组件属性设置
+    // ========================================================================
+
+    // 设置 Light 颜色
+    std::string HandleSetLightColor(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        Moon::Vector3 color = ParseVector3(req["color"]);
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Light* light = node->GetComponent<Moon::Light>();
+        if (!light) {
+            return CreateErrorResponse("Node does not have Light component");
+        }
+
+        light->SetColor(color);
+        MOON_LOG_INFO("MoonEngineMessage", "Set light color of node %u to (%.2f, %.2f, %.2f)",
+                     nodeId, color.x, color.y, color.z);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Light 强度
+    std::string HandleSetLightIntensity(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        float intensity = req["intensity"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Light* light = node->GetComponent<Moon::Light>();
+        if (!light) {
+            return CreateErrorResponse("Node does not have Light component");
+        }
+
+        light->SetIntensity(intensity);
+        MOON_LOG_INFO("MoonEngineMessage", "Set light intensity of node %u to %.2f", nodeId, intensity);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Light 范围（Point/Spot）
+    std::string HandleSetLightRange(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        float range = req["range"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Light* light = node->GetComponent<Moon::Light>();
+        if (!light) {
+            return CreateErrorResponse("Node does not have Light component");
+        }
+
+        light->SetRange(range);
+        MOON_LOG_INFO("MoonEngineMessage", "Set light range of node %u to %.2f", nodeId, range);
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Light 类型
+    std::string HandleSetLightType(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        std::string lightType = req["lightType"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Light* light = node->GetComponent<Moon::Light>();
+        if (!light) {
+            return CreateErrorResponse("Node does not have Light component");
+        }
+
+        Moon::Light::Type type;
+        if (lightType == "Directional") {
+            type = Moon::Light::Type::Directional;
+        } else if (lightType == "Point") {
+            type = Moon::Light::Type::Point;
+        } else if (lightType == "Spot") {
+            type = Moon::Light::Type::Spot;
+        } else {
+            return CreateErrorResponse("Unknown light type: " + lightType);
+        }
+
+        light->SetType(type);
+        MOON_LOG_INFO("MoonEngineMessage", "Set light type of node %u to %s", nodeId, lightType.c_str());
+        
+        return CreateSuccessResponse();
+    }
+
+    // ========================================================================
+
     // 🎯 设置 Gizmo 坐标系模式（world/local）
     std::string HandleSetGizmoCoordinateMode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         std::string mode = req["mode"];
@@ -244,6 +347,22 @@ namespace CommandHandlers {
             material->SetMetallic(0.0f);
             material->SetRoughness(0.5f);
             material->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
+        }
+        else if (type == "light") {
+            newNode = scene->CreateNode("Directional Light");
+            
+            // 设置光源默认方向：从右上前方照射（类似正午太阳）
+            // Rotation: (45°, -30°, 0°) 表示向下 45° 并向左转 30°
+            newNode->GetTransform()->SetLocalRotation(Moon::Vector3(45.0f, -30.0f, 0.0f));
+            
+            // 添加 Light 组件
+            Moon::Light* light = newNode->AddComponent<Moon::Light>();
+            light->SetType(Moon::Light::Type::Directional);
+            light->SetColor(Moon::Vector3(1.0f, 0.95f, 0.9f));  // 暖白色（太阳光）
+            light->SetIntensity(1.5f);  // 强度
+            
+            MOON_LOG_INFO("MoonEngineMessage", "Created directional light (Intensity: %.1f)", 
+                         light->GetIntensity());
         }
         else {
             return CreateErrorResponse("Unknown node type: " + type);
@@ -615,6 +734,10 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"setScale",                 CommandHandlers::HandleSetScale},
     {"setGizmoMode",             CommandHandlers::HandleSetGizmoMode},
     {"setGizmoCoordinateMode",   CommandHandlers::HandleSetGizmoCoordinateMode},  // 🎯 World/Local 切换
+    {"setLightColor",            CommandHandlers::HandleSetLightColor},  // 🎯 Light: 设置颜色
+    {"setLightIntensity",        CommandHandlers::HandleSetLightIntensity},  // 🎯 Light: 设置强度
+    {"setLightRange",            CommandHandlers::HandleSetLightRange},  // 🎯 Light: 设置范围
+    {"setLightType",             CommandHandlers::HandleSetLightType},  // 🎯 Light: 设置类型
     {"createNode",               CommandHandlers::HandleCreateNode},
     {"deleteNode",               CommandHandlers::HandleDeleteNode},  // 🎯 删除节点
     {"setNodeParent",            CommandHandlers::HandleSetNodeParent},  // 🎯 设置父节点
