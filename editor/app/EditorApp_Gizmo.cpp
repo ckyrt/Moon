@@ -19,7 +19,9 @@
 // ============================================================================
 void RenderAndApplyGizmo(EngineCore* engine, EditorBridge& bridge)
 {
-    if (!g_SelectedObject) return;
+    if (!g_SelectedObject) {
+        return;
+    }
 
     Moon::Transform* tr = g_SelectedObject->GetTransform();
     Moon::Transform* parent = g_SelectedObject->GetParent()

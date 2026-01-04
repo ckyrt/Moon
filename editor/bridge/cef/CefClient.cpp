@@ -86,6 +86,30 @@ public:
                 return true;
             }
 
+            // ------------------------------------------------------------
+            // ✅ viewport-pick 事件（JavaScript → C++，用于 3D picking）
+            // ------------------------------------------------------------
+            if (type == "viewport-pick") {
+
+                int x = j.value("x", 0);
+                int y = j.value("y", 0);
+
+                MOON_LOG_INFO("CEF", "========================================");
+                MOON_LOG_INFO("CEF", "Viewport pick received from JavaScript:");
+                MOON_LOG_INFO("CEF", "  Click position: (%d, %d)", x, y);
+                MOON_LOG_INFO("CEF", "========================================");
+
+                if (m_client && m_client->m_viewportPickCallback) {
+                    m_client->m_viewportPickCallback(x, y);
+                }
+                else {
+                    MOON_LOG_WARN("CEF", "No viewportPickCallback registered!");
+                }
+
+                callback->Success("");
+                return true;
+            }
+
             MOON_LOG_WARN("CEF_MessageHandler",
                 "Unknown message type: %s", type.c_str());
         }
@@ -106,8 +130,11 @@ private:
 // CefClientHandler - Browser Lifecycle + Router
 // ============================================================================
 CefClientHandler::CefClientHandler()
-    : m_moonEngineHandler(nullptr), m_renderHandler(nullptr)  // ✅ 初始化为 nullptr（暂不启用 OSR）
+    : m_moonEngineHandler(nullptr), m_renderHandler(nullptr)
 {
+    // ✅ 创建 RenderHandler（用于 OSR 模式）
+    m_renderHandler = new CefRenderHandlerImpl();
+    
     // 创建 Message Router
     CefMessageRouterConfig config;
     m_messageRouter = CefMessageRouterBrowserSide::Create(config);
@@ -119,7 +146,7 @@ CefClientHandler::CefClientHandler()
     m_moonEngineHandler = new MoonEngineMessageHandler();
     m_messageRouter->AddHandler(m_moonEngineHandler, false);
 
-    MOON_LOG_INFO("CEF", "CefClientHandler created with message router and MoonEngine handler");
+    MOON_LOG_INFO("CEF", "CefClientHandler created with OSR RenderHandler");
 }
 
 void CefClientHandler::SetEngineCore(EngineCore* engine) {

@@ -99,6 +99,45 @@ export const Viewport: React.FC = () => {
     };
   }, []);
 
+  // 处理viewport canvas区域的鼠标点击事件
+  // 只有当点击的是viewport canvas本身（不是覆盖在上面的UI元素）时
+  // 才通过cefQuery将picking请求发送给C++的3D引擎
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    // 检查点击的目标元素
+    const target = e.target as HTMLElement;
+    const canvas = canvasRef.current;
+    
+    // 只有当点击的是canvas div本身（或其直接placeholder子元素）时，才触发picking
+    // 如果点击的是覆盖在viewport上方的UI元素（如dropdown menu），则不处理
+    if (!canvas || (target !== canvas && !canvas.contains(target))) {
+      return; // 点击的不是viewport区域，让CEF正常处理
+    }
+    
+    // 如果点击的是placeholder内容（开发模式），也不需要picking
+    if (target.closest(`.${styles.placeholder}`)) {
+      return;
+    }
+    
+    // 确认是左键点击且在真正的viewport canvas上
+    if (e.button === 0 && window.cefQuery) {
+      // 使用 offsetX/offsetY 获取相对于 canvas 元素的本地坐标
+      // 而不是 clientX/clientY（相对于整个窗口的全局坐标）
+      const rect = canvas.getBoundingClientRect();
+      const localX = e.clientX - rect.left;
+      const localY = e.clientY - rect.top;
+      
+      window.cefQuery({
+        request: JSON.stringify({
+          type: 'viewport-pick',
+          x: Math.floor(localX),
+          y: Math.floor(localY)
+        }),
+        onSuccess: () => {},
+        onFailure: () => {}
+      });
+    }
+  };
+
   return (
     <div className={styles.viewport}>
       <div className={styles.header}>
@@ -110,7 +149,12 @@ export const Viewport: React.FC = () => {
           </span>
         </div>
       </div>
-      <div ref={canvasRef} className={styles.canvas} id="viewport-container">
+      <div 
+        ref={canvasRef} 
+        className={styles.canvas} 
+        id="viewport-container"
+        onMouseDown={handleCanvasClick}
+      >
         {!isConnected && (
           <div className={styles.placeholder}>
             <div className={styles.placeholderContent}>

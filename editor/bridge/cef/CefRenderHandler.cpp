@@ -2,7 +2,7 @@
 #include <iostream>
 
 CefRenderHandlerImpl::CefRenderHandlerImpl()
-    : m_width(1280), m_height(720), m_onPaint(nullptr)
+    : m_width(800), m_height(600), m_onPaint(nullptr)
 {
     std::cout << "[CefRenderHandler] Created (OSR mode ready)" << std::endl;
 }

@@ -2,7 +2,23 @@
 #include "include/cef_app.h"
 #include "cef/CefClient.h"
 #include <string>
+#include <functional>
 #include <Windows.h>
+
+// CEF主窗口尺寸变化回调
+void SetCefWindowResizeCallback(std::function<void(int, int)> callback);
+
+// 设置Viewport区域信息（用于判断鼠标事件是否在3D区域）
+void SetViewportInfo(int x, int y, int width, int height);
+
+// 设置3D场景交互回调（仅用于picking等，在viewport区域LBUTTONDOWN时调用）
+void SetEngineWndProcCallback(std::function<void(UINT, WPARAM, LPARAM)> callback);
+
+// 设置ImGui的WantCaptureMouse检查回调（判断ImGui是否需要鼠标事件）
+void SetImGuiWantsCaptureCallback(std::function<bool()> callback);
+
+// 设置ImGui的Win32事件处理回调（在MainWindowProc中优先调用）
+void SetImGuiWin32ProcCallback(std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)> callback);
 
 // 编辑器桥接类
 // 负责初始化 CEF，创建浏览器窗口，管理生命周期

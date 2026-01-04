@@ -11,6 +11,9 @@
 // 回调函数类型：接收 viewport 矩形信息
 using ViewportRectCallback = std::function<void(int x, int y, int width, int height)>;
 
+// 回调函数类型：接收 viewport 点击事件用于 3D picking
+using ViewportPickCallback = std::function<void(int x, int y)>;
+
 // 前向声明
 class MessageHandler;
 class MoonEngineMessageHandler;
@@ -75,6 +78,11 @@ public:
         m_viewportRectCallback = callback;
     }
 
+    // ✅ 设置 viewport 点击回调（用于 3D picking）
+    void SetViewportPickCallback(ViewportPickCallback callback) {
+        m_viewportPickCallback = callback;
+    }
+
     // ✅ OSR 模式：获取 RenderHandler
     CefRefPtr<CefRenderHandlerImpl> GetRenderHandlerImpl() const { return m_renderHandler; }
     
@@ -92,6 +100,7 @@ private:
     bool m_isClosing = false;
     CefRefPtr<CefMessageRouterBrowserSide> m_messageRouter;
     ViewportRectCallback m_viewportRectCallback;
+    ViewportPickCallback m_viewportPickCallback;
     MoonEngineMessageHandler* m_moonEngineHandler;
 
     IMPLEMENT_REFCOUNTING(CefClientHandler);

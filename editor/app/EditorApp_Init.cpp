@@ -2,6 +2,8 @@
 // EditorApp_Init.cpp - 初始化函数
 // ============================================================================
 #include "EditorApp.h"
+#include "UITextureManager.h"
+#include "UIRenderer.h"
 #include "../engine/core/EngineCore.h"
 #include "../engine/core/Camera/Camera.h"
 #include "../engine/core/Camera/FPSCameraController.h"
@@ -77,46 +79,120 @@ HWND InitCEF(HINSTANCE hInstance, EditorBridge& bridge)
 
     if (!cefBrowserWindow) return nullptr;
 
+    // 设置 CEF 渲染回调（OSR 模式）
+    bridge.GetClient()->GetRenderHandlerImpl()->SetOnPaintCallback(
+        [](const void* buffer, int width, int height) {
+            if (g_UITextureManager) {
+                g_UITextureManager->UpdateTextureData(buffer, width, height);
+            }
+        }
+    );
+
+    // 获取CEF主窗口的实际尺寸
+    RECT rc;
+    GetClientRect(mainWindow, &rc);
+    int cefWidth = rc.right - rc.left;
+    int cefHeight = rc.bottom - rc.top;
+    
+    // 设置CEF OSR的viewport大小为主窗口尺寸
+    bridge.GetClient()->SetViewportSize(cefWidth, cefHeight);
+
+    // 设置CEF主窗口尺寸变化回调
+    SetCefWindowResizeCallback([](int width, int height) {
+        MOON_LOG_INFO("CEF_Resize", "CEF window resized to %dx%d", width, height);
+        
+        if (g_UITextureManager) {
+            g_UITextureManager->Resize(width, height);
+        }
+        
+        if (g_Renderer) {
+            g_Renderer->Resize(width, height);
+        }
+    });
+    
+    // 设置ImGui的WantCaptureMouse回调（优先给ImGui/ImGuizmo处理鼠标事件）
+    SetImGuiWantsCaptureCallback([]() -> bool {
+        ImGuiIO& io = ImGui::GetIO();
+        return io.WantCaptureMouse;
+    });
+    
+    // 设置ImGui的Win32事件处理回调（在MainWindowProc中优先调用）
+    SetImGuiWin32ProcCallback([](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT {
+        if (g_ImGuiWin32) {
+            return g_ImGuiWin32->Win32_ProcHandler(hwnd, msg, wParam, lParam) ? 1 : 0;
+        }
+        return 0;
+    });
+    
+    // 设置3D场景交互回调（仅用于viewport区域的picking）
+    extern void Handle3DScenePicking(UINT msg, WPARAM wParam, LPARAM lParam);
+    SetEngineWndProcCallback(Handle3DScenePicking);
+
+    MOON_LOG_INFO("EditorApp", "CEF OSR mode configured (size: %dx%d)", cefWidth, cefHeight);
+
     return cefBrowserWindow;
 }
 
 // ============================================================================
-// 初始化引擎窗口
+// 初始化引擎窗口 - OSR模式下已废弃（只有一个MainWindowProc）
 // ============================================================================
-bool InitEngineWindow(HINSTANCE hInstance)
-{
-    // 注册窗口类
-    WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
-    wc.lpfnWndProc = EngineWndProc;
-    wc.hInstance = hInstance;
-    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.lpszClassName = kEngineWindowClass;
-
-    if (!RegisterClassExW(&wc)) {
-        if (GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
-            return false;
-    }
-
-    return true;
-}
+// 注意：在OSR模式下，不再需要独立的引擎窗口和EngineWndProc
+// 所有事件处理都在MainWindowProc中完成
 
 // ============================================================================
 // 初始化渲染器
 // ============================================================================
 bool InitRenderer()
 {
-    if (!g_EngineWindow) return false;
+    // 使用 CEF 主窗口作为渲染目标
+    extern HWND g_CefWindow;
+    if (!g_CefWindow) return false;
 
     static DiligentRenderer renderer;
     g_Renderer = &renderer;
 
     RenderInitParams params{};
-    params.windowHandle = g_EngineWindow;
-    params.width = 800;
-    params.height = 600;
+    params.windowHandle = g_CefWindow;
+    
+    // 获取CEF主窗口的实际尺寸
+    RECT rc;
+    GetClientRect(g_CefWindow, &rc);
+    params.width = rc.right - rc.left;
+    params.height = rc.bottom - rc.top;
 
-    return renderer.Initialize(params);
+    MOON_LOG_INFO("EditorApp", "Initializing renderer with window size: %dx%d", params.width, params.height);
+
+    if (!renderer.Initialize(params)) {
+        return false;
+    }
+
+    // 创建 UI 渲染系统（使用CEF主窗口尺寸）
+    int uiWidth = 1280, uiHeight = 720;
+    if (g_EditorBridge && g_EditorBridge->GetMainWindow()) {
+        RECT uiRect;
+        GetClientRect(g_EditorBridge->GetMainWindow(), &uiRect);
+        uiWidth = uiRect.right - uiRect.left;
+        uiHeight = uiRect.bottom - uiRect.top;
+    }
+    
+    g_UITextureManager = new UITextureManager(
+        g_Renderer->GetDevice(),
+        g_Renderer->GetContext()
+    );
+    g_UITextureManager->Initialize(uiWidth, uiHeight);
+
+    g_UIRenderer = new UIRenderer(
+        g_Renderer->GetDevice(),
+        g_Renderer->GetContext()
+    );
+    if (!g_UIRenderer->Initialize()) {
+        MOON_LOG_ERROR("EditorApp", "Failed to initialize UI renderer");
+        return false;
+    }
+
+    MOON_LOG_INFO("EditorApp", "UI rendering system initialized (texture size: %dx%d)", uiWidth, uiHeight);
+    
+    return true;
 }
 
 // ============================================================================
@@ -131,7 +207,9 @@ void InitImGui()
     ci.BackBufferFmt = g_Renderer->GetSwapChain()->GetDesc().ColorBufferFormat;
     ci.DepthBufferFmt = g_Renderer->GetSwapChain()->GetDesc().DepthBufferFormat;
 
-    g_ImGuiWin32 = new Diligent::ImGuiImplWin32(ci, g_EngineWindow);
+    // 绑定到CEF窗口，而不是g_EngineWindow
+    extern HWND g_CefWindow;
+    g_ImGuiWin32 = new Diligent::ImGuiImplWin32(ci, g_CefWindow);
 
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -147,8 +225,9 @@ void InitSceneObjects(EngineCore* engine)
     auto* camera = engine->GetCamera();
     camera->SetAspectRatio(800.0f / 600.0f);
 
+    extern HWND g_CefWindow;
     Moon::InputSystem* input = engine->GetInputSystem();
-    input->SetWindowHandle(g_EngineWindow);
+    input->SetWindowHandle(g_CefWindow);
 
     static Moon::FPSCameraController controller(camera, input);
     controller.SetMoveSpeed(10.0f);

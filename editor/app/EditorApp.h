@@ -10,6 +10,8 @@
 class EngineCore;
 class DiligentRenderer;
 class EditorBridge;
+class UITextureManager;
+class UIRenderer;
 namespace Diligent { class ImGuiImplWin32; }
 namespace Moon { 
     class FPSCameraController; 
@@ -32,9 +34,13 @@ extern DiligentRenderer* g_Renderer;
 extern Moon::PhysicsSystem* g_PhysicsSystem;
 extern Moon::FPSCameraController* g_CameraController;
 extern Diligent::ImGuiImplWin32* g_ImGuiWin32;
-extern HWND g_EngineWindow;
+extern HWND g_CefWindow;  // CEF主窗口
 extern Moon::SceneNode* g_SelectedObject;
 extern EditorBridge* g_EditorBridge;
+
+// UI 渲染系统（OSR 模式）
+extern UITextureManager* g_UITextureManager;
+extern UIRenderer* g_UIRenderer;
 
 // Gizmo 状态
 extern ImGuizmo::OPERATION g_GizmoOperation;
@@ -70,13 +76,12 @@ void SetGizmoMode(const std::string& mode);
 // EditorApp_Init.cpp
 void InitEngine(EngineCore*& enginePtr);
 HWND InitCEF(HINSTANCE hInstance, EditorBridge& bridge);
-bool InitEngineWindow(HINSTANCE hInstance);
 bool InitRenderer();
 void InitImGui();
 void InitSceneObjects(EngineCore* engine);
 
-// EditorApp_WndProc.cpp
-LRESULT CALLBACK EngineWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+// EditorApp_WndProc.cpp - 3D场景picking处理（由MainWindowProc callback调用）
+void Handle3DScenePicking(UINT msg, WPARAM wParam, LPARAM lParam);
 
 // EditorApp_Gizmo.cpp
 void RenderAndApplyGizmo(EngineCore* engine, EditorBridge& bridge);

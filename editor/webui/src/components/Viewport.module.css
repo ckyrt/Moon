@@ -3,7 +3,8 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: #000;
+  background: transparent;  /* 透明，让3D内容显示出来 */
+  /* 移除pointer-events: none，改为在canvas区域设置 */
 }
 
 .header {
@@ -46,7 +47,7 @@
 .canvas {
   flex: 1;
   position: relative;
-  background: #0a0a0a;
+  background: transparent;  /* 透明，让3D内容显示出来 */
 }
 
 .placeholder {

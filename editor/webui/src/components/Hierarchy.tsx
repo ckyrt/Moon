@@ -16,6 +16,7 @@ export const Hierarchy: React.FC = () => {
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
   const [draggedNodeId, setDraggedNodeId] = useState<number | null>(null);
   const [dropTargetId, setDropTargetId] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Load scene data from engine on mount
   useEffect(() => {
@@ -96,17 +97,17 @@ export const Hierarchy: React.FC = () => {
     });
   };
 
-  const handleDragStart = (event: React.DragEvent, nodeId: number) => {
+  // ✅ 使用鼠标事件模拟拖放（CEF OSR不支持HTML5 drag&drop）
+  const handleMouseDown = (event: React.MouseEvent, nodeId: number) => {
+    if (event.button !== 0) return; // 只处理左键
     event.stopPropagation();
     setDraggedNodeId(nodeId);
-    event.dataTransfer.effectAllowed = 'move';
+    setIsDragging(true);
+    console.log('[Hierarchy] Mouse down on node:', nodeId);
   };
 
-  const handleDragOver = (event: React.DragEvent, nodeId: number) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    if (draggedNodeId === null || draggedNodeId === nodeId) {
+  const handleMouseEnter = (nodeId: number) => {
+    if (!isDragging || draggedNodeId === null || draggedNodeId === nodeId) {
       return;
     }
     
@@ -121,21 +122,29 @@ export const Hierarchy: React.FC = () => {
     
     if (!isDescendant(draggedNodeId, nodeId)) {
       setDropTargetId(nodeId);
-      event.dataTransfer.dropEffect = 'move';
+      console.log('[Hierarchy] Mouse enter potential drop target:', nodeId);
     }
   };
 
-  const handleDragLeave = () => {
-    setDropTargetId(null);
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      setDropTargetId(null);
+    }
   };
 
-  const handleDrop = async (event: React.DragEvent, targetNodeId: number) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const handleMouseUp = async (event: React.MouseEvent, targetNodeId: number) => {
+    if (!isDragging || draggedNodeId === null) {
+      setIsDragging(false);
+      return;
+    }
     
-    if (draggedNodeId === null || draggedNodeId === targetNodeId) {
+    event.stopPropagation();
+    console.log('[Hierarchy] Mouse up:', { draggedNodeId, targetNodeId });
+    
+    if (draggedNodeId === targetNodeId) {
       setDraggedNodeId(null);
       setDropTargetId(null);
+      setIsDragging(false);
       return;
     }
     
@@ -162,12 +171,23 @@ export const Hierarchy: React.FC = () => {
     
     setDraggedNodeId(null);
     setDropTargetId(null);
+    setIsDragging(false);
   };
 
-  const handleDragEnd = () => {
-    setDraggedNodeId(null);
-    setDropTargetId(null);
-  };
+  // 全局鼠标抬起事件处理
+  React.useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        console.log('[Hierarchy] Global mouse up - cancel drag');
+        setIsDragging(false);
+        setDraggedNodeId(null);
+        setDropTargetId(null);
+      }
+    };
+    
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isDragging]);
 
   const getContextMenuItems = (nodeId: number): ContextMenuItem[] => {
     return [
@@ -187,21 +207,19 @@ export const Hierarchy: React.FC = () => {
     const hasChildren = node.children.length > 0;
     const isExpanded = expandedNodes.has(node.id);
     const isDraggedOver = dropTargetId === node.id;
-    const isDragging = draggedNodeId === node.id;
+    const isDraggingThis = draggedNodeId === node.id;
 
     return (
       <div key={node.id} className={styles.nodeContainer}>
         <div
-          className={`${styles.node} ${isSelected ? styles.selected : ''} ${isDraggedOver ? styles.dragOver : ''} ${isDragging ? styles.dragging : ''}`}
-          style={{ paddingLeft: `${depth * 16 + 8}px` }}
-          draggable
+          className={`${styles.node} ${isSelected ? styles.selected : ''} ${isDraggedOver ? styles.dragOver : ''} ${isDraggingThis ? styles.dragging : ''}`}
+          style={{ paddingLeft: `${depth * 16 + 8}px`, cursor: isDraggingThis ? 'grabbing' : 'pointer' }}
           onClick={() => handleSelect(node.id)}
           onContextMenu={(e) => handleContextMenu(e, node.id)}
-          onDragStart={(e) => handleDragStart(e, node.id)}
-          onDragOver={(e) => handleDragOver(e, node.id)}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e, node.id)}
-          onDragEnd={handleDragEnd}
+          onMouseDown={(e) => handleMouseDown(e, node.id)}
+          onMouseEnter={() => handleMouseEnter(node.id)}
+          onMouseLeave={handleMouseLeave}
+          onMouseUp={(e) => handleMouseUp(e, node.id)}
         >
           {hasChildren ? (
             <span 

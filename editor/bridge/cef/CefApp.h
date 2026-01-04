@@ -66,6 +66,10 @@ public:
         command_line->AppendSwitch("allow-file-access-from-files");
         command_line->AppendSwitch("allow-universal-access-from-files");
         command_line->AppendSwitch("allow-file-access");
+        
+        // 强制设备缩放因子为1.0，禁用DPI缩放
+        // 解决Windows高DPI设置导致CEF渲染内容缩小的问题
+        command_line->AppendSwitchWithValue("force-device-scale-factor", "1");
     }
 
 

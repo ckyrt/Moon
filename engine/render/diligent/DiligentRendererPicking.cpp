@@ -153,9 +153,12 @@ void DiligentRenderer::CreateOrResizePickingRTs()
 }
 
 // ======= Picking：渲染 =======
-void DiligentRenderer::RenderSceneForPicking(Moon::Scene* scene)
+void DiligentRenderer::RenderSceneForPicking(Moon::Scene* scene, int vpX, int vpY, int vpW, int vpH)
 {
     if (!scene || !m_pPickingRTV || !m_pPickingDSV) return;
+
+    MOON_LOG_INFO("Picking", "RenderSceneForPicking: RT size=(%ux%u), viewport=(%d,%d,%dx%d)", 
+        m_Width, m_Height, vpX, vpY, vpW, vpH);
 
     m_pImmediateContext->SetRenderTargets(0, nullptr, nullptr, RESOURCE_STATE_TRANSITION_MODE_NONE);
 
@@ -165,6 +168,20 @@ void DiligentRenderer::RenderSceneForPicking(Moon::Scene* scene)
     const Uint32 Zero[4] = { 0,0,0,0 };
     m_pImmediateContext->ClearRenderTarget(m_pPickingRTV, reinterpret_cast<const float*>(Zero), RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     m_pImmediateContext->ClearDepthStencil(m_pPickingDSV, CLEAR_DEPTH_FLAG, 1.f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+    // ✅ 设置 viewport（如果提供了参数）
+    if (vpW > 0 && vpH > 0) {
+        Viewport vp;
+        vp.TopLeftX = static_cast<float>(vpX);
+        vp.TopLeftY = static_cast<float>(vpY);
+        vp.Width = static_cast<float>(vpW);
+        vp.Height = static_cast<float>(vpH);
+        vp.MinDepth = 0.0f;
+        vp.MaxDepth = 1.0f;
+        m_pImmediateContext->SetViewports(1, &vp, 0, 0);
+        
+        MOON_LOG_INFO("Picking", "  Set viewport: (%d, %d, %dx%d)", vpX, vpY, vpW, vpH);
+    }
 
     m_pImmediateContext->SetPipelineState(m_pPickingPSO);
 
@@ -207,8 +224,12 @@ void DiligentRenderer::RenderSceneForPicking(Moon::Scene* scene)
 // ======= Picking：读取像素 ID =======
 uint32_t DiligentRenderer::ReadObjectIDAt(int x, int y)
 {
-    if (x < 0 || y < 0 || x >= static_cast<int>(m_Width) || y >= static_cast<int>(m_Height)) return 0;
-    if (!m_pPickingRTV || !m_pPickingReadback) return 0;
+    if (x < 0 || y < 0 || x >= static_cast<int>(m_Width) || y >= static_cast<int>(m_Height)) {
+        return 0;
+    }
+    if (!m_pPickingRTV || !m_pPickingReadback) {
+        return 0;
+    }
 
     Box src{};
     src.MinX = x; src.MaxX = x + 1;

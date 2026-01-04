@@ -70,7 +70,7 @@ public:
     Diligent::ISwapChain* GetSwapChain()const { return m_pSwapChain; }
 
     // Picking
-    void     RenderSceneForPicking(Moon::Scene* scene);
+    void     RenderSceneForPicking(Moon::Scene* scene, int vpX = 0, int vpY = 0, int vpW = 0, int vpH = 0);
     uint32_t ReadObjectIDAt(int x, int y);
 
 private:

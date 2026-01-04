@@ -124,10 +124,14 @@
     <ClCompile Include="EditorApp_Utils.cpp" />
     <ClCompile Include="EditorApp_Cleanup.cpp" />
     <ClCompile Include="SceneSerializer.cpp" />
+    <ClCompile Include="UITextureManager.cpp" />
+    <ClCompile Include="UIRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EditorApp.h" />
     <ClInclude Include="SceneSerializer.h" />
+    <ClInclude Include="UITextureManager.h" />
+    <ClInclude Include="UIRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\bridge\EditorBridge.vcxproj">
