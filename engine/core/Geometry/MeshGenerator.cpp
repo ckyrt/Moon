@@ -7,6 +7,8 @@ namespace Moon {
 constexpr float PI = 3.14159265358979323846f;
 constexpr float TWO_PI = 2.0f * PI;
 
+// 注意：引擎使用左手坐标系（+Y上，+Z前，+X右），顺时针三角形是正面
+
 // ============================================================================
 // Cube - 立方体
 // ============================================================================
@@ -140,21 +142,22 @@ Mesh* MeshGenerator::CreateSphere(float radius, int segments, int rings, const V
         }
     }
     
-    // 索引生成（四边形网格转三角形）
+    // 索引生成（四边形网格转三角形，顺时针）
+    // 注意：左手坐标系中，顺时针是正面（与Cube一致）
     for (int ring = 0; ring < rings; ++ring) {
         for (int seg = 0; seg < segments; ++seg) {
             int current = ring * (segments + 1) + seg;
             int next = current + segments + 1;
             
-            // 第一个三角形
+            // 第一个三角形（顺时针）
             indices.push_back(current);
-            indices.push_back(next);
             indices.push_back(current + 1);
+            indices.push_back(next);
             
-            // 第二个三角形
+            // 第二个三角形（顺时针）
             indices.push_back(current + 1);
-            indices.push_back(next);
             indices.push_back(next + 1);
+            indices.push_back(next);
         }
     }
     
@@ -198,7 +201,8 @@ Mesh* MeshGenerator::CreatePlane(float width, float depth, int subdivisionsX, in
         }
     }
     
-    // 索引生成
+    // 索引生成（顺时针，从上往下看）
+    // 注意：左手坐标系中，顺时针是正面
     for (int z = 0; z < subdivisionsZ; ++z) {
         for (int x = 0; x < subdivisionsX; ++x) {
             int topLeft = z * vertsX + x;
@@ -206,15 +210,15 @@ Mesh* MeshGenerator::CreatePlane(float width, float depth, int subdivisionsX, in
             int bottomLeft = (z + 1) * vertsX + x;
             int bottomRight = bottomLeft + 1;
             
-            // 第一个三角形
+            // 第一个三角形（顺时针）
             indices.push_back(topLeft);
-            indices.push_back(bottomLeft);
             indices.push_back(topRight);
+            indices.push_back(bottomLeft);
             
-            // 第二个三角形
+            // 第二个三角形（顺时针）
             indices.push_back(topRight);
-            indices.push_back(bottomLeft);
             indices.push_back(bottomRight);
+            indices.push_back(bottomLeft);
         }
     }
     
@@ -297,23 +301,24 @@ Mesh* MeshGenerator::CreateCylinder(float radiusTop, float radiusBottom, float h
         vertices.push_back(Vertex(Vector3(x, -halfH, z), normal, color));
     }
     
-    // 顶面三角形（从圆心发散）
+    // 顶面三角形（从上往下看，顺时针 = 正面朝上）
+    // 注意：左手坐标系中，顺时针是正面
     for (int i = 0; i < segments; ++i) {
         int next = (i + 1) % segments;
         indices.push_back(topCenterIdx);
-        indices.push_back(topStartIdx + i);
         indices.push_back(topStartIdx + next);
+        indices.push_back(topStartIdx + i);
     }
     
-    // 底面三角形（逆序，法线向下）
+    // 底面三角形（从下往上看，顺时针 = 正面朝下）
     for (int i = 0; i < segments; ++i) {
         int next = (i + 1) % segments;
         indices.push_back(bottomCenterIdx);
-        indices.push_back(bottomStartIdx + next);
         indices.push_back(bottomStartIdx + i);
+        indices.push_back(bottomStartIdx + next);
     }
     
-    // 侧面三角形
+    // 侧面三角形（从外部看，顺时针）
     for (int i = 0; i < segments; ++i) {
         int next = (i + 1) % segments;
         
@@ -322,13 +327,15 @@ Mesh* MeshGenerator::CreateCylinder(float radiusTop, float radiusBottom, float h
         int b0 = sideBottomStartIdx + i;
         int b1 = sideBottomStartIdx + next;
         
+        // 第一个三角形：t0 -> t1 -> b0
         indices.push_back(t0);
-        indices.push_back(b0);
         indices.push_back(t1);
+        indices.push_back(b0);
         
+        // 第二个三角形：t1 -> b1 -> b0
         indices.push_back(t1);
-        indices.push_back(b0);
         indices.push_back(b1);
+        indices.push_back(b0);
     }
     
     mesh->SetVertices(std::move(vertices));
@@ -389,19 +396,20 @@ Mesh* MeshGenerator::CreateTorus(float majorRadius, float minorRadius, int major
         }
     }
     
-    // 索引生成
+    // 索引生成（顺时针）
+    // 注意：左手坐标系中，顺时针是正面
     for (int i = 0; i < majorSegments; ++i) {
         for (int j = 0; j < minorSegments; ++j) {
             int current = i * (minorSegments + 1) + j;
             int next = current + minorSegments + 1;
             
             indices.push_back(current);
-            indices.push_back(next);
             indices.push_back(current + 1);
+            indices.push_back(next);
             
             indices.push_back(current + 1);
-            indices.push_back(next);
             indices.push_back(next + 1);
+            indices.push_back(next);
         }
     }
     
@@ -502,23 +510,24 @@ Mesh* MeshGenerator::CreateCapsule(float radius, float height, int segments, int
         }
     }
     
-    // 上半球索引
+    // 上半球索引（顺时针）
+    // 注意：左手坐标系中，顺时针是正面
     for (int ring = 0; ring < rings; ++ring) {
         for (int seg = 0; seg < segments; ++seg) {
             int current = ring * (segments + 1) + seg;
             int next = current + segments + 1;
             
             indices.push_back(current);
-            indices.push_back(next);
             indices.push_back(current + 1);
+            indices.push_back(next);
             
             indices.push_back(current + 1);
-            indices.push_back(next);
             indices.push_back(next + 1);
+            indices.push_back(next);
         }
     }
     
-    // 圆柱体索引
+    // 圆柱体索引（顺时针）
     for (int seg = 0; seg < segments; ++seg) {
         int t0 = cylinderStartIdx + seg * 2;
         int t1 = cylinderStartIdx + (seg + 1) * 2;
@@ -526,27 +535,27 @@ Mesh* MeshGenerator::CreateCapsule(float radius, float height, int segments, int
         int b1 = t1 + 1;
         
         indices.push_back(t0);
-        indices.push_back(b0);
         indices.push_back(t1);
+        indices.push_back(b0);
         
         indices.push_back(t1);
-        indices.push_back(b0);
         indices.push_back(b1);
+        indices.push_back(b0);
     }
     
-    // 下半球索引
+    // 下半球索引（顺时针）
     for (int ring = 0; ring < rings; ++ring) {
         for (int seg = 0; seg < segments; ++seg) {
             int current = bottomStartIdx + ring * (segments + 1) + seg;
             int next = current + segments + 1;
             
             indices.push_back(current);
-            indices.push_back(next);
             indices.push_back(current + 1);
+            indices.push_back(next);
             
             indices.push_back(current + 1);
-            indices.push_back(next);
             indices.push_back(next + 1);
+            indices.push_back(next);
         }
     }
     
