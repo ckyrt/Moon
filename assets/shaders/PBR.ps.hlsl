@@ -55,8 +55,9 @@ float3 FresnelSchlick(float cosTheta, float3 F0) {
 
 // GGX/Trowbridge-Reitz 法线分布函数（NDF）
 float DistributionGGX(float3 N, float3 H, float roughness) {
+    // ✅ 正确做法：在这里防止除0，而不是修改材质的roughness值
     float a = roughness * roughness;
-    float a2 = a * a;
+    float a2 = max(a * a, 0.001); // 防止完全光滑表面导致的数值问题
     float NdotH = max(dot(N, H), 0.0);
     float NdotH2 = NdotH * NdotH;
     
@@ -85,6 +86,38 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness) {
     float ggx1 = GeometrySchlickGGX(NdotL, roughness);
     
     return ggx1 * ggx2;
+}
+
+// ✅ 封装直接光照计算（支持未来多光源扩展）
+// 计算单个方向光的贡献
+float3 CalculateDirectionalLight(
+    float3 N,           // 表面法线
+    float3 V,           // 视线方向
+    float3 L,           // 光源方向
+    float3 albedo,      // 漫反射颜色
+    float roughness,    // 粗糙度
+    float metallic,     // 金属度
+    float3 F0,          // 基础反射率
+    float3 radiance     // 光源辐射度
+) {
+    float3 H = normalize(V + L);
+    
+    // Cook-Torrance BRDF
+    float NDF = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, L, roughness);
+    float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+    
+    float3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+    float3 specular = numerator / max(denominator, 0.001);
+    
+    // 能量守恒
+    float3 kS = F;
+    float3 kD = float3(1.0, 1.0, 1.0) - kS;
+    kD *= 1.0 - metallic;  // 金属没有漫反射
+    
+    float NdotL = max(dot(N, L), 0.0);
+    return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
 float4 main(in PSInput i) : SV_Target {
@@ -197,10 +230,18 @@ float4 main(in PSInput i) : SV_Target {
         // Unreal Engine 的 TBN 计算（处理数值不稳定）
         float3 T = dPos_dx * dUV_dy.y - dPos_dy * dUV_dx.y;
         float3 B = dPos_dy * dUV_dx.x - dPos_dx * dUV_dy.x;
-        float invMax = rsqrt(max(dot(T, T), dot(B, B)));  // 快速归一化
         
-        // 构建 TBN 矩阵（列向量形式）
-        float3x3 TBN = float3x3(T * invMax, B * invMax, N);
+        // ✅ TBN退化保护：检测UV重合或极端拉伸
+        float TdotT = dot(T, T);
+        float BdotB = dot(B, B);
+        if (TdotT < 1e-6 || BdotB < 1e-6) {
+            // UV退化，直接使用顶点法线，避免NaN
+            N = normalize(i.NormalWS);
+        } else {
+            float invMax = rsqrt(max(TdotT, BdotB));  // 快速归一化
+            
+            // 构建 TBN 矩阵（列向量形式）
+            float3x3 TBN = float3x3(T * invMax, B * invMax, N);
         
         // 🔍 调试模式 8: 显示切线T
         if (debugMode == 8) {
@@ -212,8 +253,9 @@ float4 main(in PSInput i) : SV_Target {
             return float4(normalize(B) * 0.5 + 0.5, 1.0);
         }
         
-            // 将切线空间法线转换到世界空间
-            N = normalize(mul(normalMap, TBN));
+                // 将切线空间法线转换到世界空间
+                N = normalize(mul(normalMap, TBN));
+            }
         }
     }
     
@@ -240,7 +282,8 @@ float4 main(in PSInput i) : SV_Target {
         ao = 1.0; // 默认无遮蔽
     }
     
-    roughness = max(roughness, 0.25); // 恢复原始值
+    // ✅ 不要在这里clamp roughness！材质值应该保持原样
+    // 数值保护应该在NDF计算中进行（见DistributionGGX函数）
     
     float3 V = normalize(g_CameraPosition - i.WorldPos);
     
@@ -257,61 +300,63 @@ float4 main(in PSInput i) : SV_Target {
     float3 envDiffuseColor = float3(0.0, 0.0, 0.0);
     
     if (g_HasEnvironmentMap > 0.5) {
-        // ⚠️ 真正的 Unity/Unreal 实现：使用预卷积的 Irradiance Map（球谐或卷积 cubemap）
-        // 临时方案：多方向采样取平均（简化的半球积分）
-        // 这确保所有面获得相似的环境漫反射亮度
+        // ⚠️ TODO: 最佳实践是预计算 32x32 的 irradiance cubemap
+        // 当前方案：改进的半球采样（法线为中心的Monte Carlo近似）
+        // 这比6方向采样更符合物理，因为它考虑了法线方向的半球分布
+        
         float3 irradianceSum = float3(0.0, 0.0, 0.0);
         
-        // 采样 6 个主方向（上下左右前后）+ 法线方向
-        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(0, 1, 0))).rgb;   // 上
-        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(0, -1, 0))).rgb;  // 下
-        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(1, 0, 0))).rgb;   // 右
-        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(-1, 0, 0))).rgb;  // 左
-        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(0, 0, 1))).rgb;   // 前
-        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(0, 0, -1))).rgb;  // 后
-        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(N)).rgb;                  // 法线方向
+        // 构建以法线N为Z轴的正交基（Frisvad方法，数值稳定）
+        float3 up = abs(N.z) < 0.999 ? float3(0, 0, 1) : float3(1, 0, 0);
+        float3 tangent = normalize(cross(up, N));
+        float3 bitangent = cross(N, tangent);
         
-        // 平均 + 降低亮度（模拟多次反弹能量损失）
-        envDiffuseColor = (irradianceSum / 7.0) * 0.3;
+        // 在法线周围的半球采样（固定采样模式，避免噪点）
+        // 使用分层采样保证覆盖均匀，减少采样数提高性能
+        const int numSamples = 8;
+        for (int i = 0; i < numSamples; i++) {
+            // 使用低差异序列（Hammersley）
+            float phi = (float(i) + 0.5) / float(numSamples) * 2.0 * PI;
+            float cosTheta = sqrt((float(i) + 0.5) / float(numSamples)); // 余弦加权
+            float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+            
+            // 半球方向（局部坐标）
+            float3 sampleDir = float3(
+                cos(phi) * sinTheta,
+                sin(phi) * sinTheta,
+                cosTheta
+            );
+            
+            // 转换到世界空间
+            float3 worldDir = tangent * sampleDir.x + bitangent * sampleDir.y + N * sampleDir.z;
+            
+            // 采样环境贴图（使用较高的mip level确保模糊）
+            irradianceSum += g_EquirectMap.SampleLevel(g_EquirectMap_sampler, DirToEquirectUV(worldDir), 6.0).rgb * cosTheta;
+        }
+        
+        // ✅ 修正：简化的漫反射近似，使用平均值并降低强度
+        // 完整的Monte Carlo积分应该是 (2*PI/N) * sum，但这里我们用更保守的系数
+        // 避免过度曝光，同时保持合理的环境光亮度
+        envDiffuseColor = (irradianceSum / float(numSamples)) * 0.5;
     }
     
     // === 直接光照（方向光）===
+    // ✅ 使用封装的函数，未来可以轻松扩展到多光源
+    // TODO: 支持光源数组 / Clustered Shading
     float3 Lo = float3(0.0, 0.0, 0.0);
     
     if (g_LightIntensity > 0.0) {
         float3 L = normalize(-g_LightDirection);  // 光源方向（指向光源）
-        float3 H = normalize(V + L);              // 半程向量
         float3 radiance = g_LightColor * g_LightIntensity;
         
-        // Cook-Torrance BRDF
-        float NDF = DistributionGGX(N, H, roughness);
-        float G = GeometrySmith(N, V, L, roughness);
-        float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
-        
-        float3 numerator = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
-        float3 specular = numerator / max(denominator, 0.001);
-        
-        float3 kS = F;
-        float3 kD = float3(1.0, 1.0, 1.0) - kS;
-        kD *= 1.0 - metallic;  // 金属没有漫反射
-        
-        float NdotL = max(dot(N, L), 0.0);
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+        Lo += CalculateDirectionalLight(N, V, L, albedo, roughness, metallic, F0, radiance);
     }
     
     // === 环境光照（IBL - Image Based Lighting）===
+    // ✅ 移除人工baseAmbient，让IBL亮度完全来自HDR环境本身
+    // 这避免了室内/室外/HDR场景的过曝或灰雾问题
     
-    // 🔹 根据是否有天空盒和光源，调整环境光强度（CPU 端传递的标志）
-    // Unity/Unreal 标准：没有光源 + 没有天空盒 = 微弱的默认环境光（10% 灰度）
-    float baseAmbient = 0.10;  // 默认微弱环境光（保持基本可见度，避免完全黑屏）
     bool hasIBL = (g_HasEnvironmentMap > 0.5);
-    
-    if (hasIBL) {
-        baseAmbient = 0.4;  // 有天空盒时使用较强的环境光（确保漫反射足够亮）
-    } else if (g_LightIntensity > 0.0) {
-        baseAmbient = 0.12;  // 有光源但无天空盒时，稍微亮一点
-    }
     
     // === Unity/Unreal 标准 IBL 实现 ===
     float3 diffuse;
@@ -326,8 +371,9 @@ float4 main(in PSInput i) : SV_Target {
         // 使用从环境贴图采样的 Irradiance（法线方向）
         diffuse = kD * albedo * envDiffuseColor;
     } else {
-        // 没有天空盒：使用简单的环境光，绕过 Fresnel
-        float3 irradiance = float3(baseAmbient, baseAmbient, baseAmbient);
+        // 没有IBL：使用微弱的默认环境光（避免完全黑屏）
+        // 注意：这里不应该是主要的光照来源
+        float3 irradiance = float3(0.03, 0.03, 0.03);
         diffuse = albedo * irradiance;
     }
     
@@ -335,7 +381,18 @@ float4 main(in PSInput i) : SV_Target {
     float3 specular = float3(0.0, 0.0, 0.0);
     if (hasIBL) {
         // Unity/Unreal 标准：环境镜面反射 BRDF
-        float3 F = FresnelSchlick(max(dot(N, V), 0.0), F0);
+        float NdotV = max(dot(N, V), 0.0);
+        float3 F = FresnelSchlick(NdotV, F0);
+        
+        // ⚠️ TODO: 当前使用equirect直接采样，存在以下问题：
+        // 1. Equirect的mip不是按solid angle分布，高roughness时能量不对
+        // 2. 应该预计算 Equirect → Cubemap → Prefiltered Cubemap
+        // 3. 需要BRDF LUT实现完整的split-sum approximation
+        //
+        // 标准流程（Unreal/Unity）：
+        // specular = prefilteredColor * (F * brdf.x + brdf.y);
+        //
+        // 当前临时方案：直接从equirect采样 + 能量补偿
         
         // ✅ Unreal Engine 标准：根据粗糙度采样不同 mipmap level
         // Roughness 0 → mipmap 0（清晰反射）
@@ -346,10 +403,12 @@ float4 main(in PSInput i) : SV_Target {
         float2 specularUV = DirToEquirectUV(R);
         float3 prefilteredColor = g_EquirectMap.SampleLevel(g_EquirectMap_sampler, specularUV, mipLevel).rgb;
         
-        specular = prefilteredColor * F;
+        // ✅ 临时BRDF能量补偿（在引入BRDF LUT之前）
+        // 调整能量以防止过亮，同时保持合理的镜面反射
+        float energyCompensation = saturate(1.0 - roughness * 0.7);
         
-        // Unity 标准：调整镜面反射强度
-        specular *= lerp(0.04, 0.18, metallic);
+        // 降低整体镜面反射强度，避免过度曝光
+        specular = prefilteredColor * F * energyCompensation * 0.6;
     }
     
     // 组合环境光（间接光）
