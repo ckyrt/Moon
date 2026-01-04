@@ -15,6 +15,7 @@
 #include "../render/IRenderer.h"
 #include "../render/diligent/DiligentRenderer.h"
 #include "../render/RenderCommon.h"
+#include "../render/SceneRenderer.h"  // 🔄 使用通用场景渲染工具
 
 static const wchar_t* kWndClass = L"UGC_Editor_WndClass";
 
@@ -266,83 +267,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         // Update Camera Controller
         cameraController.Update(static_cast<float>(dt));
 
-        // Set camera for rendering
-        Moon::Matrix4x4 viewProj = camera->GetViewProjectionMatrix();
-        renderer.SetViewProjectionMatrix(&viewProj.m[0][0]);
-        
-        // Update scene lights (收集场景中所有 Light 组件)
-        renderer.UpdateSceneLights(scene);
-        
-        // Update scene skybox (收集场景中的 Skybox 组件)
-        renderer.UpdateSceneSkybox(scene);
-        
-        // Set camera position for PBR specular calculation (在 UpdateSceneLights 之后调用)
-        Moon::Vector3 cameraPos = camera->GetPosition();
-        renderer.SetCameraPosition(cameraPos);
-        
-        // Render all scene objects with PBR material parameters
+        // 🔄 使用通用的场景渲染工具（替换重复代码）
         renderer.BeginFrame();
-        
-        scene->Traverse([&](Moon::SceneNode* node) {
-            Moon::MeshRenderer* meshRenderer = node->GetComponent<Moon::MeshRenderer>();
-            if (meshRenderer && meshRenderer->IsVisible() && meshRenderer->IsEnabled()) {
-                // ✅ 从 Material 组件获取材质参数
-                Moon::Material* material = node->GetComponent<Moon::Material>();
-                if (material && material->IsEnabled()) {
-                    // 设置材质参数
-                    renderer.SetMaterialParameters(
-                        material->GetMetallic(), 
-                        material->GetRoughness(),
-                        material->GetBaseColor()
-                    );
-                    
-                    // 绑定 Albedo 贴图
-                    if (material->HasAlbedoMap()) {
-                        const std::string& albedoPath = material->GetAlbedoMap();
-                        MOON_LOG_INFO("HelloEngine", "Node '%s' has albedo map: %s", 
-                                      node->GetName().c_str(), albedoPath.c_str());
-                        renderer.BindAlbedoTexture(albedoPath);
-                    } else {
-                        MOON_LOG_INFO("HelloEngine", "Node '%s' has no albedo map, using default white", 
-                                      node->GetName().c_str());
-                        renderer.BindAlbedoTexture("");  // 使用默认白色纹理
-                    }
-                    
-                    // 绑定 ARM 贴图 (使用 MetallicMap 字段存储 ARM 贴图路径)
-                    if (material->HasMetallicMap()) {
-                        const std::string& armPath = material->GetMetallicMap();
-                        MOON_LOG_INFO("HelloEngine", "Node '%s' has ARM map: %s", 
-                                      node->GetName().c_str(), armPath.c_str());
-                        renderer.BindARMTexture(armPath);
-                    } else {
-                        renderer.BindARMTexture("");  // 使用默认纹理（白色 = AO=1, Roughness=1, Metallic=1）
-                    }
-                    
-                    // 绑定法线贴图
-                    if (material->HasNormalMap()) {
-                        const std::string& normalPath = material->GetNormalMap();
-                        MOON_LOG_INFO("HelloEngine", "Node '%s' has Normal map: %s", 
-                                      node->GetName().c_str(), normalPath.c_str());
-                        renderer.BindNormalTexture(normalPath);
-                    } else {
-                        renderer.BindNormalTexture("");  // 使用默认纹理（平面法线）
-                    }
-                } else {
-                    // 默认材质参数
-                    renderer.SetMaterialParameters(0.0f, 0.5f, Moon::Vector3(1.0f, 1.0f, 1.0f));
-                    renderer.BindAlbedoTexture("");  // 使用默认白色纹理
-                    renderer.BindARMTexture("");     // 使用默认纹理
-                    renderer.BindNormalTexture("");  // 使用默认法线
-                }
-                
-                // 渲染
-                meshRenderer->Render(&renderer);
-            }
-        });
-        
-        // 渲染 Skybox（在所有不透明物体之后）
-        renderer.RenderSkybox();
-        
+        Moon::SceneRendererUtils::RenderScene(&renderer, scene, camera);
         renderer.EndFrame();
 
         // simple throttle
