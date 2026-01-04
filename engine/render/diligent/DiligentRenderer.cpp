@@ -352,6 +352,30 @@ void DiligentRenderer::UpdateSceneSkybox(Moon::Scene* scene)
             MOON_LOG_INFO("DiligentRenderer", "Loaded environment map from Skybox component: {}", path);
         }
     }
+    
+    // 如果没有找到激活的 Skybox，清除所有 skybox 和 IBL 资源以停止渲染
+    if (!activeSkybox) {
+        if (m_pSkyboxSRB || m_pEquirectHDR) {
+            // Skybox 渲染资源
+            m_pSkyboxSRB.Release();
+            
+            // HDR 环境贴图
+            m_pEquirectHDR_SRV.Release();
+            m_pEquirectHDR.Release();
+            
+            // Cubemap 环境贴图
+            m_pEnvironmentMapSRV.Release();
+            m_pEnvironmentMap.Release();
+            
+            // IBL 预计算贴图
+            m_pIrradianceMapSRV.Release();
+            m_pIrradianceMap.Release();
+            m_pPrefilteredEnvMapSRV.Release();
+            m_pPrefilteredEnvMap.Release();
+            
+            MOON_LOG_INFO("DiligentRenderer", "Cleared skybox and IBL resources (no active skybox in scene)");
+        }
+    }
 }
 
 // Resource management functions are now in DiligentRendererResources.cpp
@@ -419,6 +443,31 @@ void DiligentRenderer::Shutdown()
     m_pSRB.Release();
     m_pPSO.Release();
     m_pVSConstants.Release();
+    m_pPSMaterialConstants.Release();
+    m_pPSSceneConstants.Release();
+    
+    // Skybox 渲染管线
+    m_pSkyboxSRB.Release();
+    m_pSkyboxPSO.Release();
+    m_pSkyboxVSConstants.Release();
+    m_pSkyboxIB.Release();
+    m_pSkyboxVB.Release();
+    
+    // IBL 资源
+    m_pBRDF_LUT_SRV.Release();
+    m_pBRDF_LUT_RTV.Release();
+    m_pBRDF_LUT.Release();
+    m_pEquirectHDR_SRV.Release();
+    m_pEquirectHDR.Release();
+    m_pEnvironmentMapSRV.Release();
+    m_pEnvironmentMap.Release();
+    m_pIrradianceMapSRV.Release();
+    m_pIrradianceMap.Release();
+    m_pPrefilteredEnvMapSRV.Release();
+    m_pPrefilteredEnvMap.Release();
+    
+    // 纹理缓存
+    m_TextureCache.clear();
 
     // Backbuffer 视图由 swapchain 拥有
     m_pRTV = nullptr;

@@ -345,11 +345,11 @@ void DiligentRenderer::ConvertEquirectangularToCubemap(ITexture* pEquirectangula
     
     // 创建 Skybox SRB 并绑定环境贴图和常量缓冲
     if (m_pSkyboxPSO && m_pEquirectHDR_SRV) {
-        // 绑定静态变量（常量缓冲）
-        m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "SkyboxConstants")->Set(m_pSkyboxVSConstants);
+        // 绑定静态变量（常量缓冲）- 允许覆盖以支持重新加载
+        m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "SkyboxConstants")->Set(m_pSkyboxVSConstants, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
         
-        // 绑定静态变量（Equirectangular 环境贴图）
-        m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")->Set(m_pEquirectHDR_SRV);
+        // 绑定静态变量（Equirectangular 环境贴图）- 允许覆盖以支持重新加载
+        m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")->Set(m_pEquirectHDR_SRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
         
         // 创建 SRB
         m_pSkyboxPSO->CreateShaderResourceBinding(&m_pSkyboxSRB, true);
