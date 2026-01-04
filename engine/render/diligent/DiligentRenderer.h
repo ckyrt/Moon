@@ -95,7 +95,7 @@ private:
     };
     struct PSSceneCPU { // 16B 对齐（场景参数：相机位置、光源等）
         Moon::Vector3 cameraPosition;
-        float padding1 = 0.0f;
+        float hasEnvironmentMap = 0.0f;    // 是否有有效的环境贴图（0 = 无，1 = 有）
         
         // 主方向光（Directional Light）
         Moon::Vector3 lightDirection;      // 光源方向

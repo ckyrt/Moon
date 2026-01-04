@@ -277,33 +277,51 @@ void DiligentRenderer::LoadEnvironmentMap(const char* filepath)
     texDesc.Width = width;
     texDesc.Height = height;
     texDesc.Format = TEX_FORMAT_RGBA32_FLOAT;
-    texDesc.MipLevels = 1;
-    texDesc.Usage = USAGE_IMMUTABLE;
-    texDesc.BindFlags = BIND_SHADER_RESOURCE;
+    texDesc.MipLevels = 0;  // ✅ 0 = 自动生成完整 mipmap 链（log2(max(w,h)) + 1）
+    texDesc.Usage = USAGE_DEFAULT;  // ✅ DEFAULT 允许 GPU 写入（生成 mipmap）
+    texDesc.BindFlags = BIND_SHADER_RESOURCE | BIND_RENDER_TARGET;  // ✅ RT 用于生成 mipmap
+    texDesc.MiscFlags = MISC_TEXTURE_FLAG_GENERATE_MIPS;  // ✅ 请求自动生成 mipmap
     
-    // 准备初始化数据
+    // ⚠️ 关键：创建纹理时不提供初始数据（nullptr），稍后通过 UpdateTexture 上传
+    m_pDevice->CreateTexture(texDesc, nullptr, &m_pEquirectHDR);
+    
+    if (!m_pEquirectHDR) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create HDR texture");
+        stbi_image_free(hdrData);
+        return;
+    }
+    
+    // 准备上传数据到 mipmap level 0
     TextureSubResData subresData;
     subresData.pData = hdrData;
     subresData.Stride = width * 4 * sizeof(float); // RGBA32F
     
-    TextureData initData;
-    initData.pSubResources = &subresData;
-    initData.NumSubresources = 1;
+    // 上传数据到 level 0
+    Uint32 mipLevel = 0;
+    Uint32 arraySlice = 0;
+    Box updateBox;
+    updateBox.MinX = 0;
+    updateBox.MaxX = width;
+    updateBox.MinY = 0;
+    updateBox.MaxY = height;
+    updateBox.MinZ = 0;
+    updateBox.MaxZ = 1;
     
-    m_pDevice->CreateTexture(texDesc, &initData, &m_pEquirectHDR);
+    m_pImmediateContext->UpdateTexture(m_pEquirectHDR, mipLevel, arraySlice, 
+        updateBox, subresData, 
+        RESOURCE_STATE_TRANSITION_MODE_TRANSITION, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     
     // 释放 stb_image 加载的数据
     stbi_image_free(hdrData);
     
-    if (!m_pEquirectHDR) {
-        MOON_LOG_ERROR("DiligentRenderer", "Failed to create HDR texture");
-        return;
-    }
-    
     // 创建 SRV
     m_pEquirectHDR_SRV = m_pEquirectHDR->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
     
-    MOON_LOG_INFO("DiligentRenderer", "HDR texture created: {}x{}, format: RGBA32F", width, height);
+    // ✅ 生成 mipmap（Unity/Unreal 标准流程）
+    // 只有 level 0 有数据，GPU 自动生成剩余 level
+    m_pImmediateContext->GenerateMips(m_pEquirectHDR_SRV);
+    
+    MOON_LOG_INFO("DiligentRenderer", "HDR texture created: {}x{}, format: RGBA32F with mipmaps", width, height);
     MOON_LOG_INFO("DiligentRenderer", "HDR SRV created successfully");
     
     // 转换 equirectangular 到 cubemap（暂时跳过，直接使用 equirect）

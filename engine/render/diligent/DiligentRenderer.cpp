@@ -353,6 +353,14 @@ void DiligentRenderer::UpdateSceneSkybox(Moon::Scene* scene)
         }
     }
     
+    // 更新 SceneConstants 中的环境贴图标志（标准引擎做法）
+    if (activeSkybox && m_pEquirectHDR_SRV) {
+        m_SceneDataCache.hasEnvironmentMap = 1.0f;  // 有天空盒
+    } else {
+        m_SceneDataCache.hasEnvironmentMap = 0.0f;  // 无天空盒
+    }
+    UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
+    
     // 如果没有找到激活的 Skybox，清除所有 skybox 和 IBL 资源以停止渲染
     if (!activeSkybox) {
         if (m_pSkyboxSRB || m_pEquirectHDR) {

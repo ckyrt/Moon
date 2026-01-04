@@ -13,7 +13,7 @@ cbuffer MaterialConstants {
 // 场景参数常量缓冲区（相机位置、光源等）
 cbuffer SceneConstants { 
     float3 g_CameraPosition;
-    float g_Padding3;
+    float g_HasEnvironmentMap;  // 是否有有效的环境贴图（0.0 = 无，1.0 = 有）
     float3 g_LightDirection;
     float g_Padding4;
     float3 g_LightColor;
@@ -177,8 +177,11 @@ float4 main(in PSInput i) : SV_Target {
         
         // === Unity/Unreal 标准法线强度处理 ===
         // 简单缩放XY，然后重建Z（保证法线长度为1）
-        float normalStrength = 2.0;  // 业界标准范围：0.0-3.0
-        normalMap.xy *= normalStrength;
+        float normalStrength = 0.5;  // 降低强度，避免平面出现明显凹凸
+        bool disableNormalMap = false;  // 先恢复法线贴图
+        
+        if (!disableNormalMap) {
+            normalMap.xy *= normalStrength;
         // 重建Z分量（使用saturate防止sqrt(负数)）
         normalMap.z = sqrt(saturate(1.0 - dot(normalMap.xy, normalMap.xy)));
         
@@ -209,8 +212,9 @@ float4 main(in PSInput i) : SV_Target {
             return float4(normalize(B) * 0.5 + 0.5, 1.0);
         }
         
-        // 将切线空间法线转换到世界空间
-        N = normalize(mul(normalMap, TBN));
+            // 将切线空间法线转换到世界空间
+            N = normalize(mul(normalMap, TBN));
+        }
     }
     
     // 🔍 调试模式 2: 显示世界空间法线（查看法线贴图是否影响光照）
@@ -236,7 +240,7 @@ float4 main(in PSInput i) : SV_Target {
         ao = 1.0; // 默认无遮蔽
     }
     
-    roughness = max(roughness, 0.25); // 增加最小粗糙度，让墙面更哑光、不那么光滑
+    roughness = max(roughness, 0.25); // 恢复原始值
     
     float3 V = normalize(g_CameraPosition - i.WorldPos);
     
@@ -244,12 +248,32 @@ float4 main(in PSInput i) : SV_Target {
     float3 F0 = float3(0.04, 0.04, 0.04);  // 非金属默认值
     F0 = lerp(F0, albedo, metallic);       // 金属使用 albedo 作为 F0
     
-    // 反射方向（用于环境光采样）
-    float3 R = reflect(-V, N);
+    // ⚠️ Unity/Unreal 标准：IBL 需要两个独立的采样
+    // 1) 镜面反射方向（用于高光）
+    // 2) 法线方向（用于漫反射 Irradiance）
+    float3 R = reflect(-V, N);  // 镜面反射方向
     
-    // 采样环境贴图
-    float2 envUV = DirToEquirectUV(R);
-    float3 envColor = g_EquirectMap.Sample(g_EquirectMap_sampler, envUV).rgb;
+    // 采样环境贴图（如果可用）
+    float3 envDiffuseColor = float3(0.0, 0.0, 0.0);
+    
+    if (g_HasEnvironmentMap > 0.5) {
+        // ⚠️ 真正的 Unity/Unreal 实现：使用预卷积的 Irradiance Map（球谐或卷积 cubemap）
+        // 临时方案：多方向采样取平均（简化的半球积分）
+        // 这确保所有面获得相似的环境漫反射亮度
+        float3 irradianceSum = float3(0.0, 0.0, 0.0);
+        
+        // 采样 6 个主方向（上下左右前后）+ 法线方向
+        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(0, 1, 0))).rgb;   // 上
+        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(0, -1, 0))).rgb;  // 下
+        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(1, 0, 0))).rgb;   // 右
+        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(-1, 0, 0))).rgb;  // 左
+        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(0, 0, 1))).rgb;   // 前
+        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(float3(0, 0, -1))).rgb;  // 后
+        irradianceSum += g_EquirectMap.Sample(g_EquirectMap_sampler, DirToEquirectUV(N)).rgb;                  // 法线方向
+        
+        // 平均 + 降低亮度（模拟多次反弹能量损失）
+        envDiffuseColor = (irradianceSum / 7.0) * 0.3;
+    }
     
     // === 直接光照（方向光）===
     float3 Lo = float3(0.0, 0.0, 0.0);
@@ -277,35 +301,56 @@ float4 main(in PSInput i) : SV_Target {
     }
     
     // === 环境光照（IBL - Image Based Lighting）===
-    // Unity/Unreal 标准流程
-    float3 F = FresnelSchlick(max(dot(N, V), 0.0), F0);
-    float3 kS = F;
-    float3 kD = 1.0 - kS;
-    kD *= 1.0 - metallic;
     
-    // 漫反射环境光：Unity/Unreal标准做法
-    // ⚠️ 标准IBL: 漫反射使用预计算的Irradiance Map（球谐函数SH或卷积贴图）
-    // 在没有预计算贴图的情况下，使用均匀的环境光颜色（避免方向性采样导致颜色不一致）
-    // 
-    // Unity默认：Sky Light使用均匀的天空颜色作为环境光基础
-    // Unreal默认：使用SH（Spherical Harmonics）计算的平均环境光
-    float3 irradiance = float3(0.8, 0.8, 0.8);  // 中性灰白色环境光（模拟天空平均颜色）
+    // 🔹 根据是否有天空盒和光源，调整环境光强度（CPU 端传递的标志）
+    // Unity/Unreal 标准：没有光源 + 没有天空盒 = 微弱的默认环境光（10% 灰度）
+    float baseAmbient = 0.10;  // 默认微弱环境光（保持基本可见度，避免完全黑屏）
+    bool hasIBL = (g_HasEnvironmentMap > 0.5);
     
-    float3 diffuse = kD * albedo * irradiance;
+    if (hasIBL) {
+        baseAmbient = 0.4;  // 有天空盒时使用较强的环境光（确保漫反射足够亮）
+    } else if (g_LightIntensity > 0.0) {
+        baseAmbient = 0.12;  // 有光源但无天空盒时，稍微亮一点
+    }
     
-    // 镜面反射环境光：使用反射方向采样
-    float3 prefilteredColor = envColor;  
+    // === Unity/Unreal 标准 IBL 实现 ===
+    float3 diffuse;
     
-    // Unreal Engine 标准：环境镜面反射BRDF
-    float3 specular = prefilteredColor * F;
+    if (hasIBL) {
+        // Unity 标准：环境漫反射使用标准的 BRDF kD 权重
+        float3 F = FresnelSchlick(max(dot(N, V), 0.0), F0);
+        float3 kS = F;
+        float3 kD = 1.0 - kS;  // 标准能量守恒，不做人工限制
+        kD *= 1.0 - metallic;  // 金属没有漫反射
+        
+        // 使用从环境贴图采样的 Irradiance（法线方向）
+        diffuse = kD * albedo * envDiffuseColor;
+    } else {
+        // 没有天空盒：使用简单的环境光，绕过 Fresnel
+        float3 irradiance = float3(baseAmbient, baseAmbient, baseAmbient);
+        diffuse = albedo * irradiance;
+    }
     
-    // 粗糙度衰减：粗糙材质几乎没有环境镜面反射
-    float smoothness = 1.0 - roughness;
-    specular *= smoothness * smoothness;
-    
-    // ⚠️ 关键修复：大幅降低环境镜面反射，避免灰色天空覆盖漫反射颜色
-    // 非金属材质的环境镜面反射应该非常弱
-    specular *= lerp(0.05, 0.3, metallic);  // 非金属5%，金属30%
+    // 镜面反射环境光：只在有有效环境贴图时启用
+    float3 specular = float3(0.0, 0.0, 0.0);
+    if (hasIBL) {
+        // Unity/Unreal 标准：环境镜面反射 BRDF
+        float3 F = FresnelSchlick(max(dot(N, V), 0.0), F0);
+        
+        // ✅ Unreal Engine 标准：根据粗糙度采样不同 mipmap level
+        // Roughness 0 → mipmap 0（清晰反射）
+        // Roughness 1 → mipmap 8+（完全模糊）
+        float mipLevel = roughness * 8.0;
+        
+        // 使用 SampleLevel 手动指定 mipmap（这会模糊粗糙表面的反射）
+        float2 specularUV = DirToEquirectUV(R);
+        float3 prefilteredColor = g_EquirectMap.SampleLevel(g_EquirectMap_sampler, specularUV, mipLevel).rgb;
+        
+        specular = prefilteredColor * F;
+        
+        // Unity 标准：调整镜面反射强度
+        specular *= lerp(0.04, 0.18, metallic);
+    }
     
     // 组合环境光（间接光）
     float3 ambient = (diffuse + specular) * ao;  // AO只影响环境光
