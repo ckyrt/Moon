@@ -13,8 +13,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{C4E6F6F1-0A2B-4E3C-9D8E-1F2A3B4C5D6E}</ProjectGuid>
-    <RootNamespace>EngineCore</RootNamespace>
+    <ProjectGuid>{3F8A9D2E-5B6C-4D7E-8F9A-1B2C3D4E5F60}</ProjectGuid>
+    <RootNamespace>Manifold</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -23,7 +23,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
-    <LanguageStandard>stdcpp20</LanguageStandard>
+    <LanguageStandard>stdcpp17</LanguageStandard>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
@@ -31,7 +31,7 @@
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <LanguageStandard>stdcpp20</LanguageStandard>
+    <LanguageStandard>stdcpp17</LanguageStandard>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -57,12 +57,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_LIB;MANIFOLD_DEBUG=0;MANIFOLD_PAR=-1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)external\manifold\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir)external\manifold\include;$(SolutionDir)external\manifold\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /wd4244 /wd4267 /wd4081 /wd4390 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -76,12 +77,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_LIB;MANIFOLD_DEBUG=0;MANIFOLD_PAR=-1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)external\manifold\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir)external\manifold\include;$(SolutionDir)external\manifold\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /wd4244 /wd4267 /wd4081 /wd4390 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -92,66 +94,50 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="EngineCore.h" />
-    <ClInclude Include="IEngine.h" />
-    <ClInclude Include="Logging\Logger.h" />
-    <ClInclude Include="Input\IInputSystem.h" />
-    <ClInclude Include="Input\InputSystem.h" />
-    <ClInclude Include="Input\KeyCodes.h" />
-    <ClInclude Include="Input\InputTypes.h" />
-    <ClInclude Include="Math\Math.h" />
-    <ClInclude Include="Math\Vector2.h" />
-    <ClInclude Include="Math\Vector3.h" />
-    <ClInclude Include="Math\Vector4.h" />
-    <ClInclude Include="Math\Matrix4x4.h" />
-    <ClInclude Include="Math\Quaternion.h" />
-    <ClInclude Include="Camera\ICamera.h" />
-    <ClInclude Include="Camera\Camera.h" />
-    <ClInclude Include="Camera\PerspectiveCamera.h" />
-    <ClInclude Include="Camera\OrthographicCamera.h" />
-    <ClInclude Include="Camera\FPSCameraController.h" />
-    <ClInclude Include="Camera\OrbitCameraController.h" />
-    <ClInclude Include="Scene\Component.h" />
-    <ClInclude Include="Scene\Transform.h" />
-    <ClInclude Include="Scene\SceneNode.h" />
-    <ClInclude Include="Scene\Scene.h" />
-    <ClInclude Include="Scene\MeshRenderer.h" />
-    <ClInclude Include="Scene\Material.h" />
-    <ClInclude Include="Scene\Light.h" />
-    <ClInclude Include="Scene\Skybox.h" />
-    <ClInclude Include="Mesh\Mesh.h" />
-    <ClInclude Include="Geometry\MeshGenerator.h" />
-    <ClInclude Include="Assets\MeshManager.h" />
-    <ClInclude Include="Texture\TextureManager.h" />
-    <ClInclude Include="CSG\CSGOperations.h" />
+    <!-- Public Headers -->
+    <ClInclude Include="..\..\external\manifold\include\manifold\common.h" />
+    <ClInclude Include="include\manifold\manifold.h" />
+    <ClInclude Include="include\manifold\linalg.h" />
+    <ClInclude Include="include\manifold\vec_view.h" />
+    <ClInclude Include="include\manifold\optional_assert.h" />
+    <ClInclude Include="include\manifold\polygon.h" />
+    <!-- Private Headers -->
+    <ClInclude Include="src\boolean3.h" />
+    <ClInclude Include="src\collider.h" />
+    <ClInclude Include="src\csg_tree.h" />
+    <ClInclude Include="src\hashtable.h" />
+    <ClInclude Include="src\impl.h" />
+    <ClInclude Include="src\iters.h" />
+    <ClInclude Include="src\lazy_collider.h" />
+    <ClInclude Include="src\mesh_fixes.h" />
+    <ClInclude Include="src\parallel.h" />
+    <ClInclude Include="src\quickhull.h" />
+    <ClInclude Include="src\shared.h" />
+    <ClInclude Include="src\svd.h" />
+    <ClInclude Include="src\tree2d.h" />
+    <ClInclude Include="src\tri_dist.h" />
+    <ClInclude Include="src\utils.h" />
+    <ClInclude Include="src\vec.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="EngineCore.cpp" />
-    <ClCompile Include="Logging\Logger.cpp" />
-    <ClCompile Include="Input\InputSystem.cpp" />
-    <ClCompile Include="Camera\Camera.cpp" />
-    <ClCompile Include="Camera\PerspectiveCamera.cpp" />
-    <ClCompile Include="Camera\OrthographicCamera.cpp" />
-    <ClCompile Include="Camera\FPSCameraController.cpp" />
-    <ClCompile Include="Camera\OrbitCameraController.cpp" />
-    <ClCompile Include="Scene\Component.cpp" />
-    <ClCompile Include="Scene\Transform.cpp" />
-    <ClCompile Include="Scene\SceneNode.cpp" />
-    <ClCompile Include="Scene\Scene.cpp" />
-    <ClCompile Include="Scene\MeshRenderer.cpp" />
-    <ClCompile Include="Scene\Material.cpp" />
-    <ClCompile Include="Scene\Light.cpp" />
-    <ClCompile Include="Scene\Skybox.cpp" />
-    <ClCompile Include="Mesh\Mesh.cpp" />
-    <ClCompile Include="Geometry\MeshGenerator.cpp" />
-    <ClCompile Include="Assets\MeshManager.cpp" />
-    <ClCompile Include="Texture\TextureManager.cpp" />
-    <ClCompile Include="CSG\CSGOperations.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\thirdparty\manifold\Manifold.vcxproj">
-      <Project>{3F8A9D2E-5B6C-4D7E-8F9A-1B2C3D4E5F60}</Project>
-    </ProjectReference>
+    <!-- Core Source Files -->
+    <ClCompile Include="..\..\external\manifold\src\boolean3.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\boolean_result.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\constructors.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\csg_tree.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\edge_op.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\face_op.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\impl.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\lazy_collider.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\manifold.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\polygon.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\properties.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\quickhull.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\sdf.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\smoothing.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\sort.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\subdivision.cpp" />
+    <ClCompile Include="..\..\external\manifold\src\tree2d.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

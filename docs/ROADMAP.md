@@ -84,7 +84,7 @@
 
 ### Phase 3: CSG 核心功能（预计 3-4 周）
 - ⏳ **18. CSG 基础图元** - CSGBox, CSGSphere, CSGCylinder
-- ⏳ **19. CSG 布尔运算** - 并集、交集、差集（manifold/CGAL）
+- ⏳ **19. CSG 布尔运算** - 并集、交集、差集（manifold） ✅ Manifold 库集成完成
 - ⏳ **20. CSG 操作界面** - WebUI 集成，实时预览
 - ⏳ **21. 网格生成与优化** - 高质量三角网格输出
 - ⏳ **22. CSG 建模演示** - 完整工作流验证

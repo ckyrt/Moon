@@ -13,6 +13,9 @@ external/cef/
 external/DiligentEngine/
 external/imgui/
 external/ImGuizmo/
+external/JoltPhysics/
+external/manifold/
+external/nlohmann/
 
 # Visual Studio user files - 只排除用户特定的设置文件
 *.vcxproj.user
