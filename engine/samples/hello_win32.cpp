@@ -12,10 +12,12 @@
 #include "../core/Scene/Skybox.h"
 #include "../core/Mesh/Mesh.h"
 #include "../core/Geometry/MeshGenerator.h"
+#include "../core/CSG/CSGOperations.h"
 #include "../render/IRenderer.h"
 #include "../render/diligent/DiligentRenderer.h"
 #include "../render/RenderCommon.h"
 #include "../render/SceneRenderer.h"  // 🔄 使用通用场景渲染工具
+#include "CSGTest.h"  // CSG 测试
 
 static const wchar_t* kWndClass = L"UGC_Editor_WndClass";
 
@@ -83,6 +85,14 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
 
     // Initialize logging system
     Moon::Core::Logger::Init();
+    
+    // 运行 CSG 测试
+    MOON_LOG_INFO("HelloEngine", "Running CSG tests...");
+    if (Moon::CSGTest::RunTests()) {
+        MOON_LOG_INFO("HelloEngine", "✓ CSG tests passed!");
+    } else {
+        MOON_LOG_ERROR("HelloEngine", "✗ CSG tests failed!");
+    }
 
     // 3) Engine + Renderer
     EngineCore engine;
@@ -210,7 +220,47 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     Moon::Material* woodMaterial = woodSphereNode->AddComponent<Moon::Material>();
     woodMaterial->SetPresetWood();
     
-    MOON_LOG_INFO("Sample", "Material Showcase Scene created with 6 objects");
+    // ============================================================================
+    // 7. CSG 测试 - Box - Sphere (布尔减法)
+    // ============================================================================
+    MOON_LOG_INFO("Sample", "Creating CSG test objects...");
+    
+    // 创建 CSG Box
+    auto csgBox = Moon::CSG::CreateCSGBox(2.0f, 2.0f, 2.0f);
+    if (csgBox && csgBox->IsValid()) {
+        MOON_LOG_INFO("Sample", "CSG Box created: %zu vertices, %zu triangles", 
+            csgBox->GetVertexCount(), csgBox->GetTriangleCount());
+    }
+    
+    // 创建 CSG Sphere
+    auto csgSphere = Moon::CSG::CreateCSGSphere(1.2f, 32);
+    if (csgSphere && csgSphere->IsValid()) {
+        MOON_LOG_INFO("Sample", "CSG Sphere created: %zu vertices, %zu triangles", 
+            csgSphere->GetVertexCount(), csgSphere->GetTriangleCount());
+    }
+    
+    // 执行布尔减法：Box - Sphere（从立方体中挖出球形）
+    auto csgResult = Moon::CSG::PerformBoolean(csgBox.get(), csgSphere.get(), Moon::CSG::Operation::Subtract);
+    if (csgResult && csgResult->IsValid()) {
+        MOON_LOG_INFO("Sample", "CSG Boolean Subtract successful: %zu vertices, %zu triangles", 
+            csgResult->GetVertexCount(), csgResult->GetTriangleCount());
+        
+        // 添加到场景
+        Moon::SceneNode* csgNode = scene->CreateNode("CSG_Box_Minus_Sphere");
+        csgNode->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 2.0f, 5.0f));
+        
+        Moon::MeshRenderer* csgRenderer = csgNode->AddComponent<Moon::MeshRenderer>();
+        csgRenderer->SetMesh(csgResult);  // 直接使用 CSG 结果
+        
+        Moon::Material* csgMaterial = csgNode->AddComponent<Moon::Material>();
+        csgMaterial->SetPresetIron();  // 使用金属材质突出显示
+        
+        MOON_LOG_INFO("Sample", "CSG object added to scene at position (0, 2, 5)");
+    } else {
+        MOON_LOG_ERROR("Sample", "CSG Boolean operation failed!");
+    }
+    
+    MOON_LOG_INFO("Sample", "Material Showcase Scene created with 7 objects (including CSG test)");
     
     // ============================================================================
     // 创建主方向光（模拟太阳光）

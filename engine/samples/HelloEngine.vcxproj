@@ -95,6 +95,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="hello_win32.cpp" />
+    <ClCompile Include="CSGTest.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CSGTest.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\core\EngineCore.vcxproj">
