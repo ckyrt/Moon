@@ -201,8 +201,8 @@ Mesh* MeshGenerator::CreatePlane(float width, float depth, int subdivisionsX, in
         }
     }
     
-    // 索引生成（顺时针，从上往下看）
-    // 注意：左手坐标系中，顺时针是正面
+    // 索引生成：生成双面 Plane（正面+背面）
+    // 左手坐标系：从上往下看，逆时针为正面
     for (int z = 0; z < subdivisionsZ; ++z) {
         for (int x = 0; x < subdivisionsX; ++x) {
             int topLeft = z * vertsX + x;
@@ -210,12 +210,20 @@ Mesh* MeshGenerator::CreatePlane(float width, float depth, int subdivisionsX, in
             int bottomLeft = (z + 1) * vertsX + x;
             int bottomRight = bottomLeft + 1;
             
-            // 第一个三角形（顺时针）
+            // 正面（从上往下看，逆时针）
+            indices.push_back(topLeft);
+            indices.push_back(bottomLeft);
+            indices.push_back(topRight);
+            
+            indices.push_back(topRight);
+            indices.push_back(bottomLeft);
+            indices.push_back(bottomRight);
+            
+            // 背面（从下往上看，逆时针）
             indices.push_back(topLeft);
             indices.push_back(topRight);
             indices.push_back(bottomLeft);
             
-            // 第二个三角形（顺时针）
             indices.push_back(topRight);
             indices.push_back(bottomRight);
             indices.push_back(bottomLeft);
