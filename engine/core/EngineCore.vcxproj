@@ -124,6 +124,7 @@
     <ClInclude Include="Assets\MeshManager.h" />
     <ClInclude Include="Texture\TextureManager.h" />
     <ClInclude Include="CSG\CSGOperations.h" />
+    <ClInclude Include="CSG\CSGComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineCore.cpp" />
@@ -146,6 +147,7 @@
     <ClCompile Include="Geometry\MeshGenerator.cpp" />
     <ClCompile Include="Assets\MeshManager.cpp" />
     <ClCompile Include="Texture\TextureManager.cpp" />
+    <ClCompile Include="CSG\CSGComponent.cpp" />
     <ClCompile Include="CSG\CSGOperations.cpp" />
   </ItemGroup>
   <ItemGroup>

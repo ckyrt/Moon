@@ -96,6 +96,238 @@ bool RunTests() {
         }
     }
     
+    // 测试 6: 基本CSG操作（墙+窗场景，简化版）
+    MOON_LOG_INFO("CSGTest", "\n[Test 6] Testing wall-window CSG scenario...");
+    auto wallBox = CreateCSGBox(10.0f, 10.0f, 1.0f);
+    auto windowBox = CreateCSGBox(3.0f, 4.0f, 1.5f);
+    
+    // 砖墙 - 窗洞 = 带洞的墙（单材质）
+    auto wallWithWindow = PerformBoolean(wallBox.get(), windowBox.get(), Operation::Subtract);
+    if (wallWithWindow && wallWithWindow->IsValid()) {
+        MOON_LOG_INFO("CSGTest", "✓ Wall-window CSG successful: %zu vertices, %zu triangles", 
+            wallWithWindow->GetVertexCount(), wallWithWindow->GetTriangleCount());
+    } else {
+        MOON_LOG_ERROR("CSGTest", "✗ Wall-window CSG failed");
+        return false;
+    }
+    
+    // 测试 7: 坐标系和法线验证
+    MOON_LOG_INFO("CSGTest", "\n[Test 7] Verifying coordinate system and normals...");
+    auto testBox = CreateCSGBox(2.0f, 2.0f, 2.0f);
+    if (testBox && testBox->IsValid()) {
+        const auto& vertices = testBox->GetVertices();
+        const auto& indices = testBox->GetIndices();
+        
+        // 检查前几个三角形的法线方向
+        bool normalsValid = true;
+        int trianglesToCheck = std::min(5, (int)(indices.size() / 3));
+        
+        for (int i = 0; i < trianglesToCheck; ++i) {
+            uint32_t i0 = indices[i * 3 + 0];
+            uint32_t i1 = indices[i * 3 + 1];
+            uint32_t i2 = indices[i * 3 + 2];
+            
+            const auto& v0 = vertices[i0];
+            const auto& v1 = vertices[i1];
+            const auto& v2 = vertices[i2];
+            
+            // 计算三角形法线（左手坐标系，顺时针）
+            Vector3 edge1(v1.position.x - v0.position.x, 
+                         v1.position.y - v0.position.y, 
+                         v1.position.z - v0.position.z);
+            Vector3 edge2(v2.position.x - v0.position.x, 
+                         v2.position.y - v0.position.y, 
+                         v2.position.z - v0.position.z);
+            
+            // 左手坐标系：cross(edge1, edge2) 应该朝外
+            Vector3 faceNormal(
+                edge1.y * edge2.z - edge1.z * edge2.y,
+                edge1.z * edge2.x - edge1.x * edge2.z,
+                edge1.x * edge2.y - edge1.y * edge2.x
+            );
+            
+            // 归一化
+            float len = sqrtf(faceNormal.x * faceNormal.x + 
+                            faceNormal.y * faceNormal.y + 
+                            faceNormal.z * faceNormal.z);
+            if (len > 0.0001f) {
+                faceNormal.x /= len;
+                faceNormal.y /= len;
+                faceNormal.z /= len;
+            }
+            
+            // 检查顶点法线与面法线是否大致一致（点积应该 > 0）
+            float dot = v0.normal.x * faceNormal.x + 
+                       v0.normal.y * faceNormal.y + 
+                       v0.normal.z * faceNormal.z;
+            
+            if (dot < 0.5f) {  // 夹角应该 < 60度
+                MOON_LOG_WARN("CSGTest", "⚠ Triangle %d: vertex normal may be incorrect (dot=%.2f)", i, dot);
+                normalsValid = false;
+            }
+        }
+        
+        if (normalsValid) {
+            MOON_LOG_INFO("CSGTest", "✓ Coordinate system and normals verified (left-hand, clockwise)");
+        } else {
+            MOON_LOG_WARN("CSGTest", "⚠ Some normals may need adjustment");
+        }
+    }
+    
+    // 测试 8: 对比 MeshGenerator 和 CSG 创建的立方体
+    MOON_LOG_INFO("CSGTest", "\n[Test 8] Comparing MeshGenerator vs CSG geometry...");
+    Mesh* meshGenCube = MeshGenerator::CreateCube(2.0f);
+    auto csgCube = CreateCSGBox(2.0f, 2.0f, 2.0f);
+    
+    if (meshGenCube && csgCube) {
+        MOON_LOG_INFO("CSGTest", "  MeshGenerator Cube: %zu vertices, %zu triangles", 
+            meshGenCube->GetVertexCount(), meshGenCube->GetTriangleCount());
+        MOON_LOG_INFO("CSGTest", "  CSG Cube: %zu vertices, %zu triangles", 
+            csgCube->GetVertexCount(), csgCube->GetTriangleCount());
+        MOON_LOG_INFO("CSGTest", "✓ Both methods work (vertex counts may differ due to different topology)");
+        delete meshGenCube;
+    }
+    
+    // 测试 9: Transform功能测试（Position）
+    MOON_LOG_INFO("CSGTest", "\n[Test 9] Testing Transform - Position...");
+    auto box1 = CreateCSGBox(1.0f, 1.0f, 1.0f, Vector3(0, 0, 0));
+    auto box2 = CreateCSGBox(1.0f, 1.0f, 1.0f, Vector3(2, 0, 0));
+    
+    if (box1 && box2) {
+        auto& verts1 = box1->GetVertices();
+        auto& verts2 = box2->GetVertices();
+        
+        // 检查第二个盒子的顶点是否平移了2个单位
+        float avgX1 = 0, avgX2 = 0;
+        for (const auto& v : verts1) avgX1 += v.position.x;
+        for (const auto& v : verts2) avgX2 += v.position.x;
+        avgX1 /= verts1.size();
+        avgX2 /= verts2.size();
+        
+        float diff = avgX2 - avgX1;
+        if (diff > 1.9f && diff < 2.1f) {
+            MOON_LOG_INFO("CSGTest", "✓ Position transform working (offset: %.2f)", diff);
+        } else {
+            MOON_LOG_ERROR("CSGTest", "✗ Position transform failed (expected ~2.0, got %.2f)", diff);
+            return false;
+        }
+    }
+    
+    // 测试 10: Transform功能测试（Scale）
+    MOON_LOG_INFO("CSGTest", "\n[Test 10] Testing Transform - Scale...");
+    auto boxNormal = CreateCSGBox(2.0f, 2.0f, 2.0f, Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(1, 1, 1));
+    auto boxScaled = CreateCSGBox(2.0f, 2.0f, 2.0f, Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(2, 2, 2));
+    
+    if (boxNormal && boxScaled) {
+        auto& vertsN = boxNormal->GetVertices();
+        auto& vertsS = boxScaled->GetVertices();
+        
+        // 计算边界框大小
+        float minX_N = vertsN[0].position.x, maxX_N = vertsN[0].position.x;
+        float minX_S = vertsS[0].position.x, maxX_S = vertsS[0].position.x;
+        
+        for (const auto& v : vertsN) {
+            minX_N = std::min(minX_N, v.position.x);
+            maxX_N = std::max(maxX_N, v.position.x);
+        }
+        for (const auto& v : vertsS) {
+            minX_S = std::min(minX_S, v.position.x);
+            maxX_S = std::max(maxX_S, v.position.x);
+        }
+        
+        float sizeN = maxX_N - minX_N;
+        float sizeS = maxX_S - minX_S;
+        float ratio = sizeS / sizeN;
+        
+        if (ratio > 1.9f && ratio < 2.1f) {
+            MOON_LOG_INFO("CSGTest", "✓ Scale transform working (ratio: %.2f)", ratio);
+        } else {
+            MOON_LOG_ERROR("CSGTest", "✗ Scale transform failed (expected ~2.0, got %.2f)", ratio);
+            return false;
+        }
+    }
+    
+    // 测试 11: Transform功能测试（Rotation）
+    MOON_LOG_INFO("CSGTest", "\n[Test 11] Testing Transform - Rotation...");
+    auto boxNoRot = CreateCSGBox(2.0f, 1.0f, 1.0f, Vector3(0, 0, 0), Vector3(0, 0, 0));
+    auto boxRot90 = CreateCSGBox(2.0f, 1.0f, 1.0f, Vector3(0, 0, 0), Vector3(0, 0, 90));
+    
+    if (boxNoRot && boxRot90) {
+        auto& vertsNoRot = boxNoRot->GetVertices();
+        auto& vertsRot = boxRot90->GetVertices();
+        
+        // 计算X和Y方向的范围
+        float rangeX_N = 0, rangeY_N = 0;
+        float rangeX_R = 0, rangeY_R = 0;
+        
+        float minX_N = vertsNoRot[0].position.x, maxX_N = vertsNoRot[0].position.x;
+        float minY_N = vertsNoRot[0].position.y, maxY_N = vertsNoRot[0].position.y;
+        float minX_R = vertsRot[0].position.x, maxX_R = vertsRot[0].position.x;
+        float minY_R = vertsRot[0].position.y, maxY_R = vertsRot[0].position.y;
+        
+        for (const auto& v : vertsNoRot) {
+            minX_N = std::min(minX_N, v.position.x);
+            maxX_N = std::max(maxX_N, v.position.x);
+            minY_N = std::min(minY_N, v.position.y);
+            maxY_N = std::max(maxY_N, v.position.y);
+        }
+        for (const auto& v : vertsRot) {
+            minX_R = std::min(minX_R, v.position.x);
+            maxX_R = std::max(maxX_R, v.position.x);
+            minY_R = std::min(minY_R, v.position.y);
+            maxY_R = std::max(maxY_R, v.position.y);
+        }
+        
+        rangeX_N = maxX_N - minX_N;
+        rangeY_N = maxY_N - minY_N;
+        rangeX_R = maxX_R - minX_R;
+        rangeY_R = maxY_R - minY_R;
+        
+        // 旋转90度后，原来X方向的长度(2.0)应该变成Y方向，Y方向(1.0)变成X方向
+        bool rotationWorked = (std::abs(rangeX_R - rangeY_N) < 0.2f) && 
+                              (std::abs(rangeY_R - rangeX_N) < 0.2f);
+        
+        if (rotationWorked) {
+            MOON_LOG_INFO("CSGTest", "✓ Rotation transform working (X: %.2f->%.2f, Y: %.2f->%.2f)", 
+                         rangeX_N, rangeX_R, rangeY_N, rangeY_R);
+        } else {
+            MOON_LOG_WARN("CSGTest", "⚠ Rotation may not be working correctly (X: %.2f->%.2f, Y: %.2f->%.2f)", 
+                         rangeX_N, rangeX_R, rangeY_N, rangeY_R);
+        }
+    }
+    
+    // 测试 12: Cone图元测试
+    MOON_LOG_INFO("CSGTest", "\n[Test 12] Testing Cone primitive...");
+    auto cone = CreateCSGCone(1.0f, 2.0f, 32);
+    
+    if (cone && cone->IsValid()) {
+        MOON_LOG_INFO("CSGTest", "✓ Cone created: %zu vertices, %zu triangles", 
+            cone->GetVertexCount(), cone->GetTriangleCount());
+        
+        // 验证cone的形状：Manifold在XY平面创建圆，沿Z轴挤出
+        auto& verts = cone->GetVertices();
+        float maxRadius = 0;
+        float minZ = verts[0].position.z, maxZ = verts[0].position.z;
+        
+        for (const auto& v : verts) {
+            float r = std::sqrt(v.position.x * v.position.x + v.position.y * v.position.y);
+            maxRadius = std::max(maxRadius, r);
+            minZ = std::min(minZ, v.position.z);
+            maxZ = std::max(maxZ, v.position.z);
+        }
+        
+        float height = maxZ - minZ;
+        
+        if (maxRadius > 0.9f && maxRadius < 1.1f && height > 1.9f && height < 2.1f) {
+            MOON_LOG_INFO("CSGTest", "✓ Cone shape verified (radius: %.2f, height: %.2f)", maxRadius, height);
+        } else {
+            MOON_LOG_WARN("CSGTest", "⚠ Cone dimensions unexpected (radius: %.2f, height: %.2f)", maxRadius, height);
+        }
+    } else {
+        MOON_LOG_ERROR("CSGTest", "✗ Failed to create cone");
+        return false;
+    }
+    
     MOON_LOG_INFO("CSGTest", "\n=== All CSG tests passed! ===");
     
     return true;

@@ -33,6 +33,12 @@
     <Filter Include="Assets">
       <UniqueIdentifier>{D4E5F6A7-B8C9-0123-DEFG-234567890123}</UniqueIdentifier>
     </Filter>
+    <Filter Include="CSG">
+      <UniqueIdentifier>{E5F6A7B8-C9D0-2345-FGHI-345678901234}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Texture">
+      <UniqueIdentifier>{F6A7B8C9-D0E1-3456-GHIJ-456789012345}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EngineCore.h">
@@ -122,6 +128,18 @@
     <ClInclude Include="Assets\MeshManager.h">
       <Filter>Assets</Filter>
     </ClInclude>
+    <ClInclude Include="Texture\TextureManager.h">
+      <Filter>Texture</Filter>
+    </ClInclude>
+    <ClInclude Include="CSG\CSGOperations.h">
+      <Filter>CSG</Filter>
+    </ClInclude>
+    <ClInclude Include="CSG\CSGComponent.h">
+      <Filter>CSG</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Skybox.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineCore.cpp">
@@ -177,6 +195,18 @@
     </ClCompile>
     <ClCompile Include="Assets\MeshManager.cpp">
       <Filter>Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture\TextureManager.cpp">
+      <Filter>Texture</Filter>
+    </ClCompile>
+    <ClCompile Include="CSG\CSGOperations.cpp">
+      <Filter>CSG</Filter>
+    </ClCompile>
+    <ClCompile Include="CSG\CSGComponent.cpp">
+      <Filter>CSG</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Skybox.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

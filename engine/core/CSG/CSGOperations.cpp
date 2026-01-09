@@ -9,9 +9,6 @@
 namespace Moon {
 namespace CSG {
 
-// ============================================================================
-// 辅助函数：Moon::Mesh → manifold::Manifold
-// ============================================================================
 static manifold::Manifold MeshToManifold(const Mesh* mesh) {
     if (!mesh || !mesh->IsValid()) {
         MOON_LOG_ERROR("CSG", "Invalid input mesh");
@@ -21,11 +18,8 @@ static manifold::Manifold MeshToManifold(const Mesh* mesh) {
     const std::vector<Vertex>& vertices = mesh->GetVertices();
     const std::vector<uint32_t>& indices = mesh->GetIndices();
 
-    // 转换为 Manifold 的 MeshGL 格式
     manifold::MeshGL meshGL;
-    
-    // 顶点位置（只需要位置，Manifold 会处理法线）
-    meshGL.numProp = 3; // x, y, z
+    meshGL.numProp = 3;
     meshGL.vertProperties.reserve(vertices.size() * 3);
     for (const auto& v : vertices) {
         meshGL.vertProperties.push_back(v.position.x);
@@ -33,29 +27,25 @@ static manifold::Manifold MeshToManifold(const Mesh* mesh) {
         meshGL.vertProperties.push_back(v.position.z);
     }
 
-    // 三角形索引
     meshGL.triVerts.reserve(indices.size());
-    for (uint32_t idx : indices) {
-        meshGL.triVerts.push_back(idx);
+    for (size_t i = 0; i < indices.size(); i += 3) {
+        meshGL.triVerts.push_back(indices[i + 0]);
+        meshGL.triVerts.push_back(indices[i + 1]);
+        meshGL.triVerts.push_back(indices[i + 2]);
     }
 
-    // 从 MeshGL 创建 Manifold
-    return manifold::Manifold(meshGL);
+    manifold::Manifold result(meshGL);
+    if (result.IsEmpty()) {
+        MOON_LOG_ERROR("CSG", "Failed to create manifold: %zu verts, %zu tris", 
+                      vertices.size(), indices.size() / 3);
+    }
+    return result;
 }
 
-// ============================================================================
-// 辅助函数：manifold::Manifold → Moon::Mesh
-// ============================================================================
-static std::shared_ptr<Mesh> ManifoldToMesh(const manifold::Manifold& manifold) {
-    if (manifold.IsEmpty()) {
-        MOON_LOG_ERROR("CSG", "Result manifold is empty");
-        return nullptr;
-    }
+static std::shared_ptr<Mesh> ManifoldToMesh_NoConversion(const manifold::Manifold& manifold) {
+    if (manifold.IsEmpty()) return nullptr;
 
-    // 导出为 MeshGL
     manifold::MeshGL meshGL = manifold.GetMeshGL();
-
-    // 转换顶点
     std::vector<Vertex> vertices;
     size_t numVerts = meshGL.vertProperties.size() / meshGL.numProp;
     vertices.reserve(numVerts);
@@ -66,46 +56,19 @@ static std::shared_ptr<Mesh> ManifoldToMesh(const manifold::Manifold& manifold) 
         v.position.x = meshGL.vertProperties[offset + 0];
         v.position.y = meshGL.vertProperties[offset + 1];
         v.position.z = meshGL.vertProperties[offset + 2];
-        
-        // 默认法线（向上）
         v.normal = Vector3(0, 1, 0);
-        
-        // 默认颜色
-        v.colorR = 1.0f;
-        v.colorG = 1.0f;
-        v.colorB = 1.0f;
-        v.colorA = 1.0f;
-        
-        // UV 默认值
-        v.uv.x = 0.0f;
-        v.uv.y = 0.0f;
-        
+        v.uv = Vector2(0, 0);
         vertices.push_back(v);
     }
 
-    // 转换索引
-    std::vector<uint32_t> indices;
-    indices.reserve(meshGL.triVerts.size());
-    for (uint32_t idx : meshGL.triVerts) {
-        indices.push_back(idx);
-    }
+    std::vector<uint32_t> indices(meshGL.triVerts.begin(), meshGL.triVerts.end());
 
-    // 创建 Mesh
     auto mesh = std::make_shared<Mesh>();
     mesh->SetVertices(std::move(vertices));
     mesh->SetIndices(std::move(indices));
-    
-    if (!mesh->IsValid()) {
-        MOON_LOG_ERROR("CSG", "Generated mesh is invalid");
-        return nullptr;
-    }
-
     return mesh;
 }
 
-// ============================================================================
-// CSG 布尔运算
-// ============================================================================
 std::shared_ptr<Mesh> PerformBoolean(const Mesh* meshA, const Mesh* meshB, Operation op) {
     if (!meshA || !meshB) {
         MOON_LOG_ERROR("CSG", "Null mesh input");
@@ -143,40 +106,114 @@ std::shared_ptr<Mesh> PerformBoolean(const Mesh* meshA, const Mesh* meshB, Opera
             return nullptr;
     }
 
-    // 转换回 Mesh
-    return ManifoldToMesh(result);
+    return ManifoldToMesh_NoConversion(result);
 }
 
-// ============================================================================
-// CSG 基础图元
-// ============================================================================
-
-std::shared_ptr<Mesh> CreateCSGBox(float width, float height, float depth) {
-    MOON_LOG_INFO("CSG", "Creating box (%.2f x %.2f x %.2f)", width, height, depth);
+std::shared_ptr<Mesh> CreateCSGBox(float width, float height, float depth,
+                                   const Vector3& position,
+                                   const Vector3& rotation,
+                                   const Vector3& scale) {
+    MOON_LOG_INFO("CSG", "Creating box (%.2f x %.2f x %.2f) at pos(%.2f, %.2f, %.2f)", 
+                 width, height, depth, position.x, position.y, position.z);
     
     // 使用 Manifold 的立方体构造函数
     manifold::Manifold box = manifold::Manifold::Cube({width, height, depth}, true);
     
-    return ManifoldToMesh(box);
+    // 应用Transform（在Manifold空间）
+    // Transform顺序：缩放 → 旋转 → 平移（标准TRS顺序）
+    // 注意：所有操作在Manifold右手坐标系下进行
+    
+    // 1. 缩放
+    if (scale != Vector3(1, 1, 1)) {
+        box = box.Scale({scale.x, scale.y, scale.z});
+    }
+    
+    // 2. 旋转（TODO）
+    // TODO: 实现旋转功能
+    // 需要将欧拉角(rotation参数)转换为旋转矩阵
+    // Manifold API: manifold.Rotate(x, y, z, degrees)
+    // 或使用 manifold.Transform(mat3x4) 传入完整旋转矩阵
+    if (rotation != Vector3(0, 0, 0)) {
+        MOON_LOG_WARN("CSG", "Rotation not yet implemented (rotation=%.2f,%.2f,%.2f ignored)", 
+                     rotation.x, rotation.y, rotation.z);
+        // 未来实现示例：
+        // Matrix3x4 rotMat = EulerToMatrix(rotation);
+        // box = box.Transform(rotMat);
+    }
+    
+    // 3. 平移
+    
+    if (position != Vector3(0, 0, 0)) {
+        box = box.Translate({position.x, position.y, position.z});
+    }
+    
+    // 返回无坐标转换的Mesh（保持Manifold坐标系）
+    return ManifoldToMesh_NoConversion(box);
 }
 
-std::shared_ptr<Mesh> CreateCSGSphere(float radius, int segments) {
-    MOON_LOG_INFO("CSG", "Creating sphere (radius=%.2f, segments=%d)", radius, segments);
-    
-    // 使用 Manifold 的球体构造函数
+std::shared_ptr<Mesh> CreateCSGSphere(float radius, int segments,
+                                      const Vector3& position,
+                                      const Vector3& rotation,
+                                      const Vector3& scale) {
     manifold::Manifold sphere = manifold::Manifold::Sphere(radius, segments);
     
-    return ManifoldToMesh(sphere);
+    if (scale != Vector3(1, 1, 1)) {
+        sphere = sphere.Scale({scale.x, scale.y, scale.z});
+    }
+    if (rotation != Vector3(0, 0, 0)) {
+        sphere = sphere.Rotate(rotation.x, rotation.y, rotation.z);
+    }
+    if (position != Vector3(0, 0, 0)) {
+        sphere = sphere.Translate({position.x, position.y, position.z});
+    }
+    
+    return ManifoldToMesh_NoConversion(sphere);
 }
 
-std::shared_ptr<Mesh> CreateCSGCylinder(float radius, float height, int segments) {
-    MOON_LOG_INFO("CSG", "Creating cylinder (radius=%.2f, height=%.2f, segments=%d)", 
-                 radius, height, segments);
-    
-    // 使用 Manifold 的圆柱体构造函数
+std::shared_ptr<Mesh> CreateCSGCylinder(float radius, float height, int segments,
+                                        const Vector3& position,
+                                        const Vector3& rotation,
+                                        const Vector3& scale) {
     manifold::Manifold cylinder = manifold::Manifold::Cylinder(height, radius, radius, segments);
     
-    return ManifoldToMesh(cylinder);
+    if (scale != Vector3(1, 1, 1)) {
+        cylinder = cylinder.Scale({scale.x, scale.y, scale.z});
+    }
+    if (rotation != Vector3(0, 0, 0)) {
+        cylinder = cylinder.Rotate(rotation.x, rotation.y, rotation.z);
+    }
+    if (position != Vector3(0, 0, 0)) {
+        cylinder = cylinder.Translate({position.x, position.y, position.z});
+    }
+    
+    return ManifoldToMesh_NoConversion(cylinder);
+}
+
+std::shared_ptr<Mesh> CreateCSGCone(float radius, float height, int segments,
+                                    const Vector3& position,
+                                    const Vector3& rotation,
+                                    const Vector3& scale) {
+    // Manifold::Cylinder(height, radiusLow, radiusHigh)
+    // 在XY平面创建圆，沿Z轴挤出
+    // radiusHigh=0创建圆锥
+    manifold::Manifold cone = manifold::Manifold::Cylinder(height, radius, 0.0f, segments);
+    
+    if (cone.Status() != manifold::Manifold::Error::NoError) {
+        MOON_LOG_ERROR("CSG", "Failed to create cone");
+        return nullptr;
+    }
+    
+    if (scale != Vector3(1, 1, 1)) {
+        cone = cone.Scale({scale.x, scale.y, scale.z});
+    }
+    if (rotation != Vector3(0, 0, 0)) {
+        cone = cone.Rotate(rotation.x, rotation.y, rotation.z);
+    }
+    if (position != Vector3(0, 0, 0)) {
+        cone = cone.Translate({position.x, position.y, position.z});
+    }
+    
+    return ManifoldToMesh_NoConversion(cone);
 }
 
 } // namespace CSG
