@@ -42,7 +42,8 @@ static manifold::Manifold MeshToManifold(const Mesh* mesh) {
     return result;
 }
 
-static std::shared_ptr<Mesh> ManifoldToMesh_NoConversion(const manifold::Manifold& manifold) {
+// 内部函数：保留拓扑结构的转换（用于布尔运算中间步骤）
+static std::shared_ptr<Mesh> ManifoldToMesh_PreserveTopology(const manifold::Manifold& manifold) {
     if (manifold.IsEmpty()) return nullptr;
 
     manifold::MeshGL meshGL = manifold.GetMeshGL();
@@ -50,7 +51,7 @@ static std::shared_ptr<Mesh> ManifoldToMesh_NoConversion(const manifold::Manifol
     size_t numVerts = meshGL.vertProperties.size() / meshGL.numProp;
     vertices.reserve(numVerts);
 
-    // 先创建顶点（法线初始化为0）
+    // 保留顶点共享结构（用于布尔运算）
     for (size_t i = 0; i < numVerts; ++i) {
         size_t offset = i * meshGL.numProp;
         Vertex v;
@@ -64,7 +65,7 @@ static std::shared_ptr<Mesh> ManifoldToMesh_NoConversion(const manifold::Manifol
 
     std::vector<uint32_t> indices(meshGL.triVerts.begin(), meshGL.triVerts.end());
 
-    // 计算面法线并累加到顶点法线
+    // 计算平滑法线（顶点共享，法线平均）
     for (size_t i = 0; i < indices.size(); i += 3) {
         uint32_t i0 = indices[i + 0];
         uint32_t i1 = indices[i + 1];
@@ -74,18 +75,15 @@ static std::shared_ptr<Mesh> ManifoldToMesh_NoConversion(const manifold::Manifol
         Vector3 v1 = vertices[i1].position;
         Vector3 v2 = vertices[i2].position;
         
-        // 计算边向量
         Vector3 edge1(v1.x - v0.x, v1.y - v0.y, v1.z - v0.z);
         Vector3 edge2(v2.x - v0.x, v2.y - v0.y, v2.z - v0.z);
         
-        // 叉积得到面法线
         Vector3 faceNormal(
             edge1.y * edge2.z - edge1.z * edge2.y,
             edge1.z * edge2.x - edge1.x * edge2.z,
             edge1.x * edge2.y - edge1.y * edge2.x
         );
         
-        // 累加到三个顶点的法线
         vertices[i0].normal.x += faceNormal.x;
         vertices[i0].normal.y += faceNormal.y;
         vertices[i0].normal.z += faceNormal.z;
@@ -99,7 +97,7 @@ static std::shared_ptr<Mesh> ManifoldToMesh_NoConversion(const manifold::Manifol
         vertices[i2].normal.z += faceNormal.z;
     }
     
-    // 归一化顶点法线
+    // 归一化法线
     for (auto& v : vertices) {
         float len = sqrtf(v.normal.x * v.normal.x + 
                          v.normal.y * v.normal.y + 
@@ -119,6 +117,94 @@ static std::shared_ptr<Mesh> ManifoldToMesh_NoConversion(const manifold::Manifol
     return mesh;
 }
 
+// 最终渲染用：扁平化顶点实现硬边效果
+static std::shared_ptr<Mesh> ManifoldToMesh_FlatShading(const manifold::Manifold& manifold) {
+    if (manifold.IsEmpty()) return nullptr;
+
+    manifold::MeshGL meshGL = manifold.GetMeshGL();
+    
+    // 按三角形展开顶点，每个面独立法线（硬边）
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    
+    size_t numTriangles = meshGL.triVerts.size() / 3;
+    vertices.reserve(numTriangles * 3);
+    indices.reserve(numTriangles * 3);
+    
+    for (size_t triIdx = 0; triIdx < numTriangles; ++triIdx) {
+        uint32_t origIdx0 = meshGL.triVerts[triIdx * 3 + 0];
+        uint32_t origIdx1 = meshGL.triVerts[triIdx * 3 + 1];
+        uint32_t origIdx2 = meshGL.triVerts[triIdx * 3 + 2];
+        
+        Vector3 p0(
+            meshGL.vertProperties[origIdx0 * meshGL.numProp + 0],
+            meshGL.vertProperties[origIdx0 * meshGL.numProp + 1],
+            meshGL.vertProperties[origIdx0 * meshGL.numProp + 2]
+        );
+        Vector3 p1(
+            meshGL.vertProperties[origIdx1 * meshGL.numProp + 0],
+            meshGL.vertProperties[origIdx1 * meshGL.numProp + 1],
+            meshGL.vertProperties[origIdx1 * meshGL.numProp + 2]
+        );
+        Vector3 p2(
+            meshGL.vertProperties[origIdx2 * meshGL.numProp + 0],
+            meshGL.vertProperties[origIdx2 * meshGL.numProp + 1],
+            meshGL.vertProperties[origIdx2 * meshGL.numProp + 2]
+        );
+        
+        Vector3 edge1(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z);
+        Vector3 edge2(p2.x - p0.x, p2.y - p0.y, p2.z - p0.z);
+        Vector3 faceNormal(
+            edge1.y * edge2.z - edge1.z * edge2.y,
+            edge1.z * edge2.x - edge1.x * edge2.z,
+            edge1.x * edge2.y - edge1.y * edge2.x
+        );
+        
+        float len = sqrtf(faceNormal.x * faceNormal.x + 
+                         faceNormal.y * faceNormal.y + 
+                         faceNormal.z * faceNormal.z);
+        if (len > 0.0001f) {
+            faceNormal.x /= len;
+            faceNormal.y /= len;
+            faceNormal.z /= len;
+        } else {
+            faceNormal = Vector3(0, 1, 0);
+        }
+        
+        Vertex v0, v1, v2;
+        v0.position = p0;
+        v0.normal = faceNormal;
+        v0.uv = Vector2(0, 0);
+        
+        v1.position = p1;
+        v1.normal = faceNormal;
+        v1.uv = Vector2(0, 0);
+        
+        v2.position = p2;
+        v2.normal = faceNormal;
+        v2.uv = Vector2(0, 0);
+        
+        uint32_t newIdx = static_cast<uint32_t>(vertices.size());
+        vertices.push_back(v0);
+        vertices.push_back(v1);
+        vertices.push_back(v2);
+        
+        indices.push_back(newIdx + 0);
+        indices.push_back(newIdx + 1);
+        indices.push_back(newIdx + 2);
+    }
+
+    auto mesh = std::make_shared<Mesh>();
+    mesh->SetVertices(std::move(vertices));
+    mesh->SetIndices(std::move(indices));
+    return mesh;
+}
+
+// 公开接口：默认使用扁平着色（硬边效果）
+static std::shared_ptr<Mesh> ManifoldToMesh_NoConversion(const manifold::Manifold& manifold) {
+    return ManifoldToMesh_FlatShading(manifold);
+}
+
 std::shared_ptr<Mesh> PerformBoolean(const Mesh* meshA, const Mesh* meshB, Operation op) {
     if (!meshA || !meshB) {
         MOON_LOG_ERROR("CSG", "Null mesh input");
@@ -127,7 +213,7 @@ std::shared_ptr<Mesh> PerformBoolean(const Mesh* meshA, const Mesh* meshB, Opera
 
     MOON_LOG_INFO("CSG", "Performing boolean operation...");
 
-    // 转换为 Manifold
+    // 转换为 Manifold（需要保留拓扑结构）
     manifold::Manifold manifoldA = MeshToManifold(meshA);
     manifold::Manifold manifoldB = MeshToManifold(meshB);
 
@@ -156,48 +242,39 @@ std::shared_ptr<Mesh> PerformBoolean(const Mesh* meshA, const Mesh* meshB, Opera
             return nullptr;
     }
 
-    return ManifoldToMesh_NoConversion(result);
+    // 布尔运算结果使用扁平着色（硬边效果）
+    return ManifoldToMesh_FlatShading(result);
 }
 
 std::shared_ptr<Mesh> CreateCSGBox(float width, float height, float depth,
                                    const Vector3& position,
                                    const Vector3& rotation,
-                                   const Vector3& scale) {
+                                   const Vector3& scale,
+                                   bool flatShading) {
     MOON_LOG_INFO("CSG", "Creating box (%.2f x %.2f x %.2f) at pos(%.2f, %.2f, %.2f)", 
                  width, height, depth, position.x, position.y, position.z);
     
-    // 使用 Manifold 的立方体构造函数
     manifold::Manifold box = manifold::Manifold::Cube({width, height, depth}, true);
     
-    // 应用Transform（在Manifold空间）
-    // Transform顺序：缩放 → 旋转 → 平移（标准TRS顺序）
-    // 注意：所有操作在Manifold右手坐标系下进行
-    
-    // 1. 缩放
     if (scale != Vector3(1, 1, 1)) {
         box = box.Scale({scale.x, scale.y, scale.z});
     }
-    
-    // 2. 旋转
-    // Manifold::Rotate(xDeg, yDeg, zDeg) - 绕X/Y/Z轴旋转
     if (rotation != Vector3(0, 0, 0)) {
         box = box.Rotate(rotation.x, rotation.y, rotation.z);
     }
-    
-    // 3. 平移
-    
     if (position != Vector3(0, 0, 0)) {
         box = box.Translate({position.x, position.y, position.z});
     }
     
-    // 返回无坐标转换的Mesh（保持Manifold坐标系）
-    return ManifoldToMesh_NoConversion(box);
+    // 根据flatShading参数选择转换方式
+    return flatShading ? ManifoldToMesh_FlatShading(box) : ManifoldToMesh_PreserveTopology(box);
 }
 
 std::shared_ptr<Mesh> CreateCSGSphere(float radius, int segments,
                                       const Vector3& position,
                                       const Vector3& rotation,
-                                      const Vector3& scale) {
+                                      const Vector3& scale,
+                                      bool flatShading) {
     manifold::Manifold sphere = manifold::Manifold::Sphere(radius, segments);
     
     if (scale != Vector3(1, 1, 1)) {
@@ -210,13 +287,14 @@ std::shared_ptr<Mesh> CreateCSGSphere(float radius, int segments,
         sphere = sphere.Translate({position.x, position.y, position.z});
     }
     
-    return ManifoldToMesh_NoConversion(sphere);
+    return flatShading ? ManifoldToMesh_FlatShading(sphere) : ManifoldToMesh_PreserveTopology(sphere);
 }
 
 std::shared_ptr<Mesh> CreateCSGCylinder(float radius, float height, int segments,
                                         const Vector3& position,
                                         const Vector3& rotation,
-                                        const Vector3& scale) {
+                                        const Vector3& scale,
+                                        bool flatShading) {
     manifold::Manifold cylinder = manifold::Manifold::Cylinder(height, radius, radius, segments);
     
     if (scale != Vector3(1, 1, 1)) {
@@ -229,16 +307,14 @@ std::shared_ptr<Mesh> CreateCSGCylinder(float radius, float height, int segments
         cylinder = cylinder.Translate({position.x, position.y, position.z});
     }
     
-    return ManifoldToMesh_NoConversion(cylinder);
+    return flatShading ? ManifoldToMesh_FlatShading(cylinder) : ManifoldToMesh_PreserveTopology(cylinder);
 }
 
 std::shared_ptr<Mesh> CreateCSGCone(float radius, float height, int segments,
                                     const Vector3& position,
                                     const Vector3& rotation,
-                                    const Vector3& scale) {
-    // Manifold::Cylinder(height, radiusLow, radiusHigh)
-    // 在XY平面创建圆，沿Z轴挤出
-    // radiusHigh=0创建圆锥
+                                    const Vector3& scale,
+                                    bool flatShading) {
     manifold::Manifold cone = manifold::Manifold::Cylinder(height, radius, 0.0f, segments);
     
     if (cone.Status() != manifold::Manifold::Error::NoError) {
@@ -256,7 +332,7 @@ std::shared_ptr<Mesh> CreateCSGCone(float radius, float height, int segments,
         cone = cone.Translate({position.x, position.y, position.z});
     }
     
-    return ManifoldToMesh_NoConversion(cone);
+    return flatShading ? ManifoldToMesh_FlatShading(cone) : ManifoldToMesh_PreserveTopology(cone);
 }
 
 } // namespace CSG

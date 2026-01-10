@@ -211,31 +211,36 @@ std::shared_ptr<Mesh> CSGNode::GenerateMesh() const {
     if (operation == CSGOperationType::Primitive) {
         std::shared_ptr<Mesh> mesh;
         
+        // 如果这是叶子节点且没有父节点，使用扁平着色（最终渲染）
+        // 否则保留拓扑结构（用于布尔运算）
+        bool useFlatShading = parent.expired();  // 无父节点时使用扁平着色
+        
         switch (primitiveType) {
             case CSGPrimitiveType::Box:
-                // 直接传递Transform参数给CreateCSGBox，在Manifold层面应用Transform
-                // TODO: 旋转参数需要从Quaternion转为欧拉角
                 mesh = Moon::CSG::CreateCSGBox(width, height, depth, 
-                                               localPosition, Vector3(0,0,0), localScale);
+                                               localPosition, Vector3(0,0,0), localScale,
+                                               useFlatShading);
                 break;
             case CSGPrimitiveType::Sphere:
-                mesh = Moon::CSG::CreateCSGSphere(depth, segments,  // depth = radius
-                                                  localPosition, Vector3(0,0,0), localScale);
+                mesh = Moon::CSG::CreateCSGSphere(depth, segments,
+                                                  localPosition, Vector3(0,0,0), localScale,
+                                                  useFlatShading);
                 break;
             case CSGPrimitiveType::Cylinder:
-                mesh = Moon::CSG::CreateCSGCylinder(width, height, segments,  // width = radius
-                                                    localPosition, Vector3(0,0,0), localScale);
+                mesh = Moon::CSG::CreateCSGCylinder(width, height, segments,
+                                                    localPosition, Vector3(0,0,0), localScale,
+                                                    useFlatShading);
                 break;
             case CSGPrimitiveType::Cone:
-                mesh = Moon::CSG::CreateCSGCone(width, height, segments,  // width = radius
-                                                localPosition, Vector3(0,0,0), localScale);
+                mesh = Moon::CSG::CreateCSGCone(width, height, segments,
+                                                localPosition, Vector3(0,0,0), localScale,
+                                                useFlatShading);
                 break;
             default:
                 MOON_LOG_ERROR("CSGNode", "Unknown primitive type");
                 return nullptr;
         }
         
-        // 不再需要TransformMeshVertices，Transform已经在Manifold层面应用了
         return mesh;
     }
     
@@ -270,6 +275,7 @@ std::shared_ptr<Mesh> CSGNode::GenerateMesh() const {
             return nullptr;
     }
     
+    // 布尔运算结果使用扁平着色（最终输出）
     return Moon::CSG::PerformBoolean(leftMesh.get(), rightMesh.get(), op);
 }
 

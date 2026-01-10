@@ -44,7 +44,8 @@ std::shared_ptr<Mesh> PerformBoolean(
 std::shared_ptr<Mesh> CreateCSGBox(float width, float height, float depth,
                                    const Vector3& position = Vector3(0, 0, 0),
                                    const Vector3& rotation = Vector3(0, 0, 0),
-                                   const Vector3& scale = Vector3(1, 1, 1));
+                                   const Vector3& scale = Vector3(1, 1, 1),
+                                   bool flatShading = true);
 
 /**
  * @brief 创建 CSG 球体（带世界坐标Transform）
@@ -59,7 +60,8 @@ std::shared_ptr<Mesh> CreateCSGBox(float width, float height, float depth,
 std::shared_ptr<Mesh> CreateCSGSphere(float radius, int segments = 32,
                                       const Vector3& position = Vector3(0, 0, 0),
                                       const Vector3& rotation = Vector3(0, 0, 0),
-                                      const Vector3& scale = Vector3(1, 1, 1));
+                                      const Vector3& scale = Vector3(1, 1, 1),
+                                      bool flatShading = true);
 
 /**
  * @brief 创建 CSG 圆柱体（带世界坐标Transform）
@@ -75,7 +77,8 @@ std::shared_ptr<Mesh> CreateCSGSphere(float radius, int segments = 32,
 std::shared_ptr<Mesh> CreateCSGCylinder(float radius, float height, int segments = 32,
                                         const Vector3& position = Vector3(0, 0, 0),
                                         const Vector3& rotation = Vector3(0, 0, 0),
-                                        const Vector3& scale = Vector3(1, 1, 1));
+                                        const Vector3& scale = Vector3(1, 1, 1),
+                                        bool flatShading = true);
 
 /**
  * @brief 创建 CSG 圆锥体（带世界坐标Transform）
@@ -91,7 +94,8 @@ std::shared_ptr<Mesh> CreateCSGCylinder(float radius, float height, int segments
 std::shared_ptr<Mesh> CreateCSGCone(float radius, float height, int segments = 32,
                                     const Vector3& position = Vector3(0, 0, 0),
                                     const Vector3& rotation = Vector3(0, 0, 0),
-                                    const Vector3& scale = Vector3(1, 1, 1));
+                                    const Vector3& scale = Vector3(1, 1, 1),
+                                    bool flatShading = true);
 
 } // namespace CSG
 } // namespace Moon
