@@ -50,18 +50,68 @@ static std::shared_ptr<Mesh> ManifoldToMesh_NoConversion(const manifold::Manifol
     size_t numVerts = meshGL.vertProperties.size() / meshGL.numProp;
     vertices.reserve(numVerts);
 
+    // 先创建顶点（法线初始化为0）
     for (size_t i = 0; i < numVerts; ++i) {
         size_t offset = i * meshGL.numProp;
         Vertex v;
         v.position.x = meshGL.vertProperties[offset + 0];
         v.position.y = meshGL.vertProperties[offset + 1];
         v.position.z = meshGL.vertProperties[offset + 2];
-        v.normal = Vector3(0, 1, 0);
+        v.normal = Vector3(0, 0, 0);
         v.uv = Vector2(0, 0);
         vertices.push_back(v);
     }
 
     std::vector<uint32_t> indices(meshGL.triVerts.begin(), meshGL.triVerts.end());
+
+    // 计算面法线并累加到顶点法线
+    for (size_t i = 0; i < indices.size(); i += 3) {
+        uint32_t i0 = indices[i + 0];
+        uint32_t i1 = indices[i + 1];
+        uint32_t i2 = indices[i + 2];
+        
+        Vector3 v0 = vertices[i0].position;
+        Vector3 v1 = vertices[i1].position;
+        Vector3 v2 = vertices[i2].position;
+        
+        // 计算边向量
+        Vector3 edge1(v1.x - v0.x, v1.y - v0.y, v1.z - v0.z);
+        Vector3 edge2(v2.x - v0.x, v2.y - v0.y, v2.z - v0.z);
+        
+        // 叉积得到面法线
+        Vector3 faceNormal(
+            edge1.y * edge2.z - edge1.z * edge2.y,
+            edge1.z * edge2.x - edge1.x * edge2.z,
+            edge1.x * edge2.y - edge1.y * edge2.x
+        );
+        
+        // 累加到三个顶点的法线
+        vertices[i0].normal.x += faceNormal.x;
+        vertices[i0].normal.y += faceNormal.y;
+        vertices[i0].normal.z += faceNormal.z;
+        
+        vertices[i1].normal.x += faceNormal.x;
+        vertices[i1].normal.y += faceNormal.y;
+        vertices[i1].normal.z += faceNormal.z;
+        
+        vertices[i2].normal.x += faceNormal.x;
+        vertices[i2].normal.y += faceNormal.y;
+        vertices[i2].normal.z += faceNormal.z;
+    }
+    
+    // 归一化顶点法线
+    for (auto& v : vertices) {
+        float len = sqrtf(v.normal.x * v.normal.x + 
+                         v.normal.y * v.normal.y + 
+                         v.normal.z * v.normal.z);
+        if (len > 0.0001f) {
+            v.normal.x /= len;
+            v.normal.y /= len;
+            v.normal.z /= len;
+        } else {
+            v.normal = Vector3(0, 1, 0);
+        }
+    }
 
     auto mesh = std::make_shared<Mesh>();
     mesh->SetVertices(std::move(vertices));
@@ -128,17 +178,10 @@ std::shared_ptr<Mesh> CreateCSGBox(float width, float height, float depth,
         box = box.Scale({scale.x, scale.y, scale.z});
     }
     
-    // 2. 旋转（TODO）
-    // TODO: 实现旋转功能
-    // 需要将欧拉角(rotation参数)转换为旋转矩阵
-    // Manifold API: manifold.Rotate(x, y, z, degrees)
-    // 或使用 manifold.Transform(mat3x4) 传入完整旋转矩阵
+    // 2. 旋转
+    // Manifold::Rotate(xDeg, yDeg, zDeg) - 绕X/Y/Z轴旋转
     if (rotation != Vector3(0, 0, 0)) {
-        MOON_LOG_WARN("CSG", "Rotation not yet implemented (rotation=%.2f,%.2f,%.2f ignored)", 
-                     rotation.x, rotation.y, rotation.z);
-        // 未来实现示例：
-        // Matrix3x4 rotMat = EulerToMatrix(rotation);
-        // box = box.Transform(rotMat);
+        box = box.Rotate(rotation.x, rotation.y, rotation.z);
     }
     
     // 3. 平移
