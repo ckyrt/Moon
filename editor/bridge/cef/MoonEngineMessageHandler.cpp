@@ -6,6 +6,7 @@
 #include "../../../engine/core/Scene/Material.h"
 #include "../../../engine/core/Scene/Light.h"
 #include "../../../engine/core/Scene/Skybox.h"
+#include "../../../engine/core/CSG/CSGComponent.h"
 #include "../../../external/nlohmann/json.hpp"
 #include <functional>
 #include <unordered_map>
@@ -53,6 +54,19 @@ namespace {
             obj["z"].get<float>(),
             obj["w"].get<float>()
         };
+    }
+
+    // 为节点添加默认 PBR 材质（普通几何体使用）
+    void AddDefaultMaterial(Moon::SceneNode* node, const Moon::Vector3& baseColor = Moon::Vector3(1.0f, 1.0f, 1.0f)) {
+        Moon::Material* material = node->AddComponent<Moon::Material>();
+        material->SetMetallic(0.0f);
+        material->SetRoughness(0.5f);
+        material->SetBaseColor(baseColor);
+    }
+
+    // 为 CSG 节点添加默认灰色材质
+    void AddCSGMaterial(Moon::SceneNode* node) {
+        AddDefaultMaterial(node, Moon::Vector3(0.8f, 0.8f, 0.8f));
     }
 }
 
@@ -502,19 +516,15 @@ namespace CommandHandlers {
         if (type == "empty") {
             newNode = scene->CreateNode("Empty Node");
         }
+        // === 普通几何体（通过 MeshGenerator 创建，支持UV和材质） ===
         else if (type == "cube") {
             newNode = scene->CreateNode("Cube");
             Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
             renderer->SetMesh(engine->GetMeshManager()->CreateCube(
                 1.0f,  // size
-                Moon::Vector3(1.0f, 0.5f, 0.2f)  // orange color
+                Moon::Vector3(1.0f, 0.5f, 0.2f)  // vertex color (orange)
             ));
-            
-            // 添加默认 Material 组件（与 HelloEngine 保持一致）
-            Moon::Material* material = newNode->AddComponent<Moon::Material>();
-            material->SetMetallic(0.0f);
-            material->SetRoughness(0.5f);
-            material->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
+            AddDefaultMaterial(newNode);
         }
         else if (type == "sphere") {
             newNode = scene->CreateNode("Sphere");
@@ -523,14 +533,9 @@ namespace CommandHandlers {
                 0.5f,  // radius
                 24,    // segments
                 16,    // rings
-                Moon::Vector3(0.2f, 0.5f, 1.0f)  // blue color
+                Moon::Vector3(0.2f, 0.5f, 1.0f)  // vertex color (blue)
             ));
-            
-            // 添加默认 Material 组件
-            Moon::Material* material = newNode->AddComponent<Moon::Material>();
-            material->SetMetallic(0.0f);
-            material->SetRoughness(0.5f);
-            material->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
+            AddDefaultMaterial(newNode);
         }
         else if (type == "cylinder") {
             newNode = scene->CreateNode("Cylinder");
@@ -540,14 +545,54 @@ namespace CommandHandlers {
                 0.5f,  // radiusBottom
                 1.0f,  // height
                 24,    // segments
-                Moon::Vector3(0.2f, 1.0f, 0.5f)  // green color
+                Moon::Vector3(0.2f, 1.0f, 0.5f)  // vertex color (green)
             ));
+            AddDefaultMaterial(newNode);
+        }
+        // === CSG几何体（基于Manifold库，支持布尔运算，暂无UV坐标） ===
+        else if (type == "box" || type == "csg_box") {
+            newNode = scene->CreateNode("CSG_Box");
+            Moon::CSGComponent* csgComp = newNode->AddComponent<Moon::CSGComponent>();
+            csgComp->SetCSGTree(Moon::CSGNode::CreateBox(1.0f, 1.0f, 1.0f));
             
-            // 添加默认 Material 组件
-            Moon::Material* material = newNode->AddComponent<Moon::Material>();
-            material->SetMetallic(0.0f);
-            material->SetRoughness(0.5f);
-            material->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(csgComp->GetMesh());
+            AddCSGMaterial(newNode);
+            
+            MOON_LOG_INFO("MoonEngineMessage", "Created CSG Box (1x1x1)");
+        }
+        else if (type == "csg_sphere") {
+            newNode = scene->CreateNode("CSG_Sphere");
+            Moon::CSGComponent* csgComp = newNode->AddComponent<Moon::CSGComponent>();
+            csgComp->SetCSGTree(Moon::CSGNode::CreateSphere(0.5f, 32));
+            
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(csgComp->GetMesh());
+            AddCSGMaterial(newNode);
+            
+            MOON_LOG_INFO("MoonEngineMessage", "Created CSG Sphere (r=0.5, segments=32)");
+        }
+        else if (type == "csg_cylinder") {
+            newNode = scene->CreateNode("CSG_Cylinder");
+            Moon::CSGComponent* csgComp = newNode->AddComponent<Moon::CSGComponent>();
+            csgComp->SetCSGTree(Moon::CSGNode::CreateCylinder(0.5f, 1.0f, 32));
+            
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(csgComp->GetMesh());
+            AddCSGMaterial(newNode);
+            
+            MOON_LOG_INFO("MoonEngineMessage", "Created CSG Cylinder (r=0.5, h=1.0, segments=32)");
+        }
+        else if (type == "cone" || type == "csg_cone") {
+            newNode = scene->CreateNode("CSG_Cone");
+            Moon::CSGComponent* csgComp = newNode->AddComponent<Moon::CSGComponent>();
+            csgComp->SetCSGTree(Moon::CSGNode::CreateCone(0.5f, 1.0f, 32));
+            
+            Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(csgComp->GetMesh());
+            AddCSGMaterial(newNode);
+            
+            MOON_LOG_INFO("MoonEngineMessage", "Created CSG Cone (r=0.5, h=1.0, segments=32)");
         }
         else if (type == "plane") {
             newNode = scene->CreateNode("Plane");
@@ -557,14 +602,9 @@ namespace CommandHandlers {
                 2.0f,  // depth
                 1,     // subdivisionsX
                 1,     // subdivisionsZ
-                Moon::Vector3(0.7f, 0.7f, 0.7f)  // gray color
+                Moon::Vector3(0.7f, 0.7f, 0.7f)  // vertex color (gray)
             ));
-            
-            // 添加默认 Material 组件
-            Moon::Material* material = newNode->AddComponent<Moon::Material>();
-            material->SetMetallic(0.0f);
-            material->SetRoughness(0.5f);
-            material->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
+            AddDefaultMaterial(newNode);
         }
         else if (type == "light") {
             newNode = scene->CreateNode("Directional Light");

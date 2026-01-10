@@ -84,7 +84,8 @@ export const Toolbar: React.FC = () => {
         return;
       }
       
-      await engine.createPrimitive(type);
+      // CSG几何体使用 'csg_' 前缀来区分普通几何体
+      await engine.createPrimitive(`csg_${type}`);
       setShowCSGMenu(false);
       console.log(`[Toolbar] Created CSG primitive: ${type}`);
     } catch (error) {
@@ -148,6 +149,7 @@ export const Toolbar: React.FC = () => {
         
         {showCreateMenu && (
           <div className={styles.dropdown}>
+            <div className={styles.dropdownLabel}>基础对象</div>
             <button onClick={() => handleCreateObject('empty')} className={styles.dropdownItem}>
               📦 Empty Node
             </button>
@@ -163,6 +165,8 @@ export const Toolbar: React.FC = () => {
             <button onClick={() => handleCreateObject('plane')} className={styles.dropdownItem}>
               ▭ Plane
             </button>
+            <div className={styles.dropdownDivider}></div>
+            <div className={styles.dropdownLabel}>场景元素</div>
             <button onClick={() => handleCreateObject('light')} className={styles.dropdownItem}>
               💡 Light
             </button>
