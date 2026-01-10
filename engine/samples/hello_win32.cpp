@@ -221,19 +221,27 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     woodMaterial->SetPresetWood();
     
     // ============================================================================
-    // 7. CSG 测试 - Box - Sphere (布尔减法)
+    // 7. CSG 演示场景 - Box - Sphere (布尔减法)
     // ============================================================================
-    MOON_LOG_INFO("Sample", "Creating CSG test objects...");
+    MOON_LOG_INFO("Sample", "Creating CSG demonstration object...");
     
-    // 创建 CSG Box
-    auto csgBox = Moon::CSG::CreateCSGBox(2.0f, 2.0f, 2.0f);
+    // 创建 CSG Box（flatShading=false用于布尔操作，保留共享顶点）
+    auto csgBox = Moon::CSG::CreateCSGBox(2.0f, 2.0f, 2.0f, 
+                                          Moon::Vector3(0, 0, 0), 
+                                          Moon::Vector3(0, 0, 0), 
+                                          Moon::Vector3(1, 1, 1), 
+                                          false);  // 保留共享顶点用于Boolean
     if (csgBox && csgBox->IsValid()) {
         MOON_LOG_INFO("Sample", "CSG Box created: %zu vertices, %zu triangles", 
             csgBox->GetVertexCount(), csgBox->GetTriangleCount());
     }
     
-    // 创建 CSG Sphere
-    auto csgSphere = Moon::CSG::CreateCSGSphere(1.2f, 32);
+    // 创建 CSG Sphere（flatShading=false用于布尔操作）
+    auto csgSphere = Moon::CSG::CreateCSGSphere(1.2f, 32, 
+                                                Moon::Vector3(0, 0, 0), 
+                                                Moon::Vector3(0, 0, 0), 
+                                                Moon::Vector3(1, 1, 1), 
+                                                false);  // 保留共享顶点用于Boolean
     if (csgSphere && csgSphere->IsValid()) {
         MOON_LOG_INFO("Sample", "CSG Sphere created: %zu vertices, %zu triangles", 
             csgSphere->GetVertexCount(), csgSphere->GetTriangleCount());

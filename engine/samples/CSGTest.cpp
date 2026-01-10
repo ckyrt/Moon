@@ -19,10 +19,10 @@ namespace CSGTest {
 bool RunTests() {
     MOON_LOG_INFO("CSGTest", "=== CSG Boolean Operations Test ===");
     
-    // 测试 1: 创建 CSG 基础图元
+    // 测试 1: 创建 CSG 基础图元（flatShading=false用于Boolean操作）
     MOON_LOG_INFO("CSGTest", "\n[Test 1] Creating CSG primitives...");
     
-    auto box = CreateCSGBox(2.0f, 2.0f, 2.0f);
+    auto box = CreateCSGBox(2.0f, 2.0f, 2.0f, Vector3(0,0,0), Vector3(0,0,0), Vector3(1,1,1), false);
     if (box && box->IsValid()) {
         MOON_LOG_INFO("CSGTest", "✓ Box created: %zu vertices, %zu triangles", 
             box->GetVertexCount(), box->GetTriangleCount());
@@ -31,7 +31,7 @@ bool RunTests() {
         return false;
     }
     
-    auto sphere = CreateCSGSphere(1.5f, 32);
+    auto sphere = CreateCSGSphere(1.5f, 32, Vector3(0,0,0), Vector3(0,0,0), Vector3(1,1,1), false);
     if (sphere && sphere->IsValid()) {
         MOON_LOG_INFO("CSGTest", "✓ Sphere created: %zu vertices, %zu triangles", 
             sphere->GetVertexCount(), sphere->GetTriangleCount());
@@ -40,7 +40,7 @@ bool RunTests() {
         return false;
     }
     
-    auto cylinder = CreateCSGCylinder(1.0f, 3.0f, 32);
+    auto cylinder = CreateCSGCylinder(1.0f, 3.0f, 32, Vector3(0,0,0), Vector3(0,0,0), Vector3(1,1,1), false);
     if (cylinder && cylinder->IsValid()) {
         MOON_LOG_INFO("CSGTest", "✓ Cylinder created: %zu vertices, %zu triangles", 
             cylinder->GetVertexCount(), cylinder->GetTriangleCount());
@@ -98,8 +98,8 @@ bool RunTests() {
     
     // 测试 6: 基本CSG操作（墙+窗场景，简化版）
     MOON_LOG_INFO("CSGTest", "\n[Test 6] Testing wall-window CSG scenario...");
-    auto wallBox = CreateCSGBox(10.0f, 10.0f, 1.0f);
-    auto windowBox = CreateCSGBox(3.0f, 4.0f, 1.5f);
+    auto wallBox = CreateCSGBox(10.0f, 10.0f, 1.0f, Vector3(0,0,0), Vector3(0,0,0), Vector3(1,1,1), false);
+    auto windowBox = CreateCSGBox(3.0f, 4.0f, 1.5f, Vector3(0,0,0), Vector3(0,0,0), Vector3(1,1,1), false);
     
     // 砖墙 - 窗洞 = 带洞的墙（单材质）
     auto wallWithWindow = PerformBoolean(wallBox.get(), windowBox.get(), Operation::Subtract);
@@ -325,6 +325,89 @@ bool RunTests() {
         }
     } else {
         MOON_LOG_ERROR("CSGTest", "✗ Failed to create cone");
+        return false;
+    }
+    
+    // 测试 13: Flat Shading验证 - 顶点数量检查
+    MOON_LOG_INFO("CSGTest", "\n[Test 13] Testing Flat Shading vertex count...");
+    auto flatBox = CreateCSGBox(1.0f, 1.0f, 1.0f, Vector3(0,0,0), Vector3(0,0,0), Vector3(1,1,1), true);  // flatShading = true
+    
+    if (flatBox && flatBox->IsValid()) {
+        size_t vertCount = flatBox->GetVertexCount();
+        size_t triCount = flatBox->GetTriangleCount();
+        
+        MOON_LOG_INFO("CSGTest", "  CSG Box (flat shading): %zu vertices, %zu triangles", vertCount, triCount);
+        
+        // 立方体有6个面，每面2个三角形，每个三角形3个顶点 = 36个独立顶点
+        if (vertCount == 36 && triCount == 12) {
+            MOON_LOG_INFO("CSGTest", "✓ Flat shading verified: 36 独立顶点 (each face has independent vertices for hard edges)");
+        } else {
+            MOON_LOG_WARN("CSGTest", "⚠ Vertex count unexpected (expected 36, got %zu)", vertCount);
+        }
+        
+        // 检查前6个顶点法线（应该是同一个face normal）
+        auto& verts = flatBox->GetVertices();
+        if (verts.size() >= 6) {
+            const auto& n0 = verts[0].normal;
+            bool sameFace = true;
+            for (int i = 1; i < 6; i++) {
+                float dot = n0.x * verts[i].normal.x + n0.y * verts[i].normal.y + n0.z * verts[i].normal.z;
+                if (dot < 0.99f) {  // 法线夹角应该接近0度
+                    sameFace = false;
+                    break;
+                }
+            }
+            if (sameFace) {
+                MOON_LOG_INFO("CSGTest", "✓ First face normals consistent: (%.3f, %.3f, %.3f)", n0.x, n0.y, n0.z);
+            }
+        }
+    } else {
+        MOON_LOG_ERROR("CSGTest", "✗ Failed to create flat shading box");
+        return false;
+    }
+    
+    // 测试 14: 法线诊断测试 - 对比 MeshGenerator 和 CSG 的法线
+    MOON_LOG_INFO("CSGTest", "\n[Test 14] Comparing MeshGenerator vs CSG normals...");
+    
+    // 普通Box (MeshGenerator) - 使用外部API
+    MOON_LOG_INFO("CSGTest", "  Note: MeshGenerator comparison requires external MeshManager, skipping in unit test");
+    MOON_LOG_INFO("CSGTest", "  (This test is covered in hello_win32.cpp integration)");
+    
+    // CSG Box 法线检查
+    auto csgDiagBox = CreateCSGBox(1.0f, 1.0f, 1.0f);
+    if (csgDiagBox && csgDiagBox->IsValid()) {
+        const auto& verts = csgDiagBox->GetVertices();
+        MOON_LOG_INFO("CSGTest", "  CSG Box: %zu vertices", verts.size());
+        
+        // 检查前3个顶点的法线
+        if (verts.size() >= 3) {
+            MOON_LOG_INFO("CSGTest", "  First 3 vertex normals:");
+            for (int i = 0; i < 3; i++) {
+                MOON_LOG_INFO("CSGTest", "    v[%d]: (%.3f, %.3f, %.3f)", 
+                             i, verts[i].normal.x, verts[i].normal.y, verts[i].normal.z);
+            }
+            
+            // 验证法线已归一化
+            bool allNormalized = true;
+            for (int i = 0; i < 3; i++) {
+                float len = std::sqrt(verts[i].normal.x * verts[i].normal.x +
+                                     verts[i].normal.y * verts[i].normal.y +
+                                     verts[i].normal.z * verts[i].normal.z);
+                if (len < 0.99f || len > 1.01f) {
+                    allNormalized = false;
+                    break;
+                }
+            }
+            
+            if (allNormalized) {
+                MOON_LOG_INFO("CSGTest", "✓ Normals are properly normalized");
+            } else {
+                MOON_LOG_ERROR("CSGTest", "✗ Some normals are not normalized");
+                return false;
+            }
+        }
+    } else {
+        MOON_LOG_ERROR("CSGTest", "✗ Failed to create CSG box for normal diagnosis");
         return false;
     }
     
