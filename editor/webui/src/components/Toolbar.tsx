@@ -11,8 +11,10 @@ import styles from './Toolbar.module.css';
 export const Toolbar: React.FC = () => {
   const { gizmoMode, setGizmoMode } = useEditorStore();
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [showCSGMenu, setShowCSGMenu] = useState(false);
   const [coordinateMode, setCoordinateMode] = useState<'world' | 'local'>('world');  // 🎯 World/Local 模式
   const menuRef = useRef<HTMLDivElement>(null);
+  const csgMenuRef = useRef<HTMLDivElement>(null);
 
   const handleGizmoModeChange = (mode: 'translate' | 'rotate' | 'scale') => {
     setGizmoMode(mode);
@@ -61,16 +63,40 @@ export const Toolbar: React.FC = () => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowCreateMenu(false);
       }
+      if (csgMenuRef.current && !csgMenuRef.current.contains(event.target as Node)) {
+        setShowCSGMenu(false);
+      }
     };
 
-    if (showCreateMenu) {
+    if (showCreateMenu || showCSGMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showCreateMenu]);
+  }, [showCreateMenu, showCSGMenu]);
+  
+  const handleCSGPrimitive = async (type: 'box' | 'sphere' | 'cylinder' | 'cone') => {
+    try {
+      if (!engine.createPrimitive) {
+        console.error('[Toolbar] engine.createPrimitive is not available');
+        return;
+      }
+      
+      await engine.createPrimitive(type);
+      setShowCSGMenu(false);
+      console.log(`[Toolbar] Created CSG primitive: ${type}`);
+    } catch (error) {
+      console.error(`[Toolbar] Failed to create CSG primitive:`, error);
+    }
+  };
+  
+  const handleCSGBoolean = async (operation: 'union' | 'subtract' | 'intersect') => {
+    // TODO: 需要实现多选功能才能进行布尔运算
+    console.warn('[Toolbar] Boolean operations require multi-selection (not yet implemented)');
+    setShowCSGMenu(false);
+  };
 
   return (
     <div className={styles.toolbar}>
@@ -142,6 +168,62 @@ export const Toolbar: React.FC = () => {
             </button>
             <button onClick={() => handleCreateObject('skybox')} className={styles.dropdownItem}>
               🌌 Skybox
+            </button>
+          </div>
+        )}
+      </div>
+      
+      {/* CSG工具 */}
+      <div className={styles.section} ref={csgMenuRef}>
+        <span className={styles.label}>CSG:</span>
+        <button 
+          className={styles.button} 
+          onClick={() => setShowCSGMenu(!showCSGMenu)}
+          title="CSG Tools"
+        >
+          ⚙ CSG
+        </button>
+        
+        {showCSGMenu && (
+          <div className={styles.dropdown}>
+            <div className={styles.dropdownLabel}>Primitives</div>
+            <button onClick={() => handleCSGPrimitive('box')} className={styles.dropdownItem}>
+              📦 Box
+            </button>
+            <button onClick={() => handleCSGPrimitive('sphere')} className={styles.dropdownItem}>
+              ⚪ Sphere
+            </button>
+            <button onClick={() => handleCSGPrimitive('cylinder')} className={styles.dropdownItem}>
+              ⚙️ Cylinder
+            </button>
+            <button onClick={() => handleCSGPrimitive('cone')} className={styles.dropdownItem}>
+              🔺 Cone
+            </button>
+            <div className={styles.dropdownDivider}></div>
+            <div className={styles.dropdownLabel}>Boolean (需要多选)</div>
+            <button 
+              onClick={() => handleCSGBoolean('union')} 
+              className={styles.dropdownItem}
+              disabled
+              title="Select 2+ objects first"
+            >
+              ➕ Union
+            </button>
+            <button 
+              onClick={() => handleCSGBoolean('subtract')} 
+              className={styles.dropdownItem}
+              disabled
+              title="Select 2+ objects first"
+            >
+              ➖ Subtract
+            </button>
+            <button 
+              onClick={() => handleCSGBoolean('intersect')} 
+              className={styles.dropdownItem}
+              disabled
+              title="Select 2+ objects first"
+            >
+              ✂️ Intersect
             </button>
           </div>
         )}

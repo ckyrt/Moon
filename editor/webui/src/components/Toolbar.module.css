@@ -70,3 +70,27 @@
   background: var(--bg-hover);
 }
 
+.dropdownItem:disabled {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropdownItem:disabled:hover {
+  background: transparent;
+}
+
+.dropdownLabel {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: var(--border-color);
+  margin: var(--spacing-xs) 0;
+}
