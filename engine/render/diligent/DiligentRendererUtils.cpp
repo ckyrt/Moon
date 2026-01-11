@@ -98,7 +98,45 @@ std::string LoadShaderSource(const char* filename)
     buffer << file.rdbuf();
     std::string content = buffer.str();
     
-    MOON_LOG_INFO("DiligentRenderer", "Loaded shader: %s (%zu bytes)", shaderPath.c_str(), content.size());
+    // Process #include directives manually
+    std::string baseDir = GetExecutableDirectory() + "assets\\shaders\\";
+    size_t pos = 0;
+    while ((pos = content.find("#include", pos)) != std::string::npos) {
+        // Find the line containing #include
+        size_t lineStart = pos;
+        size_t lineEnd = content.find('\n', pos);
+        if (lineEnd == std::string::npos) lineEnd = content.length();
+        
+        // Extract the include path
+        size_t quoteStart = content.find('"', pos);
+        size_t quoteEnd = content.find('"', quoteStart + 1);
+        
+        if (quoteStart != std::string::npos && quoteEnd != std::string::npos && quoteStart < lineEnd) {
+            std::string includePath = content.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
+            std::string fullIncludePath = baseDir + includePath;
+            
+            // Load the included file
+            std::ifstream includeFile(fullIncludePath);
+            if (includeFile.is_open()) {
+                std::stringstream includeBuffer;
+                includeBuffer << includeFile.rdbuf();
+                std::string includeContent = includeBuffer.str();
+                
+                MOON_LOG_INFO("DiligentRenderer", "Processing include: %s (%zu bytes)", includePath.c_str(), includeContent.size());
+                
+                // Replace the #include line with the file content
+                content.replace(lineStart, lineEnd - lineStart, includeContent);
+                pos = lineStart + includeContent.length();
+            } else {
+                MOON_LOG_ERROR("DiligentRenderer", "Failed to load include: %s", fullIncludePath.c_str());
+                pos = lineEnd;
+            }
+        } else {
+            pos = lineEnd;
+        }
+    }
+    
+    MOON_LOG_INFO("DiligentRenderer", "Loaded shader: %s (%zu bytes after includes)", shaderPath.c_str(), content.size());
     return content;
 }
 

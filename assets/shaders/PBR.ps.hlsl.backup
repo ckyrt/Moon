@@ -1,20 +1,221 @@
-// ============================================================================
-// PBR Pixel Shader - Modular Version
-// Cook-Torrance BRDF with IBL
-// 
-// 模块化结构：
-// - PBR_Common.hlsl     : 常量、cbuffer、纹理声明、输入结构
-// - PBR_Triplanar.hlsl  : Triplanar映射函数（用于CSG）
-// - PBR_Lighting.hlsl   : BRDF、光照计算
-// ============================================================================
+// PBR Pixel Shader - Cook-Torrance BRDF with IBL
+static const float PI = 3.14159265359;
 
-#include "include/PBR_Common.hlsl"
-#include "include/PBR_Triplanar.hlsl"
-#include "include/PBR_Lighting.hlsl"
+// 材质参数常量缓冲区
+cbuffer MaterialConstants { 
+    float g_Metallic;
+    float g_Roughness;
+    float g_TriplanarTiling;  // Triplanar纹理平铺密度（默认0.5 = 每2米重复一次）
+    float g_MappingMode;      // 映射模式（0.0 = UV, 1.0 = Triplanar）
+    float3 g_BaseColor;
+    float g_TriplanarBlend;   // Triplanar混合锐度（默认4.0）
+    float g_HasNormalMap;     // 是否加载了法线贴图（0.0 = 无，1.0 = 有）
+    float3 g_Padding;
+};
 
-// ============================================================================
-// Main Pixel Shader
-// ============================================================================
+// 场景参数常量缓冲区（相机位置、光源等）
+cbuffer SceneConstants { 
+    float3 g_CameraPosition;
+    float g_HasEnvironmentMap;  // 是否有有效的环境贴图（0.0 = 无，1.0 = 有）
+    float3 g_LightDirection;
+    float g_Padding4;
+    float3 g_LightColor;
+    float g_LightIntensity;
+};
+
+// 纹理资源和采样器
+Texture2D g_AlbedoMap;
+SamplerState g_AlbedoMap_sampler;
+
+Texture2D g_AOMap;
+SamplerState g_AOMap_sampler;
+
+Texture2D g_RoughnessMap;
+SamplerState g_RoughnessMap_sampler;
+
+Texture2D g_MetalnessMap;
+SamplerState g_MetalnessMap_sampler;
+
+Texture2D g_NormalMap;
+SamplerState g_NormalMap_sampler;
+
+Texture2D g_EquirectMap;
+SamplerState g_EquirectMap_sampler;
+
+// BRDF LUT for IBL (256x256 RG16F)
+Texture2D g_BRDF_LUT;
+SamplerState g_BRDF_LUT_sampler;
+
+struct PSInput { 
+    float4 Pos      : SV_POSITION;
+    float3 WorldPos : POSITION;
+    float3 NormalWS : NORMAL;
+    float4 Color    : COLOR;
+    float2 UV       : TEXCOORD;  // 保留用于非CSG物体
+};
+
+// ===== Triplanar Mapping 函数 =====
+// Unity/Unreal标准实现，基于世界坐标采样
+// 优点：Transform无关、布尔切割后纹理连续、缩放不变形
+float3 GetTriplanarWeights(float3 normal, float sharpness) {
+    float3 weights = abs(normal);
+    weights = pow(weights, sharpness);  // 锐化过渡
+    weights /= (weights.x + weights.y + weights.z);  // 归一化
+    return weights;
+}
+
+// 法线专用：柔和的权重计算（避免45°面突然变硬）
+float3 GetTriplanarWeightsForNormals(float3 normal) {
+    float3 weights = abs(normal);
+    // 法线不使用pow，保持平滑过渡
+    weights /= (weights.x + weights.y + weights.z);
+    return weights;
+}
+
+float4 SampleTriplanar(Texture2D tex, SamplerState samp, float3 worldPos, float3 normal, float tiling) {
+    float3 weights = GetTriplanarWeights(normal, g_TriplanarBlend);
+    
+    // 三个平面采样（使用世界坐标）
+    float4 sampleX = tex.Sample(samp, worldPos.yz * tiling);
+    float4 sampleY = tex.Sample(samp, worldPos.xz * tiling);
+    float4 sampleZ = tex.Sample(samp, worldPos.xy * tiling);
+    
+    // 加权混合
+    return sampleX * weights.x + sampleY * weights.y + sampleZ * weights.z;
+}
+
+// ===== Triplanar Normal Map 采样（业界标准）=====
+// Unity/Unreal CSG标准做法：世界空间法线贴图混合
+// 优点：不依赖UV，不需要TBN，布尔切割后法线连续
+float3 SampleTriplanarNormal(
+    Texture2D normalMap,
+    SamplerState samp,
+    float3 worldPos,
+    float3 normalWS,
+    float tiling
+) {
+    // ✅ 法线使用柔和权重（不pow），避免45°面突然变硬
+    float3 weights = GetTriplanarWeightsForNormals(normalWS);
+    
+    // 三个平面采样法线贴图
+    float3 nX = normalMap.Sample(samp, worldPos.yz * tiling).xyz * 2.0 - 1.0;
+    float3 nY = normalMap.Sample(samp, worldPos.xz * tiling).xyz * 2.0 - 1.0;
+    float3 nZ = normalMap.Sample(samp, worldPos.xy * tiling).xyz * 2.0 - 1.0;
+    
+    // DirectX normal map: flip Y（与单次采样保持一致）
+    nX.y = -nX.y;
+    nY.y = -nY.y;
+    nZ.y = -nZ.y;
+    
+    // ✅ 将各投影面的切线空间法线转换到世界空间，带符号修正
+    // X投影（YZ平面）：tangent=Y, bitangent=Z, normal=X
+    float3 worldNX = float3(
+        normalWS.x > 0 ? nX.z : -nX.z,  // 符号修正，防止法线翻转
+        nX.x,
+        nX.y
+    );
+    
+    // Y投影（XZ平面）：tangent=X, bitangent=Z, normal=Y
+    float3 worldNY = float3(
+        nY.x,
+        normalWS.y > 0 ? nY.z : -nY.z,  // 符号修正
+        nY.y
+    );
+    
+    // Z投影（XY平面）：tangent=X, bitangent=Y, normal=Z
+    float3 worldNZ = float3(
+        nZ.x,
+        nZ.y,
+        normalWS.z > 0 ? nZ.z : -nZ.z  // 符号修正
+    );
+    
+    // 加权混合并归一化
+    float3 blended = 
+        worldNX * weights.x +
+        worldNY * weights.y +
+        worldNZ * weights.z;
+    
+    return normalize(blended);
+}
+
+// 将 3D 方向转换为 equirectangular UV 坐标
+float2 DirToEquirectUV(float3 dir) {
+    float u = atan2(dir.z, dir.x) / (2.0 * PI) + 0.5;
+    float v = 1.0 - (asin(dir.y) / PI + 0.5);
+    return float2(u, v);
+}
+
+// Fresnel-Schlick 近似（菲涅尔效应）
+float3 FresnelSchlick(float cosTheta, float3 F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+// GGX/Trowbridge-Reitz 法线分布函数（NDF）
+float DistributionGGX(float3 N, float3 H, float roughness) {
+    // ✅ 正确做法：在这里防止除0，而不是修改材质的roughness值
+    float a = roughness * roughness;
+    float a2 = max(a * a, 0.001); // 防止完全光滑表面导致的数值问题
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+    
+    float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+    
+    return nom / max(denom, 0.0001);
+}
+
+// Smith GGX 几何遮挡函数
+float GeometrySchlickGGX(float NdotV, float roughness) {
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
+    
+    float nom = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+    
+    return nom / max(denom, 0.0001);
+}
+
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness) {
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+    
+    return ggx1 * ggx2;
+}
+
+// ✅ 封装直接光照计算（支持未来多光源扩展）
+// 计算单个方向光的贡献
+float3 CalculateDirectionalLight(
+    float3 N,           // 表面法线
+    float3 V,           // 视线方向
+    float3 L,           // 光源方向
+    float3 albedo,      // 漫反射颜色
+    float roughness,    // 粗糙度
+    float metallic,     // 金属度
+    float3 F0,          // 基础反射率
+    float3 radiance     // 光源辐射度
+) {
+    float3 H = normalize(V + L);
+    
+    // Cook-Torrance BRDF
+    float NDF = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, L, roughness);
+    float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+    
+    float3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+    float3 specular = numerator / max(denominator, 0.001);
+    
+    // 能量守恒
+    float3 kS = F;
+    float3 kD = float3(1.0, 1.0, 1.0) - kS;
+    kD *= 1.0 - metallic;  // 金属没有漫反射
+    
+    float NdotL = max(dot(N, L), 0.0);
+    return (kD * albedo / PI + specular) * radiance * NdotL;
+}
 
 float4 main(in PSInput i) : SV_Target {
     // 🔍 调试开关（取消注释查看不同的调试信息）
