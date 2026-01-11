@@ -4,6 +4,7 @@
 #include "../core/EngineCore.h"
 #include "../core/Logging/Logger.h"
 #include "../core/Camera/FPSCameraController.h"
+#include "../core/Profiling/FPSCounter.h"
 #include "../core/Scene/Scene.h"
 #include "../core/Scene/SceneNode.h"
 #include "../core/Scene/MeshRenderer.h"
@@ -363,6 +364,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     bool running = true;
     MSG msg;
     auto prev = std::chrono::high_resolution_clock::now();
+    
+    // FPS counter
+    Moon::FPSCounter fpsCounter(60);
+    auto lastTitleUpdate = prev;
 
     while (running) {
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -373,6 +378,19 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         auto now = std::chrono::high_resolution_clock::now();
         double dt = std::chrono::duration<double>(now - prev).count();
         prev = now;
+        
+        // Update FPS counter
+        fpsCounter.Update(static_cast<float>(dt));
+        
+        // Update window title with FPS every 0.5 seconds
+        auto timeSinceUpdate = std::chrono::duration<double>(now - lastTitleUpdate).count();
+        if (timeSinceUpdate >= 0.5) {
+            wchar_t title[256];
+            swprintf_s(title, L"Moon Engine - HelloEngine | FPS: %.1f | Frame Time: %.2f ms", 
+                      fpsCounter.GetFPS(), fpsCounter.GetFrameTimeMs());
+            SetWindowTextW(hwnd, title);
+            lastTitleUpdate = now;
+        }
 
         engine.Tick(dt);
         

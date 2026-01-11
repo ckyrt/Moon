@@ -111,6 +111,7 @@
     <ClInclude Include="Camera\OrthographicCamera.h" />
     <ClInclude Include="Camera\FPSCameraController.h" />
     <ClInclude Include="Camera\OrbitCameraController.h" />
+    <ClInclude Include="Profiling\FPSCounter.h" />
     <ClInclude Include="Scene\Component.h" />
     <ClInclude Include="Scene\Transform.h" />
     <ClInclude Include="Scene\SceneNode.h" />
@@ -135,6 +136,7 @@
     <ClCompile Include="Camera\OrthographicCamera.cpp" />
     <ClCompile Include="Camera\FPSCameraController.cpp" />
     <ClCompile Include="Camera\OrbitCameraController.cpp" />
+    <ClCompile Include="Profiling\FPSCounter.cpp" />
     <ClCompile Include="Scene\Component.cpp" />
     <ClCompile Include="Scene\Transform.cpp" />
     <ClCompile Include="Scene\SceneNode.cpp" />

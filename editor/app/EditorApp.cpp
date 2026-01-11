@@ -23,6 +23,7 @@
 #include "../engine/core/EngineCore.h"
 #include "../engine/core/Logging/Logger.h"
 #include "../engine/core/Camera/FPSCameraController.h"
+#include "../engine/core/Profiling/FPSCounter.h"
 #include "../engine/core/Texture/TextureManager.h"
 
 // 渲染系统
@@ -160,6 +161,10 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
         auto now = std::chrono::high_resolution_clock::now();
         float dt = std::chrono::duration<float>(now - prevTime).count();
         prevTime = now;
+        
+        // Update FPS counter
+        static Moon::FPSCounter fpsCounter(60);
+        fpsCounter.Update(dt);
 
         // 更新引擎
         engine->Tick(dt);
@@ -225,6 +230,15 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
 
                 // 渲染并应用 Gizmo
                 RenderAndApplyGizmo(engine, bridge);
+                
+                // FPS overlay window（在Viewport区域内显示，避免被CEF UI覆盖）
+                ImGui::SetNextWindowPos(ImVec2(static_cast<float>(g_ViewportRect.x + 10), static_cast<float>(g_ViewportRect.y + 10)), ImGuiCond_Always);
+                ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+                if (ImGui::Begin("Performance", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
+                    ImGui::Text("FPS: %.1f", fpsCounter.GetFPS());
+                    ImGui::Text("Frame Time: %.2f ms", fpsCounter.GetFrameTimeMs());
+                }
+                ImGui::End();
 
                 // 在Render之前确保DisplaySize正确（整个CEF窗口大小）
                 ImGuiIO& io = ImGui::GetIO();
