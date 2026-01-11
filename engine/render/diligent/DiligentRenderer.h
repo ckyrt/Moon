@@ -14,6 +14,7 @@ namespace Moon {
     class SceneNode;
     class MeshRenderer;
     class Skybox;
+    class Material;
 }
 
 // IRenderer 接口
@@ -51,7 +52,7 @@ public:
     void RenderFrame() override;
 
     void SetViewProjectionMatrix(const float* viewProj16) override;
-    void SetMaterialParameters(float metallic, float roughness, const Moon::Vector3& baseColor);  // 设置 PBR 材质参数
+    void SetMaterialParameters(Moon::Material* material);  // 设置完整的PBR材质参数（包括mapping mode和triplanar）
     void SetCameraPosition(const Moon::Vector3& position);        // 设置相机位置（用于高光计算）
     void UpdateSceneLights(Moon::Scene* scene);                   // 更新场景光源数据
     void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) override;
@@ -92,9 +93,11 @@ private:
         float metallic = 0.0f;
         float roughness = 0.5f;
         float triplanarTiling = 0.5f;   // Triplanar纹理平铺密度（0.5 = 每2米重复）
-        float hasNormalMap = 0.0f;      // 是否加载了法线贴图（0.0 = 无，1.0 = 有）
+        float mappingMode = 0.0f;       // 映射模式（0.0 = UV, 1.0 = Triplanar）
         Moon::Vector3 baseColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
         float triplanarBlend = 4.0f;    // Triplanar混合锐度（越高过渡越硬）
+        float hasNormalMap = 0.0f;      // 是否加载了法线贴图（0.0 = 无，1.0 = 有）
+        float padding[3] = {0.0f, 0.0f, 0.0f};
     };
     struct PSSceneCPU { // 16B 对齐（场景参数：相机位置、光源等）
         Moon::Vector3 cameraPosition;

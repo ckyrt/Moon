@@ -62,11 +62,20 @@ namespace {
         material->SetMetallic(0.0f);
         material->SetRoughness(0.5f);
         material->SetBaseColor(baseColor);
+        // ✅ 普通mesh使用UV映射（默认值，显式设置更清晰）
+        material->SetMappingMode(Moon::MappingMode::UV);
     }
 
-    // 为 CSG 节点添加默认灰色材质
+    // 为 CSG 节点添加默认灰色材质（✅ CSG必须用Triplanar映射）
     void AddCSGMaterial(Moon::SceneNode* node) {
-        AddDefaultMaterial(node, Moon::Vector3(0.8f, 0.8f, 0.8f));
+        Moon::Material* material = node->AddComponent<Moon::Material>();
+        material->SetMetallic(0.0f);
+        material->SetRoughness(0.5f);
+        material->SetBaseColor(Moon::Vector3(0.8f, 0.8f, 0.8f));
+        // ✅ CSG几何体必须使用Triplanar映射（UV坐标为0,0）
+        material->SetMappingMode(Moon::MappingMode::Triplanar);
+        material->SetTriplanarTiling(0.5f);  // 每2米重复
+        material->SetTriplanarBlend(4.0f);   // 默认锐度
     }
 }
 

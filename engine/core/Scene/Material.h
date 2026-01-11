@@ -24,6 +24,16 @@ enum class MaterialPreset {
 };
 
 /**
+ * @brief 纹理映射模式
+ * UV:       使用顶点UV坐标，适用于普通模型（GLTF/FBX等）
+ * Triplanar: 使用世界空间三平面投影，适用于CSG/程序化几何
+ */
+enum class MappingMode {
+    UV,         // 使用UV坐标 + TBN法线（普通模型）
+    Triplanar   // 使用世界空间triplanar（CSG模型）
+};
+
+/**
  * @brief Material 组件 - 定义对象的材质属性
  * 
  * 包含 PBR（Physically Based Rendering）材质参数，用于控制物体的渲染外观。
@@ -120,6 +130,33 @@ public:
      * @brief 获取当前材质预设
      */
     MaterialPreset GetMaterialPreset() const { return m_currentPreset; }
+    
+    // === 纹理映射模式 ===
+    
+    /**
+     * @brief 设置纹理映射模式
+     * @param mode UV = 普通模型，Triplanar = CSG模型
+     */
+    void SetMappingMode(MappingMode mode) { m_mappingMode = mode; }
+    
+    /**
+     * @brief 获取纹理映射模式
+     */
+    MappingMode GetMappingMode() const { return m_mappingMode; }
+    
+    /**
+     * @brief 设置Triplanar平铺密度
+     * @param tiling 平铺密度（0.5 = 每2米重复，1.0 = 每米重复）
+     */
+    void SetTriplanarTiling(float tiling) { m_triplanarTiling = tiling; }
+    float GetTriplanarTiling() const { return m_triplanarTiling; }
+    
+    /**
+     * @brief 设置Triplanar混合锐度
+     * @param blend 混合锐度（越高过渡越硬，默认4.0）
+     */
+    void SetTriplanarBlend(float blend) { m_triplanarBlend = blend; }
+    float GetTriplanarBlend() const { return m_triplanarBlend; }
 
 private:
     float m_metallic;
@@ -134,6 +171,11 @@ private:
     
     // 当前材质预设
     MaterialPreset m_currentPreset;  ///< 当前使用的材质预设
+    
+    // 纹理映射模式
+    MappingMode m_mappingMode = MappingMode::UV;  ///< 默认使用UV映射
+    float m_triplanarTiling = 0.5f;               ///< Triplanar平铺密度
+    float m_triplanarBlend = 4.0f;                ///< Triplanar混合锐度
     
     // 材质预设内部实现
     void SetPresetConcrete();

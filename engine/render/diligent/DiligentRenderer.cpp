@@ -7,6 +7,7 @@
 #include "../../core/Scene/SceneNode.h"
 #include "../../core/Scene/Light.h"
 #include "../../core/Scene/Skybox.h"
+#include "../../core/Scene/Material.h"
 #include "../../core/Mesh/Mesh.h"
 
 #include <cmath>
@@ -289,13 +290,37 @@ void DiligentRenderer::SetViewProjectionMatrix(const float* m16)
 }
 
 // ======= PBR 材质参数 =======
-void DiligentRenderer::SetMaterialParameters(float metallic, float roughness, const Moon::Vector3& baseColor)
+void DiligentRenderer::SetMaterialParameters(Moon::Material* material)
 {
-    PSMaterialCPU material{};
-    material.metallic = metallic;
-    material.roughness = roughness;
-    material.baseColor = baseColor;
-    UpdateCB(m_pPSMaterialConstants, material);
+    if (!material) {
+        // 无材质，使用默认值
+        PSMaterialCPU mat{};
+        mat.metallic = 0.0f;
+        mat.roughness = 0.5f;
+        mat.triplanarTiling = 0.5f;
+        mat.mappingMode = 0.0f;  // UV模式
+        mat.baseColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
+        mat.triplanarBlend = 4.0f;
+        mat.hasNormalMap = 0.0f;
+        UpdateCB(m_pPSMaterialConstants, mat);
+        return;
+    }
+    
+    PSMaterialCPU mat{};
+    mat.metallic = material->GetMetallic();
+    mat.roughness = material->GetRoughness();
+    mat.triplanarTiling = material->GetTriplanarTiling();
+    
+    // ✅ 设置mapping mode（0.0 = UV, 1.0 = Triplanar）
+    mat.mappingMode = (material->GetMappingMode() == Moon::MappingMode::Triplanar) ? 1.0f : 0.0f;
+    
+    mat.baseColor = material->GetBaseColor();
+    mat.triplanarBlend = material->GetTriplanarBlend();
+    
+    // ✅ 设置hasNormalMap flag
+    mat.hasNormalMap = material->HasNormalMap() ? 1.0f : 0.0f;
+    
+    UpdateCB(m_pPSMaterialConstants, mat);
 }
 
 // ======= 场景参数更新 =======

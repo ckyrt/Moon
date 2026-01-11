@@ -154,6 +154,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     Moon::Material* groundMaterial = groundNode->AddComponent<Moon::Material>();
     groundMaterial->SetMaterialPreset(Moon::MaterialPreset::Concrete);
+    groundMaterial->SetMappingMode(Moon::MappingMode::UV);  // ✅ 普通mesh使用UV
     
     // ============================================================================
     // 2. 石膏墙立方体 - painted_plaster_wall
@@ -167,6 +168,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     Moon::Material* plasterMaterial = plasterCubeNode->AddComponent<Moon::Material>();
     plasterMaterial->SetMaterialPreset(Moon::MaterialPreset::Plastic);
+    plasterMaterial->SetMappingMode(Moon::MappingMode::UV);  // ✅ 普通mesh使用UV
     
     // ============================================================================
     // 3. 红砖墙立方体 - red_brick
@@ -180,6 +182,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     Moon::Material* brickMaterial = brickWallNode->AddComponent<Moon::Material>();
     brickMaterial->SetMaterialPreset(Moon::MaterialPreset::Rock);
+    brickMaterial->SetMappingMode(Moon::MappingMode::UV);  // ✅ 普通mesh使用UV
     
     // ============================================================================
     // 4. 橡胶跑道矩形 - rubberized_track
@@ -193,6 +196,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     Moon::Material* trackMaterial = trackNode->AddComponent<Moon::Material>();
     trackMaterial->SetMaterialPreset(Moon::MaterialPreset::Fabric);
+    trackMaterial->SetMappingMode(Moon::MappingMode::UV);  // ✅ 普通mesh使用UV
     
     // ============================================================================
     // 5. 生锈金属球 - rusty_metal
@@ -205,6 +209,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     Moon::Material* metalMaterial = metalSphereNode->AddComponent<Moon::Material>();
     metalMaterial->SetMaterialPreset(Moon::MaterialPreset::Metal);
+    metalMaterial->SetMappingMode(Moon::MappingMode::UV);  // ✅ 普通mesh使用UV
     
     // ============================================================================
     // 6. 木头球 - wood_floor
@@ -217,6 +222,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     Moon::Material* woodMaterial = woodSphereNode->AddComponent<Moon::Material>();
     woodMaterial->SetMaterialPreset(Moon::MaterialPreset::Wood);
+    woodMaterial->SetMappingMode(Moon::MappingMode::UV);  // ✅ 普通mesh使用UV
     
     // ============================================================================
     // 7. CSG 演示场景 - Box - Sphere (布尔减法)
@@ -260,13 +266,63 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         
         Moon::Material* csgMaterial = csgNode->AddComponent<Moon::Material>();
         csgMaterial->SetMaterialPreset(Moon::MaterialPreset::Metal);
+        csgMaterial->SetMappingMode(Moon::MappingMode::Triplanar);  // ✅ CSG必须用Triplanar
+        csgMaterial->SetTriplanarTiling(0.5f);
+        csgMaterial->SetTriplanarBlend(4.0f);
         
         MOON_LOG_INFO("Sample", "CSG object added to scene at position (0, 2, 5)");
     } else {
         MOON_LOG_ERROR("Sample", "CSG Boolean operation failed!");
     }
     
-    MOON_LOG_INFO("Sample", "Material Showcase Scene created with 7 objects (including CSG test)");
+    // ============================================================================
+    // 8. UV vs Triplanar 对比测试 - 拉伸的立方体（更明显的差异）
+    // ============================================================================
+    MOON_LOG_INFO("Sample", "Creating UV vs Triplanar comparison test with stretched cubes...");
+    
+    // 8a. 普通立方体 - UV模式 + 拉伸 → 纹理会变形
+    Moon::SceneNode* uvCubeNode = scene->CreateNode("UV_Cube_Stretched");
+    uvCubeNode->GetTransform()->SetLocalPosition(Moon::Vector3(-3.0f, 2.0f, -3.0f));
+    uvCubeNode->GetTransform()->SetLocalScale(Moon::Vector3(1.0f, 3.0f, 1.0f));  // ✅ 拉高3倍
+    
+    Moon::MeshRenderer* uvCubeRenderer = uvCubeNode->AddComponent<Moon::MeshRenderer>();
+    uvCubeRenderer->SetMesh(meshManager->CreateCube(1.0f, Moon::Vector3(1.0f, 1.0f, 1.0f)));
+    
+    Moon::Material* uvCubeMaterial = uvCubeNode->AddComponent<Moon::Material>();
+    uvCubeMaterial->SetMaterialPreset(Moon::MaterialPreset::Rock);  // 砖块纹理更明显
+    uvCubeMaterial->SetMappingMode(Moon::MappingMode::UV);  // ✅ 显式UV模式
+    uvCubeMaterial->SetMappingMode(Moon::MappingMode::UV);  // ✅ UV模式：拉伸后纹理变形
+    
+    MOON_LOG_INFO("Sample", "UV Cube (stretched 1x3x1) created at (-3, 2, -3) - texture will be stretched");
+    
+    // 8b. CSG立方体 - Triplanar模式 + 拉伸 → 纹理保持正确比例
+    auto csgCube = Moon::CSG::CreateCSGBox(1.0f, 1.0f, 1.0f,
+                                           Moon::Vector3(0, 0, 0),
+                                           Moon::Vector3(0, 0, 0),
+                                           Moon::Vector3(1, 1, 1),
+                                           true);  // flatShading=true
+    
+    if (csgCube && csgCube->IsValid()) {
+        Moon::SceneNode* triplanarCubeNode = scene->CreateNode("Triplanar_CSG_Cube_Stretched");
+        triplanarCubeNode->GetTransform()->SetLocalPosition(Moon::Vector3(3.0f, 2.0f, -3.0f));
+        triplanarCubeNode->GetTransform()->SetLocalScale(Moon::Vector3(1.0f, 3.0f, 1.0f));  // ✅ 同样拉高3倍
+        
+        Moon::MeshRenderer* triplanarCubeRenderer = triplanarCubeNode->AddComponent<Moon::MeshRenderer>();
+        triplanarCubeRenderer->SetMesh(csgCube);
+        
+        Moon::Material* triplanarCubeMaterial = triplanarCubeNode->AddComponent<Moon::Material>();
+        triplanarCubeMaterial->SetMaterialPreset(Moon::MaterialPreset::Rock);  // 相同砖块纹理
+        triplanarCubeMaterial->SetMappingMode(Moon::MappingMode::Triplanar);  // ✅ CSG必须用Triplanar
+        triplanarCubeMaterial->SetTriplanarTiling(0.5f);  // 每2米重复
+        triplanarCubeMaterial->SetTriplanarBlend(4.0f);
+        
+        MOON_LOG_INFO("Sample", "CSG Triplanar Cube (stretched 1x3x1) created at (3, 2, -3) - texture density stays correct");
+    } else {
+        MOON_LOG_ERROR("Sample", "Failed to create CSG test cube!");
+    }
+    
+    MOON_LOG_INFO("Sample", "✅ UV vs Triplanar comparison: Left=UV (stretched texture), Right=Triplanar (correct density)");
+    MOON_LOG_INFO("Sample", "Material Showcase Scene created with 9 objects");
     
     // ============================================================================
     // 创建主方向光（模拟太阳光）

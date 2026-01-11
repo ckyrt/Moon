@@ -52,12 +52,8 @@ void RenderMeshes(DiligentRenderer* renderer, Scene* scene)
         // 从 Material 组件获取材质参数和纹理
         Material* material = node->GetComponent<Material>();
         if (material && material->IsEnabled()) {
-            // 设置 PBR 材质参数
-            renderer->SetMaterialParameters(
-                material->GetMetallic(),
-                material->GetRoughness(),
-                material->GetBaseColor()
-            );
+            // ✅ 设置完整的材质参数（包括mapping mode和triplanar参数）
+            renderer->SetMaterialParameters(material);
             
             // 绑定 Albedo 贴图
             if (material->HasAlbedoMap()) {
@@ -96,7 +92,7 @@ void RenderMeshes(DiligentRenderer* renderer, Scene* scene)
         } else {
             // 对于没有 Material 组件的对象，使用默认材质
             // (新创建的对象都会有 Material，这是为了向后兼容)
-            renderer->SetMaterialParameters(0.0f, 0.5f, Vector3(1.0f, 1.0f, 1.0f));
+            renderer->SetMaterialParameters(nullptr);
             renderer->BindAlbedoTexture("");
             renderer->BindAOTexture("");
             renderer->BindRoughnessTexture("");
