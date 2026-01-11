@@ -9,6 +9,21 @@ namespace Moon {
 class Texture;
 
 /**
+ * @brief 材质预设枚举
+ */
+enum class MaterialPreset {
+    None,           // 无预设
+    Concrete,       // 混凝土
+    Fabric,         // 布料/橡胶
+    Metal,          // 金属
+    Plastic,        // 塑料/石膏
+    Rock,           // 岩石/砖块
+    Wood,           // 木材
+    Glass,          // 玻璃 (程序化，无贴图)
+    PolishedMetal   // 抛光金属
+};
+
+/**
  * @brief Material 组件 - 定义对象的材质属性
  * 
  * 包含 PBR（Physically Based Rendering）材质参数，用于控制物体的渲染外观。
@@ -73,100 +88,60 @@ public:
      */
     void SetNormalMap(const std::string& texturePath);
     
-    /**
-     * @brief 设置 ARM 贴图（AO + Roughness + Metallic 三通道合一）
-     * @param texturePath 贴图文件路径（R=AO, G=Roughness, B=Metallic）
-     */
-    void SetARMMap(const std::string& texturePath);
+    void SetAOMap(const std::string& texturePath);
+    void SetRoughnessMap(const std::string& texturePath);
+    void SetMetalnessMap(const std::string& texturePath);
     
-    /**
-     * @brief 获取 Albedo 贴图路径
-     */
     const std::string& GetAlbedoMap() const { return m_albedoMap; }
-    
-    /**
-     * @brief 获取法线贴图路径
-     */
     const std::string& GetNormalMap() const { return m_normalMap; }
-    
-    /**
-     * @brief 获取 ARM 贴图路径
-     */
-    const std::string& GetARMMap() const { return m_armMap; }
+    const std::string& GetAOMap() const { return m_aoMap; }
+    const std::string& GetRoughnessMap() const { return m_roughnessMap; }
+    const std::string& GetMetalnessMap() const { return m_metalnessMap; }
     
     /**
      * @brief 检查是否有 Albedo 贴图
      */
     bool HasAlbedoMap() const { return !m_albedoMap.empty(); }
     
-    /**
-     * @brief 检查是否有法线贴图
-     */
     bool HasNormalMap() const { return !m_normalMap.empty(); }
-    
-    /**
-     * @brief 检查是否有 ARM 贴图
-     */
-    bool HasARMMap() const { return !m_armMap.empty(); }
+    bool HasAOMap() const { return !m_aoMap.empty(); }
+    bool HasRoughnessMap() const { return !m_roughnessMap.empty(); }
+    bool HasMetalnessMap() const { return !m_metalnessMap.empty(); }
 
     // === 预设材质 ===
     
     /**
-     * @brief 设置为金属材质预设
-     * @param roughness 粗糙度（默认 0.2 = 抛光金属）
+     * @brief 通过枚举设置材质预设
+     * @param preset 材质预设枚举
      */
-    void SetPresetMetal(float roughness = 0.2f);
+    void SetMaterialPreset(MaterialPreset preset);
     
     /**
-     * @brief 设置为塑料材质预设
-     * @param roughness 粗糙度（默认 0.5 = 哑光塑料）
+     * @brief 获取当前材质预设
      */
-    void SetPresetPlastic(float roughness = 0.5f);
-    
-    /**
-     * @brief 设置为混凝土材质预设
-     */
-    void SetPresetConcrete();
-    
-    /**
-     * @brief 设置为橡胶材质预设
-     */
-    void SetPresetRubber();
-    
-    /**
-     * @brief 设置为砖头材质预设
-     */
-    void SetPresetBrick();
-    
-    /**
-     * @brief 设置为木头材质预设
-     */
-    void SetPresetWood();
-    
-    /**
-     * @brief 设置为石膏材质预设
-     */
-    void SetPresetPlaster();
-    
-    /**
-     * @brief 设置为铁球材质预设（生锈的铁）
-     */
-    void SetPresetIron();
-    
-    /**
-     * @brief 设置为抛光金属材质预设（如铬合金）
-     */
-    void SetPresetPolishedMetal();
+    MaterialPreset GetMaterialPreset() const { return m_currentPreset; }
 
 private:
-    float m_metallic;      ///< 金属度 [0.0 - 1.0]
-    float m_roughness;     ///< 粗糙度 [0.0 - 1.0]
-    Vector3 m_baseColor;   ///< 基础颜色（反照率）
+    float m_metallic;
+    float m_roughness;
+    Vector3 m_baseColor;
     
-    // 纹理贴图路径（标准 PBR 工作流）
-    std::string m_albedoMap;    ///< Albedo/Base Color 贴图路径
-    std::string m_normalMap;    ///< 法线贴图路径
-    std::string m_armMap;       ///< ARM 贴图路径（R=AO, G=Roughness, B=Metallic）
+    std::string m_albedoMap;
+    std::string m_normalMap;
+    std::string m_aoMap;
+    std::string m_roughnessMap;
+    std::string m_metalnessMap;
+    
+    // 当前材质预设
+    MaterialPreset m_currentPreset;  ///< 当前使用的材质预设
+    
+    // 材质预设内部实现
+    void SetPresetConcrete();
+    void SetPresetFabric();
+    void SetPresetMetal();
+    void SetPresetPlastic();
+    void SetPresetRock();
+    void SetPresetWood();
 };
 
 } // namespace Moon

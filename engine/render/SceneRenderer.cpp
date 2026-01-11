@@ -63,28 +63,44 @@ void RenderMeshes(DiligentRenderer* renderer, Scene* scene)
             if (material->HasAlbedoMap()) {
                 renderer->BindAlbedoTexture(material->GetAlbedoMap());
             } else {
-                renderer->BindAlbedoTexture("");  // 使用默认白色纹理
+                renderer->BindAlbedoTexture("");
             }
             
-            // 绑定 ARM 贴图 (AO + Roughness + Metallic)
-            if (material->HasARMMap()) {
-                renderer->BindARMTexture(material->GetARMMap());
+            // 绑定 AO 贴图
+            if (material->HasAOMap()) {
+                renderer->BindAOTexture(material->GetAOMap());
             } else {
-                renderer->BindARMTexture("");  // 使用默认纹理
+                renderer->BindAOTexture("");
+            }
+            
+            // 绑定 Roughness 贴图
+            if (material->HasRoughnessMap()) {
+                renderer->BindRoughnessTexture(material->GetRoughnessMap());
+            } else {
+                renderer->BindRoughnessTexture("");
+            }
+            
+            // 绑定 Metalness 贴图
+            if (material->HasMetalnessMap()) {
+                renderer->BindMetalnessTexture(material->GetMetalnessMap());
+            } else {
+                renderer->BindMetalnessTexture("");
             }
             
             // 绑定法线贴图
             if (material->HasNormalMap()) {
                 renderer->BindNormalTexture(material->GetNormalMap());
             } else {
-                renderer->BindNormalTexture("");  // 使用默认纹理
+                renderer->BindNormalTexture("");
             }
         } else {
             // 对于没有 Material 组件的对象，使用默认材质
             // (新创建的对象都会有 Material，这是为了向后兼容)
             renderer->SetMaterialParameters(0.0f, 0.5f, Vector3(1.0f, 1.0f, 1.0f));
             renderer->BindAlbedoTexture("");
-            renderer->BindARMTexture("");
+            renderer->BindAOTexture("");
+            renderer->BindRoughnessTexture("");
+            renderer->BindMetalnessTexture("");
             renderer->BindNormalTexture("");
         }
         

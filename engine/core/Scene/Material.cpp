@@ -9,6 +9,7 @@ Material::Material(SceneNode* owner)
     , m_metallic(0.0f)
     , m_roughness(0.5f)
     , m_baseColor(1.0f, 1.0f, 1.0f)
+    , m_currentPreset(MaterialPreset::None)
 {
 }
 
@@ -46,106 +47,137 @@ void Material::SetNormalMap(const std::string& texturePath)
     m_normalMap = texturePath;
 }
 
-void Material::SetARMMap(const std::string& texturePath)
+void Material::SetAOMap(const std::string& texturePath)
 {
-    m_armMap = texturePath;
+    m_aoMap = texturePath;
+}
+
+void Material::SetRoughnessMap(const std::string& texturePath)
+{
+    m_roughnessMap = texturePath;
+}
+
+void Material::SetMetalnessMap(const std::string& texturePath)
+{
+    m_metalnessMap = texturePath;
 }
 
 // === 预设材质 ===
 
-void Material::SetPresetMetal(float roughness)
+void Material::SetMaterialPreset(MaterialPreset preset)
 {
-    m_metallic = 1.0f;  // 完全金属
-    SetRoughness(roughness);
-    m_baseColor = Vector3(0.9f, 0.9f, 0.9f);  // 银白色金属
-}
-
-void Material::SetPresetPlastic(float roughness)
-{
-    m_metallic = 0.0f;  // 非金属
-    SetRoughness(roughness);
-    m_baseColor = Vector3(0.8f, 0.8f, 0.8f);  // 浅灰色塑料
+    m_currentPreset = preset;
+    
+    switch (preset) {
+        case MaterialPreset::None:
+            break;
+        case MaterialPreset::Concrete:
+            SetPresetConcrete();
+            break;
+        case MaterialPreset::Fabric:
+            SetPresetFabric();
+            break;
+        case MaterialPreset::Metal:
+            SetPresetMetal();
+            break;
+        case MaterialPreset::Plastic:
+            SetPresetPlastic();
+            break;
+        case MaterialPreset::Rock:
+            SetPresetRock();
+            break;
+        case MaterialPreset::Wood:
+            SetPresetWood();
+            break;
+        case MaterialPreset::Glass:
+        case MaterialPreset::PolishedMetal:
+            // 暂不支持
+            break;
+    }
 }
 
 void Material::SetPresetConcrete()
 {
-    // Unity 标准做法：这些值作为贴图的乘数/调色器
-    m_metallic = 1.0f;   // 乘数 = 1.0 表示完全使用贴图值
-    m_roughness = 1.0f;  // 乘数 = 1.0 表示完全使用贴图值
-    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);  // 白色 = 不改变贴图颜色
-    
-    // 设置贴图路径 (使用 rock_terrain 作为混凝土/地形)
-    SetAlbedoMap("materials/rock_terrain/rocky_terrain_02_diff_4k.jpg");
-    SetNormalMap("materials/rock_terrain/rocky_terrain_02_nor_dx_4k.jpg");
-    SetARMMap("materials/rock_terrain/rocky_terrain_02_arm_4k.jpg");  // ARM 贴图
-}
-
-void Material::SetPresetRubber()
-{
-    m_metallic = 1.0f;   
-    m_roughness = 1.0f;  
+    m_currentPreset = MaterialPreset::Concrete;
+    m_metallic = 0.0f;
+    m_roughness = 0.9f;
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     
-    // 设置贴图路径
-    SetAlbedoMap("materials/rubberized_track/rubberized_track_diff_1k.jpg");
-    SetNormalMap("materials/rubberized_track/rubberized_track_nor_dx_1k.jpg");
-    SetARMMap("materials/rubberized_track/rubberized_track_arm_1k.jpg");  // ARM 贴图
+    SetAlbedoMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_Color.png");
+    SetNormalMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_NormalDX.png");
+    SetAOMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_AmbientOcclusion.png");
+    SetRoughnessMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_Roughness.png");
+    SetMetalnessMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_Metalness.png");
 }
 
-void Material::SetPresetBrick()
+void Material::SetPresetFabric()
 {
-    m_metallic = 1.0f;   
-    m_roughness = 1.0f;  
+    m_currentPreset = MaterialPreset::Fabric;
+    m_metallic = 0.0f;
+    m_roughness = 0.9f;
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     
-    // 设置贴图路径
-    SetAlbedoMap("materials/red_brick/red_brick_diff_1k.jpg");
-    SetNormalMap("materials/red_brick/red_brick_nor_dx_1k.jpg");
-    SetARMMap("materials/red_brick/red_brick_arm_1k.jpg");  // ARM 贴图
+    SetAlbedoMap("materials/Fabric061_2K-PNG/Fabric061_2K-PNG_Color.png");
+    SetNormalMap("materials/Fabric061_2K-PNG/Fabric061_2K-PNG_NormalDX.png");
+    SetAOMap("materials/Fabric061_2K-PNG/Fabric061_2K-PNG_AmbientOcclusion.png");
+    SetRoughnessMap("materials/Fabric061_2K-PNG/Fabric061_2K-PNG_Roughness.png");
+    SetMetalnessMap("");
+}
+
+void Material::SetPresetMetal()
+{
+    m_currentPreset = MaterialPreset::Metal;
+    m_metallic = 1.0f;
+    m_roughness = 1.0f;
+    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
+    
+    SetAlbedoMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Color.png");
+    SetNormalMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_NormalDX.png");
+    SetAOMap("");
+    SetRoughnessMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Roughness.png");
+    SetMetalnessMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Metalness.png");
+}
+
+void Material::SetPresetPlastic()
+{
+    m_currentPreset = MaterialPreset::Plastic;
+    m_metallic = 0.0f;
+    m_roughness = 0.5f;
+    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
+    
+    SetAlbedoMap("materials/Plastic018A_2K-PNG/Plastic018A_2K-PNG_Color.png");
+    SetNormalMap("materials/Plastic018A_2K-PNG/Plastic018A_2K-PNG_NormalDX.png");
+    SetAOMap("");
+    SetRoughnessMap("materials/Plastic018A_2K-PNG/Plastic018A_2K-PNG_Roughness.png");
+    SetMetalnessMap("");
+}
+
+void Material::SetPresetRock()
+{
+    m_currentPreset = MaterialPreset::Rock;
+    m_metallic = 0.0f;
+    m_roughness = 0.9f;
+    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
+    
+    SetAlbedoMap("materials/Rock030_2K-PNG/Rock030_2K-PNG_Color.png");
+    SetNormalMap("materials/Rock030_2K-PNG/Rock030_2K-PNG_NormalDX.png");
+    SetAOMap("materials/Rock030_2K-PNG/Rock030_2K-PNG_AmbientOcclusion.png");
+    SetRoughnessMap("materials/Rock030_2K-PNG/Rock030_2K-PNG_Roughness.png");
+    SetMetalnessMap("");
 }
 
 void Material::SetPresetWood()
 {
-    // 木头是非金属材质
-    m_metallic = 0.0f;   // 贴图存在时会被贴图覆盖，这是fallback值
-    m_roughness = 1.0f;  // 作为乘数，1.0表示不修改贴图值
-    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);  // 白色，不调整贴图颜色
-    
-    // 设置贴图路径
-    SetAlbedoMap("materials/wood_floor/wood_floor_diff_1k.jpg");
-    SetNormalMap("materials/wood_floor/wood_floor_nor_dx_1k.jpg");
-    SetARMMap("materials/wood_floor/wood_floor_arm_1k.jpg");  // ARM 贴图
-}
-
-void Material::SetPresetPlaster()
-{
-    m_metallic = 1.0f;   
-    m_roughness = 1.0f;  
+    m_currentPreset = MaterialPreset::Wood;
+    m_metallic = 0.0f;
+    m_roughness = 0.8f;
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     
-    // 设置贴图路径
-    SetAlbedoMap("materials/painted_plaster_wall/painted_plaster_wall_diff_1k.jpg");
-    SetNormalMap("materials/painted_plaster_wall/painted_plaster_wall_nor_dx_1k.jpg");
-    SetARMMap("materials/painted_plaster_wall/painted_plaster_wall_arm_1k.jpg");  // ARM 贴图
-}
-
-void Material::SetPresetIron()
-{
-    m_metallic = 1.0f;   
-    m_roughness = 1.0f;  
-    m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
-    
-    // 设置贴图路径
-    SetAlbedoMap("materials/rusty_metal/rusty_metal_04_diff_1k.jpg");
-    SetNormalMap("materials/rusty_metal/rusty_metal_04_nor_dx_1k.jpg");
-    SetARMMap("materials/rusty_metal/rusty_metal_04_arm_1k.jpg");  // ARM 贴图
-}
-
-void Material::SetPresetPolishedMetal()
-{
-    m_metallic = 1.0f;   // 完全金属
-    m_roughness = 0.05f; // 非常光滑
-    m_baseColor = Vector3(0.95f, 0.95f, 0.95f);  // 银白色抛光金属
+    SetAlbedoMap("materials/Wood049_2K-PNG/Wood049_2K-PNG_Color.png");
+    SetNormalMap("materials/Wood049_2K-PNG/Wood049_2K-PNG_NormalDX.png");
+    SetAOMap("");
+    SetRoughnessMap("materials/Wood049_2K-PNG/Wood049_2K-PNG_Roughness.png");
+    SetMetalnessMap("");
 }
 
 } // namespace Moon

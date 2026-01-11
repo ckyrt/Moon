@@ -5,9 +5,10 @@ static const float PI = 3.14159265359;
 cbuffer MaterialConstants { 
     float g_Metallic;
     float g_Roughness;
-    float2 g_Padding1;
+    float g_TriplanarTiling;  // Triplanar纹理平铺密度（默认0.5 = 每2米重复一次）
+    float g_HasNormalMap;     // 是否加载了法线贴图（0.0 = 无，1.0 = 有）
     float3 g_BaseColor;
-    float g_Padding2;
+    float g_TriplanarBlend;   // Triplanar混合锐度（默认4.0）
 };
 
 // 场景参数常量缓冲区（相机位置、光源等）
@@ -24,8 +25,14 @@ cbuffer SceneConstants {
 Texture2D g_AlbedoMap;
 SamplerState g_AlbedoMap_sampler;
 
-Texture2D g_ARMMap;
-SamplerState g_ARMMap_sampler;
+Texture2D g_AOMap;
+SamplerState g_AOMap_sampler;
+
+Texture2D g_RoughnessMap;
+SamplerState g_RoughnessMap_sampler;
+
+Texture2D g_MetalnessMap;
+SamplerState g_MetalnessMap_sampler;
 
 Texture2D g_NormalMap;
 SamplerState g_NormalMap_sampler;
@@ -42,8 +49,92 @@ struct PSInput {
     float3 WorldPos : POSITION;
     float3 NormalWS : NORMAL;
     float4 Color    : COLOR;
-    float2 UV       : TEXCOORD0;
+    float2 UV       : TEXCOORD;  // 保留用于非CSG物体
 };
+
+// ===== Triplanar Mapping 函数 =====
+// Unity/Unreal标准实现，基于世界坐标采样
+// 优点：Transform无关、布尔切割后纹理连续、缩放不变形
+float3 GetTriplanarWeights(float3 normal, float sharpness) {
+    float3 weights = abs(normal);
+    weights = pow(weights, sharpness);  // 锐化过渡
+    weights /= (weights.x + weights.y + weights.z);  // 归一化
+    return weights;
+}
+
+// 法线专用：柔和的权重计算（避免45°面突然变硬）
+float3 GetTriplanarWeightsForNormals(float3 normal) {
+    float3 weights = abs(normal);
+    // 法线不使用pow，保持平滑过渡
+    weights /= (weights.x + weights.y + weights.z);
+    return weights;
+}
+
+float4 SampleTriplanar(Texture2D tex, SamplerState samp, float3 worldPos, float3 normal, float tiling) {
+    float3 weights = GetTriplanarWeights(normal, g_TriplanarBlend);
+    
+    // 三个平面采样（使用世界坐标）
+    float4 sampleX = tex.Sample(samp, worldPos.yz * tiling);
+    float4 sampleY = tex.Sample(samp, worldPos.xz * tiling);
+    float4 sampleZ = tex.Sample(samp, worldPos.xy * tiling);
+    
+    // 加权混合
+    return sampleX * weights.x + sampleY * weights.y + sampleZ * weights.z;
+}
+
+// ===== Triplanar Normal Map 采样（业界标准）=====
+// Unity/Unreal CSG标准做法：世界空间法线贴图混合
+// 优点：不依赖UV，不需要TBN，布尔切割后法线连续
+float3 SampleTriplanarNormal(
+    Texture2D normalMap,
+    SamplerState samp,
+    float3 worldPos,
+    float3 normalWS,
+    float tiling
+) {
+    // ✅ 法线使用柔和权重（不pow），避免45°面突然变硬
+    float3 weights = GetTriplanarWeightsForNormals(normalWS);
+    
+    // 三个平面采样法线贴图
+    float3 nX = normalMap.Sample(samp, worldPos.yz * tiling).xyz * 2.0 - 1.0;
+    float3 nY = normalMap.Sample(samp, worldPos.xz * tiling).xyz * 2.0 - 1.0;
+    float3 nZ = normalMap.Sample(samp, worldPos.xy * tiling).xyz * 2.0 - 1.0;
+    
+    // DirectX normal map: flip Y（与单次采样保持一致）
+    nX.y = -nX.y;
+    nY.y = -nY.y;
+    nZ.y = -nZ.y;
+    
+    // ✅ 将各投影面的切线空间法线转换到世界空间，带符号修正
+    // X投影（YZ平面）：tangent=Y, bitangent=Z, normal=X
+    float3 worldNX = float3(
+        normalWS.x > 0 ? nX.z : -nX.z,  // 符号修正，防止法线翻转
+        nX.x,
+        nX.y
+    );
+    
+    // Y投影（XZ平面）：tangent=X, bitangent=Z, normal=Y
+    float3 worldNY = float3(
+        nY.x,
+        normalWS.y > 0 ? nY.z : -nY.z,  // 符号修正
+        nY.y
+    );
+    
+    // Z投影（XY平面）：tangent=X, bitangent=Y, normal=Z
+    float3 worldNZ = float3(
+        nZ.x,
+        nZ.y,
+        normalWS.z > 0 ? nZ.z : -nZ.z  // 符号修正
+    );
+    
+    // 加权混合并归一化
+    float3 blended = 
+        worldNX * weights.x +
+        worldNY * weights.y +
+        worldNZ * weights.z;
+    
+    return normalize(blended);
+}
 
 // 将 3D 方向转换为 equirectangular UV 坐标
 float2 DirToEquirectUV(float3 dir) {
@@ -141,26 +232,34 @@ float4 main(in PSInput i) : SV_Target {
     // 12 = 只显示环境光
     int debugMode = 0;  // 恢复正常渲染
     
-    // 从贴图采样 Albedo
-    float3 albedo = g_AlbedoMap.Sample(g_AlbedoMap_sampler, i.UV).rgb;
+    // ✅ 重要：先定义N，然后再使用！
+    float3 N = normalize(i.NormalWS);
     
-    // === ARM 贴图采样（必须在所有 debug 分支之前，确保 shader 不会优化掉）===
-    float3 armSample = g_ARMMap.Sample(g_ARMMap_sampler, i.UV).rgb;
-    
-    // 🔍 调试模式 3: 显示 ARM 贴图
-    if (debugMode == 3) {
-        return float4(armSample, 1.0);
+    // 🔍 调试模式 6: 显示顶点法线（未应用法线贴图）
+    if (debugMode == 6) {
+        return float4(N * 0.5 + 0.5, 1.0);
     }
     
-    // 🔍 调试模式 4: 只显示 AO（红色通道）
+    // ===== Triplanar采样（世界空间，Transform无关）=====
+    float3 albedo = SampleTriplanar(g_AlbedoMap, g_AlbedoMap_sampler, i.WorldPos, N, g_TriplanarTiling).rgb;
+    
+    // === 材质贴图采样（Unity/Unreal标准：贴图×constant）===
+    float ao = SampleTriplanar(g_AOMap, g_AOMap_sampler, i.WorldPos, N, g_TriplanarTiling).r;
+    float roughness = max(SampleTriplanar(g_RoughnessMap, g_RoughnessMap_sampler, i.WorldPos, N, g_TriplanarTiling).r * g_Roughness, 0.04);
+    float metallic = saturate(SampleTriplanar(g_MetalnessMap, g_MetalnessMap_sampler, i.WorldPos, N, g_TriplanarTiling).r * g_Metallic);
+    
+    // 🔍 调试模式 3: 显示材质贴图 (R=AO, G=Roughness, B=Metallic)
+    if (debugMode == 3) {
+        return float4(ao, roughness, metallic, 1.0);
+    }
+    
+    // 🔍 调试模式 4: 只显示 AO
     if (debugMode == 4) {
-        float ao = armSample.r;
         return float4(ao, ao, ao, 1.0);
     }
     
-    // 🔍 调试模式 5: 只显示 Roughness（绿色通道）
+    // 🔍 调试模式 5: 只显示 Roughness
     if (debugMode == 5) {
-        float roughness = armSample.g;
         return float4(roughness, roughness, roughness, 1.0);
     }
     
@@ -181,86 +280,28 @@ float4 main(in PSInput i) : SV_Target {
     // 不要用顶点颜色调制纹理！这会让纹理变暗
     // albedo *= i.Color.rgb;
     
-    // === 法线贴图采样和处理 ===
-    float3 N = normalize(i.NormalWS);
+    // ===== Triplanar Normal Map（CSG专用，不依赖UV）=====
+    // ⚠️ CSG的UV不连续，不能用TBN！必须用世界空间triplanar采样
+    float normalStrength = 0.5;  // 控制法线强度（0=平滑，1=完全使用贴图）
     
-    // 🔍 调试模式 6: 显示顶点法线（未应用法线贴图）
-    if (debugMode == 6) {
-        return float4(N * 0.5 + 0.5, 1.0);
-    }
-    
-    // 采样法线贴图
-    float3 normalMap = g_NormalMap.Sample(g_NormalMap_sampler, i.UV).rgb;
-    
-    // 🔍 调试模式 1: 显示法线贴图原始颜色
-    if (debugMode == 1) {
-        return float4(normalMap, 1.0);
-    }
-    
-    // 检查法线贴图是否有效（非零）
-    if (dot(normalMap, normalMap) > 0.001) {
-        // 将法线从 [0,1] 转换到 [-1,1]
-        normalMap = normalMap * 2.0 - 1.0;
+    // ✅ 使用C++端的flag判断（Unity/Unreal标准做法）
+    if (g_HasNormalMap > 0.5) {
+        // 采样triplanar normal（世界空间）
+        float3 triplanarNormal = SampleTriplanarNormal(
+            g_NormalMap,
+            g_NormalMap_sampler,
+            i.WorldPos,
+            N,
+            g_TriplanarTiling
+        );
         
-        // ⚠️ 重要：DirectX 法线贴图（_nor_dx）需要翻转 Y 通道！
-        // DirectX 使用 Y-down，我们使用 Y-up
-        // 如果不翻转，凹凸方向会完全相反，导致看起来很平
-        normalMap.y = -normalMap.y;
-        
-        // 🔍 调试模式 7: 显示转换到[-1,1]后的法线贴图
-        if (debugMode == 7) {
-            return float4(normalMap * 0.5 + 0.5, 1.0);
+        // 🔍 调试模式 1: 显示triplanar法线
+        if (debugMode == 1) {
+            return float4(triplanarNormal * 0.5 + 0.5, 1.0);
         }
         
-        // === Unity/Unreal 标准法线强度处理 ===
-        // 简单缩放XY，然后重建Z（保证法线长度为1）
-        float normalStrength = 0.5;  // 降低强度，避免平面出现明显凹凸
-        bool disableNormalMap = false;  // 先恢复法线贴图
-        
-        if (!disableNormalMap) {
-            normalMap.xy *= normalStrength;
-        // 重建Z分量（使用saturate防止sqrt(负数)）
-        normalMap.z = sqrt(saturate(1.0 - dot(normalMap.xy, normalMap.xy)));
-        
-        // === Unreal Engine 标准 TBN 计算（更稳定） ===
-        // 使用屏幕空间导数，但加入更好的数值稳定性处理
-        
-        // 计算位置和 UV 的屏幕空间导数
-        float3 dPos_dx = ddx_coarse(i.WorldPos);  // 使用粗粒度导数，更稳定
-        float3 dPos_dy = ddy_coarse(i.WorldPos);
-        float2 dUV_dx = ddx_coarse(i.UV);
-        float2 dUV_dy = ddy_coarse(i.UV);
-        
-        // Unreal Engine 的 TBN 计算（处理数值不稳定）
-        float3 T = dPos_dx * dUV_dy.y - dPos_dy * dUV_dx.y;
-        float3 B = dPos_dy * dUV_dx.x - dPos_dx * dUV_dy.x;
-        
-        // ✅ TBN退化保护：检测UV重合或极端拉伸
-        float TdotT = dot(T, T);
-        float BdotB = dot(B, B);
-        if (TdotT < 1e-6 || BdotB < 1e-6) {
-            // UV退化，直接使用顶点法线，避免NaN
-            N = normalize(i.NormalWS);
-        } else {
-            float invMax = rsqrt(max(TdotT, BdotB));  // 快速归一化
-            
-            // 构建 TBN 矩阵（列向量形式）
-            float3x3 TBN = float3x3(T * invMax, B * invMax, N);
-        
-        // 🔍 调试模式 8: 显示切线T
-        if (debugMode == 8) {
-            return float4(normalize(T) * 0.5 + 0.5, 1.0);
-        }
-        
-        // 🔍 调试模式 9: 显示副切线B
-        if (debugMode == 9) {
-            return float4(normalize(B) * 0.5 + 0.5, 1.0);
-        }
-        
-                // 将切线空间法线转换到世界空间
-                N = normalize(mul(normalMap, TBN));
-            }
-        }
+        // 混合顶点法线和贴图法线（lerp控制强度）
+        N = normalize(lerp(N, triplanarNormal, normalStrength));
     }
     
     // 🔍 调试模式 2: 显示世界空间法线（查看法线贴图是否影响光照）
@@ -268,26 +309,8 @@ float4 main(in PSInput i) : SV_Target {
         return float4(N * 0.5 + 0.5, 1.0);
     }
     
-    // === ARM 贴图处理（从之前采样的结果中提取）===
-    float ao = armSample.r;          // R 通道 = AO (环境光遮蔽)
-    float roughness = armSample.g;   // G 通道 = Roughness (粗糙度)
-    float metallic = armSample.b;    // B 通道 = Metallic (金属度)
-    
-    // Unity 标准做法：贴图值 × 常量值 = 最终值
-    if (dot(armSample, armSample) > 0.001) {
-        // 贴图存在：贴图值作为基础，材质常量作为乘数
-        metallic *= g_Metallic;
-        roughness *= g_Roughness;
-        // AO 不需要乘数，直接使用贴图值
-    } else {
-        // 贴图不存在：直接使用材质常量值
-        metallic = g_Metallic;
-        roughness = g_Roughness;
-        ao = 1.0; // 默认无遮蔽
-    }
-    
-    // ✅ 不要在这里clamp roughness！材质值应该保持原样
-    // 数值保护应该在NDF计算中进行（见DistributionGGX函数）
+    // AO已经在前面处理，直接saturate确保范围
+    ao = saturate(ao);
     
     float3 V = normalize(g_CameraPosition - i.WorldPos);
     

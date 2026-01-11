@@ -681,6 +681,33 @@ const createRealAPI = (): MoonEngineAPI => {
       });
     }),
 
+    setMaterialPreset: wrapAsyncEngineCall('setMaterialPreset', async (nodeId: number, preset: string) => {
+      if (!window.cefQuery) {
+        console.warn('[setMaterialPreset] cefQuery not available');
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setMaterialPreset',
+          nodeId,
+          preset
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => {
+            console.log(`[setMaterialPreset] Success for node ${nodeId}, preset: ${preset}`);
+            resolve();
+          },
+          onFailure: (errorCode: number, errorMessage: string) => {
+            console.error(`[setMaterialPreset] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
     // ========================================================================
     // 🎯 Undo/Redo 专用 API（内部使用）
     // ========================================================================

@@ -58,7 +58,9 @@ static std::shared_ptr<Mesh> ManifoldToMesh_PreserveTopology(const manifold::Man
         v.position.x = meshGL.vertProperties[offset + 0];
         v.position.y = meshGL.vertProperties[offset + 1];
         v.position.z = meshGL.vertProperties[offset + 2];
-        v.normal = Vector3(0, 0, 0);
+        v.normal = Vector3(0, 0, 0);  // 稍后计算
+        
+        // 暂时使用简单投影，稍后根据法线重新计算
         v.uv = Vector2(0, 0);
         vertices.push_back(v);
     }
@@ -98,7 +100,9 @@ static std::shared_ptr<Mesh> ManifoldToMesh_PreserveTopology(const manifold::Man
     }
     
     // 归一化法线
+    // ✅ UV不再需要CPU生成，shader端用triplanar mapping（世界空间实时计算）
     for (auto& v : vertices) {
+        // 归一化法线
         float len = sqrtf(v.normal.x * v.normal.x + 
                          v.normal.y * v.normal.y + 
                          v.normal.z * v.normal.z);
@@ -109,6 +113,9 @@ static std::shared_ptr<Mesh> ManifoldToMesh_PreserveTopology(const manifold::Man
         } else {
             v.normal = Vector3(0, 1, 0);
         }
+        
+        // UV保留为(0,0)，triplanar不使用UV
+        v.uv = Vector2(0, 0);
     }
 
     auto mesh = std::make_shared<Mesh>();

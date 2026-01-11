@@ -58,7 +58,9 @@ public:
     void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
     
     void BindAlbedoTexture(const std::string& texturePath);       // 绑定 Albedo 贴图到当前 SRB
-    void BindARMTexture(const std::string& texturePath);          // 绑定 ARM (AO+Roughness+Metallic) 贴图到当前 SRB
+    void BindAOTexture(const std::string& texturePath);           // 绑定 AO 贴图到当前 SRB
+    void BindRoughnessTexture(const std::string& texturePath);    // 绑定 Roughness 贴图到当前 SRB
+    void BindMetalnessTexture(const std::string& texturePath);    // 绑定 Metalness 贴图到当前 SRB
     void BindNormalTexture(const std::string& texturePath);       // 绑定法线贴图到当前 SRB
     
     void UpdateSceneSkybox(Moon::Scene* scene);                   // 从场景中查找并更新 Skybox 组件
@@ -89,9 +91,10 @@ private:
     struct PSMaterialCPU { // 16B 对齐（PBR 材质参数）
         float metallic = 0.0f;
         float roughness = 0.5f;
-        float padding1[2] = { 0.0f, 0.0f };
+        float triplanarTiling = 0.5f;   // Triplanar纹理平铺密度（0.5 = 每2米重复）
+        float hasNormalMap = 0.0f;      // 是否加载了法线贴图（0.0 = 无，1.0 = 有）
         Moon::Vector3 baseColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
-        float padding2 = 0.0f;
+        float triplanarBlend = 4.0f;    // Triplanar混合锐度（越高过渡越硬）
     };
     struct PSSceneCPU { // 16B 对齐（场景参数：相机位置、光源等）
         Moon::Vector3 cameraPosition;

@@ -165,6 +165,17 @@ public:
      */
     size_t GetCachedTextureCount() const { return m_textureCache.size(); }
     
+    /**
+     * @brief 设置资源根路径（相对路径的基准目录）
+     * @param path 资源根路径（通常是exe所在目录）
+     */
+    static void SetResourceBasePath(const std::string& path);
+    
+    /**
+     * @brief 获取资源根路径
+     */
+    static const std::string& GetResourceBasePath();
+    
 private:
     /**
      * @brief 从文件加载纹理数据（使用 stb_image）
@@ -172,6 +183,8 @@ private:
     std::shared_ptr<TextureData> LoadTextureData(const std::string& filepath, bool sRGB);
     
     std::unordered_map<std::string, std::shared_ptr<Texture>> m_textureCache;
+    
+    static std::string s_resourceBasePath;  // 资源根路径
 };
 
 } // namespace Moon

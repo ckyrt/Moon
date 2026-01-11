@@ -457,7 +457,7 @@ namespace CommandHandlers {
     // 设置 Material 贴图
     std::string HandleSetMaterialTexture(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
-        std::string textureType = req["textureType"];  // "albedo", "normal", "arm"
+        std::string textureType = req["textureType"];  // "albedo", "normal", "ao", "roughness", "metalness"
         std::string path = req["path"];
 
         Moon::SceneNode* node = scene->FindNodeByID(nodeId);
@@ -474,14 +474,63 @@ namespace CommandHandlers {
             material->SetAlbedoMap(path);
         } else if (textureType == "normal") {
             material->SetNormalMap(path);
-        } else if (textureType == "arm") {
-            material->SetARMMap(path);
+        } else if (textureType == "ao") {
+            material->SetAOMap(path);
+        } else if (textureType == "roughness") {
+            material->SetRoughnessMap(path);
+        } else if (textureType == "metalness") {
+            material->SetMetalnessMap(path);
         } else {
             return CreateErrorResponse("Unknown texture type: " + textureType);
         }
 
         MOON_LOG_INFO("MoonEngineMessage", "Set material %s texture of node %u to %s",
                      textureType.c_str(), nodeId, path.c_str());
+        
+        return CreateSuccessResponse();
+    }
+
+    // 设置 Material 预设
+    std::string HandleSetMaterialPreset(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        uint32_t nodeId = req["nodeId"];
+        std::string presetName = req["preset"];
+
+        Moon::SceneNode* node = scene->FindNodeByID(nodeId);
+        if (!node) {
+            return CreateErrorResponse("Node not found");
+        }
+
+        Moon::Material* material = node->GetComponent<Moon::Material>();
+        if (!material) {
+            return CreateErrorResponse("Node does not have Material component");
+        }
+
+        // 将字符串转换为枚举
+        Moon::MaterialPreset preset = Moon::MaterialPreset::None;
+        if (presetName == "Concrete") {
+            preset = Moon::MaterialPreset::Concrete;
+        } else if (presetName == "Fabric") {
+            preset = Moon::MaterialPreset::Fabric;
+        } else if (presetName == "Metal") {
+            preset = Moon::MaterialPreset::Metal;
+        } else if (presetName == "Plastic") {
+            preset = Moon::MaterialPreset::Plastic;
+        } else if (presetName == "Rock") {
+            preset = Moon::MaterialPreset::Rock;
+        } else if (presetName == "Wood") {
+            preset = Moon::MaterialPreset::Wood;
+        } else if (presetName == "Glass") {
+            preset = Moon::MaterialPreset::Glass;
+        } else if (presetName == "PolishedMetal") {
+            preset = Moon::MaterialPreset::PolishedMetal;
+        } else if (presetName == "None") {
+            preset = Moon::MaterialPreset::None;
+        } else {
+            return CreateErrorResponse("Unknown material preset: " + presetName);
+        }
+
+        material->SetMaterialPreset(preset);
+        MOON_LOG_INFO("MoonEngineMessage", "Set material preset of node %u to %s", nodeId, presetName.c_str());
         
         return CreateSuccessResponse();
     }
@@ -1020,6 +1069,7 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"setMaterialRoughness",     CommandHandlers::HandleSetMaterialRoughness},  // 🎯 Material: 设置粗糙度
     {"setMaterialBaseColor",     CommandHandlers::HandleSetMaterialBaseColor},  // 🎯 Material: 设置基础颜色
     {"setMaterialTexture",       CommandHandlers::HandleSetMaterialTexture},  // 🎯 Material: 设置贴图
+    {"setMaterialPreset",        CommandHandlers::HandleSetMaterialPreset},  // 🎯 Material: 设置材质预设
     {"createNode",               CommandHandlers::HandleCreateNode},
     {"deleteNode",               CommandHandlers::HandleDeleteNode},  // 🎯 删除节点
     {"setNodeParent",            CommandHandlers::HandleSetNodeParent},  // 🎯 设置父节点

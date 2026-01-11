@@ -153,7 +153,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     groundRenderer->SetMesh(meshManager->CreatePlane(25.0f, 25.0f, 1, 1, Moon::Vector3(0.5f, 0.5f, 0.5f)));
     
     Moon::Material* groundMaterial = groundNode->AddComponent<Moon::Material>();
-    groundMaterial->SetPresetConcrete();  // 使用岩石地形材质
+    groundMaterial->SetMaterialPreset(Moon::MaterialPreset::Concrete);
     
     // ============================================================================
     // 2. 石膏墙立方体 - painted_plaster_wall
@@ -166,7 +166,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     plasterRenderer->SetMesh(meshManager->CreateCube(1.0f, Moon::Vector3(0.95f, 0.95f, 0.92f)));
     
     Moon::Material* plasterMaterial = plasterCubeNode->AddComponent<Moon::Material>();
-    plasterMaterial->SetPresetPlaster();
+    plasterMaterial->SetMaterialPreset(Moon::MaterialPreset::Plastic);
     
     // ============================================================================
     // 3. 红砖墙立方体 - red_brick
@@ -179,7 +179,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     brickRenderer->SetMesh(meshManager->CreateCube(1.0f, Moon::Vector3(0.6f, 0.3f, 0.2f)));
     
     Moon::Material* brickMaterial = brickWallNode->AddComponent<Moon::Material>();
-    brickMaterial->SetPresetBrick();
+    brickMaterial->SetMaterialPreset(Moon::MaterialPreset::Rock);
     
     // ============================================================================
     // 4. 橡胶跑道矩形 - rubberized_track
@@ -192,7 +192,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     trackRenderer->SetMesh(meshManager->CreatePlane(1.0f, 1.0f, 1, 1, Moon::Vector3(0.2f, 0.2f, 0.2f)));
     
     Moon::Material* trackMaterial = trackNode->AddComponent<Moon::Material>();
-    trackMaterial->SetPresetRubber();
+    trackMaterial->SetMaterialPreset(Moon::MaterialPreset::Fabric);
     
     // ============================================================================
     // 5. 生锈金属球 - rusty_metal
@@ -201,11 +201,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     metalSphereNode->GetTransform()->SetLocalPosition(Moon::Vector3(-2.0f, 1.5f, 3.0f));
     
     Moon::MeshRenderer* metalRenderer = metalSphereNode->AddComponent<Moon::MeshRenderer>();
-    // 使用白色顶点颜色，让纹理完整显示
     metalRenderer->SetMesh(meshManager->CreateSphere(1.0f, 64, 32, Moon::Vector3(1.0f, 1.0f, 1.0f)));
     
     Moon::Material* metalMaterial = metalSphereNode->AddComponent<Moon::Material>();
-    metalMaterial->SetPresetIron();
+    metalMaterial->SetMaterialPreset(Moon::MaterialPreset::Metal);
     
     // ============================================================================
     // 6. 木头球 - wood_floor
@@ -214,11 +213,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     woodSphereNode->GetTransform()->SetLocalPosition(Moon::Vector3(2.0f, 1.5f, 3.0f));
     
     Moon::MeshRenderer* woodRenderer = woodSphereNode->AddComponent<Moon::MeshRenderer>();
-    // 使用白色顶点颜色，让纹理完整显示
     woodRenderer->SetMesh(meshManager->CreateSphere(1.0f, 64, 32, Moon::Vector3(1.0f, 1.0f, 1.0f)));
     
     Moon::Material* woodMaterial = woodSphereNode->AddComponent<Moon::Material>();
-    woodMaterial->SetPresetWood();
+    woodMaterial->SetMaterialPreset(Moon::MaterialPreset::Wood);
     
     // ============================================================================
     // 7. CSG 演示场景 - Box - Sphere (布尔减法)
@@ -258,10 +256,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         csgNode->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 2.0f, 5.0f));
         
         Moon::MeshRenderer* csgRenderer = csgNode->AddComponent<Moon::MeshRenderer>();
-        csgRenderer->SetMesh(csgResult);  // 直接使用 CSG 结果
+        csgRenderer->SetMesh(csgResult);
         
         Moon::Material* csgMaterial = csgNode->AddComponent<Moon::Material>();
-        csgMaterial->SetPresetIron();  // 使用金属材质突出显示
+        csgMaterial->SetMaterialPreset(Moon::MaterialPreset::Metal);
         
         MOON_LOG_INFO("Sample", "CSG object added to scene at position (0, 2, 5)");
     } else {

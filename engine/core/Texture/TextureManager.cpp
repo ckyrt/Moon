@@ -19,6 +19,9 @@ extern "C" {
 
 namespace Moon {
 
+// 静态成员变量定义
+std::string TextureManager::s_resourceBasePath = "";
+
 std::shared_ptr<Texture> TextureManager::LoadTexture(const std::string& filepath, bool sRGB)
 {
     // 检查缓存
@@ -66,18 +69,13 @@ void TextureManager::ClearCache()
 
 std::shared_ptr<TextureData> TextureManager::LoadTextureData(const std::string& filepath, bool sRGB)
 {
-    // 直接构建完整路径
-    std::string fullPath = "assets/textures/" + filepath;
-    
-    // 获取当前工作目录用于调试
-    char cwd[1024];
-    #ifdef _WIN32
-    _getcwd(cwd, sizeof(cwd));
-    #else
-    getcwd(cwd, sizeof(cwd));
-    #endif
-    
-    MOON_LOG_INFO("TextureManager", "Current working directory: %s", cwd);
+    // 构建完整路径：资源根路径 + assets/textures/ + 相对路径
+    std::string fullPath;
+    if (!s_resourceBasePath.empty()) {
+        fullPath = s_resourceBasePath + "/assets/textures/" + filepath;
+    } else {
+        fullPath = "assets/textures/" + filepath;
+    }
     MOON_LOG_INFO("TextureManager", "Attempting to load texture: %s", fullPath.c_str());
     
     // 使用 stb_image 加载图像
@@ -112,6 +110,17 @@ std::shared_ptr<TextureData> TextureManager::LoadTextureData(const std::string& 
     stbi_image_free(imageData);
     
     return textureData;
+}
+
+void TextureManager::SetResourceBasePath(const std::string& path)
+{
+    s_resourceBasePath = path;
+    MOON_LOG_INFO("TextureManager", "Resource base path set to: %s", path.c_str());
+}
+
+const std::string& TextureManager::GetResourceBasePath()
+{
+    return s_resourceBasePath;
 }
 
 } // namespace Moon

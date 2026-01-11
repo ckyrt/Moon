@@ -4,9 +4,11 @@
  */
 
 import React, { useState } from 'react';
+import { logger } from '@/utils/logger';
 import { useEditorStore } from '@/store/editorStore';
 import { eulerToQuaternion } from '@/utils/math';
 import { getUndoManager } from '@/undo';
+import { engine } from '@/utils/engine-bridge';
 import { 
   SetPositionCommand, 
   SetRotationCommand, 
@@ -756,8 +758,42 @@ const MaterialEditor: React.FC<MaterialEditorProps> = ({ component }) => {
   );
   const undoManager = getUndoManager();
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   if (!selectedNode) return null;
+
+  const presetOptions = [
+    { value: 'None', label: 'None (Custom)' },
+    { value: 'Concrete', label: 'Concrete' },
+    { value: 'Fabric', label: 'Fabric' },
+    { value: 'Metal', label: 'Metal' },
+    { value: 'Plastic', label: 'Plastic' },
+    { value: 'Rock', label: 'Rock' },
+    { value: 'Wood', label: 'Wood' },
+    { value: 'Glass', label: 'Glass' },
+    { value: 'PolishedMetal', label: 'Polished Metal' },
+  ];
+
+  const handlePresetChange = async (preset: string) => {
+    if (!selectedNode) {
+      logger.error('MaterialEditor', 'handlePresetChange: selectedNode is null');
+      return;
+    }
+    
+    logger.info('MaterialEditor', `handlePresetChange called with preset: ${preset}`);
+    
+    try {
+      // 立即更新UI显示的preset值
+      component.preset = preset;
+      
+      // 发送给后端，后端会自己处理加载对应的贴图
+      logger.info('MaterialEditor', `Calling engine.setMaterialPreset, nodeId: ${selectedNode.id}, preset: ${preset}`);
+      await engine.setMaterialPreset(selectedNode.id, preset);
+      logger.info('MaterialEditor', 'setMaterialPreset completed');
+    } catch (error) {
+      logger.error('MaterialEditor', 'Failed to set preset', { error: String(error) });
+    }
+  };
 
   const handleMetallicChange = (value: number) => {
     if (isNaN(value)) return;
@@ -778,13 +814,6 @@ const MaterialEditor: React.FC<MaterialEditorProps> = ({ component }) => {
     undoManager.execute(command);
   };
 
-  const handleTextureChange = (textureType: 'albedo' | 'normal' | 'arm', path: string) => {
-    const oldPath = textureType === 'albedo' ? component.albedoMap :
-                    textureType === 'normal' ? component.normalMap : component.armMap;
-    const command = new SetMaterialTextureCommand(selectedNode.id, textureType, oldPath || '', path);
-    undoManager.execute(command);
-  };
-
   // RGB to Hex
   const rgbToHex = (r: number, g: number, b: number): string => {
     const toHex = (v: number) => {
@@ -792,19 +821,6 @@ const MaterialEditor: React.FC<MaterialEditorProps> = ({ component }) => {
       return hex.padStart(2, '0');
     };
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-  };
-
-  // Hex to RGB
-  const hexToRgb = (hex: string): [number, number, number] => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (result) {
-      return [
-        parseInt(result[1], 16) / 255,
-        parseInt(result[2], 16) / 255,
-        parseInt(result[3], 16) / 255,
-      ];
-    }
-    return [1, 1, 1];
   };
 
   const handleColorClick = (r: number, g: number, b: number) => {
@@ -830,6 +846,84 @@ const MaterialEditor: React.FC<MaterialEditorProps> = ({ component }) => {
 
   return (
     <div className={styles.componentDetails}>
+      {/* Material Preset Dropdown - Custom implementation for CEF OSR */}
+      <div className={styles.propertyRow}>
+        <label style={{ minWidth: '70px' }}>Preset:</label>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              logger.info('MaterialEditor', 'Dropdown header clicked');
+              setDropdownOpen(!dropdownOpen);
+            }}
+            style={{
+              padding: '4px 8px',
+              borderRadius: '4px',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-tertiary)',
+              fontSize: '11px',
+              cursor: 'pointer',
+              userSelect: 'none',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
+          >
+            <span>{presetOptions.find(o => o.value === (component.preset || 'None'))?.label}</span>
+            <span style={{ fontSize: '10px' }}>▼</span>
+          </div>
+          {dropdownOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                marginTop: '2px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '4px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                zIndex: 1000,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+              }}
+            >
+              {presetOptions.map(option => (
+                <div
+                  key={option.value}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    logger.info('MaterialEditor', `Option clicked: ${option.value}`);
+                    handlePresetChange(option.value);
+                    setDropdownOpen(false);
+                  }}
+                  style={{
+                    padding: '6px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    background: (component.preset || 'None') === option.value ? 'var(--accent-color)' : 'transparent',
+                    color: (component.preset || 'None') === option.value ? 'white' : 'inherit'
+                  }}
+                  onMouseEnter={(e) => {
+                    if ((component.preset || 'None') !== option.value) {
+                      e.currentTarget.style.background = 'var(--bg-secondary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if ((component.preset || 'None') !== option.value) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
+                >
+                  {option.label}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Metallic */}
       <div className={styles.propertyRow}>
         <label style={{ minWidth: '70px' }}>Metallic:</label>
@@ -957,67 +1051,6 @@ const MaterialEditor: React.FC<MaterialEditorProps> = ({ component }) => {
             </button>
           </div>
         )}
-      </div>
-
-      {/* Albedo Map (Diffuse) */}
-      <div className={styles.propertyRow}>
-        <label style={{ minWidth: '70px' }}>Albedo Map:</label>
-        <input
-          type="text"
-          value={component.albedoMap || ''}
-          onChange={(e) => handleTextureChange('albedo', e.target.value)}
-          placeholder="assets/textures/materials/xxx/xxx_diff_1k.jpg"
-          style={{ 
-            flex: 1,
-            padding: '4px 8px', 
-            borderRadius: '4px', 
-            border: '1px solid var(--border-color)', 
-            background: 'var(--bg-tertiary)',
-            fontSize: '11px'
-          }}
-        />
-      </div>
-
-      {/* Normal Map */}
-      <div className={styles.propertyRow}>
-        <label style={{ minWidth: '70px' }}>Normal Map:</label>
-        <input
-          type="text"
-          value={component.normalMap || ''}
-          onChange={(e) => handleTextureChange('normal', e.target.value)}
-          placeholder="assets/textures/materials/xxx/xxx_nor_dx_1k.jpg"
-          style={{ 
-            flex: 1,
-            padding: '4px 8px', 
-            borderRadius: '4px', 
-            border: '1px solid var(--border-color)', 
-            background: 'var(--bg-tertiary)',
-            fontSize: '11px'
-          }}
-        />
-      </div>
-
-      {/* ARM Map (AO + Roughness + Metallic) */}
-      <div className={styles.propertyRow}>
-        <label style={{ minWidth: '70px' }}>ARM Map:</label>
-        <input
-          type="text"
-          value={component.armMap || ''}
-          onChange={(e) => handleTextureChange('arm', e.target.value)}
-          placeholder="assets/textures/materials/xxx/xxx_arm_1k.jpg"
-          style={{ 
-            flex: 1,
-            padding: '4px 8px', 
-            borderRadius: '4px', 
-            border: '1px solid var(--border-color)', 
-            background: 'var(--bg-tertiary)',
-            fontSize: '11px'
-          }}
-        />
-      </div>
-      
-      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-        ARM: R=AO, G=Roughness, B=Metallic
       </div>
     </div>
   );

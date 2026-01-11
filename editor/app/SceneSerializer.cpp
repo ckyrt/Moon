@@ -531,7 +531,9 @@ void SceneSerializer::SerializeComponents(SceneNode* node, void* jsonArray) {
         // Texture maps
         comp["albedoMap"] = material->GetAlbedoMap();
         comp["normalMap"] = material->GetNormalMap();
-        comp["armMap"] = material->GetARMMap();
+        comp["aoMap"] = material->GetAOMap();
+        comp["roughnessMap"] = material->GetRoughnessMap();
+        comp["metalnessMap"] = material->GetMetalnessMap();
         
         components.push_back(comp);
     }
@@ -613,7 +615,9 @@ void SceneSerializer::SerializeComponentsFull(SceneNode* node, void* jsonArray) 
         // Texture maps
         comp["albedoMap"] = material->GetAlbedoMap();
         comp["normalMap"] = material->GetNormalMap();
-        comp["armMap"] = material->GetARMMap();
+        comp["aoMap"] = material->GetAOMap();
+        comp["roughnessMap"] = material->GetRoughnessMap();
+        comp["metalnessMap"] = material->GetMetalnessMap();
         
         components.push_back(comp);
     }
@@ -928,11 +932,27 @@ void SceneSerializer::DeserializeComponents(SceneNode* node, EngineCore* engine,
                 }
             }
 
-            // ARM Map
-            if (compData.contains("armMap")) {
-                std::string path = compData["armMap"];
+            // AO Map
+            if (compData.contains("aoMap")) {
+                std::string path = compData["aoMap"];
                 if (!path.empty()) {
-                    material->SetARMMap(path);
+                    material->SetAOMap(path);
+                }
+            }
+
+            // Roughness Map
+            if (compData.contains("roughnessMap")) {
+                std::string path = compData["roughnessMap"];
+                if (!path.empty()) {
+                    material->SetRoughnessMap(path);
+                }
+            }
+
+            // Metalness Map
+            if (compData.contains("metalnessMap")) {
+                std::string path = compData["metalnessMap"];
+                if (!path.empty()) {
+                    material->SetMetalnessMap(path);
                 }
             }
 

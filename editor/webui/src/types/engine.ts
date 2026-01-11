@@ -81,14 +81,28 @@ export interface SkyboxComponent extends Component {
   enableIBL: boolean; // Image-based lighting
 }
 
+export type MaterialPreset = 
+  | 'None'
+  | 'Concrete'
+  | 'Fabric'
+  | 'Metal'
+  | 'Plastic'
+  | 'Rock'
+  | 'Wood'
+  | 'Glass'
+  | 'PolishedMetal';
+
 export interface MaterialComponent extends Component {
   type: 'Material';
+  preset: MaterialPreset; // Material preset
   metallic: number; // [0-1]
   roughness: number; // [0-1]
   baseColor: [number, number, number]; // RGB [0-1]
-  albedoMap: string; // Diffuse texture path (_diff)
-  normalMap: string; // Normal texture path (_norm)
-  armMap: string; // ARM texture path (_arm: R=AO, G=Roughness, B=Metallic)
+  albedoMap: string; // Color texture path
+  normalMap: string; // Normal texture path
+  aoMap: string; // Ambient Occlusion texture path
+  roughnessMap: string; // Roughness texture path
+  metalnessMap: string; // Metalness texture path
 }
 
 export interface Scene {

@@ -23,6 +23,7 @@
 #include "../engine/core/EngineCore.h"
 #include "../engine/core/Logging/Logger.h"
 #include "../engine/core/Camera/FPSCameraController.h"
+#include "../engine/core/Texture/TextureManager.h"
 
 // 渲染系统
 #include "../engine/render/diligent/DiligentRenderer.h"
@@ -289,6 +290,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
     // 初始化 Logger
     Moon::Core::Logger::Init();
+
+    // 设置资源根路径为exe所在目录
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileNameW(NULL, exePath, MAX_PATH);
+    std::wstring exePathW(exePath);
+    size_t lastSlash = exePathW.find_last_of(L"\\/");
+    if (lastSlash != std::wstring::npos) {
+        exePathW = exePathW.substr(0, lastSlash);
+        // 转换为UTF-8 string
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, exePathW.c_str(), (int)exePathW.length(), NULL, 0, NULL, NULL);
+        std::string exeDir(size_needed, 0);
+        WideCharToMultiByte(CP_UTF8, 0, exePathW.c_str(), (int)exePathW.length(), &exeDir[0], size_needed, NULL, NULL);
+        Moon::TextureManager::SetResourceBasePath(exeDir);
+    }
 
     // 初始化引擎
     InitEngine(g_Engine);
