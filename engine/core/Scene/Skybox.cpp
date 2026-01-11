@@ -8,7 +8,7 @@ namespace Moon {
 Skybox::Skybox(SceneNode* owner)
     : Component(owner)
     , m_type(Type::None)
-    , m_intensity(1.0f)
+    , m_intensity(0.3f)  // 降低默认强度避免过曝，保留纹理细节
     , m_rotation(0.0f)
     , m_tint(1.0f, 1.0f, 1.0f)
     , m_enableIBL(true)

@@ -355,7 +355,6 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     // 添加 Skybox 组件
     Moon::Skybox* skybox = skyboxNode->AddComponent<Moon::Skybox>();
     skybox->LoadEnvironmentMap("assets/textures/environment.hdr");
-    skybox->SetIntensity(1.0f);  // 天空盒亮度
     skybox->SetEnableIBL(true);  // 启用基于图像的照明
     
     MOON_LOG_INFO("Sample", "Skybox created with HDR environment map");

@@ -315,8 +315,8 @@ float4 main(in PSInput i) : SV_Target {
         specular *= 0.7;
     }
     
-    // 组合环境光（间接光）
-    float3 ambient = (diffuse + specular) * ao;  // AO只影响环境光
+    // 组合环境光（间接光）- 降低强度保留法线凹凸细节
+    float3 ambient = (diffuse + specular) * ao * 0.3;  // AO + 环境光强度系数
     
     // 🔍 调试模式 11: 只显示直接光照（不含环境光）
     if (debugMode == 11) {
