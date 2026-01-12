@@ -55,6 +55,7 @@ public:
     void SetMaterialParameters(Moon::Material* material);  // 设置完整的PBR材质参数（包括mapping mode和triplanar）
     void SetCameraPosition(const Moon::Vector3& position);        // 设置相机位置（用于高光计算）
     void UpdateSceneLights(Moon::Scene* scene);                   // 更新场景光源数据
+    void SetRenderingTransparent(bool transparent);  // 设置当前是否渲染透明物体（切换PSO）
     void DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& worldMatrix) override;
     void DrawCube(const Moon::Matrix4x4& worldMatrix) override;
     
@@ -97,7 +98,10 @@ private:
         Moon::Vector3 baseColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
         float triplanarBlend = 4.0f;    // Triplanar混合锐度（越高过渡越硬）
         float hasNormalMap = 0.0f;      // 是否加载了法线贴图（0.0 = 无，1.0 = 有）
-        float padding[3] = {0.0f, 0.0f, 0.0f};
+        float opacity = 1.0f;           // 不透明度（0.0 = 完全透明, 1.0 = 完全不透明）
+        float padding2[2] = {0.0f, 0.0f};
+        Moon::Vector3 transmissionColor = Moon::Vector3(1.0f, 1.0f, 1.0f);  // 透射颜色（用于玻璃）
+        float padding3 = 0.0f;
     };
     struct PSSceneCPU { // 16B 对齐（场景参数：相机位置、光源等）
         Moon::Vector3 cameraPosition;
@@ -134,6 +138,10 @@ private:
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pPSSceneConstants;     // 场景参数（相机位置等）
     Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pPSO;
     Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pSRB;
+    
+    // ======== 透明物体渲染管线（Alpha Blending）========
+    Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pTransparentPSO;
+    Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pTransparentSRB;
 
     // ======== Skybox 渲染管线 ========
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pSkyboxVB;         // Skybox 立方体顶点缓冲
@@ -192,12 +200,16 @@ private:
     
     // ======== 场景数据缓存 ========
     PSSceneCPU m_SceneDataCache;  // 缓存场景数据（相机位置 + 光源）
+    
+    // ======== 渲染状态 ========
+    bool m_IsRenderingTransparent = false;  // 当前是否在渲染透明物体
 
     // ======== 帮助函数 ========
     void CreateDeviceAndSwapchain(const RenderInitParams& params);
     void CreateVSConstants();
     void CreateDefaultWhiteTexture();  // 创建默认白色纹理
-    void CreateMainPass();  // 主渲染管线 PSO
+    void CreateMainPass();  // 主渲染管线 PSO（不透明物体）
+    void CreateTransparentPass();  // 透明物体渲染管线 PSO（Alpha Blending）
     void CreateSkyboxPass(); // Skybox 渲染管线 PSO
     void PrecomputeIBL();    // 预计算 IBL 资源（BRDF LUT, Irradiance Map, Prefiltered Env Map）
     void LoadEnvironmentMap(const char* filepath); // 加载 HDR 环境贴图

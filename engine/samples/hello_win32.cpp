@@ -323,7 +323,24 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     }
     
     MOON_LOG_INFO("Sample", "✅ UV vs Triplanar comparison: Left=UV (stretched texture), Right=Triplanar (correct density)");
-    MOON_LOG_INFO("Sample", "Material Showcase Scene created with 9 objects");
+    
+    // ============================================================================
+    // 8. 玻璃球体 - 透明材质演示（程序化，无纹理）
+    // ============================================================================
+    MOON_LOG_INFO("Sample", "Creating glass sphere demonstration...");
+    
+    Moon::SceneNode* glassSphereNode = scene->CreateNode("Glass Sphere");
+    glassSphereNode->GetTransform()->SetLocalPosition(Moon::Vector3(0.0f, 2.0f, -3.0f));  // 中心位置，高度2米
+    glassSphereNode->GetTransform()->SetLocalScale(Moon::Vector3(1.2f, 1.2f, 1.2f));     // 稍大一些
+    
+    Moon::MeshRenderer* glassRenderer = glassSphereNode->AddComponent<Moon::MeshRenderer>();
+    glassRenderer->SetMesh(meshManager->CreateSphere(1.0f, 64, 32, Moon::Vector3(1.0f, 1.0f, 1.0f)));
+    
+    Moon::Material* glassMaterial = glassSphereNode->AddComponent<Moon::Material>();
+    glassMaterial->SetMaterialPreset(Moon::MaterialPreset::Glass);  // 玻璃预设：透明、光滑、非金属
+    
+    MOON_LOG_INFO("Sample", "Glass sphere created at (0, 2, -3) with transparency and PBR lighting");
+    MOON_LOG_INFO("Sample", "Material Showcase Scene created with 10 objects (including glass)");
     
     // ============================================================================
     // 创建主方向光（模拟太阳光）

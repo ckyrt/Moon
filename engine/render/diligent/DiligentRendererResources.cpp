@@ -143,9 +143,12 @@ DiligentRenderer::TextureGPUResources* DiligentRenderer::GetOrCreateTextureResou
 // ======= 绑定纹理 =======
 void DiligentRenderer::BindAlbedoTexture(const std::string& texturePath)
 {
-    if (texturePath.empty() || !m_pSRB) {
+    // 根据当前渲染状态选择SRB
+    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    
+    if (texturePath.empty() || !srb) {
         if (m_pDefaultWhiteTextureSRV) {
-            auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlbedoMap");
+            auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlbedoMap");
             if (var) {
                 var->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
             }
@@ -155,13 +158,13 @@ void DiligentRenderer::BindAlbedoTexture(const std::string& texturePath)
     
     auto* texGPU = GetOrCreateTextureResources(texturePath, true);
     if (texGPU && texGPU->SRV) {
-        auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlbedoMap");
+        auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlbedoMap");
         if (var) {
             var->Set(texGPU->SRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
         }
     } else {
         if (m_pDefaultWhiteTextureSRV) {
-            auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlbedoMap");
+            auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlbedoMap");
             if (var) {
                 var->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
             }
@@ -171,9 +174,11 @@ void DiligentRenderer::BindAlbedoTexture(const std::string& texturePath)
 
 void DiligentRenderer::BindAOTexture(const std::string& texturePath)
 {
-    if (texturePath.empty() || !m_pSRB) {
+    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    
+    if (texturePath.empty() || !srb) {
         if (m_pDefaultWhiteTextureSRV) {
-            auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AOMap");
+            auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_AOMap");
             if (var) {
                 var->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
             }
@@ -183,13 +188,13 @@ void DiligentRenderer::BindAOTexture(const std::string& texturePath)
     
     auto* texGPU = GetOrCreateTextureResources(texturePath, false);
     if (texGPU && texGPU->SRV) {
-        auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AOMap");
+        auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_AOMap");
         if (var) {
             var->Set(texGPU->SRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
         }
     } else {
         if (m_pDefaultWhiteTextureSRV) {
-            auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AOMap");
+            auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_AOMap");
             if (var) {
                 var->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
             }
@@ -199,9 +204,11 @@ void DiligentRenderer::BindAOTexture(const std::string& texturePath)
 
 void DiligentRenderer::BindRoughnessTexture(const std::string& texturePath)
 {
-    if (texturePath.empty() || !m_pSRB) {
+    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    
+    if (texturePath.empty() || !srb) {
         if (m_pDefaultWhiteTextureSRV) {
-            auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_RoughnessMap");
+            auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_RoughnessMap");
             if (var) {
                 var->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
             }
@@ -211,13 +218,13 @@ void DiligentRenderer::BindRoughnessTexture(const std::string& texturePath)
     
     auto* texGPU = GetOrCreateTextureResources(texturePath, false);
     if (texGPU && texGPU->SRV) {
-        auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_RoughnessMap");
+        auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_RoughnessMap");
         if (var) {
             var->Set(texGPU->SRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
         }
     } else {
         if (m_pDefaultWhiteTextureSRV) {
-            auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_RoughnessMap");
+            auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_RoughnessMap");
             if (var) {
                 var->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
             }
@@ -227,9 +234,11 @@ void DiligentRenderer::BindRoughnessTexture(const std::string& texturePath)
 
 void DiligentRenderer::BindMetalnessTexture(const std::string& texturePath)
 {
-    if (texturePath.empty() || !m_pSRB) {
+    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    
+    if (texturePath.empty() || !srb) {
         if (m_pDefaultWhiteTextureSRV) {
-            auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_MetalnessMap");
+            auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_MetalnessMap");
             if (var) {
                 var->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
             }
@@ -239,13 +248,13 @@ void DiligentRenderer::BindMetalnessTexture(const std::string& texturePath)
     
     auto* texGPU = GetOrCreateTextureResources(texturePath, false);
     if (texGPU && texGPU->SRV) {
-        auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_MetalnessMap");
+        auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_MetalnessMap");
         if (var) {
             var->Set(texGPU->SRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
         }
     } else {
         if (m_pDefaultWhiteTextureSRV) {
-            auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_MetalnessMap");
+            auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_MetalnessMap");
             if (var) {
                 var->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
             }
@@ -255,9 +264,11 @@ void DiligentRenderer::BindMetalnessTexture(const std::string& texturePath)
 
 void DiligentRenderer::BindNormalTexture(const std::string& texturePath)
 {
-    if (texturePath.empty() || !m_pSRB) {
+    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    
+    if (texturePath.empty() || !srb) {
         if (m_pDefaultWhiteTextureSRV) {
-            auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_NormalMap");
+            auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_NormalMap");
             if (var) {
                 var->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
             }
@@ -267,13 +278,13 @@ void DiligentRenderer::BindNormalTexture(const std::string& texturePath)
     
     auto* texGPU = GetOrCreateTextureResources(texturePath, false);
     if (texGPU && texGPU->SRV) {
-        auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_NormalMap");
+        auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_NormalMap");
         if (var) {
             var->Set(texGPU->SRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
         }
     } else {
         if (m_pDefaultWhiteTextureSRV) {
-            auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_NormalMap");
+            auto* var = srb->GetVariableByName(SHADER_TYPE_PIXEL, "g_NormalMap");
             if (var) {
                 var->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
             }

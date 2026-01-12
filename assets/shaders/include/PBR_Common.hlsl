@@ -17,7 +17,10 @@ cbuffer MaterialConstants {
     float3 g_BaseColor;
     float g_TriplanarBlend;   // Triplanar混合锐度（默认4.0）
     float g_HasNormalMap;     // 是否加载了法线贴图（0.0 = 无，1.0 = 有）
-    float3 g_Padding;
+    float g_Opacity;          // 不透明度（0.0 = 完全透明, 1.0 = 完全不透明）
+    float2 g_Padding2;
+    float3 g_TransmissionColor; // 透射颜色（用于玻璃）
+    float g_Padding3;
 };
 
 // 场景参数常量缓冲区（相机位置、光源等）

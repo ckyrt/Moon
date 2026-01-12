@@ -83,6 +83,28 @@ public:
      * @brief 获取基础颜色
      */
     const Vector3& GetBaseColor() const { return m_baseColor; }
+    
+    /**
+     * @brief 设置不透明度
+     * @param opacity 不透明度 [0.0 = 完全透明, 1.0 = 完全不透明]
+     */
+    void SetOpacity(float opacity);
+    
+    /**
+     * @brief 获取不透明度
+     */
+    float GetOpacity() const { return m_opacity; }
+    
+    /**
+     * @brief 设置透射颜色（用于玻璃等透明材质）
+     * @param color RGB 颜色 [0.0 - 1.0]
+     */
+    void SetTransmissionColor(const Vector3& color);
+    
+    /**
+     * @brief 获取透射颜色
+     */
+    const Vector3& GetTransmissionColor() const { return m_transmissionColor; }
 
     // === 纹理贴图（标准 PBR 工作流）===
     
@@ -162,6 +184,8 @@ private:
     float m_metallic;
     float m_roughness;
     Vector3 m_baseColor;
+    float m_opacity;                // 不透明度 [0.0 = 完全透明, 1.0 = 完全不透明]
+    Vector3 m_transmissionColor;    // 透射颜色（用于玻璃）
     
     std::string m_albedoMap;
     std::string m_normalMap;
@@ -184,6 +208,7 @@ private:
     void SetPresetPlastic();
     void SetPresetRock();
     void SetPresetWood();
+    void SetPresetGlass();
 };
 
 } // namespace Moon

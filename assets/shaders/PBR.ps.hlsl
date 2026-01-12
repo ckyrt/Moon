@@ -334,5 +334,18 @@ float4 main(in PSInput i) : SV_Target {
     // Gamma 校正（简化）
     // color = pow(color, float3(1.0/2.2, 1.0/2.2, 1.0/2.2));
     
-    return float4(color, i.Color.a);
+    // 透明度处理：
+    // - 对于不透明物体（opacity >= OPACITY_THRESHOLD），alpha=1.0，正常渲染
+    // - 对于透明物体（如玻璃），alpha=opacity，GPU自动混合
+    // - transmissionColor影响透明材质的基础颜色（用于有色玻璃）
+    // 注意：OPACITY_THRESHOLD 在 C++ 端定义为 0.99f
+    float alpha = g_Opacity;
+    if (alpha < 0.99) {
+        // 透明材质：transmissionColor作为透射光的色调（轻微影响）
+        color *= g_TransmissionColor;
+
+    }
+    
+    return float4(color, alpha);
 }
+

@@ -67,7 +67,8 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
         CreateDeviceAndSwapchain(params);
         CreateDefaultWhiteTexture();  // 创建默认白色纹理
         CreateVSConstants();
-        CreateMainPass();  // 主渲染管线（用于正常场景渲染）
+        CreateMainPass();  // 主渲染管线（用于正常场景渲染，不透明物体）
+        CreateTransparentPass();  // 透明物体渲染管线（Alpha Blending）
         CreateSkyboxPass(); // Skybox 渲染管线
         PrecomputeIBL();    // 预计算 IBL 资源
         
@@ -101,6 +102,30 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
             }
         } else {
             MOON_LOG_WARN("DiligentRenderer", "BRDF LUT not available");
+        }
+        
+        // 绑定 IBL 纹理到透明渲染管线
+        if (m_pEquirectHDR_SRV) {
+            auto* equirectVar = m_pTransparentSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap");
+            if (equirectVar) {
+                equirectVar->Set(m_pEquirectHDR_SRV);
+                MOON_LOG_INFO("DiligentRenderer", "IBL equirectangular texture bound to transparent pipeline");
+            }
+        } else {
+            if (m_pDefaultWhiteTextureSRV) {
+                auto* equirectVar = m_pTransparentSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap");
+                if (equirectVar) {
+                    equirectVar->Set(m_pDefaultWhiteTextureSRV);
+                }
+            }
+        }
+        
+        if (m_pBRDF_LUT_SRV) {
+            auto* brdfVar = m_pTransparentSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_BRDF_LUT");
+            if (brdfVar) {
+                brdfVar->Set(m_pBRDF_LUT_SRV);
+                MOON_LOG_INFO("DiligentRenderer", "BRDF LUT bound to transparent pipeline");
+            }
         }
         
         // 注意：g_AlbedoMap 是 MUTABLE 变量，必须在每次渲染前通过 BindAlbedoTexture() 设置，不在这里初始化
@@ -228,7 +253,112 @@ void DiligentRenderer::CreateMainPass()
     // 创建 SRB（MUTABLE 变量会在渲染时动态绑定）
     m_pPSO->CreateShaderResourceBinding(&m_pSRB, true);
 
-    MOON_LOG_INFO("DiligentRenderer", "Main PSO created");
+    MOON_LOG_INFO("DiligentRenderer", "Main PSO created (opaque objects)");
+}
+
+void DiligentRenderer::CreateTransparentPass()
+{
+    // 透明物体使用与不透明物体相同的shader，只是PSO配置不同
+    std::string vsCode = DiligentRendererUtils::LoadShaderSource("PBR.vs.hlsl");
+    std::string psCode = DiligentRendererUtils::LoadShaderSource("PBR.ps.hlsl");
+    
+    if (vsCode.empty() || psCode.empty()) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to load PBR shaders for transparent pass");
+        return;
+    }
+
+    // Create Vertex Shader
+    RefCntAutoPtr<IShader> vs;
+    {
+        ShaderCreateInfo ci{};
+        ci.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
+        ci.Desc.ShaderType = SHADER_TYPE_VERTEX;
+        ci.Desc.Name = "Transparent VS";
+        ci.Desc.UseCombinedTextureSamplers = true;
+        ci.Source = vsCode.c_str();
+        m_pDevice->CreateShader(ci, &vs);
+    }
+
+    // Create Pixel Shader
+    RefCntAutoPtr<IShader> ps;
+    {
+        ShaderCreateInfo ci{};
+        ci.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
+        ci.Desc.ShaderType = SHADER_TYPE_PIXEL;
+        ci.Desc.Name = "Transparent PS";
+        ci.Desc.UseCombinedTextureSamplers = true;
+        ci.Source = psCode.c_str();
+        m_pDevice->CreateShader(ci, &ps);
+    }
+
+    LayoutElement layout[4];
+    Uint32 numElements;
+    DiligentRendererUtils::GetVertexLayout(layout, numElements);
+
+    ShaderResourceVariableDesc Vars[] = {
+        {SHADER_TYPE_PIXEL, "g_AlbedoMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_AOMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_RoughnessMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_MetalnessMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_NormalMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_EquirectMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_BRDF_LUT", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
+    };
+
+    GraphicsPipelineStateCreateInfo pci{};
+    pci.PSODesc.Name = "Transparent PSO";
+    pci.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
+    pci.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
+    pci.PSODesc.ResourceLayout.Variables = Vars;
+    pci.PSODesc.ResourceLayout.NumVariables = _countof(Vars);
+    pci.Flags = PSO_CREATE_FLAG_NONE;
+    
+    pci.GraphicsPipeline.NumRenderTargets = 1;
+    pci.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
+    pci.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
+    pci.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    pci.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
+    
+    // ✅ 业界标准透明渲染配置：深度测试开启，深度写入关闭
+    pci.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
+    pci.GraphicsPipeline.DepthStencilDesc.DepthWriteEnable = False;  // 关键：不写入深度
+    
+    // ✅ 启用 Alpha 混合（标准混合公式）
+    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].BlendEnable = True;
+    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].SrcBlend = BLEND_FACTOR_SRC_ALPHA;
+    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].DestBlend = BLEND_FACTOR_INV_SRC_ALPHA;
+    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].BlendOp = BLEND_OPERATION_ADD;
+    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].SrcBlendAlpha = BLEND_FACTOR_ONE;
+    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].DestBlendAlpha = BLEND_FACTOR_ZERO;
+    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].BlendOpAlpha = BLEND_OPERATION_ADD;
+    
+    pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
+    pci.GraphicsPipeline.InputLayout.NumElements = numElements;
+
+    pci.pVS = vs;
+    pci.pPS = ps;
+
+    m_pDevice->CreateGraphicsPipelineState(pci, &m_pTransparentPSO);
+    
+    // 绑定常量缓冲区（与不透明物体共享）
+    auto* vsConstants = m_pTransparentPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants");
+    if (vsConstants) {
+        vsConstants->Set(m_pVSConstants);
+    }
+    
+    auto* psMaterialConstants = m_pTransparentPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "MaterialConstants");
+    if (psMaterialConstants) {
+        psMaterialConstants->Set(m_pPSMaterialConstants);
+    }
+    
+    auto* psSceneConstants = m_pTransparentPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "SceneConstants");
+    if (psSceneConstants) {
+        psSceneConstants->Set(m_pPSSceneConstants);
+    }
+    
+    m_pTransparentPSO->CreateShaderResourceBinding(&m_pTransparentSRB, true);
+
+    MOON_LOG_INFO("DiligentRenderer", "Transparent PSO created (depth write disabled, alpha blending enabled)");
 }
 
 // ======= 帧流程 =======
@@ -302,6 +432,8 @@ void DiligentRenderer::SetMaterialParameters(Moon::Material* material)
         mat.baseColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
         mat.triplanarBlend = 4.0f;
         mat.hasNormalMap = 0.0f;
+        mat.opacity = 1.0f;  // 不透明
+        mat.transmissionColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
         UpdateCB(m_pPSMaterialConstants, mat);
         return;
     }
@@ -319,6 +451,10 @@ void DiligentRenderer::SetMaterialParameters(Moon::Material* material)
     
     // ✅ 设置hasNormalMap flag
     mat.hasNormalMap = material->HasNormalMap() ? 1.0f : 0.0f;
+    
+    // ✅ 设置透明度参数
+    mat.opacity = material->GetOpacity();
+    mat.transmissionColor = material->GetTransmissionColor();
     
     UpdateCB(m_pPSMaterialConstants, mat);
 }
@@ -442,8 +578,12 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
     cbuf.WorldT = DiligentRendererUtils::Transpose(world);
     UpdateCB(m_pVSConstants, cbuf);
 
+    // ✅ 根据当前渲染状态选择PSO和SRB
+    auto* pso = m_IsRenderingTransparent ? m_pTransparentPSO.RawPtr() : m_pPSO.RawPtr();
+    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    
     // 设置管线状态
-    m_pImmediateContext->SetPipelineState(m_pPSO);
+    m_pImmediateContext->SetPipelineState(pso);
     
     // 绑定 VB/IB
     Uint64 offset = 0;
@@ -452,13 +592,18 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
     m_pImmediateContext->SetIndexBuffer(gpu->IB, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     // 提交着色器资源（包括纹理）
-    m_pImmediateContext->CommitShaderResources(m_pSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    m_pImmediateContext->CommitShaderResources(srb, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     DrawIndexedAttribs da{};
     da.IndexType = VT_UINT32;
     da.NumIndices = static_cast<Uint32>(gpu->IndexCount);
     da.Flags = DRAW_FLAG_VERIFY_ALL;
     m_pImmediateContext->DrawIndexed(da);
+}
+
+void DiligentRenderer::SetRenderingTransparent(bool transparent)
+{
+    m_IsRenderingTransparent = transparent;
 }
 
 // IBL/Skybox functions are now in DiligentRendererIBL.cpp

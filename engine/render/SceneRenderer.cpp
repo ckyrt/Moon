@@ -14,6 +14,9 @@ class DiligentRenderer;
 namespace Moon {
 namespace SceneRendererUtils {
 
+// 透明度阈值常量：大于等于此值认为是不透明物体
+constexpr float OPACITY_THRESHOLD = 0.99f;
+
 void PrepareRender(DiligentRenderer* renderer, Scene* scene, Camera* camera)
 {
     if (!renderer || !scene || !camera) {
@@ -105,6 +108,93 @@ void RenderMeshes(DiligentRenderer* renderer, Scene* scene)
     });
 }
 
+// 辅助函数：绑定材质纹理（统一处理）
+static void BindMaterialTextures(DiligentRenderer* renderer, Material* material)
+{
+    if (!material || !material->IsEnabled()) {
+        renderer->SetMaterialParameters(nullptr);
+        renderer->BindAlbedoTexture("");
+        renderer->BindAOTexture("");
+        renderer->BindRoughnessTexture("");
+        renderer->BindMetalnessTexture("");
+        renderer->BindNormalTexture("");
+        return;
+    }
+    
+    renderer->SetMaterialParameters(material);
+    
+    renderer->BindAlbedoTexture(material->HasAlbedoMap() ? material->GetAlbedoMap() : "");
+    renderer->BindAOTexture(material->HasAOMap() ? material->GetAOMap() : "");
+    renderer->BindRoughnessTexture(material->HasRoughnessMap() ? material->GetRoughnessMap() : "");
+    renderer->BindMetalnessTexture(material->HasMetalnessMap() ? material->GetMetalnessMap() : "");
+    renderer->BindNormalTexture(material->HasNormalMap() ? material->GetNormalMap() : "");
+}
+
+// 渲染不透明物体（opacity >= OPACITY_THRESHOLD）
+void RenderOpaqueMeshes(DiligentRenderer* renderer, Scene* scene)
+{
+    if (!renderer || !scene) {
+        return;
+    }
+    
+    scene->Traverse([&](SceneNode* node) {
+        MeshRenderer* meshRenderer = node->GetComponent<MeshRenderer>();
+        if (!meshRenderer || !meshRenderer->IsEnabled() || !meshRenderer->IsVisible()) {
+            return;
+        }
+        
+        Material* material = node->GetComponent<Material>();
+        
+        // 检查是否为不透明材质（opacity >= OPACITY_THRESHOLD 认为是不透明）
+        bool isOpaque = true;
+        if (material && material->IsEnabled()) {
+            isOpaque = (material->GetOpacity() >= OPACITY_THRESHOLD);
+        }
+        
+        if (!isOpaque) {
+            return;  // 跳过透明物体
+        }
+        
+        // 设置材质和纹理
+        BindMaterialTextures(renderer, material);
+        
+        meshRenderer->Render(renderer);
+    });
+}
+
+// 渲染透明物体（opacity < OPACITY_THRESHOLD）
+void RenderTransparentMeshes(DiligentRenderer* renderer, Scene* scene)
+{
+    if (!renderer || !scene) {
+        return;
+    }
+    
+    // TODO: 后续优化可以按深度排序（从后往前渲染）
+    scene->Traverse([&](SceneNode* node) {
+        MeshRenderer* meshRenderer = node->GetComponent<MeshRenderer>();
+        if (!meshRenderer || !meshRenderer->IsEnabled() || !meshRenderer->IsVisible()) {
+            return;
+        }
+        
+        Material* material = node->GetComponent<Material>();
+        
+        // 检查是否为透明材质（opacity < OPACITY_THRESHOLD）
+        bool isTransparent = false;
+        if (material && material->IsEnabled()) {
+            isTransparent = (material->GetOpacity() < OPACITY_THRESHOLD);
+        }
+        
+        if (!isTransparent) {
+            return;  // 跳过不透明物体
+        }
+        
+        // 设置材质和纹理
+        BindMaterialTextures(renderer, material);
+        
+        meshRenderer->Render(renderer);
+    });
+}
+
 void RenderScene(DiligentRenderer* renderer, Scene* scene, Camera* camera)
 {
     if (!renderer || !scene || !camera) {
@@ -114,11 +204,16 @@ void RenderScene(DiligentRenderer* renderer, Scene* scene, Camera* camera)
     // 1. 准备渲染（相机、光源、天空盒）
     PrepareRender(renderer, scene, camera);
     
-    // 2. 渲染所有网格对象
-    RenderMeshes(renderer, scene);
+    // 2. 渲染所有不透明物体（Pass 1）
+    renderer->SetRenderingTransparent(false);
+    RenderOpaqueMeshes(renderer, scene);
     
-    // 3. 渲染天空盒（在所有不透明物体之后）
+    // 3. 渲染天空盒（在不透明物体之后，透明物体之前）
     renderer->RenderSkybox();
+    
+    // 4. 渲染所有透明物体（Pass 2）
+    renderer->SetRenderingTransparent(true);
+    RenderTransparentMeshes(renderer, scene);
 }
 
 } // namespace SceneRendererUtils
