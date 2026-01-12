@@ -20,7 +20,6 @@ enum class MaterialPreset {
     Rock,           // 岩石/砖块
     Wood,           // 木材
     Glass,          // 玻璃 (程序化，无贴图)
-    PolishedMetal   // 抛光金属
 };
 
 /**

@@ -89,8 +89,7 @@ export type MaterialPreset =
   | 'Plastic'
   | 'Rock'
   | 'Wood'
-  | 'Glass'
-  | 'PolishedMetal';
+  | 'Glass';
 
 export interface MaterialComponent extends Component {
   type: 'Material';

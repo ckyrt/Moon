@@ -110,9 +110,6 @@ void Material::SetMaterialPreset(MaterialPreset preset)
         case MaterialPreset::Glass:
             SetPresetGlass();
             break;
-        case MaterialPreset::PolishedMetal:
-            // 暂不支持
-            break;
     }
 }
 

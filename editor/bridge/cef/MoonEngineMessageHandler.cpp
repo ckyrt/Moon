@@ -530,8 +530,6 @@ namespace CommandHandlers {
             preset = Moon::MaterialPreset::Wood;
         } else if (presetName == "Glass") {
             preset = Moon::MaterialPreset::Glass;
-        } else if (presetName == "PolishedMetal") {
-            preset = Moon::MaterialPreset::PolishedMetal;
         } else if (presetName == "None") {
             preset = Moon::MaterialPreset::None;
         } else {

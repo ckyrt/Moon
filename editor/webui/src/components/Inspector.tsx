@@ -771,7 +771,6 @@ const MaterialEditor: React.FC<MaterialEditorProps> = ({ component }) => {
     { value: 'Rock', label: 'Rock' },
     { value: 'Wood', label: 'Wood' },
     { value: 'Glass', label: 'Glass' },
-    { value: 'PolishedMetal', label: 'Polished Metal' },
   ];
 
   const handlePresetChange = async (preset: string) => {
