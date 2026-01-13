@@ -214,6 +214,14 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_CHAR:
     case WM_SYSCHAR:
     {
+        // F12 打开/关闭 DevTools
+        if (msg == WM_KEYDOWN && wParam == VK_F12) {
+            if (bridge && bridge->GetClient()) {
+                bridge->GetClient()->ShowDevTools();
+                return 0;
+            }
+        }
+        
         if (bridge && bridge->GetClient() && bridge->GetClient()->GetBrowser()) {
             CefKeyEvent keyEvent;
             keyEvent.windows_key_code = static_cast<int>(wParam);
@@ -292,7 +300,7 @@ bool EditorBridge::Initialize(HINSTANCE hInstance)
     settings.no_sandbox = true;
     settings.multi_threaded_message_loop = false;
     settings.windowless_rendering_enabled = true;  // 启用 OSR 模式
-    settings.remote_debugging_port = 9222;  // 启用远程调试（访问 http://localhost:9222）
+    settings.remote_debugging_port = 9223;  // 启用远程调试（访问 http://localhost:9223）
 
     settings.log_severity = LOGSEVERITY_INFO;
     CefString(&settings.log_file).FromASCII("cef_debug.log");

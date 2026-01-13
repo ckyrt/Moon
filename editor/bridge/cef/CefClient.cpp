@@ -296,3 +296,76 @@ bool CefClientHandler::OnProcessMessageReceived(
     MOON_LOG_WARN("CEF", "Message NOT handled by router");
     return false;
 }
+
+// ============================================================================
+// ShowDevTools - 在独立窗口中显示 DevTools（OSR 模式兼容）
+// ============================================================================
+void CefClientHandler::ShowDevTools()
+{
+    if (!m_browser || !m_browser->GetHost()) {
+        MOON_LOG_WARN("CEF", "Cannot show DevTools: browser not initialized");
+        return;
+    }
+
+    // 如果已经打开，直接聚焦
+    if (m_devToolsWindow && IsWindow(m_devToolsWindow)) {
+        SetForegroundWindow(m_devToolsWindow);
+        MOON_LOG_INFO("CEF", "DevTools window already exists, bringing to front");
+        return;
+    }
+
+    // 创建 DevTools 窗口
+    WNDCLASSA wc = {};
+    wc.lpfnWndProc = DefWindowProcA;
+    wc.hInstance = GetModuleHandle(nullptr);
+    wc.lpszClassName = "CefDevToolsWindow";
+    RegisterClassA(&wc);
+
+    m_devToolsWindow = CreateWindowExA(
+        0,
+        "CefDevToolsWindow",
+        "DevTools - Moon Editor",
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        1200, 800,
+        nullptr,
+        nullptr,
+        wc.hInstance,
+        nullptr
+    );
+
+    if (!m_devToolsWindow) {
+        MOON_LOG_ERROR("CEF", "Failed to create DevTools window");
+        return;
+    }
+
+    ShowWindow(m_devToolsWindow, SW_SHOW);
+    UpdateWindow(m_devToolsWindow);
+
+    // 配置 DevTools
+    CefWindowInfo windowInfo;
+    windowInfo.SetAsChild(m_devToolsWindow, { 0, 0, 1200, 800 });
+
+    CefBrowserSettings settings;
+    m_browser->GetHost()->ShowDevTools(windowInfo, this, settings, CefPoint());
+
+    MOON_LOG_INFO("CEF", "DevTools window created and shown");
+}
+
+// ============================================================================
+// CloseDevTools - 关闭 DevTools 窗口
+// ============================================================================
+void CefClientHandler::CloseDevTools()
+{
+    if (m_browser && m_browser->GetHost()) {
+        m_browser->GetHost()->CloseDevTools();
+    }
+
+    if (m_devToolsWindow && IsWindow(m_devToolsWindow)) {
+        DestroyWindow(m_devToolsWindow);
+        m_devToolsWindow = nullptr;
+    }
+
+    MOON_LOG_INFO("CEF", "DevTools closed");
+}
+

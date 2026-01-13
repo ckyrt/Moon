@@ -26,6 +26,13 @@ export class CreatePrimitiveCommand implements Command {
     this.description = `Create ${primitiveType}`;
   }
 
+  /**
+   * 获取创建的节点 ID（用于测试）
+   */
+  getCreatedNodeId(): number | undefined {
+    return this.createdNodeId;
+  }
+
   async execute(): Promise<void> {
     if (this.serializedNodeData) {
       // 🎯 Redo：反序列化快照（恢复原始 ID）

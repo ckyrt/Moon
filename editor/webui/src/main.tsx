@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './ui/App'
 import { runSimpleHierarchyTest } from './tests/simpleHierarchyTest'
 import { runNodePropertiesTest } from './tests/nodePropertiesTest'
+import { runCSGUndoTest } from './tests/csgUndoTest'
 import { getUndoManager } from './undo/UndoManager'
 
 const root = document.getElementById('root')!
@@ -12,12 +13,14 @@ declare global {
   interface Window {
     runSimpleHierarchyTest: () => Promise<void>;
     runNodePropertiesTest: () => Promise<void>;
+    runCSGUndoTest: () => Promise<void>;
     debugUndoManager: () => void;
   }
 }
 
 window.runSimpleHierarchyTest = runSimpleHierarchyTest;
 window.runNodePropertiesTest = runNodePropertiesTest;
+window.runCSGUndoTest = runCSGUndoTest;
 
 // 🔍 调试函数：打印 UndoManager 状态
 window.debugUndoManager = () => {

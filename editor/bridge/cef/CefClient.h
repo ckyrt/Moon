@@ -92,11 +92,16 @@ public:
     // ✅ 设置引擎核心指针（用于 MoonEngine API）
     void SetEngineCore(EngineCore* engine);
 
+    // ✅ 显示/关闭 DevTools
+    void ShowDevTools();
+    void CloseDevTools();
     
     // OSR 模式支持（暂时为 nullptr，不启用）
     CefRefPtr<CefRenderHandlerImpl> m_renderHandler;
 private:
     CefRefPtr<CefBrowser> m_browser;
+    CefRefPtr<CefBrowser> m_devToolsBrowser;  // DevTools 浏览器实例
+    HWND m_devToolsWindow = nullptr;  // DevTools 窗口句柄
     bool m_isClosing = false;
     CefRefPtr<CefMessageRouterBrowserSide> m_messageRouter;
     ViewportRectCallback m_viewportRectCallback;

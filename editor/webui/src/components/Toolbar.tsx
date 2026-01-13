@@ -85,9 +85,16 @@ export const Toolbar: React.FC = () => {
       }
       
       // CSG几何体使用 'csg_' 前缀来区分普通几何体
-      await engine.createPrimitive(`csg_${type}`);
+      // 使用 Undo 系统创建CSG图元
+      const command = new CreatePrimitiveCommand(`csg_${type}`);
+      const undoManager = getUndoManager();
+      
+      // 手动执行并推入栈
+      await command.execute();
+      undoManager.pushExecutedCommand(command);
+      
       setShowCSGMenu(false);
-      console.log(`[Toolbar] Created CSG primitive: ${type}`);
+      console.log(`[Toolbar] Created CSG primitive: ${type} with Undo support`);
     } catch (error) {
       console.error(`[Toolbar] Failed to create CSG primitive:`, error);
     }
