@@ -27,7 +27,7 @@ import {
   SetMaterialMetallicCommand,
   SetMaterialRoughnessCommand,
   SetMaterialBaseColorCommand,
-  SetMaterialTextureCommand
+  SetMaterialPresetCommand
 } from '@/undo';
 import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent, MaterialComponent } from '@/types/engine';
 import styles from './Inspector.module.css';
@@ -773,25 +773,15 @@ const MaterialEditor: React.FC<MaterialEditorProps> = ({ component }) => {
     { value: 'Glass', label: 'Glass' },
   ];
 
-  const handlePresetChange = async (preset: string) => {
-    if (!selectedNode) {
-      logger.error('MaterialEditor', 'handlePresetChange: selectedNode is null');
-      return;
-    }
+  const handlePresetChange = (preset: string) => {
+    if (!selectedNode || preset === component.preset) return;
     
-    logger.info('MaterialEditor', `handlePresetChange called with preset: ${preset}`);
-    
-    try {
-      // 立即更新UI显示的preset值
-      component.preset = preset;
-      
-      // 发送给后端，后端会自己处理加载对应的贴图
-      logger.info('MaterialEditor', `Calling engine.setMaterialPreset, nodeId: ${selectedNode.id}, preset: ${preset}`);
-      await engine.setMaterialPreset(selectedNode.id, preset);
-      logger.info('MaterialEditor', 'setMaterialPreset completed');
-    } catch (error) {
-      logger.error('MaterialEditor', 'Failed to set preset', { error: String(error) });
-    }
+    const command = new SetMaterialPresetCommand(
+      selectedNode.id, 
+      component.preset || 'None', 
+      preset
+    );
+    undoManager.execute(command);
   };
 
   const handleMetallicChange = (value: number) => {

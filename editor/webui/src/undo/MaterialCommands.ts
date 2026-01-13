@@ -5,8 +5,39 @@
 
 import type { Command } from './Command';
 import { engine } from '@/utils/engine-bridge';
-import type { Vector3 } from '@/types/engine';
+import type { Vector3, MaterialPreset } from '@/types/engine';
 import { useEditorStore } from '@/store/editorStore';
+
+/**
+ * SetMaterialPresetCommand - 设置材质预设（Glass, Metal, Rock 等）
+ */
+export class SetMaterialPresetCommand implements Command {
+  private nodeId: number;
+  private oldPreset: MaterialPreset;
+  private newPreset: MaterialPreset;
+  description: string;
+
+  constructor(nodeId: number, oldPreset: MaterialPreset, newPreset: MaterialPreset) {
+    this.nodeId = nodeId;
+    this.oldPreset = oldPreset;
+    this.newPreset = newPreset;
+    this.description = `Set Material Preset of Node ${nodeId} to ${newPreset}`;
+  }
+
+  async execute(): Promise<void> {
+    await engine.setMaterialPreset(this.nodeId, this.newPreset);
+    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
+      preset: this.newPreset
+    });
+  }
+
+  async undo(): Promise<void> {
+    await engine.setMaterialPreset(this.nodeId, this.oldPreset);
+    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
+      preset: this.oldPreset
+    });
+  }
+}
 
 /**
  * SetMaterialMetallicCommand - 设置材质金属度
@@ -79,10 +110,15 @@ export class SetMaterialBaseColorCommand implements Command {
   private newBaseColor: Vector3;
   description: string;
 
-  constructor(nodeId: number, oldBaseColor: Vector3, newBaseColor: Vector3) {
+  constructor(nodeId: number, oldBaseColor: Vector3 | number[], newBaseColor: Vector3 | number[]) {
     this.nodeId = nodeId;
-    this.oldBaseColor = oldBaseColor;
-    this.newBaseColor = newBaseColor;
+    // 支持数组和 Vector3 两种格式
+    this.oldBaseColor = Array.isArray(oldBaseColor) 
+      ? { x: oldBaseColor[0], y: oldBaseColor[1], z: oldBaseColor[2] }
+      : oldBaseColor;
+    this.newBaseColor = Array.isArray(newBaseColor)
+      ? { x: newBaseColor[0], y: newBaseColor[1], z: newBaseColor[2] }
+      : newBaseColor;
     this.description = `Set Material Base Color of Node ${nodeId}`;
   }
 
@@ -101,43 +137,3 @@ export class SetMaterialBaseColorCommand implements Command {
   }
 }
 
-/**
- * SetMaterialTextureCommand - 设置材质贴图
- */
-export class SetMaterialTextureCommand implements Command {
-  private nodeId: number;
-  private textureType: 'albedo' | 'normal' | 'arm';
-  private oldPath: string;
-  private newPath: string;
-  description: string;
-
-  constructor(nodeId: number, textureType: 'albedo' | 'normal' | 'arm', oldPath: string, newPath: string) {
-    this.nodeId = nodeId;
-    this.textureType = textureType;
-    this.oldPath = oldPath;
-    this.newPath = newPath;
-    this.description = `Set Material ${textureType} Texture of Node ${nodeId}`;
-  }
-
-  async execute(): Promise<void> {
-    await engine.setMaterialTexture(this.nodeId, this.textureType, this.newPath);
-    
-    const updateKey = this.textureType === 'albedo' ? 'albedoMap' : 
-                      this.textureType === 'normal' ? 'normalMap' : 'armMap';
-    
-    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
-      [updateKey]: this.newPath
-    });
-  }
-
-  async undo(): Promise<void> {
-    await engine.setMaterialTexture(this.nodeId, this.textureType, this.oldPath);
-    
-    const updateKey = this.textureType === 'albedo' ? 'albedoMap' : 
-                      this.textureType === 'normal' ? 'normalMap' : 'armMap';
-    
-    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
-      [updateKey]: this.oldPath
-    });
-  }
-}

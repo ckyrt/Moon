@@ -67,6 +67,10 @@ export class CreateNodeCommand implements Command {
   async undo(): Promise<void> {
     if (!this.createdNodeId) return;
 
+    // 🎯 在删除前更新快照（捕获最新状态，包括 Material 等修改）
+    logger.info('CreateNodeCommand', `Undo: Updating snapshot before delete`, { nodeId: this.createdNodeId });
+    this.serializedNodeData = await engine.serializeNode(this.createdNodeId);
+
     logger.info('CreateNodeCommand', `Undo: Deleting node`, { nodeId: this.createdNodeId });
     await engine.deleteNode(this.createdNodeId);
 

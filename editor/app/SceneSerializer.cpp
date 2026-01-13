@@ -522,18 +522,25 @@ void SceneSerializer::SerializeComponents(SceneNode* node, void* jsonArray) {
         comp["type"] = "Material";
         comp["enabled"] = material->IsEnabled();
         
+        // Material Preset（贴图由 preset 自动加载，无需保存）
+        const char* presetName = "None";
+        switch (material->GetMaterialPreset()) {
+            case MaterialPreset::None:     presetName = "None"; break;
+            case MaterialPreset::Concrete: presetName = "Concrete"; break;
+            case MaterialPreset::Fabric:   presetName = "Fabric"; break;
+            case MaterialPreset::Metal:    presetName = "Metal"; break;
+            case MaterialPreset::Plastic:  presetName = "Plastic"; break;
+            case MaterialPreset::Rock:     presetName = "Rock"; break;
+            case MaterialPreset::Wood:     presetName = "Wood"; break;
+            case MaterialPreset::Glass:    presetName = "Glass"; break;
+        }
+        comp["preset"] = presetName;
+        
         // PBR properties
         comp["metallic"] = material->GetMetallic();
         comp["roughness"] = material->GetRoughness();
         const Vector3& baseColor = material->GetBaseColor();
         comp["baseColor"] = json::array({ baseColor.x, baseColor.y, baseColor.z });
-        
-        // Texture maps
-        comp["albedoMap"] = material->GetAlbedoMap();
-        comp["normalMap"] = material->GetNormalMap();
-        comp["aoMap"] = material->GetAOMap();
-        comp["roughnessMap"] = material->GetRoughnessMap();
-        comp["metalnessMap"] = material->GetMetalnessMap();
         
         components.push_back(comp);
     }
@@ -606,18 +613,25 @@ void SceneSerializer::SerializeComponentsFull(SceneNode* node, void* jsonArray) 
         comp["type"] = "Material";
         comp["enabled"] = material->IsEnabled();
         
+        // Material Preset（贴图由 preset 自动加载，无需保存）
+        const char* presetName = "None";
+        switch (material->GetMaterialPreset()) {
+            case MaterialPreset::None:     presetName = "None"; break;
+            case MaterialPreset::Concrete: presetName = "Concrete"; break;
+            case MaterialPreset::Fabric:   presetName = "Fabric"; break;
+            case MaterialPreset::Metal:    presetName = "Metal"; break;
+            case MaterialPreset::Plastic:  presetName = "Plastic"; break;
+            case MaterialPreset::Rock:     presetName = "Rock"; break;
+            case MaterialPreset::Wood:     presetName = "Wood"; break;
+            case MaterialPreset::Glass:    presetName = "Glass"; break;
+        }
+        comp["preset"] = presetName;
+        
         // PBR properties
         comp["metallic"] = material->GetMetallic();
         comp["roughness"] = material->GetRoughness();
         const Vector3& baseColor = material->GetBaseColor();
         comp["baseColor"] = json::array({ baseColor.x, baseColor.y, baseColor.z });
-        
-        // Texture maps
-        comp["albedoMap"] = material->GetAlbedoMap();
-        comp["normalMap"] = material->GetNormalMap();
-        comp["aoMap"] = material->GetAOMap();
-        comp["roughnessMap"] = material->GetRoughnessMap();
-        comp["metalnessMap"] = material->GetMetalnessMap();
         
         components.push_back(comp);
     }
@@ -897,6 +911,22 @@ void SceneSerializer::DeserializeComponents(SceneNode* node, EngineCore* engine,
                 material->SetEnabled(compData["enabled"]);
             }
 
+            // Material Preset
+            if (compData.contains("preset")) {
+                std::string presetStr = compData["preset"];
+                MaterialPreset preset = MaterialPreset::None;
+                
+                if (presetStr == "Concrete") preset = MaterialPreset::Concrete;
+                else if (presetStr == "Fabric") preset = MaterialPreset::Fabric;
+                else if (presetStr == "Metal") preset = MaterialPreset::Metal;
+                else if (presetStr == "Plastic") preset = MaterialPreset::Plastic;
+                else if (presetStr == "Rock") preset = MaterialPreset::Rock;
+                else if (presetStr == "Wood") preset = MaterialPreset::Wood;
+                else if (presetStr == "Glass") preset = MaterialPreset::Glass;
+                
+                material->SetMaterialPreset(preset);
+            }
+
             // Metallic
             if (compData.contains("metallic")) {
                 material->SetMetallic(compData["metallic"]);
@@ -916,47 +946,8 @@ void SceneSerializer::DeserializeComponents(SceneNode* node, EngineCore* engine,
                 }
             }
 
-            // Albedo Map (Diffuse)
-            if (compData.contains("albedoMap")) {
-                std::string path = compData["albedoMap"];
-                if (!path.empty()) {
-                    material->SetAlbedoMap(path);
-                }
-            }
-
-            // Normal Map
-            if (compData.contains("normalMap")) {
-                std::string path = compData["normalMap"];
-                if (!path.empty()) {
-                    material->SetNormalMap(path);
-                }
-            }
-
-            // AO Map
-            if (compData.contains("aoMap")) {
-                std::string path = compData["aoMap"];
-                if (!path.empty()) {
-                    material->SetAOMap(path);
-                }
-            }
-
-            // Roughness Map
-            if (compData.contains("roughnessMap")) {
-                std::string path = compData["roughnessMap"];
-                if (!path.empty()) {
-                    material->SetRoughnessMap(path);
-                }
-            }
-
-            // Metalness Map
-            if (compData.contains("metalnessMap")) {
-                std::string path = compData["metalnessMap"];
-                if (!path.empty()) {
-                    material->SetMetalnessMap(path);
-                }
-            }
-
-            MOON_LOG_INFO("SceneSerializer", "Restored Material component");
+            MOON_LOG_INFO("SceneSerializer", "Restored Material component (preset=%s)", 
+                         compData.value("preset", "None").c_str());
         }
         
         // TODO: 添加其他组件类型的反序列化

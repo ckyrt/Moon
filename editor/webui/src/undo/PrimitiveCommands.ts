@@ -68,6 +68,10 @@ export class CreatePrimitiveCommand implements Command {
       return;
     }
 
+    // 🎯 在删除前更新快照（捕获最新状态，包括 Material 修改）
+    console.log('[CreatePrimitiveCommand] Undo: Updating snapshot before delete');
+    this.serializedNodeData = await engine.serializeNode(this.createdNodeId);
+
     console.log('[CreatePrimitiveCommand] Undo: Deleting node', this.createdNodeId);
     // 删除创建的节点
     await engine.deleteNode(this.createdNodeId);

@@ -41,10 +41,10 @@ export {
 } from './SkyboxCommands';
 
 export {
+  SetMaterialPresetCommand,
   SetMaterialMetallicCommand,
   SetMaterialRoughnessCommand,
   SetMaterialBaseColorCommand,
-  SetMaterialTextureCommand,
 } from './MaterialCommands';
 
 export { useUndoShortcuts } from './useUndoShortcuts';
