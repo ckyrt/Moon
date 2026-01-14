@@ -26,16 +26,38 @@ export class SetMaterialPresetCommand implements Command {
 
   async execute(): Promise<void> {
     await engine.setMaterialPreset(this.nodeId, this.newPreset);
-    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
-      preset: this.newPreset
-    });
+    // 🎯 重新获取完整 Material 状态（Preset 改变会影响其他属性）
+    const scene = await engine.getScene();
+    const node = scene.allNodes[this.nodeId];
+    if (node) {
+      const material = node.components.find(c => c.type === 'Material');
+      if (material && 'preset' in material) {
+        useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
+          preset: material.preset,
+          baseColor: material.baseColor,
+          metallic: material.metallic,
+          roughness: material.roughness
+        });
+      }
+    }
   }
 
   async undo(): Promise<void> {
     await engine.setMaterialPreset(this.nodeId, this.oldPreset);
-    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
-      preset: this.oldPreset
-    });
+    // 🎯 重新获取完整 Material 状态
+    const scene = await engine.getScene();
+    const node = scene.allNodes[this.nodeId];
+    if (node) {
+      const material = node.components.find(c => c.type === 'Material');
+      if (material && 'preset' in material) {
+        useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
+          preset: material.preset,
+          baseColor: material.baseColor,
+          metallic: material.metallic,
+          roughness: material.roughness
+        });
+      }
+    }
   }
 }
 
@@ -57,16 +79,38 @@ export class SetMaterialMetallicCommand implements Command {
 
   async execute(): Promise<void> {
     await engine.setMaterialMetallic(this.nodeId, this.newMetallic);
-    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
-      metallic: this.newMetallic
-    });
+    // 🎯 重新获取完整 Material 状态（保证 state 同步）
+    const scene = await engine.getScene();
+    const node = scene.allNodes[this.nodeId];
+    if (node) {
+      const material = node.components.find(c => c.type === 'Material');
+      if (material && 'preset' in material) {
+        useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
+          preset: material.preset,
+          baseColor: material.baseColor,
+          metallic: material.metallic,
+          roughness: material.roughness
+        });
+      }
+    }
   }
 
   async undo(): Promise<void> {
     await engine.setMaterialMetallic(this.nodeId, this.oldMetallic);
-    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
-      metallic: this.oldMetallic
-    });
+    // 🎯 重新获取完整 Material 状态
+    const scene = await engine.getScene();
+    const node = scene.allNodes[this.nodeId];
+    if (node) {
+      const material = node.components.find(c => c.type === 'Material');
+      if (material && 'preset' in material) {
+        useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
+          preset: material.preset,
+          baseColor: material.baseColor,
+          metallic: material.metallic,
+          roughness: material.roughness
+        });
+      }
+    }
   }
 }
 
@@ -88,16 +132,38 @@ export class SetMaterialRoughnessCommand implements Command {
 
   async execute(): Promise<void> {
     await engine.setMaterialRoughness(this.nodeId, this.newRoughness);
-    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
-      roughness: this.newRoughness
-    });
+    // 🎯 重新获取完整 Material 状态（保证 state 同步）
+    const scene = await engine.getScene();
+    const node = scene.allNodes[this.nodeId];
+    if (node) {
+      const material = node.components.find(c => c.type === 'Material');
+      if (material && 'preset' in material) {
+        useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
+          preset: material.preset,
+          baseColor: material.baseColor,
+          metallic: material.metallic,
+          roughness: material.roughness
+        });
+      }
+    }
   }
 
   async undo(): Promise<void> {
     await engine.setMaterialRoughness(this.nodeId, this.oldRoughness);
-    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
-      roughness: this.oldRoughness
-    });
+    // 🎯 重新获取完整 Material 状态
+    const scene = await engine.getScene();
+    const node = scene.allNodes[this.nodeId];
+    if (node) {
+      const material = node.components.find(c => c.type === 'Material');
+      if (material && 'preset' in material) {
+        useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
+          preset: material.preset,
+          baseColor: material.baseColor,
+          metallic: material.metallic,
+          roughness: material.roughness
+        });
+      }
+    }
   }
 }
 
@@ -124,16 +190,38 @@ export class SetMaterialBaseColorCommand implements Command {
 
   async execute(): Promise<void> {
     await engine.setMaterialBaseColor(this.nodeId, this.newBaseColor);
-    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
-      baseColor: [this.newBaseColor.x, this.newBaseColor.y, this.newBaseColor.z]
-    });
+    // 🎯 重新获取完整 Material 状态（保证 state 同步）
+    const scene = await engine.getScene();
+    const node = scene.allNodes[this.nodeId];
+    if (node) {
+      const material = node.components.find(c => c.type === 'Material');
+      if (material && 'preset' in material) {
+        useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
+          preset: material.preset,
+          baseColor: material.baseColor,
+          metallic: material.metallic,
+          roughness: material.roughness
+        });
+      }
+    }
   }
 
   async undo(): Promise<void> {
     await engine.setMaterialBaseColor(this.nodeId, this.oldBaseColor);
-    useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
-      baseColor: [this.oldBaseColor.x, this.oldBaseColor.y, this.oldBaseColor.z]
-    });
+    // 🎯 重新获取完整 Material 状态
+    const scene = await engine.getScene();
+    const node = scene.allNodes[this.nodeId];
+    if (node) {
+      const material = node.components.find(c => c.type === 'Material');
+      if (material && 'preset' in material) {
+        useEditorStore.getState().updateNodeComponent(this.nodeId, 'Material', {
+          preset: material.preset,
+          baseColor: material.baseColor,
+          metallic: material.metallic,
+          roughness: material.roughness
+        });
+      }
+    }
   }
 }
 

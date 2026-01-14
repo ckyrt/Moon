@@ -4,6 +4,7 @@ import { runSimpleHierarchyTest } from './tests/simpleHierarchyTest'
 import { runNodePropertiesTest } from './tests/nodePropertiesTest'
 import { runCSGUndoTest } from './tests/csgUndoTest'
 import { runCSGMaterialUndoTest } from './tests/csgMaterialUndoTest'
+import { runCSGMeshUndoTest } from './tests/csgMeshUndoTest'
 import { getUndoManager } from './undo/UndoManager'
 
 const root = document.getElementById('root')!
@@ -16,6 +17,7 @@ declare global {
     runNodePropertiesTest: () => Promise<void>;
     runCSGUndoTest: () => Promise<void>;
     runCSGMaterialUndoTest: () => Promise<void>;
+    runCSGMeshUndoTest: () => Promise<void>;
     debugUndoManager: () => void;
   }
 }
@@ -24,6 +26,7 @@ window.runSimpleHierarchyTest = runSimpleHierarchyTest;
 window.runNodePropertiesTest = runNodePropertiesTest;
 window.runCSGUndoTest = runCSGUndoTest;
 window.runCSGMaterialUndoTest = runCSGMaterialUndoTest;
+window.runCSGMeshUndoTest = runCSGMeshUndoTest;
 
 // 🔍 调试函数：打印 UndoManager 状态
 window.debugUndoManager = () => {

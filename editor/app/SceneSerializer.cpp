@@ -8,6 +8,7 @@
 #include "../../engine/core/Scene/Skybox.h"
 #include "../../engine/physics/RigidBody.h"
 #include "../../engine/physics/PhysicsSystem.h"
+#include "../../engine/core/CSG/CSGComponent.h"
 #include "../../engine/core/Logging/Logger.h"
 #include "../../engine/core/EngineCore.h"
 #include "../../external/nlohmann/json.hpp"
@@ -289,6 +290,37 @@ SceneNode* SceneSerializer::DeserializeNode(Scene* scene, EngineCore* engine, co
                     MOON_LOG_INFO("SceneSerializer", "Restored child node %u under parent %u", 
                                  childNode->GetID(), nodeId);
                 }
+            }
+        }
+
+        // 🎯 CSG 节点特殊处理：重新生成 CSG Mesh
+        if (name.find("CSG_") == 0) {
+            CSGComponent* csgComp = node->AddComponent<CSGComponent>();
+            
+            if (name == "CSG_Box") {
+                csgComp->SetCSGTree(CSGNode::CreateBox(1.0f, 1.0f, 1.0f));
+                MOON_LOG_INFO("SceneSerializer", "Rebuilt CSG Box mesh for node %u", nodeId);
+            }
+            else if (name == "CSG_Sphere") {
+                csgComp->SetCSGTree(CSGNode::CreateSphere(0.5f, 32));
+                MOON_LOG_INFO("SceneSerializer", "Rebuilt CSG Sphere mesh for node %u", nodeId);
+            }
+            else if (name == "CSG_Cylinder") {
+                csgComp->SetCSGTree(CSGNode::CreateCylinder(0.5f, 1.0f, 32));
+                MOON_LOG_INFO("SceneSerializer", "Rebuilt CSG Cylinder mesh for node %u", nodeId);
+            }
+            else if (name == "CSG_Cone") {
+                csgComp->SetCSGTree(CSGNode::CreateCone(0.5f, 1.0f, 32));
+                MOON_LOG_INFO("SceneSerializer", "Rebuilt CSG Cone mesh for node %u", nodeId);
+            }
+            
+            // 🎯 关键修复：将生成的 Mesh 设置到 MeshRenderer
+            MeshRenderer* renderer = node->GetComponent<MeshRenderer>();
+            if (renderer && csgComp) {
+                renderer->SetMesh(csgComp->GetMesh());
+                MOON_LOG_INFO("SceneSerializer", "Set CSG mesh to MeshRenderer for node %u", nodeId);
+            } else {
+                MOON_LOG_ERROR("SceneSerializer", "MeshRenderer not found for CSG node %u", nodeId);
             }
         }
 

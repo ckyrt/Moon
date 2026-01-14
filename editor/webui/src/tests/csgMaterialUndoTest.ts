@@ -60,7 +60,7 @@ export async function runCSGMaterialUndoTest() {
     // 获取初始 Material
     let scene = await engine.getScene();
     let boxNode = scene.allNodes[boxId];
-    const materialComp = boxNode.components.find(c => c.type === 'Material');
+    let materialComp = boxNode.components.find(c => c.type === 'Material');
     if (!materialComp || !('baseColor' in materialComp)) {
       throw new Error('Material 组件未找到');
     }
@@ -88,41 +88,57 @@ export async function runCSGMaterialUndoTest() {
     await sleep(100);
     console.log(`✅ Preset: ${initialPreset} → ${newPreset}`);
     
+    // 🎯 关键修复：重新获取当前 Material 状态（Preset 改变后值会变）
+    scene = await engine.getScene();
+    boxNode = scene.allNodes[boxId];
+    materialComp = boxNode.components.find(c => c.type === 'Material');
+    if (!materialComp || !('baseColor' in materialComp)) {
+      throw new Error('Material 组件未找到');
+    }
+    const afterPresetColor = [...materialComp.baseColor];
+    const afterPresetMetallic = materialComp.metallic;
+    const afterPresetRoughness = materialComp.roughness;
+    console.log('Preset 改变后的 Material 状态:', {
+      baseColor: afterPresetColor,
+      metallic: afterPresetMetallic,
+      roughness: afterPresetRoughness
+    });
+    
     // Step 3: 修改 Material - BaseColor 改为红色
     console.log('\n--- Step 3: 修改 Material (BaseColor = 红色) ---');
     const newColor = [1.0, 0.0, 0.0]; // 红色
     const setColor = new SetMaterialBaseColorCommand(
       boxId,
-      initialColor,
+      afterPresetColor,  // 🎯 使用 Preset 改变后的值
       newColor
     );
     await undoManager.execute(setColor);
     await sleep(100);
-    console.log(`✅ BaseColor: [${initialColor}] → [${newColor}]`);
+    console.log(`✅ BaseColor: [${afterPresetColor}] → [${newColor}]`);
     
     // Step 4: 修改 Material - Metallic
     console.log('\n--- Step 4: 修改 Material (Metallic = 0.8) ---');
     const newMetallic = 0.8;
     const setMetallic = new SetMaterialMetallicCommand(
       boxId,
-      initialMetallic,
+      afterPresetMetallic,  // 🎯 使用 Preset 改变后的值
       newMetallic
     );
     await undoManager.execute(setMetallic);
     await sleep(100);
-    console.log(`✅ Metallic: ${initialMetallic} → ${newMetallic}`);
+    console.log(`✅ Metallic: ${afterPresetMetallic} → ${newMetallic}`);
     
     // Step 5: 修改 Material - Roughness
     console.log('\n--- Step 5: 修改 Material (Roughness = 0.2) ---');
     const newRoughness = 0.2;
     const setRoughness = new SetMaterialRoughnessCommand(
       boxId,
-      initialRoughness,
+      afterPresetRoughness,  // 🎯 使用 Preset 改变后的值
       newRoughness
     );
     await undoManager.execute(setRoughness);
     await sleep(100);
-    console.log(`✅ Roughness: ${initialRoughness} → ${newRoughness}`);
+    console.log(`✅ Roughness: ${afterPresetRoughness} → ${newRoughness}`);
     
     printScene('修改 Material 后', useEditorStore.getState().scene);
     printUndoStacks(undoManager, '修改 Material 后的命令栈');
