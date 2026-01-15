@@ -88,6 +88,13 @@ void Material::SetMaterialPreset(MaterialPreset preset)
     
     switch (preset) {
         case MaterialPreset::None:
+            // 🎯 只清除贴图，不修改参数
+            // 原因：参数应该保持用户设置的值，Preset=None 只是表示"无预设贴图"
+            SetAlbedoMap("");
+            SetNormalMap("");
+            SetAOMap("");
+            SetRoughnessMap("");
+            SetMetalnessMap("");
             break;
         case MaterialPreset::Concrete:
             SetPresetConcrete();
