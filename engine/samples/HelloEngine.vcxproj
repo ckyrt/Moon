@@ -64,6 +64,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)engine\core;$(SolutionDir)engine\render;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -94,11 +95,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\external\zip\src\zip.c">
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;6011;6386;6308;6262</DisableSpecificWarnings>
+    </ClCompile>
     <ClCompile Include="hello_win32.cpp" />
     <ClCompile Include="CSGTest.cpp" />
+    <ClCompile Include="SceneZipLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CSGTest.h" />
+    <ClInclude Include="SceneZipLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\core\EngineCore.vcxproj">
