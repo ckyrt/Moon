@@ -1,30 +1,13 @@
-/*
-
-my_scene (2).zip
-└─ my_scene/
-   ├─ scene.json
-   │
-   ├─ terrain/
-   │  ├─ heightmap.txt
-   │  ├─ heightmap.meta.json
-   │  ├─ basemap.txt
-   │  └─ basemap.meta.json
-   │
-   └─ grass/
-      └─ grassmap.png
-
-*/
-
 #include "SceneZipLoader.h"
 
 // ---- Suppress warnings for third-party C library (kuba--/zip) ----
 #if defined(_MSC_VER)
 #pragma warning(push)
-#pragma warning(disable: 4996) // strncpy, etc.
-#pragma warning(disable: 6011) // possible null dereference
-#pragma warning(disable: 6386) // buffer overrun (static analysis)
-#pragma warning(disable: 6308) // realloc may return null
-#pragma warning(disable: 6262) // large stack usage
+#pragma warning(disable: 4996)
+#pragma warning(disable: 6011)
+#pragma warning(disable: 6386)
+#pragma warning(disable: 6308)
+#pragma warning(disable: 6262)
 #endif
 
 #include "../../external/zip/src/zip.h"
@@ -34,17 +17,18 @@ my_scene (2).zip
 #endif
 // -----------------------------------------------------------------
 
-
 #include "../../external/nlohmann/json.hpp"
 
 #include <sstream>
 #include <cstring>
 #include <cstdlib>
+#include <cctype>
+#include <Logging/Logger.h>
 
 using json = nlohmann::json;
 
 // ======================================================
-// zip 工具函数（kuba--/zip）
+// zip helpers
 // ======================================================
 
 static bool ReadZipFileToBuffer(
@@ -86,112 +70,163 @@ static bool ReadZipTextFile(
 }
 
 // ======================================================
-// txt heightmap 解析
+// Robust txt float parser (matches JS behavior)
 // ======================================================
 
-static bool ParseHeightmapTxt(
+static bool ParseFloatTxt(
     const std::string& text,
     int expectedCount,
     std::vector<float>& outData)
 {
-    std::stringstream ss(text);
-    std::string token;
-
     outData.clear();
     outData.reserve(expectedCount);
 
-    while (std::getline(ss, token, ','))
-    {
-        if (token.empty())
-            continue;
+    std::string token;
+    token.reserve(32);
 
-        outData.push_back(std::stof(token));
+    for (char c : text)
+    {
+        if (std::isdigit(c) || c == '-' || c == '.' || c == 'e' || c == 'E')
+        {
+            token.push_back(c);
+        }
+        else
+        {
+            if (!token.empty())
+            {
+                outData.push_back(std::stof(token));
+                token.clear();
+            }
+        }
     }
+
+    if (!token.empty())
+        outData.push_back(std::stof(token));
 
     return (int)outData.size() == expectedCount;
 }
 
 // ======================================================
-// 主入口
+// Main entry
 // ======================================================
 
 bool SceneZipLoader::LoadSceneFromZip(
     const std::string& zipPath,
     SceneData& outScene)
 {
-    // kuba--/zip：open(mode='r')，没有 ZIP_RDONLY
     zip_t* zip = zip_open(zipPath.c_str(), 0, 'r');
     if (!zip)
         return false;
 
-    // ---------------- scene.json ----------------
-    std::string sceneJsonText;
-    if (!ReadZipTextFile(zip, "my_scene/scene.json", sceneJsonText))
+    // ==================================================
+    // terrain meta
+    // ==================================================
+
+    std::string heightMetaText;
+    if (!ReadZipTextFile(
+        zip,
+        "my_scene/terrain/heightmap.meta.json",
+        heightMetaText))
     {
         zip_close(zip);
         return false;
     }
 
-    json jscene = json::parse(sceneJsonText);
+    json heightMeta = json::parse(heightMetaText);
 
-    // ---------------- terrain ----------------
-    if (jscene.contains("terrainData"))
+    if (!heightMeta.contains("width") || !heightMeta.contains("height")) {
+        MOON_LOG_ERROR("SceneZipLoader", "heightmap.meta.json missing width/height");
+        return false;
+    }
+
+    int width = heightMeta["width"].get<int>();
+    int height = heightMeta["height"].get<int>();
+
+    if (width != height) {
+        MOON_LOG_WARN("SceneZipLoader", "heightmap not square: %d x %d", width, height);
+    }
+
+    int resolution = width;
+
+    outScene.terrain.resolution = resolution;
+
+    // ==================================================
+    // heightmap.txt
+    // ==================================================
+
+    std::string heightTxt;
+    if (!ReadZipTextFile(
+        zip,
+        "my_scene/terrain/heightmap.txt",
+        heightTxt))
     {
-        const auto& t = jscene["terrainData"];
+        zip_close(zip);
+        return false;
+    }
 
-        int resolution = t["resolution"].get<int>();
-        std::string heightFile = t["heightMapFile"].get<std::string>();
+    if (!ParseFloatTxt(
+        heightTxt,
+        resolution * resolution,
+        outScene.terrain.heightMap))
+    {
+        zip_close(zip);
+        return false;
+    }
 
-        std::string heightTxt;
-        std::string heightPath = "my_scene/" + heightFile;
+    // ==================================================
+    // basemap.txt
+    // ==================================================
 
-        if (!ReadZipTextFile(zip, heightPath.c_str(), heightTxt))
-        {
-            zip_close(zip);
-            return false;
-        }
-
-        if (!ParseHeightmapTxt(
-            heightTxt,
+    std::string baseTxt;
+    if (ReadZipTextFile(
+        zip,
+        "my_scene/terrain/basemap.txt",
+        baseTxt))
+    {
+        ParseFloatTxt(
+            baseTxt,
             resolution * resolution,
-            outScene.terrain.heightMap))
-        {
-            zip_close(zip);
-            return false;
-        }
-
-        outScene.terrain.resolution = resolution;
+            outScene.terrain.baseMap);
     }
 
-    // ---------------- rivers (in scene.json) ----------------
-    if (jscene.contains("riverSplines"))
-    {
-        for (const auto& r : jscene["riverSplines"])
-        {
-            RiverSpline river;
-            river.id = r["id"].get<std::string>();
+    // ==================================================
+    // scene.json (rivers etc.)
+    // ==================================================
 
-            for (const auto& p : r["points"])
+    std::string sceneJsonText;
+    if (ReadZipTextFile(zip, "my_scene/scene.json", sceneJsonText))
+    {
+        json jscene = json::parse(sceneJsonText);
+
+        if (jscene.contains("riverSplines"))
+        {
+            for (const auto& r : jscene["riverSplines"])
             {
-                river.points.push_back(p["position"][0].get<float>());
-                river.points.push_back(p["position"][1].get<float>());
-                river.points.push_back(p["position"][2].get<float>());
-            }
+                RiverSpline river;
+                river.id = r["id"].get<std::string>();
+                river.width = r["points"][0]["width"].get<float>();
 
-            river.width = r["points"][0]["width"].get<float>();
-            outScene.rivers.push_back(std::move(river));
+                for (const auto& p : r["points"])
+                {
+                    river.points.push_back(p["position"][0].get<float>());
+                    river.points.push_back(p["position"][1].get<float>());
+                    river.points.push_back(p["position"][2].get<float>());
+                }
+
+                outScene.rivers.push_back(std::move(river));
+            }
         }
     }
 
-    // ---------------- grass ----------------
-    {
-        // grassmap.png 是可选的
-        ReadZipFileToBuffer(
-            zip,
-            "my_scene/grass/grassmap.png",
-            outScene.grass.grassMapPNG
-        );
-    }
+    // ==================================================
+    // grass
+    // ==================================================
+
+    ReadZipFileToBuffer(
+        zip,
+        "my_scene/grass/grassmap.png",
+        outScene.grass.grassMapPNG
+    );
 
     zip_close(zip);
     return true;
