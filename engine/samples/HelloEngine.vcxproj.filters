@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="hello_win32.cpp" />
+    <ClCompile Include="SceneZipLoader.cpp" />
+    <ClCompile Include="TestMaterial.cpp">
+      <Filter>TestScenes</Filter>
+    </ClCompile>
+    <ClCompile Include="TestCSG.cpp">
+      <Filter>TestScenes</Filter>
+    </ClCompile>
+    <ClCompile Include="CSGUnitTest.cpp">
+      <Filter>TestScenes</Filter>
+    </ClCompile>
+    <ClCompile Include="TestZipLoad.cpp">
+      <Filter>TestScenes</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="SceneZipLoader.h" />
+    <ClInclude Include="TestScenes.h">
+      <Filter>TestScenes</Filter>
+    </ClInclude>
+    <ClInclude Include="CSGUnitTest.h">
+      <Filter>TestScenes</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="TestScenes">
+      <UniqueIdentifier>{c14cd636-ef3f-49ec-bfff-7ca7f9f37dc6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

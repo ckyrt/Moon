@@ -1,7 +1,7 @@
 #pragma once
 
 namespace Moon {
-namespace CSGTest {
+namespace CSGUnitTest {
 
 /**
  * @brief 运行 CSG 布尔运算测试
@@ -9,5 +9,5 @@ namespace CSGTest {
  */
 bool RunTests();
 
-} // namespace CSGTest
+} // namespace CSGUnitTest
 } // namespace Moon

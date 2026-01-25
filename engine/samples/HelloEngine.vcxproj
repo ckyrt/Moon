@@ -99,12 +99,16 @@
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;6011;6386;6308;6262</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="hello_win32.cpp" />
-    <ClCompile Include="CSGTest.cpp" />
+    <ClCompile Include="CSGUnitTest.cpp" />
     <ClCompile Include="SceneZipLoader.cpp" />
+    <ClCompile Include="TestCSG.cpp" />
+    <ClCompile Include="TestMaterial.cpp" />
+    <ClCompile Include="TestZipLoad.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CSGTest.h" />
+    <ClInclude Include="CSGUnitTest.h" />
     <ClInclude Include="SceneZipLoader.h" />
+    <ClInclude Include="TestScenes.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\core\EngineCore.vcxproj">

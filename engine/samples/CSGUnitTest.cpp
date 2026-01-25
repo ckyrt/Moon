@@ -5,7 +5,7 @@
  * 测试 Manifold CSG 库的集成和基本功能
  */
 
-#include "CSGTest.h"
+#include "CSGUnitTest.h"
 #include "../core/CSG/CSGOperations.h"
 #include "../core/Geometry/MeshGenerator.h"
 #include "../core/Logging/Logger.h"
@@ -14,7 +14,7 @@ using namespace Moon;
 using namespace Moon::CSG;
 
 namespace Moon {
-namespace CSGTest {
+namespace CSGUnitTest {
 
 bool RunTests() {
     MOON_LOG_INFO("CSGTest", "=== CSG Boolean Operations Test ===");
@@ -416,5 +416,5 @@ bool RunTests() {
     return true;
 }
 
-} // namespace CSGTest
+} // namespace CSGUnitTest
 } // namespace Moon
