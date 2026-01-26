@@ -128,6 +128,16 @@ public:
     static Mesh* CreateQuad(float width = 1.0f, float height = 1.0f, 
                            const Vector3& color = Vector3(1, 1, 1));
 
+
+    static Mesh* CreateTerrainFromHeightmap(
+        int width,
+        int height,
+        const float* heights,     // size = width*height
+        float cellSize,           // 每个格子的世界尺寸（例如 1.0 表示 1m）
+        float heightScale,        // 高度缩放（例如 30.0）
+        bool generateNormals = true
+    );
+
 private:
     // 辅助函数：计算球面坐标
     static Vector3 SphericalToCartesian(float radius, float theta, float phi);

@@ -603,6 +603,117 @@ Mesh* MeshGenerator::CreateQuad(float width, float height, const Vector3& color)
     return mesh;
 }
 
+static Moon::Vector3 NormalizeSafe(const Moon::Vector3& v)
+{
+    float len = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (len < 1e-6f) return { 0, 1, 0 };
+    return { v.x / len, v.y / len, v.z / len };
+}
+
+template<typename T> T clamp(const T& v, const T& lo, const T& hi) { return std::max(lo, std::min(v, hi)); }
+
+// 采样 height，自动 clamp 到边界
+static float SampleH(int x, int z, int w, int h, const float* heights)
+{
+    x = clamp(x, 0, w - 1);
+    z = clamp(z, 0, h - 1);
+    return heights[z * w + x];
+}
+
+Mesh* MeshGenerator::CreateTerrainFromHeightmap(int width, int height, const float* heights, float cellSize, float heightScale, bool generateNormals)
+{
+    if (width < 2 || height < 2 || !heights) {
+        return nullptr;
+    }
+
+    std::vector<Moon::Vertex> vertices;
+    std::vector<uint32_t> indices;
+
+    vertices.resize(static_cast<size_t>(width) * static_cast<size_t>(height));
+
+    // 1) 生成顶点：以 (0,0) 为左下角也行，以中心为原点也行
+    //    我这里用“中心为原点”，这样 terrain 默认在世界中心，比较好放相机。
+    float halfW = (width - 1) * cellSize * 0.5f;
+    float halfH = (height - 1) * cellSize * 0.5f;
+
+    for (int z = 0; z < height; ++z) {
+        for (int x = 0; x < width; ++x) {
+            float h0 = heights[z * width + x] * heightScale;
+
+            Moon::Vertex v;
+            v.position = { x * cellSize - halfW, h0, z * cellSize - halfH };
+
+            // 先给默认法线，后面再算
+            v.normal = { 0, 1, 0 };
+
+            // terrain 先用白色，避免顶点色影响
+            v.colorR = v.colorG = v.colorB = 1.0f;
+            v.colorA = 1.0f;
+
+            // UV：0~1（后续你可以在 shader 里做 tiling）
+            v.uv = { (float)x / (float)(width - 1), (float)z / (float)(height - 1) };
+
+            vertices[z * width + x] = v;
+        }
+    }
+
+    // 2) 生成索引：每个格子 2 个三角形
+    indices.reserve(static_cast<size_t>(width - 1) * static_cast<size_t>(height - 1) * 6);
+
+    for (int z = 0; z < height - 1; ++z) {
+        for (int x = 0; x < width - 1; ++x) {
+            uint32_t i0 = (uint32_t)(z * width + x);
+            uint32_t i1 = (uint32_t)(z * width + x + 1);
+            uint32_t i2 = (uint32_t)((z + 1) * width + x);
+            uint32_t i3 = (uint32_t)((z + 1) * width + x + 1);
+
+            // 统一绕序（假设你引擎是右手系/左手系都没关系，关键是 consistent）
+            // (i0, i2, i1) + (i1, i2, i3)
+            indices.push_back(i0);
+            indices.push_back(i2);
+            indices.push_back(i1);
+
+            indices.push_back(i1);
+            indices.push_back(i2);
+            indices.push_back(i3);
+        }
+    }
+
+    // 3) 法线：用中心差分近似地形梯度
+    if (generateNormals) {
+        for (int z = 0; z < height; ++z) {
+            for (int x = 0; x < width; ++x) {
+
+                float hl = SampleH(x - 1, z, width, height, heights) * heightScale;
+                float hr = SampleH(x + 1, z, width, height, heights) * heightScale;
+                float hd = SampleH(x, z - 1, width, height, heights) * heightScale;
+                float hu = SampleH(x, z + 1, width, height, heights) * heightScale;
+
+                // 地形切线方向
+                // dX = (2*cellSize, hr - hl, 0)
+                // dZ = (0, hu - hd, 2*cellSize)
+                Moon::Vector3 dX = { 2.0f * cellSize, hr - hl, 0.0f };
+                Moon::Vector3 dZ = { 0.0f, hu - hd, 2.0f * cellSize };
+
+                // 法线 = normalize(cross(dZ, dX)) 或 cross(dX,dZ) 取决于绕序
+                // 这里用 cross(dZ, dX) 让 y 正向更稳定
+                Moon::Vector3 n = {
+                    dZ.y * dX.z - dZ.z * dX.y,
+                    dZ.z * dX.x - dZ.x * dX.z,
+                    dZ.x * dX.y - dZ.y * dX.x
+                };
+
+                vertices[z * width + x].normal = NormalizeSafe(n);
+            }
+        }
+    }
+
+    Mesh* mesh = new Mesh();
+    mesh->SetVertices(std::move(vertices));
+    mesh->SetIndices(std::move(indices));
+    return mesh;
+}
+
 // ============================================================================
 // 辅助函数
 // ============================================================================

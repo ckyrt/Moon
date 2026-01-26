@@ -6,6 +6,7 @@
 #include <Scene/MeshRenderer.h>
 #include <Scene/Material.h>
 #include "SceneZipLoader.h"
+#include <Geometry/MeshGenerator.h>
 
 namespace TestScenes {
 
@@ -19,10 +20,29 @@ namespace TestScenes {
             return;
         }
 
-        // TODO:
-        // 1. Terrain → mesh
-        // 2. Grass → instancing
-        // 3. Rivers → spline mesh
+        Moon::Scene* scene = engine->GetScene();
+        Moon::MeshManager* meshManager = engine->GetMeshManager();
+        Moon::TextureManager* textureManager = engine->GetTextureManager();
+
+        Moon::SceneNode* terrainNode = scene->CreateNode("Terrain");
+
+        auto* mr = terrainNode->AddComponent<Moon::MeshRenderer>();
+        auto* mat = terrainNode->AddComponent<Moon::Material>();
+
+        Moon::Mesh* rawMesh = Moon::MeshGenerator::CreateTerrainFromHeightmap(
+            sceneData.terrain.resolution,
+            sceneData.terrain.resolution,
+            sceneData.terrain.heightMap.data(),
+            1.0f,
+            1.0f,
+            true
+        );
+        std::shared_ptr<Moon::Mesh> terrainMesh(rawMesh);
+        mr->SetMesh(terrainMesh);
+
+        mat->SetBaseColor({ 0.3f, 0.7f, 0.3f });
+        mat->SetRoughness(1.0f);
+        mat->SetMetallic(0.0f);
 
         MOON_LOG_INFO("Test", "ZIP scene loaded successfully");
     }
