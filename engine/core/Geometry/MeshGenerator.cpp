@@ -714,6 +714,95 @@ Mesh* MeshGenerator::CreateTerrainFromHeightmap(int width, int height, const flo
     return mesh;
 }
 
+inline Vector3 GetPoint(const std::vector<float>& pts, int i)
+{
+    return {
+        pts[i * 3 + 0],
+        pts[i * 3 + 1],
+        pts[i * 3 + 2]
+    };
+}
+
+Mesh* MeshGenerator::CreateRiverFromPolyline(const std::vector<float>& points, float width)
+{
+    const int pointCount = static_cast<int>(points.size() / 3);
+    if (pointCount < 2 || width <= 0.0f)
+        return new Mesh();
+
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+
+    vertices.reserve(pointCount * 2);
+    indices.reserve((pointCount - 1) * 6);
+
+    const float halfWidth = width * 0.5f;
+    const Vector3 up = { 0, 1, 0 };
+
+    // ---------- 生成顶点 ----------
+    for (int i = 0; i < pointCount; ++i)
+    {
+        Vector3 p = GetPoint(points, i);
+
+        // 计算切线方向
+        Vector3 dir;
+        if (i == 0)
+            dir = GetPoint(points, 1) - p;
+        else if (i == pointCount - 1)
+            dir = p - GetPoint(points, i - 1);
+        else
+            dir = GetPoint(points, i + 1) - GetPoint(points, i - 1);
+
+        dir.y = 0.0f;               // 只在 XZ 平面计算方向
+        dir = NormalizeSafe(dir);
+
+        // 右方向 = up × dir
+        Vector3 right = NormalizeSafe(Vector3::Cross(up, dir));
+
+        Vector3 leftPos = p - right * halfWidth;
+        Vector3 rightPos = p + right * halfWidth;
+
+        // 左顶点
+        Vertex vl{};
+        vl.position = leftPos;
+        vl.normal = up;
+        vl.uv = { 0.0f, float(i) / (pointCount - 1) };
+        vl.colorR = vl.colorG = vl.colorB = 1.0f;
+        vl.colorA = 1.0f;
+
+        // 右顶点
+        Vertex vr = vl;
+        vr.position = rightPos;
+        vr.uv.x = 1.0f;
+
+        vertices.push_back(vl);
+        vertices.push_back(vr);
+    }
+
+    // ---------- 生成索引 ----------
+    for (int i = 0; i < pointCount - 1; ++i)
+    {
+        uint32_t i0 = i * 2;
+        uint32_t i1 = i * 2 + 1;
+        uint32_t i2 = (i + 1) * 2;
+        uint32_t i3 = (i + 1) * 2 + 1;
+
+        // 两个三角形（注意绕序）
+        indices.push_back(i0);
+        indices.push_back(i2);
+        indices.push_back(i1);
+
+        indices.push_back(i1);
+        indices.push_back(i2);
+        indices.push_back(i3);
+    }
+
+    Mesh* mesh = new Mesh();
+    mesh->SetVertices(std::move(vertices));
+    mesh->SetIndices(std::move(indices));
+
+    return mesh;
+}
+
 // ============================================================================
 // 辅助函数
 // ============================================================================

@@ -138,6 +138,8 @@ public:
         bool generateNormals = true
     );
 
+    static Mesh* CreateRiverFromPolyline(const std::vector<float>& points, float width);
+
 private:
     // 辅助函数：计算球面坐标
     static Vector3 SphericalToCartesian(float radius, float theta, float phi);
