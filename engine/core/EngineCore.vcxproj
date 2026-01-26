@@ -98,7 +98,6 @@
     <ClInclude Include="Input\IInputSystem.h" />
     <ClInclude Include="Input\InputSystem.h" />
     <ClInclude Include="Input\KeyCodes.h" />
-    <ClInclude Include="Input\InputTypes.h" />
     <ClInclude Include="Math\Math.h" />
     <ClInclude Include="Math\Vector2.h" />
     <ClInclude Include="Math\Vector3.h" />

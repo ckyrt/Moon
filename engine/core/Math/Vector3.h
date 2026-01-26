@@ -12,6 +12,7 @@ struct Vector3 {
     Vector3 operator*(float s) const { return Vector3(x*s, y*s, z*s); }
     bool operator==(const Vector3& o) const { return x==o.x && y==o.y && z==o.z; }
     bool operator!=(const Vector3& o) const { return !(*this == o); }
+    Vector3 operator-() const { return { -x, -y, -z }; }
     float Length() const { return std::sqrt(x*x + y*y + z*z); }
     Vector3 Normalized() const { float l = Length(); return l > 0 ? Vector3(x/l, y/l, z/l) : *this; }
     static Vector3 Cross(const Vector3& a, const Vector3& b) {

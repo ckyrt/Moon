@@ -1,7 +1,7 @@
 #pragma once
 
 #include "KeyCodes.h"
-#include "InputTypes.h"
+#include "../Math/Vector2.h"
 
 namespace Moon {
 

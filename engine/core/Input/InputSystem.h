@@ -2,6 +2,7 @@
 
 #include "IInputSystem.h"
 #include <unordered_set>
+#include "../../core/Math/Vector2.h"
 
 namespace Moon {
 

@@ -1,7 +1,7 @@
 #pragma once
 #include "Camera.h"
 #include "../Input/IInputSystem.h"
-#include "../Input/InputTypes.h"
+#include "../../core/Math/Vector2.h"
 
 namespace Moon {
 
