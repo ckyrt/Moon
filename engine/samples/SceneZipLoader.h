@@ -32,6 +32,9 @@ struct RiverSpline
 
     // 河道宽度（目前取第一个点的 width）
     float width = 0.0f;
+
+    // ✅ 新增：水深（0 = 贴地）
+    float waterDepth = 0.0f;
 };
 
 
