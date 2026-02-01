@@ -114,18 +114,30 @@ bool SceneZipLoader::LoadSceneFromZip(
     const std::string& zipPath,
     SceneData& outScene)
 {
+
     zip_t* zip = zip_open(zipPath.c_str(), 0, 'r');
     if (!zip)
         return false;
+
+    // ===============================
+    // 动态获取场景文件夹名（去除扩展名）
+    // ===============================
+    std::string::size_type slash = zipPath.find_last_of("/\\");
+    std::string::size_type dot = zipPath.find_last_of('.');
+    std::string sceneFolder;
+    if (slash == std::string::npos) slash = 0; else slash += 1;
+    if (dot == std::string::npos || dot < slash) dot = zipPath.size();
+    sceneFolder = zipPath.substr(slash, dot - slash);
 
     // ==================================================
     // terrain meta
     // ==================================================
 
     std::string heightMetaText;
+    std::string metaPath = sceneFolder + "/terrain/heightmap.meta.json";
     if (!ReadZipTextFile(
         zip,
-        "my_scene/terrain/heightmap.meta.json",
+        metaPath.c_str(),
         heightMetaText))
     {
         zip_close(zip);
@@ -154,10 +166,12 @@ bool SceneZipLoader::LoadSceneFromZip(
     // heightmap.txt
     // ==================================================
 
+
     std::string heightTxt;
+    std::string heightPath = sceneFolder + "/terrain/heightmap.txt";
     if (!ReadZipTextFile(
         zip,
-        "my_scene/terrain/heightmap.txt",
+        heightPath.c_str(),
         heightTxt))
     {
         zip_close(zip);
@@ -177,10 +191,12 @@ bool SceneZipLoader::LoadSceneFromZip(
     // basemap.txt
     // ==================================================
 
+
     std::string baseTxt;
+    std::string basePath = sceneFolder + "/terrain/basemap.txt";
     if (ReadZipTextFile(
         zip,
-        "my_scene/terrain/basemap.txt",
+        basePath.c_str(),
         baseTxt))
     {
         ParseFloatTxt(
@@ -193,8 +209,10 @@ bool SceneZipLoader::LoadSceneFromZip(
     // scene.json (rivers etc.)
     // ==================================================
 
+
     std::string sceneJsonText;
-    if (ReadZipTextFile(zip, "my_scene/scene.json", sceneJsonText))
+    std::string sceneJsonPath = sceneFolder + "/scene.json";
+    if (ReadZipTextFile(zip, sceneJsonPath.c_str(), sceneJsonText))
     {
         json jscene = json::parse(sceneJsonText);
 
@@ -222,9 +240,11 @@ bool SceneZipLoader::LoadSceneFromZip(
     // grass
     // ==================================================
 
+
+    std::string grassPath = sceneFolder + "/grass/grassmap.png";
     ReadZipFileToBuffer(
         zip,
-        "my_scene/grass/grassmap.png",
+        grassPath.c_str(),
         outScene.grass.grassMapPNG
     );
 

@@ -15,7 +15,7 @@ namespace TestScenes {
         MOON_LOG_INFO("Test", "Running ZIP scene loading test");
 
         SceneData sceneData;
-        if (!SceneZipLoader::LoadSceneFromZip("C:/Users/Administrator/Downloads/my_scene (2).zip", sceneData)) {
+        if (!SceneZipLoader::LoadSceneFromZip("C:/Users/Administrator/Downloads/0201.zip", sceneData)) {
             MOON_LOG_ERROR("Test", "Failed to load scene from zip");
             return;
         }
