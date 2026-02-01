@@ -146,21 +146,26 @@ bool SceneZipLoader::LoadSceneFromZip(
 
     json heightMeta = json::parse(heightMetaText);
 
+    // heightMeta 中的 width/height 实际是地形采样分辨率（如 129×129）
+    // 不是实际的地形尺寸（固定为 100×100）
     if (!heightMeta.contains("width") || !heightMeta.contains("height")) {
-        MOON_LOG_ERROR("SceneZipLoader", "heightmap.meta.json missing width/height");
+        MOON_LOG_ERROR("SceneZipLoader", "heightmap.meta.json missing width/height (resolution)");
         return false;
     }
 
-    int width = heightMeta["width"].get<int>();
-    int height = heightMeta["height"].get<int>();
+    int resolutionW = heightMeta["width"].get<int>();
+    int resolutionH = heightMeta["height"].get<int>();
 
-    if (width != height) {
-        MOON_LOG_WARN("SceneZipLoader", "heightmap not square: %d x %d", width, height);
+    if (resolutionW != resolutionH) {
+        MOON_LOG_WARN("SceneZipLoader", "heightmap resolution not square: %d x %d", resolutionW, resolutionH);
     }
 
-    int resolution = width;
-
+    // 地形采样分辨率（决定细分网格数量）
+    int resolution = resolutionW;
     outScene.terrain.resolution = resolution;
+
+    // 地形实际尺寸固定为 100×100（世界坐标单位）
+    // TODO: 如需可配置，可从 heightMeta 中读取 "terrainWidth" 和 "terrainHeight"
 
     // ==================================================
     // heightmap.txt

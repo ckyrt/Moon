@@ -31,11 +31,12 @@ namespace TestScenes {
             auto* mat = terrainNode->AddComponent<Moon::Material>();
 
             Moon::Mesh* rawMesh = Moon::MeshGenerator::CreateTerrainFromHeightmap(
-                sceneData.terrain.resolution,
+                sceneData.terrain.resolution,  // 采样分辨率（如 129×129）
                 sceneData.terrain.resolution,
                 sceneData.terrain.heightMap.data(),
-                1.0f,
-                1.0f,
+                100.0f,  // 实际地形宽度（世界坐标单位）
+                100.0f,  // 实际地形深度（世界坐标单位）
+                1.0f,    // 高度缩放
                 true
             );
             std::shared_ptr<Moon::Mesh> terrainMesh(rawMesh);

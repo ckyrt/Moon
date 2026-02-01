@@ -130,10 +130,11 @@ public:
 
 
     static Mesh* CreateTerrainFromHeightmap(
-        int width,
-        int height,
-        const float* heights,     // size = width*height
-        float cellSize,           // 每个格子的世界尺寸（例如 1.0 表示 1m）
+        int resolutionX,          // 采样分辨率（如 129）
+        int resolutionZ,          // 采样分辨率（如 129）
+        const float* heights,     // size = resolutionX * resolutionZ
+        float terrainWidth,       // 实际地形宽度（世界坐标单位，如 100.0）
+        float terrainDepth,       // 实际地形深度（世界坐标单位，如 100.0）
         float heightScale,        // 高度缩放（例如 30.0）
         bool generateNormals = true
     );
