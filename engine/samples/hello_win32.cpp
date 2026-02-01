@@ -19,6 +19,7 @@
 #include "../render/RenderCommon.h"
 #include "../render/SceneRenderer.h"  // 🔄 使用通用场景渲染工具
 #include "TestScenes.h"
+#include "HelloEngineImGui.h"  // ImGui 模块
 
 static const wchar_t* kWndClass = L"UGC_Editor_WndClass";
 
@@ -27,6 +28,10 @@ static IRenderer* g_pRenderer = nullptr;
 static Moon::PerspectiveCamera* g_pCamera = nullptr;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    // ImGui处理消息
+    if (HelloEngineImGui::HandleWin32Message(hWnd, msg, wParam, lParam))
+        return true;
+        
     switch (msg) {
     case WM_SIZE:
         if (g_pRenderer && wParam != SIZE_MINIMIZED) {
@@ -127,6 +132,11 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     }
     
     // ============================================================================
+    // 初始化 ImGui 模块
+    // ============================================================================
+    HelloEngineImGui::Initialize(hwnd, &renderer);
+    
+    // ============================================================================
     // 各种常见材质的场景展示（Material Showcase Scene）
     // ============================================================================
 
@@ -205,10 +215,21 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         
         // Update Camera Controller
         cameraController.Update(static_cast<float>(dt));
-
-        // 🔄 使用通用的场景渲染工具（替换重复代码）
+        
+        // ============================================================================
+        // 渲染场景和ImGui UI
+        // ============================================================================
+        HelloEngineImGui::BeginFrame();
+        
         renderer.BeginFrame();
         Moon::SceneRendererUtils::RenderScene(&renderer, scene, camera);
+        
+        // 渲染调试网格
+        HelloEngineImGui::RenderDebugGrid(camera);
+        
+        // 渲染 ImGui UI（FPS等信息）
+        HelloEngineImGui::RenderUI(camera, &fpsCounter);
+        
         renderer.EndFrame();
 
         // simple throttle
@@ -216,6 +237,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     }
 
     // Cleanup (Meshes are owned by MeshRenderer components, no manual deletion needed)
+    HelloEngineImGui::Shutdown();
     renderer.Shutdown();
     g_pRenderer = nullptr;
     g_pCamera = nullptr;
