@@ -140,9 +140,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     // 各种常见材质的场景展示（Material Showcase Scene）
     // ============================================================================
 
-    //TestScenes::TestCSG(&engine);
+    TestScenes::TestCSG(&engine);
     //TestScenes::TestMaterial(&engine);
-    TestScenes::TestZipLoad(&engine);
+    //TestScenes::TestZipLoad(&engine);
 
     // ============================================================================
     // 创建主方向光（模拟太阳光）
