@@ -45,7 +45,22 @@ BuildResult CSGBuilder::Build(const Blueprint* blueprint,
         return BuildResult();
     }
 
-    return BuildNode(rootNode, rootScope, outError);
+    BuildResult result = BuildNode(rootNode, rootScope, outError);
+    
+    // 最终输出：将所有mesh转换为FlatShading（硬边效果）
+    // 中间布尔运算保留拓扑以支持嵌套操作，这里统一转换
+    for (auto& meshItem : result.meshes) {
+        if (meshItem.mesh && meshItem.mesh->IsValid()) {
+            meshItem.mesh = ConvertToFlatShading(meshItem.mesh.get());
+            if (!meshItem.mesh) {
+                outError = "Failed to convert mesh to FlatShading";
+                MOON_LOG_ERROR("CSGBuilder", "%s", outError.c_str());
+                return BuildResult();
+            }
+        }
+    }
+    
+    return result;
 }
 
 BuildResult CSGBuilder::BuildNode(const Node* node, ParameterScope& scope, std::string& outError) {
@@ -89,14 +104,33 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
     // 根据基础几何体类型创建 Mesh
     switch (prim->primitive) {
         case PrimitiveType::Cube: {
-            // 解析参数
-            float size = 1.0f;
-            auto it = prim->params.find("size");
-            if (it != prim->params.end()) {
-                size = ResolveValue(it->second, scope, outError);
+            // 解析参数：支持size（正方体）或width/height/depth（长方体）
+            float width = 1.0f;
+            float height = 1.0f;
+            float depth = 1.0f;
+            
+            auto itSize = prim->params.find("size");
+            if (itSize != prim->params.end()) {
+                float size = ResolveValue(itSize->second, scope, outError);
+                width = height = depth = size;
+            }
+            
+            auto itWidth = prim->params.find("width");
+            if (itWidth != prim->params.end()) {
+                width = ResolveValue(itWidth->second, scope, outError);
+            }
+            
+            auto itHeight = prim->params.find("height");
+            if (itHeight != prim->params.end()) {
+                height = ResolveValue(itHeight->second, scope, outError);
+            }
+            
+            auto itDepth = prim->params.find("depth");
+            if (itDepth != prim->params.end()) {
+                depth = ResolveValue(itDepth->second, scope, outError);
             }
 
-            mesh = CreateCSGBox(size, size, size,
+            mesh = CreateCSGBox(width, height, depth,
                 position,
                 Vector3(0, 0, 0), // rotation 将通过四元数应用
                 scale,
@@ -325,7 +359,9 @@ float CSGBuilder::ResolveValue(const ValueExpr& expr, ParameterScope& scope, std
         }
         
         case ValueExpr::Kind::Expression: {
-            return EvaluateExpression(expr.expression, scope, outError);
+            float result = EvaluateExpression(expr.expression, scope, outError);
+            MOON_LOG_INFO("CSGBuilder", "Expression '%s' evaluated to: %.3f", expr.expression.c_str(), result);
+            return result;
         }
         
         default:
@@ -348,6 +384,9 @@ float CSGBuilder::EvaluateExpression(const std::string& exprStr, ParameterScope&
         }
     };
 
+    // 前向声明parseExpression以支持括号
+    std::function<float()> parseExpression;
+
     // 解析数字或参数引用
     std::function<float()> parsePrimary = [&]() -> float {
         skipSpaces();
@@ -358,6 +397,20 @@ float CSGBuilder::EvaluateExpression(const std::string& exprStr, ParameterScope&
             negative = true;
             pos++;
             skipSpaces();
+        }
+        
+        // 处理括号
+        if (pos < expr.length() && expr[pos] == '(') {
+            pos++; // 跳过 '('
+            float value = parseExpression();
+            skipSpaces();
+            if (pos < expr.length() && expr[pos] == ')') {
+                pos++; // 跳过 ')'
+                return negative ? -value : value;
+            } else {
+                outError = "Mismatched parentheses";
+                return 0.0f;
+            }
         }
         
         // 参数引用
@@ -423,7 +476,7 @@ float CSGBuilder::EvaluateExpression(const std::string& exprStr, ParameterScope&
     };
 
     // 解析加减
-    std::function<float()> parseExpression = [&]() -> float {
+    parseExpression = [&]() -> float {
         float left = parseTerm();
         
         while (pos < expr.length()) {

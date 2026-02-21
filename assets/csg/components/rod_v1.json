@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "name": "rod_v1",
+  "description": "Thin rod (thin cylinder for legs/supports)",
+  "version": 1,
+  "parameters": {
+    "length": 75.0,
+    "radius": 2.0
+  },
+  "root": {
+    "type": "primitive",
+    "primitive": "cylinder",
+    "params": {
+      "radius": "$radius",
+      "height": "$length"
+    }
+  }
+}

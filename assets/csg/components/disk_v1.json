@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "name": "disk_v1",
+  "description": "Flat disk (thin cylinder)",
+  "version": 1,
+  "parameters": {
+    "radius": 12.0,
+    "thickness": 1.5
+  },
+  "root": {
+    "type": "primitive",
+    "primitive": "cylinder",
+    "params": {
+      "radius": "$radius",
+      "height": "$thickness"
+    },
+    "transform": {
+      "position": [0, 0, 0]
+    }
+  }
+}

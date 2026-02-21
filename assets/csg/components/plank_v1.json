@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "plank_v1",
+  "description": "Flat plank (thin rectangular board)",
+  "version": 1,
+  "parameters": {
+    "length": 120.0,
+    "width": 60.0,
+    "thickness": 2.0
+  },
+  "root": {
+    "type": "primitive",
+    "primitive": "cube",
+    "params": {
+      "size_x": "$length",
+      "size_y": "$thickness",
+      "size_z": "$width"
+    }
+  }
+}

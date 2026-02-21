@@ -1,11 +1,67 @@
 {
   "schema_version": 1,
+  "units": "centimeters",
+  "description": "CSG Blueprint Library - All dimensions are in centimeters (cm)",
   "items": [
     {
-      "id": "cube_minus_sphere_v1",
-      "path": "objects/cube_minus_sphere_v1.json",
-      "category": "demo",
-      "tags": ["demo", "simple", "csg"]
+      "id": "beam_v1",
+      "path": "components/beam_v1.json",
+      "category": "structural",
+      "tags": ["level1", "structural", "beam"]
+    },
+    {
+      "id": "plank_v1",
+      "path": "components/plank_v1.json",
+      "category": "structural",
+      "tags": ["level1", "structural", "plank", "board"]
+    },
+    {
+      "id": "pipe_v1",
+      "path": "components/pipe_v1.json",
+      "category": "structural",
+      "tags": ["level1", "structural", "pipe", "hollow"]
+    },
+    {
+      "id": "disk_v1",
+      "path": "components/disk_v1.json",
+      "category": "structural",
+      "tags": ["level1", "structural", "disk", "flat"]
+    },
+    {
+      "id": "rod_v1",
+      "path": "components/rod_v1.json",
+      "category": "structural",
+      "tags": ["level1", "structural", "rod", "leg"]
+    },
+    {
+      "id": "cup_body_v1",
+      "path": "components/cup_body_v1.json",
+      "category": "container",
+      "tags": ["level2", "container", "cup"]
+    },
+    {
+      "id": "bowl_v1",
+      "path": "components/bowl_v1.json",
+      "category": "container",
+      "tags": ["level2", "container", "bowl"]
+    },
+    {
+      "id": "bottle_body_v1",
+      "path": "components/bottle_body_v1.json",
+      "category": "container",
+      "tags": ["level2", "container", "bottle"]
+    },
+    {
+      "id": "wheel_v1",
+      "path": "components/wheel_v1.json",
+      "category": "mechanical",
+      "tags": ["level2", "mechanical", "wheel"]
+    },
+    {
+      "id": "simple_table_v1",
+      "path": "components/simple_table_v1.json",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "table"]
     }
   ]
 }

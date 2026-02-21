@@ -31,6 +31,14 @@ std::shared_ptr<Mesh> PerformBoolean(
 );
 
 /**
+ * @brief 将Mesh转换为FlatShading（硬边效果）
+ * 
+ * @param mesh 输入Mesh
+ * @return std::shared_ptr<Mesh> 转换后的Mesh，失败返回 nullptr
+ */
+std::shared_ptr<Mesh> ConvertToFlatShading(const Mesh* mesh);
+
+/**
  * @brief 创建 CSG 立方体（带世界坐标Transform）
  * 
  * @param width 宽度（X 轴）

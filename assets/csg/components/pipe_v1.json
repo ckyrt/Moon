@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "name": "pipe_v1",
+  "description": "Hollow pipe (cylinder - cylinder)",
+  "version": 1,
+  "parameters": {
+    "length": 100.0,
+    "outer_radius": 2.5,
+    "wall_thickness": 0.3
+  },
+  "root": {
+    "type": "csg",
+    "operation": "subtract",
+    "left": {
+      "type": "primitive",
+      "primitive": "cylinder",
+      "params": {
+        "radius": "$outer_radius",
+        "height": "$length"
+      }
+    },
+    "right": {
+      "type": "primitive",
+      "primitive": "cylinder",
+      "params": {
+        "radius": "$outer_radius - $wall_thickness",
+        "height": "$length + 0.1"
+      }
+    }
+  }
+}

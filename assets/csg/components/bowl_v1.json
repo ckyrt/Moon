@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "name": "bowl_v1",
+  "description": "Bowl (hollow hemisphere)",
+  "version": 1,
+  "parameters": {
+    "radius": 7.0,
+    "thickness": 0.4
+  },
+  "root": {
+    "type": "csg",
+    "operation": "subtract",
+    "left": {
+      "type": "csg",
+      "operation": "subtract",
+      "left": {
+        "type": "primitive",
+        "primitive": "sphere",
+        "params": {
+          "radius": "$radius"
+        }
+      },
+      "right": {
+        "type": "primitive",
+        "primitive": "sphere",
+        "params": {
+          "radius": "$radius - $thickness"
+        }
+      }
+    },
+    "right": {
+      "type": "primitive",
+      "primitive": "cube",
+      "params": {
+        "width": "$radius * 3",
+        "height": "$radius * 2",
+        "depth": "$radius * 3"
+      },
+      "transform": {
+        "position": [0, "$radius", 0]
+      }
+    }
+  }
+}

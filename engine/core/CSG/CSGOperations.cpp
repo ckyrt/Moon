@@ -212,6 +212,22 @@ static std::shared_ptr<Mesh> ManifoldToMesh_NoConversion(const manifold::Manifol
     return ManifoldToMesh_FlatShading(manifold);
 }
 
+std::shared_ptr<Mesh> ConvertToFlatShading(const Mesh* mesh) {
+    if (!mesh || !mesh->IsValid()) {
+        MOON_LOG_ERROR("CSG", "Invalid input mesh for FlatShading conversion");
+        return nullptr;
+    }
+
+    // 转换为Manifold再转回来，自动应用FlatShading
+    manifold::Manifold manifold = MeshToManifold(mesh);
+    if (manifold.IsEmpty()) {
+        MOON_LOG_ERROR("CSG", "Failed to convert mesh to manifold");
+        return nullptr;
+    }
+
+    return ManifoldToMesh_FlatShading(manifold);
+}
+
 std::shared_ptr<Mesh> PerformBoolean(const Mesh* meshA, const Mesh* meshB, Operation op) {
     if (!meshA || !meshB) {
         MOON_LOG_ERROR("CSG", "Null mesh input");
@@ -249,8 +265,9 @@ std::shared_ptr<Mesh> PerformBoolean(const Mesh* meshA, const Mesh* meshB, Opera
             return nullptr;
     }
 
-    // 布尔运算结果使用扁平着色（硬边效果）
-    return ManifoldToMesh_FlatShading(result);
+    // 布尔运算结果保留拓扑结构，以便后续嵌套操作
+    // 最终输出时会在CSGBuilder中转换为FlatShading
+    return ManifoldToMesh_PreserveTopology(result);
 }
 
 std::shared_ptr<Mesh> CreateCSGBox(float width, float height, float depth,
@@ -302,7 +319,14 @@ std::shared_ptr<Mesh> CreateCSGCylinder(float radius, float height, int segments
                                         const Vector3& rotation,
                                         const Vector3& scale,
                                         bool flatShading) {
+    // Manifold的Cylinder: 底部在原点，沿Z轴向上延伸height
     manifold::Manifold cylinder = manifold::Manifold::Cylinder(height, radius, radius, segments);
+    
+    // Manifold使用Z-up坐标系，引擎使用Y-up坐标系
+    // 1. 先将圆柱体中心移到原点（从底部原点移到中心）
+    cylinder = cylinder.Translate({0.0f, 0.0f, height / 2.0f});
+    // 2. 绕X轴旋转+90度将Z轴转换为Y轴（+Z → +Y，杯口朝上）
+    cylinder = cylinder.Rotate(90.0f, 0.0f, 0.0f);
     
     if (scale != Vector3(1, 1, 1)) {
         cylinder = cylinder.Scale({scale.x, scale.y, scale.z});
@@ -322,12 +346,19 @@ std::shared_ptr<Mesh> CreateCSGCone(float radius, float height, int segments,
                                     const Vector3& rotation,
                                     const Vector3& scale,
                                     bool flatShading) {
+    // Manifold的Cylinder(height, radiusLow, radiusHigh): 底部在原点，沿Z轴向上
     manifold::Manifold cone = manifold::Manifold::Cylinder(height, radius, 0.0f, segments);
     
     if (cone.Status() != manifold::Manifold::Error::NoError) {
         MOON_LOG_ERROR("CSG", "Failed to create cone");
         return nullptr;
     }
+    
+    // Manifold使用Z-up坐标系，引擎使用Y-up坐标系
+    // 1. 先将圆锥中心移到原点（从底部原点移到中心）
+    cone = cone.Translate({0.0f, 0.0f, height / 2.0f});
+    // 2. 绕X轴旋转+90度将Z轴转换为Y轴（+Z → +Y，尖端朝上）
+    cone = cone.Rotate(90.0f, 0.0f, 0.0f);
     
     if (scale != Vector3(1, 1, 1)) {
         cone = cone.Scale({scale.x, scale.y, scale.z});

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "beam_v1",
+  "description": "Basic beam (rectangular prism, structural component)",
+  "version": 1,
+  "parameters": {
+    "length": 200.0,
+    "width": 10.0,
+    "height": 15.0
+  },
+  "root": {
+    "type": "primitive",
+    "primitive": "cube",
+    "params": {
+      "size_x": "$length",
+      "size_y": "$height",
+      "size_z": "$width"
+    }
+  }
+}

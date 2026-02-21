@@ -380,23 +380,24 @@ ValueExpr BlueprintLoader::ParseValueExpr(const void* jsonPtr, std::string& outE
         return ValueExpr::Constant(j.get<float>());
     } else if (j.is_string()) {
         std::string str = j.get<std::string>();
-        if (!str.empty() && str[0] == '$') {
-            // 检查是否包含运算符（简单判断：包含 +, -, *, / 或空格）
-            bool hasOperator = (str.find('+') != std::string::npos ||
-                                str.find('-') != std::string::npos ||
-                                str.find('*') != std::string::npos ||
-                                str.find('/') != std::string::npos ||
-                                str.find(' ') != std::string::npos);
-            
-            if (hasOperator) {
-                // 表达式
-                return ValueExpr::Expression(str);
-            } else {
-                // 简单参数引用
-                return ValueExpr::ParamRef(str.substr(1)); // 去掉 '$' 前缀
-            }
+        
+        // 检查是否是表达式（包含运算符、括号、空格或以负号开头）
+        bool isExpression = (str.find('+') != std::string::npos ||
+                            str.find('-') != std::string::npos ||
+                            str.find('*') != std::string::npos ||
+                            str.find('/') != std::string::npos ||
+                            str.find('(') != std::string::npos ||
+                            str.find(')') != std::string::npos ||
+                            str.find(' ') != std::string::npos);
+        
+        if (isExpression) {
+            // 复杂表达式
+            return ValueExpr::Expression(str);
+        } else if (!str.empty() && str[0] == '$') {
+            // 简单参数引用
+            return ValueExpr::ParamRef(str.substr(1)); // 去掉 '$' 前缀
         } else {
-            outError = "String value must start with '$' for parameter reference";
+            outError = "String value must start with '$' for parameter reference or be an expression";
             MOON_LOG_ERROR("BlueprintLoader", "Invalid string value: %s", str.c_str());
             return ValueExpr::Constant(0.0f);
         }
