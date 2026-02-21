@@ -620,6 +620,29 @@ static float SampleH(int x, int z, int w, int h, const float* heights)
     return heights[z * w + x];
 }
 
+// ============================================================================
+// 地形网格生成：从高度图创建地形网格
+// ============================================================================
+//
+// ⚠️ 重要：地形坐标系与高度图存储顺序
+//
+// 高度图存储：heights[z * resolutionX + x]
+//   - 第一索引：Z（行索引，从前到后）
+//   - 第二索引：X（列索引，从左到右）
+//   - 行优先存储（类似图像的行列存储）
+//
+// 地形坐标系：
+//   - X轴：水平方向（左右），对应高度图的列
+//   - Y轴：垂直方向（高度）
+//   - Z轴：水平方向（前后），对应高度图的行
+//   - 地形在XZ平面，Y表示高度
+//
+// 顶点位置计算：
+//   v.position = { x * cellSizeX - halfW, h0, z * cellSizeZ - halfH }
+//   其中 h0 = heights[z * resolutionX + x]，Z是第一索引
+//
+// 💡 这个存储顺序决定了河流坐标的转换规则（见GetPoint函数注释）
+//
 Mesh* MeshGenerator::CreateTerrainFromHeightmap(int resolutionX, int resolutionZ, const float* heights, float terrainWidth, float terrainDepth, float heightScale, bool generateNormals)
 {
     if (resolutionX < 2 || resolutionZ < 2 || !heights) {
@@ -640,7 +663,7 @@ Mesh* MeshGenerator::CreateTerrainFromHeightmap(int resolutionX, int resolutionZ
 
     for (int z = 0; z < resolutionZ; ++z) {
         for (int x = 0; x < resolutionX; ++x) {
-            float h0 = heights[z * resolutionX + x] * heightScale;
+            float h0 = heights[z * resolutionX + x] * heightScale;  // ⚠️ 注意：Z是第一索引（行）
 
             Moon::Vertex v;
             v.position = { x * cellSizeX - halfW, h0, z * cellSizeZ - halfH };
@@ -716,45 +739,156 @@ Mesh* MeshGenerator::CreateTerrainFromHeightmap(int resolutionX, int resolutionZ
     return mesh;
 }
 
+// ============================================================================
+// 坐标系转换函数：Web编辑器 -> Moon引擎
+// ============================================================================
+// 
+// ⚠️ 重要：Web编辑器（Three.js）与Moon引擎的坐标系映射规则
+//
+// Web编辑器坐标系 (Three.js 右手系):
+//   - X轴: 水平方向（左右）
+//   - Y轴: 垂直方向（上下，高度）
+//   - Z轴: 水平方向（前后）
+//   - 地形在XZ平面，Y表示高度
+//
+// Moon引擎坐标系 (左手系):
+//   - X轴: 水平方向
+//   - Y轴: 垂直方向（上下，高度）
+//   - Z轴: 水平方向
+//   - 地形在XZ平面，Y表示高度
+//   - 地形顶点按 heights[z * resolutionX + x] 存储（行优先，Z是行索引）
+//
+// 坐标转换规则 (经过实际测试验证):
+//   Moon X = Web Z  (交换轴，匹配地形的行列存储顺序)
+//   Moon Y = Web Y  (高度不变)
+//   Moon Z = Web X  (交换轴，匹配地形的行列存储顺序)
+//
+// 💡 为什么要交换X和Z？
+//   因为地形生成函数使用 heights[z * resX + x]，其中Z是第一索引（行），X是第二索引（列）
+//   而Web编辑器导出时，坐标顺序与此不同，需要交换才能让河流贴合地形
+//
 inline Vector3 GetPoint(const std::vector<float>& pts, int i)
 {
+    float webX = pts[i * 3 + 0];
+    float webY = pts[i * 3 + 1];
+    float webZ = pts[i * 3 + 2];
+    
     return {
-        pts[i * 3 + 0],
-        pts[i * 3 + 1],
-        pts[i * 3 + 2]
+        webZ,      // Moon X = Web Z
+        webY,      // Moon Y = Web Y
+        webX       // Moon Z = Web X
     };
 }
 
+// Catmull-Rom 样条曲线插值（类似THREE.CatmullRomCurve3）
+static Vector3 CatmullRomInterpolate(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t, float tension = 0.5f)
+{
+    float t2 = t * t;
+    float t3 = t2 * t;
+    
+    // Catmull-Rom 基函数
+    float s = (1.0f - tension) * 0.5f;
+    
+    float b0 = -s * t3 + 2.0f * s * t2 - s * t;
+    float b1 = (2.0f - s) * t3 + (s - 3.0f) * t2 + 1.0f;
+    float b2 = (s - 2.0f) * t3 + (3.0f - 2.0f * s) * t2 + s * t;
+    float b3 = s * t3 - s * t2;
+    
+    return p0 * b0 + p1 * b1 + p2 * b2 + p3 * b3;
+}
+
+// ============================================================================
+// 河流网格生成：从样条控制点创建平滑的河流表面
+// ============================================================================
+// 
+// 输入数据来源：Web编辑器导出的河流样条线控制点
+//   - points: [x0,y0,z0, x1,y1,z1, ...] Web坐标系
+//   - width: 河流宽度
+//
+// 处理流程：
+//   1. 通过GetPoint()函数将Web坐标转换为Moon引擎坐标
+//   2. 使用Catmull-Rom样条插值生成平滑曲线（每段10个插值点）
+//   3. 沿曲线生成河流两侧边缘顶点
+//   4. 创建三角形网格连接两侧边缘
+//
+// ⚠️ 注意：坐标转换由GetPoint()函数处理，见上方注释
+//
 Mesh* MeshGenerator::CreateRiverFromPolyline(const std::vector<float>& points, float width)
 {
-    const int pointCount = static_cast<int>(points.size() / 3);
-    if (pointCount < 2 || width <= 0.0f)
+    const int controlPointCount = static_cast<int>(points.size() / 3);
+    if (controlPointCount < 2 || width <= 0.0f)
         return new Mesh();
 
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
-    vertices.reserve(pointCount * 2);
-    indices.reserve((pointCount - 1) * 6);
-
     const float halfWidth = width * 0.5f;
     const Vector3 up = { 0, 1, 0 };
+    
+    // 根据控制点数量计算插值点数量
+    const int segmentsPerControlPoint = 10;  // 每个控制点段插值10个点
+    const int totalSegments = (controlPointCount - 1) * segmentsPerControlPoint;
+    const int interpolatedPointCount = totalSegments + 1;
+    
+    vertices.reserve(interpolatedPointCount * 2);
+    indices.reserve(totalSegments * 6);
 
-    // ---------- 生成顶点 ----------
-    for (int i = 0; i < pointCount; ++i)
+    // ---------- 生成插值后的顶点 ----------
+    for (int i = 0; i <= totalSegments; ++i)
     {
-        Vector3 p = GetPoint(points, i);
+        float globalT = static_cast<float>(i) / static_cast<float>(totalSegments);
+        float scaledT = globalT * (controlPointCount - 1);
+        int segment = static_cast<int>(scaledT);
+        segment = std::min(segment, controlPointCount - 2);
+        float localT = scaledT - segment;
+        
+        // 获取4个控制点用于Catmull-Rom插值
+        int idx0 = std::max(0, segment - 1);
+        int idx1 = segment;
+        int idx2 = segment + 1;
+        int idx3 = std::min(controlPointCount - 1, segment + 2);
+        
+        Vector3 p0 = GetPoint(points, idx0);
+        Vector3 p1 = GetPoint(points, idx1);
+        Vector3 p2 = GetPoint(points, idx2);
+        Vector3 p3 = GetPoint(points, idx3);
+        
+        // Catmull-Rom 样条插值
+        Vector3 p = CatmullRomInterpolate(p0, p1, p2, p3, localT, 0.5f);
 
         // 计算切线方向
         Vector3 dir;
-        if (i == 0)
-            dir = GetPoint(points, 1) - p;
-        else if (i == pointCount - 1)
-            dir = p - GetPoint(points, i - 1);
-        else
-            dir = GetPoint(points, i + 1) - GetPoint(points, i - 1);
+        if (i == 0) {
+            Vector3 p_next = CatmullRomInterpolate(p0, p1, p2, p3, localT + 0.01f, 0.5f);
+            dir = p_next - p;
+        }
+        else if (i == totalSegments) {
+            Vector3 p_prev = CatmullRomInterpolate(
+                GetPoint(points, std::max(0, controlPointCount - 3)),
+                GetPoint(points, controlPointCount - 2),
+                GetPoint(points, controlPointCount - 1),
+                GetPoint(points, controlPointCount - 1),
+                0.99f, 0.5f
+            );
+            dir = p - p_prev;
+        }
+        else {
+            float nextGlobalT = static_cast<float>(i + 1) / static_cast<float>(totalSegments);
+            float nextScaledT = nextGlobalT * (controlPointCount - 1);
+            int nextSegment = std::min(static_cast<int>(nextScaledT), controlPointCount - 2);
+            float nextLocalT = nextScaledT - nextSegment;
+            
+            Vector3 p_next = CatmullRomInterpolate(
+                GetPoint(points, std::max(0, nextSegment - 1)),
+                GetPoint(points, nextSegment),
+                GetPoint(points, nextSegment + 1),
+                GetPoint(points, std::min(controlPointCount - 1, nextSegment + 2)),
+                nextLocalT, 0.5f
+            );
+            dir = p_next - p;
+        }
 
-        dir.y = 0.0f;               // 只在 XZ 平面计算方向
+        dir.y = 0.0f;
         dir = NormalizeSafe(dir);
 
         // 右方向 = up × dir
@@ -767,7 +901,7 @@ Mesh* MeshGenerator::CreateRiverFromPolyline(const std::vector<float>& points, f
         Vertex vl{};
         vl.position = leftPos;
         vl.normal = up;
-        vl.uv = { 0.0f, float(i) / (pointCount - 1) };
+        vl.uv = { 0.0f, globalT };
         vl.colorR = vl.colorG = vl.colorB = 1.0f;
         vl.colorA = 1.0f;
 
@@ -781,7 +915,7 @@ Mesh* MeshGenerator::CreateRiverFromPolyline(const std::vector<float>& points, f
     }
 
     // ---------- 生成索引 ----------
-    for (int i = 0; i < pointCount - 1; ++i)
+    for (int i = 0; i < totalSegments; ++i)
     {
         uint32_t i0 = i * 2;
         uint32_t i1 = i * 2 + 1;
