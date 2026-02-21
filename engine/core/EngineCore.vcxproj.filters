@@ -134,6 +134,18 @@
     <ClInclude Include="CSG\CSGComponent.h">
       <Filter>CSG</Filter>
     </ClInclude>
+    <ClInclude Include="CSG\BlueprintTypes.h">
+      <Filter>CSG</Filter>
+    </ClInclude>
+    <ClInclude Include="CSG\Blueprint.h">
+      <Filter>CSG</Filter>
+    </ClInclude>
+    <ClInclude Include="CSG\BlueprintLoader.h">
+      <Filter>CSG</Filter>
+    </ClInclude>
+    <ClInclude Include="CSG\CSGBuilder.h">
+      <Filter>CSG</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\Skybox.h">
       <Filter>Scene</Filter>
     </ClInclude>
@@ -203,6 +215,15 @@
       <Filter>CSG</Filter>
     </ClCompile>
     <ClCompile Include="CSG\CSGComponent.cpp">
+      <Filter>CSG</Filter>
+    </ClCompile>
+    <ClCompile Include="CSG\Blueprint.cpp">
+      <Filter>CSG</Filter>
+    </ClCompile>
+    <ClCompile Include="CSG\BlueprintLoader.cpp">
+      <Filter>CSG</Filter>
+    </ClCompile>
+    <ClCompile Include="CSG\CSGBuilder.cpp">
       <Filter>CSG</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Skybox.cpp">

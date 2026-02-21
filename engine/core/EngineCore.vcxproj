@@ -125,6 +125,10 @@
     <ClInclude Include="Texture\TextureManager.h" />
     <ClInclude Include="CSG\CSGOperations.h" />
     <ClInclude Include="CSG\CSGComponent.h" />
+    <ClInclude Include="CSG\BlueprintTypes.h" />
+    <ClInclude Include="CSG\Blueprint.h" />
+    <ClInclude Include="CSG\BlueprintLoader.h" />
+    <ClInclude Include="CSG\CSGBuilder.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineCore.cpp" />
@@ -149,7 +153,10 @@
     <ClCompile Include="Assets\MeshManager.cpp" />
     <ClCompile Include="Texture\TextureManager.cpp" />
     <ClCompile Include="CSG\CSGComponent.cpp" />
+    <ClCompile Include="CSG\BlueprintLoader.cpp" />
+    <ClCompile Include="CSG\CSGBuilder.cpp" />
     <ClCompile Include="CSG\CSGOperations.cpp" />
+    <ClCompile Include="CSG\Blueprint.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\thirdparty\manifold\Manifold.vcxproj">

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "id": "cube_minus_sphere_v1",
+      "path": "objects/cube_minus_sphere_v1.json",
+      "category": "demo",
+      "tags": ["demo", "simple", "csg"]
+    }
+  ]
+}

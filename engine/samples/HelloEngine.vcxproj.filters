@@ -9,6 +9,9 @@
     <ClCompile Include="TestCSG.cpp">
       <Filter>TestScenes</Filter>
     </ClCompile>
+    <ClCompile Include="TestCSGBlueprint.cpp">
+      <Filter>TestScenes</Filter>
+    </ClCompile>
     <ClCompile Include="CSGUnitTest.cpp">
       <Filter>TestScenes</Filter>
     </ClCompile>

@@ -140,7 +140,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     // 各种常见材质的场景展示（Material Showcase Scene）
     // ============================================================================
 
-    TestScenes::TestCSG(&engine);
+    //TestScenes::TestCSG(&engine);
+    TestScenes::TestCSGBlueprint(&engine);  // 测试 JSON Blueprint 系统
     //TestScenes::TestMaterial(&engine);
     //TestScenes::TestZipLoad(&engine);
 

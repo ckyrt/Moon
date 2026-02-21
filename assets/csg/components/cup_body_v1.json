@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "name": "cup_body_v1",
+  "description": "Basic cup body (hollow cylinder)",
+  "version": 1,
+  "parameters": {
+    "radius": 4.0,
+    "height": 10.0,
+    "thickness": 0.5,
+    "bottom_thickness": 1.0
+  },
+  "root": {
+    "type": "csg",
+    "operation": "subtract",
+    "left": {
+      "type": "primitive",
+      "primitive": "cylinder",
+      "params": {
+        "radius": "$radius",
+        "height": "$height"
+      }
+    },
+    "right": {
+      "type": "primitive",
+      "primitive": "cylinder",
+      "params": {
+        "radius": "$radius - $thickness",
+        "height": "$height - $bottom_thickness"
+      },
+      "transform": {
+        "position": [0, "$bottom_thickness", 0]
+      }
+    }
+  }
+}
