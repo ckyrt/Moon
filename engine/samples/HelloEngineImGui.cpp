@@ -112,6 +112,26 @@ void RenderUI(Moon::PerspectiveCamera* camera, Moon::FPSCounter* fpsCounter)
         ImGui::End();
     }
 
+    // 在右上角显示 ViewManipulate（坐标轴小立方体）
+    if (camera) {
+        ImGuiIO& io = ImGui::GetIO();
+        float viewManipulateSize = 128.0f;  // 小立方体的大小
+        float padding = 10.0f;
+        
+        // 位置：右上角，在 FPS 窗口下方
+        ImVec2 position(io.DisplaySize.x - viewManipulateSize - padding, 
+                       100.0f);  // 距离顶部100像素，给FPS窗口留空间
+        
+        auto viewMatrix = camera->GetViewMatrix();
+        float distance = 8.0f;  // 视图距离
+        
+        // 背景颜色：半透明深灰色
+        ImU32 bgColor = 0x10101010;
+        
+        ImGuizmo::ViewManipulate(&viewMatrix.m[0][0], distance, position, 
+                                ImVec2(viewManipulateSize, viewManipulateSize), bgColor);
+    }
+
     // 渲染所有 ImGui 内容
     ImGui::Render();
     if (g_ImGuiWin32 && g_Renderer) {
