@@ -25,10 +25,10 @@
       "primitive": "cylinder",
       "params": {
         "radius": "$radius - $thickness",
-        "height": "$height - $bottom_thickness"
+        "height": "$height - $bottom_thickness - $thickness"
       },
       "transform": {
-        "position": [0, "$bottom_thickness", 0]
+        "position": [0, "($height + $bottom_thickness - $thickness) / 2", 0]
       }
     }
   }
