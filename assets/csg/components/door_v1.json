@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "name": "door_v1",
+  "description": "Simple door with handle - using group (no CSG needed)",
+  "version": 1,
+  "parameters": {
+    "door_width": 90.0,
+    "door_height": 200.0,
+    "door_thickness": 4.0,
+    "handle_radius": 1.5,
+    "handle_length": 12.0
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$door_width",
+          "size_y": "$door_height",
+          "size_z": "$door_thickness"
+        },
+        "transform": {
+          "position": [0, "$door_height / 2", 0]
+        },
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$handle_radius",
+          "height": "$handle_length"
+        },
+        "transform": {
+          "position": ["$door_width / 2 - 15", "$door_height / 2", "$door_thickness / 2 + $handle_length / 2"],
+          "rotation_euler": [90, 0, 0]
+        },
+        "material": "metal"
+      }
+    ],
+    "output": {
+      "mode": "separate"
+    }
+  }
+}

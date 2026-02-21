@@ -104,33 +104,33 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
     // 根据基础几何体类型创建 Mesh
     switch (prim->primitive) {
         case PrimitiveType::Cube: {
-            // 解析参数：支持size（正方体）或width/height/depth（长方体）
-            float width = 1.0f;
-            float height = 1.0f;
-            float depth = 1.0f;
+            // 解析参数：支持size（正方体）或size_x/size_y/size_z（长方体）
+            float size_x = 1.0f;
+            float size_y = 1.0f;
+            float size_z = 1.0f;
             
             auto itSize = prim->params.find("size");
             if (itSize != prim->params.end()) {
                 float size = ResolveValue(itSize->second, scope, outError);
-                width = height = depth = size;
+                size_x = size_y = size_z = size;
             }
             
-            auto itWidth = prim->params.find("width");
-            if (itWidth != prim->params.end()) {
-                width = ResolveValue(itWidth->second, scope, outError);
+            auto itSizeX = prim->params.find("size_x");
+            if (itSizeX != prim->params.end()) {
+                size_x = ResolveValue(itSizeX->second, scope, outError);
             }
             
-            auto itHeight = prim->params.find("height");
-            if (itHeight != prim->params.end()) {
-                height = ResolveValue(itHeight->second, scope, outError);
+            auto itSizeY = prim->params.find("size_y");
+            if (itSizeY != prim->params.end()) {
+                size_y = ResolveValue(itSizeY->second, scope, outError);
             }
             
-            auto itDepth = prim->params.find("depth");
-            if (itDepth != prim->params.end()) {
-                depth = ResolveValue(itDepth->second, scope, outError);
+            auto itSizeZ = prim->params.find("size_z");
+            if (itSizeZ != prim->params.end()) {
+                size_z = ResolveValue(itSizeZ->second, scope, outError);
             }
 
-            mesh = CreateCSGBox(width, height, depth,
+            mesh = CreateCSGBox(size_x, size_y, size_z,
                 position,
                 Vector3(0, 0, 0), // rotation 将通过四元数应用
                 scale,

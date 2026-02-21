@@ -61,7 +61,25 @@
       "id": "simple_table_v1",
       "path": "components/simple_table_v1.json",
       "category": "furniture",
-      "tags": ["level3", "furniture", "table"]
+      "tags": ["level3", "furniture", "table", "simple", "group"]
+    },
+    {
+      "id": "table_v1",
+      "path": "components/table_v1.json",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "table", "four-legs", "group"]
+    },
+    {
+      "id": "chair_v1",
+      "path": "components/chair_v1.json",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "chair", "group"]
+    },
+    {
+      "id": "door_v1",
+      "path": "components/door_v1.json",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "door", "group"]
     }
   ]
 }

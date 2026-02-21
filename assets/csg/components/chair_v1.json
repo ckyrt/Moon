@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "name": "chair_v1",
+  "description": "Simple chair with seat, backrest and four legs - using group (no CSG needed)",
+  "version": 1,
+  "parameters": {
+    "seat_width": 45.0,
+    "seat_depth": 45.0,
+    "seat_height": 45.0,
+    "seat_thickness": 3.0,
+    "backrest_height": 50.0,
+    "backrest_thickness": 3.0,
+    "leg_radius": 2.0
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$seat_width",
+          "size_y": "$seat_thickness",
+          "size_z": "$seat_depth"
+        },
+        "transform": {
+          "position": [0, "$seat_height", 0]
+        },
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$seat_width",
+          "size_y": "$backrest_height",
+          "size_z": "$backrest_thickness"
+        },
+        "transform": {
+          "position": [0, "$seat_height + $backrest_height / 2", "-$seat_depth / 2 + $backrest_thickness / 2"]
+        },
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$seat_height"
+        },
+        "transform": {
+          "position": ["$seat_width / 2 - 5", "$seat_height / 2", "$seat_depth / 2 - 5"]
+        },
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$seat_height"
+        },
+        "transform": {
+          "position": ["$seat_width / 2 - 5", "$seat_height / 2", "-$seat_depth / 2 + 5"]
+        },
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$seat_height"
+        },
+        "transform": {
+          "position": ["-$seat_width / 2 + 5", "$seat_height / 2", "$seat_depth / 2 - 5"]
+        },
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$seat_height"
+        },
+        "transform": {
+          "position": ["-$seat_width / 2 + 5", "$seat_height / 2", "-$seat_depth / 2 + 5"]
+        },
+        "material": "wood"
+      }
+    ],
+    "output": {
+      "mode": "separate"
+    }
+  }
+}

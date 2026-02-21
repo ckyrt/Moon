@@ -29,7 +29,10 @@ void TestCSGBlueprint(EngineCore* engine)
         "assets/csg/components/cup_body_v1.json",
         "assets/csg/components/bowl_v1.json",
         "assets/csg/components/bottle_body_v1.json",
-        "assets/csg/components/simple_table_v1.json"
+        "assets/csg/components/simple_table_v1.json",
+        "assets/csg/components/table_v1.json",
+        "assets/csg/components/chair_v1.json",
+        "assets/csg/components/door_v1.json"
     };
 
     for (const auto& path : blueprintFiles) {
@@ -56,7 +59,10 @@ void TestCSGBlueprint(EngineCore* engine)
         {"cup_body_v1", Moon::Vector3(10.0f, 0.0f, 0.0f), 1.0f},
         {"bowl_v1", Moon::Vector3(40.0f, 0.0f, 0.0f), 1.0f},
         {"bottle_body_v1", Moon::Vector3(70.0f, 0.0f, 0.0f), 1.0f},
-        {"simple_table_v1", Moon::Vector3(110.0f, 0.0f, 0.0f), 0.5f}
+        {"simple_table_v1", Moon::Vector3(110.0f, 0.0f, 0.0f), 0.5f},
+        {"table_v1", Moon::Vector3(150.0f, 0.0f, 0.0f), 0.4f},
+        {"chair_v1", Moon::Vector3(180.0f, 0.0f, 0.0f), 0.6f},
+        {"door_v1", Moon::Vector3(220.0f, 0.0f, 0.0f), 0.3f}
     };
 
     // 创建 Builder

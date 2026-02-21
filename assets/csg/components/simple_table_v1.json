@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "simple_table_v1",
-  "description": "Simple table (top + single center leg)",
+  "description": "Simple table (top + single center leg) - using group instead of CSG",
   "version": 1,
   "parameters": {
     "table_length": 120.0,
@@ -11,30 +11,34 @@
     "leg_radius": 8.0
   },
   "root": {
-    "type": "csg",
-    "operation": "union",
-    "left": {
-      "type": "primitive",
-      "primitive": "cube",
-      "params": {
-        "size_x": "$table_length",
-        "size_y": "$top_thickness",
-        "size_z": "$table_width"
+    "type": "group",
+    "children": [
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$table_length",
+          "size_y": "$top_thickness",
+          "size_z": "$table_width"
+        },
+        "transform": {
+          "position": [0, "$table_height - $top_thickness / 2", 0]
+        }
       },
-      "transform": {
-        "position": [0, "$table_height - $top_thickness / 2", 0]
+      {
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$table_height - $top_thickness"
+        },
+        "transform": {
+          "position": [0, "($table_height - $top_thickness) / 2", 0]
+        }
       }
-    },
-    "right": {
-      "type": "primitive",
-      "primitive": "cylinder",
-      "params": {
-        "radius": "$leg_radius",
-        "height": "$table_height - $top_thickness"
-      },
-      "transform": {
-        "position": [0, "($table_height - $top_thickness) / 2", 0]
-      }
+    ],
+    "output": {
+      "mode": "separate"
     }
   }
 }

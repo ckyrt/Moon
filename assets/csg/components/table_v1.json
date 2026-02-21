@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "name": "table_v1",
+  "description": "Standard table with four legs - using group (no CSG needed)",
+  "version": 1,
+  "parameters": {
+    "table_length": 120.0,
+    "table_width": 80.0,
+    "table_height": 75.0,
+    "top_thickness": 2.5,
+    "leg_radius": 3.0
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$table_length",
+          "size_y": "$top_thickness",
+          "size_z": "$table_width"
+        },
+        "transform": {
+          "position": [0, "$table_height - $top_thickness / 2", 0]
+        },
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$table_height - $top_thickness"
+        },
+        "transform": {
+          "position": ["$table_length / 2 - 10", "($table_height - $top_thickness) / 2", "$table_width / 2 - 10"]
+        },
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$table_height - $top_thickness"
+        },
+        "transform": {
+          "position": ["$table_length / 2 - 10", "($table_height - $top_thickness) / 2", "-$table_width / 2 + 10"]
+        },
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$table_height - $top_thickness"
+        },
+        "transform": {
+          "position": ["-$table_length / 2 + 10", "($table_height - $top_thickness) / 2", "$table_width / 2 - 10"]
+        },
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$table_height - $top_thickness"
+        },
+        "transform": {
+          "position": ["-$table_length / 2 + 10", "($table_height - $top_thickness) / 2", "-$table_width / 2 + 10"]
+        },
+        "material": "wood"
+      }
+    ],
+    "output": {
+      "mode": "separate"
+    }
+  }
+}

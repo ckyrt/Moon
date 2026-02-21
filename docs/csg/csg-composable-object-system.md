@@ -150,7 +150,7 @@ Blueprint 的具体使用，包含：
 ```
 
 **标准参数命名：**
-- `cube`: `size` 或 `half_extents`
+- `cube`: `size` (正方体) 或 `size_x`, `size_y`, `size_z` (长方体)
 - `sphere`: `radius`
 - `cylinder`: `radius`, `height`
 - `capsule`: `radius`, `height`
