@@ -228,6 +228,13 @@ bool SceneZipLoader::LoadSceneFromZip(
                 RiverSpline river;
                 river.id = r["id"].get<std::string>();
                 river.width = r["points"][0]["width"].get<float>();
+                
+                // 读取水深参数（默认0.5米）
+                if (r.contains("waterDepth")) {
+                    river.waterDepth = r["waterDepth"].get<float>();
+                } else {
+                    river.waterDepth = 0.5f;  // 默认值
+                }
 
                 for (const auto& p : r["points"])
                 {

@@ -804,16 +804,29 @@ static Vector3 CatmullRomInterpolate(const Vector3& p0, const Vector3& p1, const
 // 输入数据来源：Web编辑器导出的河流样条线控制点
 //   - points: [x0,y0,z0, x1,y1,z1, ...] Web坐标系
 //   - width: 河流宽度
+//   - waterDepth: 水深（河床到水面的高度，默认0.5米）
+//   - terrainHeights: 地形高度图数据（已包含河流挖掘结果）
+//   - terrainResolution: 地形分辨率
+//   - terrainWidth/terrainDepth: 地形世界尺寸
 //
 // 处理流程：
 //   1. 通过GetPoint()函数将Web坐标转换为Moon引擎坐标
 //   2. 使用Catmull-Rom样条插值生成平滑曲线（每段10个插值点）
-//   3. 沿曲线生成河流两侧边缘顶点
-//   4. 创建三角形网格连接两侧边缘
+//   3. 采样地形高度图，获取河床高度
+//   4. 水面高度 = 河床高度 + waterDepth
+//   5. 沿曲线生成河流两侧边缘顶点
+//   6. 创建三角形网格连接两侧边缘
 //
 // ⚠️ 注意：坐标转换由GetPoint()函数处理，见上方注释
 //
-Mesh* MeshGenerator::CreateRiverFromPolyline(const std::vector<float>& points, float width)
+Mesh* MeshGenerator::CreateRiverFromPolyline(
+    const std::vector<float>& points, 
+    float width,
+    float waterDepth,
+    const float* terrainHeights,
+    int terrainResolution,
+    float terrainWidth,
+    float terrainDepth)
 {
     const int controlPointCount = static_cast<int>(points.size() / 3);
     if (controlPointCount < 2 || width <= 0.0f)
@@ -825,9 +838,18 @@ Mesh* MeshGenerator::CreateRiverFromPolyline(const std::vector<float>& points, f
     const float halfWidth = width * 0.5f;
     const Vector3 up = { 0, 1, 0 };
     
-    // 根据控制点数量计算插值点数量
-    const int segmentsPerControlPoint = 10;  // 每个控制点段插值10个点
-    const int totalSegments = (controlPointCount - 1) * segmentsPerControlPoint;
+    // 先粗略估算曲线总长度（用控制点之间的直线距离近似）
+    float estimatedLength = 0.0f;
+    for (int i = 0; i < controlPointCount - 1; ++i) {
+        Vector3 p1 = GetPoint(points, i);
+        Vector3 p2 = GetPoint(points, i + 1);
+        Vector3 diff = p2 - p1;
+        estimatedLength += sqrtf(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+    }
+    
+    // 根据固定间隔计算插值点数量（每0.3米一个采样点）
+    const float samplingInterval = 0.3f;  // 采样间隔（米）
+    const int totalSegments = std::max(10, static_cast<int>(estimatedLength / samplingInterval));
     const int interpolatedPointCount = totalSegments + 1;
     
     vertices.reserve(interpolatedPointCount * 2);
@@ -888,14 +910,72 @@ Mesh* MeshGenerator::CreateRiverFromPolyline(const std::vector<float>& points, f
             dir = p_next - p;
         }
 
-        dir.y = 0.0f;
-        dir = NormalizeSafe(dir);
+        // 计算水平方向的切线（只在XZ平面），用于计算河流宽度方向
+        Vector3 dirXZ = dir;
+        dirXZ.y = 0.0f;
+        dirXZ = NormalizeSafe(dirXZ);
 
-        // 右方向 = up × dir
-        Vector3 right = NormalizeSafe(Vector3::Cross(up, dir));
+        // 右方向 = up × dirXZ（在XZ平面的垂直方向）
+        Vector3 right = NormalizeSafe(Vector3::Cross(up, dirXZ));
 
+        // 采样地形高度图，获取河床高度，然后加上水深得到水面高度
+        // 关键：采样左右两侧边缘的地形高度，取最小值作为河床高度
+        float waterSurfaceY = p.y;  // 默认使用插值点的Y坐标
+        if (terrainHeights && terrainResolution > 0) {
+            // 计算河流左右边缘的世界坐标
+            Vector3 leftEdge = p - right * halfWidth;
+            Vector3 rightEdge = p + right * halfWidth;
+            
+            // 定义双线性插值采样函数
+            auto sampleTerrainHeight = [&](const Vector3& worldPos) -> float {
+                float halfTerrainW = terrainWidth * 0.5f;
+                float halfTerrainD = terrainDepth * 0.5f;
+                float normalizedX = (worldPos.x + halfTerrainW) / terrainWidth;
+                float normalizedZ = (worldPos.z + halfTerrainD) / terrainDepth;
+                
+                float terrainXf = normalizedX * (terrainResolution - 1);
+                float terrainZf = normalizedZ * (terrainResolution - 1);
+                
+                int x0 = static_cast<int>(floorf(terrainXf));
+                int z0 = static_cast<int>(floorf(terrainZf));
+                int x1 = x0 + 1;
+                int z1 = z0 + 1;
+                
+                x0 = std::max(0, std::min(x0, terrainResolution - 1));
+                x1 = std::max(0, std::min(x1, terrainResolution - 1));
+                z0 = std::max(0, std::min(z0, terrainResolution - 1));
+                z1 = std::max(0, std::min(z1, terrainResolution - 1));
+                
+                float tx = terrainXf - floorf(terrainXf);
+                float tz = terrainZf - floorf(terrainZf);
+                
+                float h00 = terrainHeights[z0 * terrainResolution + x0];
+                float h10 = terrainHeights[z0 * terrainResolution + x1];
+                float h01 = terrainHeights[z1 * terrainResolution + x0];
+                float h11 = terrainHeights[z1 * terrainResolution + x1];
+                
+                float h0 = h00 * (1.0f - tx) + h10 * tx;
+                float h1 = h01 * (1.0f - tx) + h11 * tx;
+                return h0 * (1.0f - tz) + h1 * tz;
+            };
+            
+            // 采样左右两侧边缘和中心的地形高度
+            float leftHeight = sampleTerrainHeight(leftEdge);
+            float rightHeight = sampleTerrainHeight(rightEdge);
+            float centerHeight = sampleTerrainHeight(p);
+            
+            // 取三个点的最小值作为河床高度（确保水面不会悬空）
+            float riverbedHeight = std::min(std::min(leftHeight, rightHeight), centerHeight);
+            
+            // 水面 = 河床 + 水深
+            waterSurfaceY = riverbedHeight + waterDepth;
+        }
+
+        // 河流表面顶点使用计算出的水面高度，只在XZ平面展开宽度
         Vector3 leftPos = p - right * halfWidth;
         Vector3 rightPos = p + right * halfWidth;
+        leftPos.y = waterSurfaceY;
+        rightPos.y = waterSurfaceY;
 
         // 左顶点
         Vertex vl{};

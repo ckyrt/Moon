@@ -139,7 +139,15 @@ public:
         bool generateNormals = true
     );
 
-    static Mesh* CreateRiverFromPolyline(const std::vector<float>& points, float width);
+    static Mesh* CreateRiverFromPolyline(
+        const std::vector<float>& points, 
+        float width,
+        float waterDepth = 0.5f,
+        const float* terrainHeights = nullptr,
+        int terrainResolution = 0,
+        float terrainWidth = 100.0f,
+        float terrainDepth = 100.0f
+    );
 
 private:
     // 辅助函数：计算球面坐标

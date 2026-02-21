@@ -53,7 +53,12 @@ namespace TestScenes {
             {
                 Moon::Mesh* rawMesh = Moon::MeshGenerator::CreateRiverFromPolyline(
                     river.points,
-                    river.width
+                    river.width,
+                    river.waterDepth,
+                    sceneData.terrain.heightMap.data(),
+                    sceneData.terrain.resolution,
+                    100.0f,  // terrainWidth
+                    100.0f   // terrainDepth
                 );
 
                 auto riverMesh = std::shared_ptr<Moon::Mesh>(rawMesh);
