@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "name": "desk_lamp_v1",
+  "description": "Desk lamp. Level 3 furniture. Components: flat base (cylinder) + vertical pole (cylinder) + horizontal arm (cylinder, rotation_euler Z=90) + conical shade (cone, tip-up) + bulb (sphere). Origin at floor (y=0 = base bottom).",
+  "version": 1,
+  "parameters": {
+    "base_r":   8.0,
+    "base_h":   2.0,
+    "pole_r":   1.0,
+    "pole_h":  35.0,
+    "arm_r":    0.8,
+    "arm_len": 20.0,
+    "shade_r":  7.0,
+    "shade_h": 12.0,
+    "bulb_r":   2.5
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "top_center":    [0, "$base_h + $pole_h", 0],
+    "arm_end":       ["$arm_len", "$base_h + $pole_h", 0],
+    "center":        ["$arm_len / 2", "($base_h + $pole_h) / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "base",
+        "comment": "Flat circular base. Cylinder center at y=base_h/2 so bottom touches y=0.",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": { "radius": "$base_r", "height": "$base_h" },
+        "transform": {
+          "position": [0, "$base_h / 2", 0]
+        },
+        "material": "metal"
+      },
+      {
+        "name": "pole",
+        "comment": "Vertical pole. Bottom sits on top of base (y=base_h), center at y=base_h+pole_h/2.",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": { "radius": "$pole_r", "height": "$pole_h" },
+        "transform": {
+          "position": [0, "$base_h + $pole_h / 2", 0]
+        },
+        "material": "metal"
+      },
+      {
+        "name": "arm",
+        "comment": "Horizontal arm along +X axis. Default cylinder is Y-axis; rotation_euler [0,-90,0] rotates Y->X (yaw=-90 in this engine's Euler convention). Center at [arm_len/2, pole_top, 0] so arm spans x=[0, arm_len].",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": { "radius": "$arm_r", "height": "$arm_len" },
+        "transform": {
+          "position": ["$arm_len / 2", "$base_h + $pole_h", 0],
+          "rotation_euler": [0, -90, 0]
+        },
+        "material": "metal"
+      },
+      {
+        "name": "shade",
+        "comment": "Cone shade: tip at +Y (top), opening at -Y (bottom). Tip positioned at arm end (x=arm_len, y=pole_top). Center = tip_y - shade_h/2 = base_h+pole_h - shade_h/2.",
+        "type": "primitive",
+        "primitive": "cone",
+        "params": { "radius": "$shade_r", "height": "$shade_h" },
+        "transform": {
+          "position": ["$arm_len", "$base_h + $pole_h - $shade_h / 2", 0]
+        },
+        "material": "metal"
+      },
+      {
+        "name": "bulb",
+        "comment": "Light bulb sphere inside the shade, centered at shade midpoint.",
+        "type": "primitive",
+        "primitive": "sphere",
+        "params": { "radius": "$bulb_r" },
+        "transform": {
+          "position": ["$arm_len", "$base_h + $pole_h - $shade_h / 2", 0]
+        },
+        "material": "emissive"
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

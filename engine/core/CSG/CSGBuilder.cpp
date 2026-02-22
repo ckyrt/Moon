@@ -223,8 +223,21 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
         return BuildResult();
     }
 
-    // 应用旋转（如果有）
-    // TODO: 在 CreateCSG* 函数中应用四元数旋转
+    // Bake rotation into vertex positions and normals.
+    // This keeps geometry correct for both CSG boolean ops and group/separate output,
+    // consistent with how position is baked before CSG operations.
+    if (rotation.x != 0.0f || rotation.y != 0.0f || rotation.z != 0.0f) {
+        std::vector<Vertex> verts = mesh->GetVertices();
+        for (auto& v : verts) {
+            v.position = rotation * v.position;
+            v.normal   = rotation * v.normal;
+        }
+        mesh->SetVertices(std::move(verts));
+        MOON_LOG_INFO("CSGBuilder", "Baked rotation (%.1f,%.1f,%.1f,%.1f) into %zu vertices",
+                      rotation.x, rotation.y, rotation.z, rotation.w,
+                      mesh->GetVertices().size());
+        rotation = Quaternion::Identity(); // already baked, don't apply twice
+    }
 
     BuildResult result;
     result.AddMesh(MeshItem(mesh, prim->material, ResolvedTransform(position, rotation, scale)));

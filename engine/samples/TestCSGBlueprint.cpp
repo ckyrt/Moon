@@ -44,6 +44,8 @@ void TestCSGBlueprint(EngineCore* engine)
         "assets/csg/components/door_v1.json",
         "assets/csg/components/door_frame_v1.json",
         "assets/csg/components/complete_door_v1.json",
+        // 灯具（使用 rotation_euler）
+        "assets/csg/components/desk_lamp_v1.json",
     };
     
     Moon::CSG::CSGBuilder builder;

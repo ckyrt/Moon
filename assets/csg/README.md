@@ -1,6 +1,26 @@
-# CSG 蓝图系统 - 关键规则
+# CSG 蓝图系统 - 完整规则手册
 
-> **🚨 AI生成CSG蓝图必须遵守的规则**
+> **🚨 AI生成CSG蓝图必须遵守的规则。index.json 只含路径索引，所有规则在此文件。**
+
+---
+
+## 0️⃣ 支持的节点类型与基础几何体
+
+| 节点类型 | 说明 |
+|----------|------|
+| `primitive` | 基础几何体，见下表 |
+| `csg` | 布尔运算：`union` / `subtract` / `intersect` |
+| `group` | 并列输出多个子节点，`output.mode: separate` |
+| `reference` | 引用其他蓝图，支持 `overrides` 覆盖参数 |
+
+| 几何体 | 参数 | 备注 |
+|--------|------|------|
+| `cube` | `size_x, size_y, size_z` 或 `size` | Y轴为高度 |
+| `cylinder` | `radius, height` | 默认沿Y轴竖立 |
+| `sphere` | `radius` | — |
+| `cone` | `radius, height` | 尖端朝+Y |
+
+> ❌ `capsule` 和 `torus` 尚未实现，使用会报错。
 
 ---
 
@@ -107,10 +127,35 @@
 ```json
 "transform": {
   "position": [x, y, z],                      // 厘米, 几何中心的世界位置
-  "rotation_euler": [pitch, yaw, roll],       // 度, X→Y→Z顺序
+  "rotation_euler": [pitch, yaw, roll],       // 度, pitch=X轴, yaw=Y轴, roll=Z轴
   "scale": [x_scale, y_scale, z_scale]        // 默认[1,1,1]
 }
 ```
+
+**⚠️ rotation_euler 轴映射（和直觉不同，必须记住）：**
+
+| 分量 | 变量 | 实际旋转轴 |
+|------|------|----------|
+| `[x, 0, 0]` | pitch | **Y 轴**旋转 |
+| `[0, y, 0]` | yaw | **Z 轴**旋转 |
+| `[0, 0, z]` | roll | **X 轴**旋转 |
+
+**常用值（cylinder 默认沿 Y 轴竖直）：**
+```json
+// 横向圆柱 → 沿 +X 轴（横梁/台灯臂）：yaw=-90 → Z轴旋转 → Y变+X
+"rotation_euler": [0, -90, 0]
+
+// 横向圆柱 → 沿 -X 轴：yaw=+90
+"rotation_euler": [0, 90, 0]
+
+// 纵深圆柱 → 沿 +Z 轴：roll=90 → X轴旋转 → Y变+Z（左手系）
+"rotation_euler": [0, 0, 90]
+
+// 水平朝向（绕 Y 轴，不改变高度）：pitch 控制
+"rotation_euler": [45, 0, 0]
+```
+
+> **注意：** rotation 在构建时已 bake 进顶点，CSG 布尔运算和 group 组合均正确生效。
 
 ---
 
