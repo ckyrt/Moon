@@ -184,10 +184,26 @@ struct CsgNode {
 };
 
 /**
+ * @brief Attach 约束定义
+ *
+ * 指定"把本节点的 self_anchor 对齐到 target_path 节点的 target_anchor"。
+ * v1 限制：target_path 只支持 "../<name>"（同一 group 内的已命名 sibling，
+ * 且 target 必须出现在 children 列表的前面）。
+ */
+struct AttachDef {
+    std::string selfAnchor;     // 本节点要对齐的 anchor 名称，例如 "top_center"
+    std::string targetPath;     // 目标路径，例如 "../table_top"
+    std::string targetAnchor;   // 目标节点的 anchor 名称，例如 "bottom_center"
+    // v1 offset 固定为 (0,0,0)，后续可扩展为 ValueExpr
+    bool hasAttach = false;
+};
+
+/**
  * @brief Group 节点数据
  */
 struct GroupNode {
     std::vector<std::unique_ptr<Node>> children;
+    std::vector<std::string> childNames;        // 与 children 一一对应，空字符串表示无名
     GroupOutputMode outputMode;
 
     GroupNode() : outputMode(GroupOutputMode::Separate) {}
@@ -200,6 +216,7 @@ struct RefNode {
     std::string refId;                                      // 引用的 Blueprint ID
     TransformTRS localTransform;
     std::unordered_map<std::string, ValueExpr> overrides;   // 参数覆盖
+    AttachDef attach;                                       // attach 约束（可选）
 
     RefNode() = default;
 };

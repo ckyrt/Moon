@@ -102,6 +102,7 @@ temp/                       # 中间文件目录
 - **可执行文件**：`bin\x64\{Debug|Release}\*.exe`
 - **静态库**：`bin\x64\{Debug|Release}\*.lib`
 - **中间文件**：`temp\{ProjectName}\x64\{Debug|Release}\`
+- **日志文件**：`bin\x64\Debug\logs\{yyyy-MM-dd}.log` 📋
 
 ---
 

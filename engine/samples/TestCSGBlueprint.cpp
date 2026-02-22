@@ -3,6 +3,7 @@
 #include <CSG/Blueprint.h>
 #include <CSG/BlueprintLoader.h>
 #include <CSG/CSGBuilder.h>
+#include <CSG/CSGOperations.h>
 #include <EngineCore.h>
 #include <Scene/MeshRenderer.h>
 #include <Scene/Material.h>
@@ -11,108 +12,115 @@ namespace TestScenes {
 
 void TestCSGBlueprint(EngineCore* engine)
 {
-    MOON_LOG_INFO("CSGBlueprint", "=== Testing CSG Blueprint System ===");
+    MOON_LOG_INFO("CSGBlueprint", "=== Testing Fixed Blueprints ===");
 
     Moon::Scene* scene = engine->GetScene();
-
-    // 创建 Blueprint 数据库
     Moon::CSG::BlueprintDatabase database;
     std::string error;
-
-    // 加载多个 Blueprint 组件
-    std::vector<std::string> blueprintFiles = {
+    
+    // 要测试的蓝图列表
+    const char* blueprints[] = {
+        // 基础结构件
         "assets/csg/components/beam_v1.json",
         "assets/csg/components/plank_v1.json",
         "assets/csg/components/pipe_v1.json",
         "assets/csg/components/disk_v1.json",
         "assets/csg/components/rod_v1.json",
-        "assets/csg/components/cup_body_v1.json",
+        // 半球/碗
+        "assets/csg/components/hemisphere_down_v1.json",
         "assets/csg/components/bowl_v1.json",
+        // 容器
+        "assets/csg/components/cup_body_v1.json",
         "assets/csg/components/bottle_body_v1.json",
+        // 机械
+        "assets/csg/components/wheel_v1.json",
+        // 家具
+        "assets/csg/components/table_leg_v1.json",
+        "assets/csg/components/table_top_v1.json",
         "assets/csg/components/simple_table_v1.json",
         "assets/csg/components/table_v1.json",
         "assets/csg/components/chair_v1.json",
-        "assets/csg/components/door_v1.json"
+        // 门
+        "assets/csg/components/door_v1.json",
+        "assets/csg/components/door_frame_v1.json",
+        "assets/csg/components/complete_door_v1.json",
     };
-
-    for (const auto& path : blueprintFiles) {
-        if (!database.LoadBlueprint(path, error)) {
-            MOON_LOG_ERROR("CSGBlueprint", "Failed to load blueprint %s: %s", path.c_str(), error.c_str());
-        } else {
-            MOON_LOG_INFO("CSGBlueprint", "Loaded blueprint: %s", path.c_str());
-        }
-    }
-
-    // 定义要显示的物体及其位置
-    struct ObjectToShow {
-        std::string blueprintId;
-        Moon::Vector3 position;
-        float scale;
-    };
-
-    std::vector<ObjectToShow> objects = {
-        {"beam_v1", Moon::Vector3(-140.0f, 0.0f, 0.0f), 0.5f},
-        {"plank_v1", Moon::Vector3(-110.0f, 0.0f, 0.0f), 0.5f},
-        {"pipe_v1", Moon::Vector3(-80.0f, 0.0f, 0.0f), 0.5f},
-        {"disk_v1", Moon::Vector3(-50.0f, 0.0f, 0.0f), 1.0f},
-        {"rod_v1", Moon::Vector3(-20.0f, 0.0f, 0.0f), 0.5f},
-        {"cup_body_v1", Moon::Vector3(10.0f, 0.0f, 0.0f), 1.0f},
-        {"bowl_v1", Moon::Vector3(40.0f, 0.0f, 0.0f), 1.0f},
-        {"bottle_body_v1", Moon::Vector3(70.0f, 0.0f, 0.0f), 1.0f},
-        {"simple_table_v1", Moon::Vector3(110.0f, 0.0f, 0.0f), 0.5f},
-        {"table_v1", Moon::Vector3(150.0f, 0.0f, 0.0f), 0.4f},
-        {"chair_v1", Moon::Vector3(180.0f, 0.0f, 0.0f), 0.6f},
-        {"door_v1", Moon::Vector3(220.0f, 0.0f, 0.0f), 0.3f}
-    };
-
-    // 创建 Builder
+    
     Moon::CSG::CSGBuilder builder;
     builder.SetBlueprintDatabase(&database);
-
-    // 构建并显示所有物体
-    for (size_t objIdx = 0; objIdx < objects.size(); ++objIdx) {
-        const auto& obj = objects[objIdx];
-        
-        const Moon::CSG::Blueprint* blueprint = database.GetBlueprint(obj.blueprintId);
-        if (!blueprint) {
-            MOON_LOG_ERROR("CSGBlueprint", "Blueprint not found: %s", obj.blueprintId.c_str());
+    
+    // 物体排列：从左到右间隔1.5米，放在摄像机前方5米处
+    float xOffset = -2.0f;  // 从左侧开始
+    float zPos = 3.0f;       // 摄像机在Z=-5朝向+Z，物体放在Z=3
+    
+    for (const char* blueprintPath : blueprints) {
+        // 加载蓝图
+        if (!database.LoadBlueprint(blueprintPath, error)) {
+            MOON_LOG_ERROR("CSGBlueprint", "Failed to load %s: %s", blueprintPath, error.c_str());
             continue;
         }
-
-        // 构建 Mesh
+        
+        // 从路径提取名称
+        std::string path(blueprintPath);
+        size_t lastSlash = path.find_last_of("/\\");
+        size_t lastDot = path.find_last_of(".");
+        std::string name = path.substr(lastSlash + 1, lastDot - lastSlash - 1);
+        
+        const Moon::CSG::Blueprint* blueprint = database.GetBlueprint(name);
+        if (!blueprint) {
+            MOON_LOG_ERROR("CSGBlueprint", "%s not found!", name.c_str());
+            continue;
+        }
+        
+        // 构建
         std::unordered_map<std::string, float> params;
         Moon::CSG::BuildResult result = builder.Build(blueprint, params, error);
-
+        
         if (result.meshes.empty()) {
-            MOON_LOG_ERROR("CSGBlueprint", "Build failed for %s: %s", obj.blueprintId.c_str(), error.c_str());
+            MOON_LOG_ERROR("CSGBlueprint", "Failed to build %s: %s", name.c_str(), error.c_str());
             continue;
         }
-
-        MOON_LOG_INFO("CSGBlueprint", "Built %s: %zu mesh(es)", obj.blueprintId.c_str(), result.meshes.size());
-
-        // 将生成的 Mesh 添加到场景
+        
+        MOON_LOG_INFO("CSGBlueprint", "=== %s: %d meshes ===", name.c_str(), (int)result.meshes.size());
+        
+        // 创建所有部件
         for (size_t i = 0; i < result.meshes.size(); ++i) {
-            const auto& meshItem = result.meshes[i];
-
-            std::string nodeName = obj.blueprintId + "_" + std::to_string(i);
-            Moon::SceneNode* node = scene->CreateNode(nodeName);
-            
-            // 设置位置和缩放
-            node->GetTransform()->SetLocalPosition(obj.position);
-            node->GetTransform()->SetLocalScale(Moon::Vector3(obj.scale, obj.scale, obj.scale));
-
-            // 添加 MeshRenderer
-            Moon::MeshRenderer* renderer = node->AddComponent<Moon::MeshRenderer>();
-            renderer->SetMesh(meshItem.mesh);
-
-            // 使用默认材质（白色）
-
-            MOON_LOG_INFO("CSGBlueprint", "Added %s mesh %zu: %zu vertices, %zu triangles",
-                obj.blueprintId.c_str(), i, meshItem.mesh->GetVertexCount(), meshItem.mesh->GetTriangleCount());
+            const auto& item = result.meshes[i];
+            if (item.mesh && item.mesh->IsValid()) {
+                auto node = scene->CreateNode(name + "_part_" + std::to_string(i));
+                
+                // 添加X偏移以便并排显示，Z位置放在摄像机前方
+                Moon::Vector3 pos = item.worldTransform.position;
+                pos.x += xOffset;
+                pos.z += zPos;
+                node->GetTransform()->SetLocalPosition(pos);
+                node->GetTransform()->SetLocalRotation(item.worldTransform.rotation);
+                node->GetTransform()->SetLocalScale(item.worldTransform.scale);
+                
+                auto renderer = node->AddComponent<Moon::MeshRenderer>();
+                renderer->SetMesh(item.mesh);
+                
+                // 计算边界
+                const auto& verts = item.mesh->GetVertices();
+                Moon::Vector3 minB(1e9f, 1e9f, 1e9f), maxB(-1e9f, -1e9f, -1e9f);
+                for (const auto& v : verts) {
+                    minB.x = std::min(minB.x, v.position.x);
+                    minB.y = std::min(minB.y, v.position.y);
+                    minB.z = std::min(minB.z, v.position.z);
+                    maxB.x = std::max(maxB.x, v.position.x);
+                    maxB.y = std::max(maxB.y, v.position.y);
+                    maxB.z = std::max(maxB.z, v.position.z);
+                }
+                
+                MOON_LOG_INFO("CSGBlueprint", "  Part %d: Pos(%.2f, %.2f, %.2f) Local Y[%.3f, %.3f]", 
+                    (int)i, pos.x, pos.y, pos.z, minB.y, maxB.y);
+            }
         }
+        
+        xOffset += 1.5f; // 下一个物体向右偏移1.5米
     }
 
-    MOON_LOG_INFO("CSGBlueprint", "=== CSG Blueprint Test Complete ===");
+    MOON_LOG_INFO("CSGBlueprint", "=== All blueprints tested ===");
 }
 
 } // namespace TestScenes

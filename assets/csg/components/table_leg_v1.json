@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "name": "table_leg_v1",
+  "description": "Cylindrical table leg. Origin at geometric center (y=0 is mid-height).",
+  "version": 1,
+  "parameters": {
+    "h": 73.0,
+    "r": 3.0
+  },
+  "anchors": {
+    "center":        [0, 0,        0],
+    "bottom_center": [0, "-$h / 2", 0],
+    "top_center":    [0, "$h / 2",  0]
+  },
+  "root": {
+    "type": "primitive",
+    "primitive": "cylinder",
+    "params": {
+      "radius": "$r",
+      "height": "$h"
+    },
+    "material": "wood"
+  }
+}

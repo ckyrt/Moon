@@ -1,43 +1,35 @@
 {
   "schema_version": 1,
   "name": "bowl_v1",
-  "description": "Bowl (hollow hemisphere)",
-  "version": 1,
+  "description": "Bowl: hollow lower hemisphere built from two hemispheres (subtract). Origin at floor (y=0 = lowest point). Rim at y=radius.",
+  "version": 9,
   "parameters": {
     "radius": 7.0,
-    "thickness": 0.4
+    "thickness": 1.0
+  },
+  "anchors": {
+    "origin":        [0, 0, 0],
+    "bottom_center": [0, 0, 0],
+    "rim_center":    [0, "$radius", 0],
+    "center":        [0, "$radius / 2", 0]
   },
   "root": {
     "type": "csg",
     "operation": "subtract",
     "left": {
-      "type": "csg",
-      "operation": "subtract",
-      "left": {
-        "type": "primitive",
-        "primitive": "sphere",
-        "params": {
-          "radius": "$radius"
-        }
-      },
-      "right": {
-        "type": "primitive",
-        "primitive": "sphere",
-        "params": {
-          "radius": "$radius - $thickness"
-        }
+      "type": "reference",
+      "ref": "hemisphere_down_v1",
+      "overrides": {
+        "radius": "$radius",
+        "center_offset": 0.0
       }
     },
     "right": {
-      "type": "primitive",
-      "primitive": "cube",
-      "params": {
-        "width": "$radius * 3",
-        "height": "$radius * 2",
-        "depth": "$radius * 3"
-      },
-      "transform": {
-        "position": [0, "$radius", 0]
+      "type": "reference",
+      "ref": "hemisphere_down_v1",
+      "overrides": {
+        "radius": "$radius - $thickness",
+        "center_offset": "$thickness"
       }
     }
   }

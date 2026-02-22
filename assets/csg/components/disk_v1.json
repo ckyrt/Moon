@@ -1,11 +1,16 @@
 {
   "schema_version": 1,
   "name": "disk_v1",
-  "description": "Flat disk (thin cylinder)",
+  "description": "Flat disk (thin cylinder). Origin at geometry center.",
   "version": 1,
   "parameters": {
     "radius": 12.0,
     "thickness": 1.5
+  },
+  "anchors": {
+    "center":        [0, 0, 0],
+    "bottom_center": [0, "-$thickness / 2", 0],
+    "top_center":    [0, "$thickness / 2",  0]
   },
   "root": {
     "type": "primitive",

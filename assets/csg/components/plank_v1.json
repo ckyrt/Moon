@@ -1,12 +1,17 @@
 {
   "schema_version": 1,
   "name": "plank_v1",
-  "description": "Flat plank (thin rectangular board)",
+  "description": "Flat plank (thin rectangular board). Origin at geometry center.",
   "version": 1,
   "parameters": {
     "length": 120.0,
     "width": 60.0,
     "thickness": 2.0
+  },
+  "anchors": {
+    "center":        [0, 0, 0],
+    "bottom_center": [0, "-$thickness / 2", 0],
+    "top_center":    [0, "$thickness / 2",  0]
   },
   "root": {
     "type": "primitive",

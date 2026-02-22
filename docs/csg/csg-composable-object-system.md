@@ -71,6 +71,29 @@ Blueprint 的具体使用，包含：
 - **transform** - 位置/旋转/缩放
 - **overrides** - 参数覆盖值
 
+### 2.4 基础几何体原点规则（重要！）
+
+**所有基础几何体的原点（pivot point）均在几何中心。**  
+`transform.position` 指定的是该几何中心的坐标。
+
+| 类型 | 原点位置 | 放地面上时 position.y |
+|------|---------|----------------------|
+| `cube` | 几何中心 | `size_y / 2` |
+| `cylinder` | 高度方向中点 | `height / 2` |
+| `sphere` | 球心 | `radius` |
+| `cone` | 高度方向中点，尖端朝+Y | `height / 2` |
+
+**组合示例（桌子）：**
+```
+桌腿 cylinder，高度 leg_h：
+  position.y = leg_h / 2            ← 腿的中心在 leg_h/2
+
+桌面 cube，厚度 top_t，放在腿顶部：
+  position.y = leg_h + top_t / 2    ← 桌面底部对齐腿顶部
+```
+
+> ⚠️ 常见错误：把 position 当成底部坐标而不是中心坐标，会导致部件之间出现间隙或穿插。
+
 ---
 
 ## 3. 数据结构设计

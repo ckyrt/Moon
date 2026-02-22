@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "name": "test_cylinder",
+  "description": "Test cylinder - should be centered at origin",
+  "version": 1,
+  "parameters": {
+    "h": 100.0,
+    "r": 10.0
+  },
+  "anchors": {
+    "origin":        [0, 0, 0],
+    "bottom_center": [0, "-$h / 2", 0],
+    "top_center":    [0, "$h / 2", 0]
+  },
+  "root": {
+    "type": "primitive",
+    "primitive": "cylinder",
+    "params": {
+      "radius": "$r",
+      "height": "$h"
+    },
+    "material": "metal"
+  }
+}

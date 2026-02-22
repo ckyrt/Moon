@@ -115,8 +115,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     // Create FPS Camera Controller (Unity-like controls)
     Moon::FPSCameraController cameraController(camera, inputSystem);
-    cameraController.SetMoveSpeed(30.0f);           // Movement speed (units/sec)
-    cameraController.SetMouseSensitivity(50.0f);     // Mouse sensitivity (1.0=slow, 10.0=fast)
+    cameraController.SetMoveSpeed(5.0f);            // Movement speed (units/sec)
+    cameraController.SetMouseSensitivity(20.0f);    // Mouse sensitivity
 
     DiligentRenderer renderer;
     g_pRenderer = &renderer;  // Set global pointer for resize handling

@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "name": "hemisphere_down_v1",
+  "description": "Lower hemisphere (flat cut on top). Built via sphere - cube, so it does not rely on 'intersect'. Origin at y=0 when center_offset=0.",
+  "version": 1,
+  "parameters": {
+    "radius": 7.0,
+    "center_offset": 0.0
+  },
+  "anchors": {
+    "origin":        [0, 0, 0],
+    "bottom_center": [0, "$center_offset", 0],
+    "rim_center":    [0, "$center_offset + $radius", 0],
+    "center":        [0, "$center_offset + $radius / 2", 0]
+  },
+  "root": {
+    "type": "csg",
+    "operation": "subtract",
+    "left": {
+      "type": "primitive",
+      "primitive": "sphere",
+      "params": {
+        "radius": "$radius"
+      },
+      "transform": {
+        "position": [0, "$center_offset + $radius", 0]
+      }
+    },
+    "right": {
+      "type": "primitive",
+      "primitive": "cube",
+      "params": {
+        "size_x": "$radius * 4",
+        "size_y": "$radius * 4",
+        "size_z": "$radius * 4"
+      },
+      "transform": {
+        "position": [0, "$center_offset + $radius * 3", 0]
+      }
+    }
+  }
+}

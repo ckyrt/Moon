@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "name": "door_frame_v1",
+  "description": "Door frame (U-shape): left post + right post + top lintel. inner_width/inner_height match the door opening.",
+  "version": 1,
+  "parameters": {
+    "inner_width": 90.0,
+    "inner_height": 200.0,
+    "post_width": 8.0,
+    "depth": 15.0
+  },
+  "anchors": {
+    "origin":      [0, 0, 0],
+    "top_center":  [0, "$inner_height + $post_width", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "left_post",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$post_width",
+          "size_y": "$inner_height + $post_width",
+          "size_z": "$depth"
+        },
+        "transform": {
+          "position": ["0 - $inner_width / 2 - $post_width / 2", "($inner_height + $post_width) / 2", 0]
+        },
+        "material": "wood"
+      },
+      {
+        "name": "right_post",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$post_width",
+          "size_y": "$inner_height + $post_width",
+          "size_z": "$depth"
+        },
+        "transform": {
+          "position": ["$inner_width / 2 + $post_width / 2", "($inner_height + $post_width) / 2", 0]
+        },
+        "material": "wood"
+      },
+      {
+        "name": "top_lintel",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$inner_width + $post_width * 2",
+          "size_y": "$post_width",
+          "size_z": "$depth"
+        },
+        "transform": {
+          "position": [0, "$inner_height + $post_width / 2", 0]
+        },
+        "material": "wood"
+      }
+    ]
+  }
+}

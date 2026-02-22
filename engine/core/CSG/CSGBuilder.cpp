@@ -45,17 +45,21 @@ BuildResult CSGBuilder::Build(const Blueprint* blueprint,
         return BuildResult();
     }
 
+    m_buildDepth++;
     BuildResult result = BuildNode(rootNode, rootScope, outError);
-    
-    // 最终输出：将所有mesh转换为FlatShading（硬边效果）
-    // 中间布尔运算保留拓扑以支持嵌套操作，这里统一转换
-    for (auto& meshItem : result.meshes) {
-        if (meshItem.mesh && meshItem.mesh->IsValid()) {
-            meshItem.mesh = ConvertToFlatShading(meshItem.mesh.get());
-            if (!meshItem.mesh) {
-                outError = "Failed to convert mesh to FlatShading";
-                MOON_LOG_ERROR("CSGBuilder", "%s", outError.c_str());
-                return BuildResult();
+    m_buildDepth--;
+
+    // 最终输出：仅在最外层 Build 将所有 mesh 转换为 FlatShading
+    // 内层递归 Build（来自 reference）已经做过 FlatShading，不可重复
+    if (m_buildDepth == 0) {
+        for (auto& meshItem : result.meshes) {
+            if (meshItem.mesh && meshItem.mesh->IsValid()) {
+                meshItem.mesh = ConvertToFlatShading(meshItem.mesh.get());
+                if (!meshItem.mesh) {
+                    outError = "Failed to convert mesh to FlatShading";
+                    MOON_LOG_ERROR("CSGBuilder", "%s", outError.c_str());
+                    return BuildResult();
+                }
             }
         }
     }
@@ -130,8 +134,10 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
                 size_z = ResolveValue(itSizeZ->second, scope, outError);
             }
 
-            mesh = CreateCSGBox(size_x, size_y, size_z,
-                position,
+            // JSON 单位为 cm，转换为引擎单位（米）
+            static constexpr float CM_TO_M = 0.01f;
+            mesh = CreateCSGBox(size_x * CM_TO_M, size_y * CM_TO_M, size_z * CM_TO_M,
+                Vector3(0, 0, 0),  // Keep mesh at origin, position applied via worldTransform
                 Vector3(0, 0, 0), // rotation 将通过四元数应用
                 scale,
                 false); // flatShading = false for CSG operations
@@ -146,8 +152,9 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
                 radius = ResolveValue(it->second, scope, outError);
             }
 
-            mesh = CreateCSGSphere(radius, 32,
-                position,
+            static constexpr float CM_TO_M = 0.01f;
+            mesh = CreateCSGSphere(radius * CM_TO_M, 32,
+                Vector3(0, 0, 0),  // Keep mesh at origin, position applied via worldTransform
                 Vector3(0, 0, 0),
                 scale,
                 false);
@@ -169,8 +176,9 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
                 height = ResolveValue(itHeight->second, scope, outError);
             }
 
-            mesh = CreateCSGCylinder(radius, height, 32,
-                position,
+            static constexpr float CM_TO_M = 0.01f;
+            mesh = CreateCSGCylinder(radius * CM_TO_M, height * CM_TO_M, 32,
+                Vector3(0, 0, 0),  // Keep mesh at origin, position applied via worldTransform
                 Vector3(0, 0, 0),
                 scale,
                 false);
@@ -192,8 +200,9 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
                 height = ResolveValue(itHeight->second, scope, outError);
             }
 
-            mesh = CreateCSGCone(radius, height, 32,
-                position,
+            static constexpr float CM_TO_M = 0.01f;
+            mesh = CreateCSGCone(radius * CM_TO_M, height * CM_TO_M, 32,
+                Vector3(0, 0, 0),  // Keep mesh at origin, position applied via worldTransform
                 Vector3(0, 0, 0),
                 scale,
                 false);
@@ -259,11 +268,31 @@ BuildResult CSGBuilder::BuildCSG(const CsgNode* csg, ParameterScope& scope, std:
             return BuildResult();
     }
 
-    std::shared_ptr<Mesh> resultMesh = PerformBoolean(
-        leftResult.meshes[0].mesh.get(),
-        rightResult.meshes[0].mesh.get(),
-        op
-    );
+    // BuildPrimitive 故意把 mesh 保留在原点，position 存在 worldTransform 里（"applied later"）
+    // 在 CSG 布尔运算之前必须把 position bake 进顶点，否则所有 primitive 都在原点做运算
+    auto bakePosition = [](const Mesh* src, const Vector3& pos) -> std::shared_ptr<Mesh> {
+        if (pos.x == 0.0f && pos.y == 0.0f && pos.z == 0.0f) return nullptr;
+        std::vector<Vertex> verts = src->GetVertices();
+        for (auto& v : verts) {
+            v.position.x += pos.x;
+            v.position.y += pos.y;
+            v.position.z += pos.z;
+        }
+        auto m = std::make_shared<Mesh>();
+        m->SetVertices(std::move(verts));
+        auto idx = src->GetIndices();
+        m->SetIndices(std::move(idx));
+        return m;
+    };
+
+    const Vector3& leftPos  = leftResult.meshes[0].worldTransform.position;
+    const Vector3& rightPos = rightResult.meshes[0].worldTransform.position;
+    std::shared_ptr<Mesh> leftBaked  = bakePosition(leftResult.meshes[0].mesh.get(),  leftPos);
+    std::shared_ptr<Mesh> rightBaked = bakePosition(rightResult.meshes[0].mesh.get(), rightPos);
+    const Mesh* leftMesh  = leftBaked  ? leftBaked.get()  : leftResult.meshes[0].mesh.get();
+    const Mesh* rightMesh = rightBaked ? rightBaked.get() : rightResult.meshes[0].mesh.get();
+
+    std::shared_ptr<Mesh> resultMesh = PerformBoolean(leftMesh, rightMesh, op);
 
     if (!resultMesh) {
         outError = "CSG boolean operation failed";
@@ -285,13 +314,147 @@ BuildResult CSGBuilder::BuildGroup(const GroupNode* group, ParameterScope& scope
         return BuildResult();
     }
 
-    BuildResult result;
+    // =========================================================================
+    // Phase A：构建所有子节点，同时收集命名节点的 anchor 信息
+    // =========================================================================
+    struct BuiltChild {
+        BuildResult result;
+        Vector3 basePosition;       // transform 解析出的基础位置（不含 attach）
+        std::unordered_map<std::string, Vector3> anchors; // 求值后的 anchor（local space, cm→m 已转换）
+    };
 
-    for (const auto& child : group->children) {
-        BuildResult childResult = BuildNode(child.get(), scope, outError);
-        result.Merge(std::move(childResult));
+    std::vector<BuiltChild> builtChildren;
+    builtChildren.reserve(group->children.size());
+
+    // name -> index 映射（用于 Phase B 的 target_path 解析）
+    std::unordered_map<std::string, size_t> nameToIndex;
+
+    for (size_t i = 0; i < group->children.size(); ++i) {
+        const Node* childNode = group->children[i].get();
+        const std::string& childName = (i < group->childNames.size()) ? group->childNames[i] : "";
+
+        BuiltChild bc;
+        bc.result = BuildNode(childNode, scope, outError);
+        bc.basePosition = Vector3(0, 0, 0);
+        
+        // 如果是 reference 节点，获取其 transform position 和 anchors
+        if (childNode->type == NodeType::Reference) {
+            const RefNode* ref = childNode->data.ref;
+            Vector3 refPos, refScale;
+            Quaternion refRot;
+            ResolveTransform(ref->localTransform, scope, refPos, refRot, refScale, outError);
+            bc.basePosition = refPos;
+
+            // 获取被引用 blueprint 的 anchors（用子参数 scope 求值）
+            if (m_database) {
+                const Blueprint* refBp = m_database->GetBlueprint(ref->refId);
+                if (refBp) {
+                    // 构建子 scope（含 overrides）
+                    ParameterScope childScope = scope.CreateChild();
+                    for (const auto& param : refBp->GetParameters()) {
+                        childScope.SetValue(param.first, param.second.defaultValue);
+                    }
+                    for (const auto& ov : ref->overrides) {
+                        float val = ResolveValue(ov.second, scope, outError);
+                        childScope.SetValue(ov.first, val);
+                    }
+                    bc.anchors = EvaluateAnchors(refBp, childScope, outError);
+                }
+            }
+        }
+
+        if (!childName.empty()) {
+            nameToIndex[childName] = i;
+        }
+
+        builtChildren.push_back(std::move(bc));
     }
 
+    // =========================================================================
+    // Phase B：处理 attach 约束，修正每个 child 的最终位置
+    // =========================================================================
+    for (size_t i = 0; i < group->children.size(); ++i) {
+        const Node* childNode = group->children[i].get();
+        if (childNode->type != NodeType::Reference) continue;
+
+        const RefNode* ref = childNode->data.ref;
+        if (!ref->attach.hasAttach) continue;
+
+        const AttachDef& att = ref->attach;
+
+        // 1. 找到 self_anchor（本节点自己的 anchor，local space）
+        auto& selfAnchors = builtChildren[i].anchors;
+        auto itSelf = selfAnchors.find(att.selfAnchor);
+        if (itSelf == selfAnchors.end()) {
+            MOON_LOG_ERROR("CSGBuilder", "Attach error: self_anchor '%s' not found in '%s'",
+                           att.selfAnchor.c_str(), ref->refId.c_str());
+            outError = "Missing self_anchor: " + att.selfAnchor + " in " + ref->refId;
+            return BuildResult();
+        }
+        Vector3 selfAnchorLocal = itSelf->second;
+
+        // 2. 解析 target_path（v1 只支持 "../<name>"）
+        std::string targetName = att.targetPath;
+        if (targetName.substr(0, 3) == "../") {
+            targetName = targetName.substr(3);
+        }
+        auto itTarget = nameToIndex.find(targetName);
+        if (itTarget == nameToIndex.end()) {
+            MOON_LOG_ERROR("CSGBuilder", "Attach error: target '%s' not found in group", targetName.c_str());
+            outError = "Missing attach target: " + att.targetPath;
+            return BuildResult();
+        }
+        size_t targetIdx = itTarget->second;
+        if (targetIdx >= i) {
+            MOON_LOG_ERROR("CSGBuilder", "Attach error: target '%s' must appear before self in children list", targetName.c_str());
+            outError = "Attach target must be defined before self in children list";
+            return BuildResult();
+        }
+
+        // 3. 找到 target_anchor（目标节点的 anchor，local space）
+        auto& targetAnchors = builtChildren[targetIdx].anchors;
+        auto itTarget2 = targetAnchors.find(att.targetAnchor);
+        if (itTarget2 == targetAnchors.end()) {
+            MOON_LOG_ERROR("CSGBuilder", "Attach error: target_anchor '%s' not found in target '%s'",
+                           att.targetAnchor.c_str(), targetName.c_str());
+            outError = "Missing target_anchor: " + att.targetAnchor + " in " + targetName;
+            return BuildResult();
+        }
+        Vector3 targetAnchorLocal = itTarget2->second;
+
+        // 4. 计算对齐位移（全部在 parent local space 内，因为是同一 group 的 sibling）
+        // 目标 anchor 的 parent-space 位置 = target.basePosition + targetAnchorLocal
+        // 本节点 self anchor 的 parent-space 位置（未修正前）= self.basePosition + selfAnchorLocal
+        // 需要: (self.basePosition + delta) + selfAnchorLocal == target.basePosition + targetAnchorLocal
+        // → delta = (target.basePosition + targetAnchorLocal) - (self.basePosition + selfAnchorLocal)
+        Vector3 targetWorld = builtChildren[targetIdx].basePosition + targetAnchorLocal;
+        Vector3 selfWorld0  = builtChildren[i].basePosition + selfAnchorLocal;
+        // v1: 只修正 Y（垂直对齐），X/Z 由 self 的 transform.position 提供
+        // 全局 delta 会把腿的 XZ 手抗掉（因为 anchor.x/z 在中心 but 腿在发角）
+        float deltaY = (targetWorld.y - selfWorld0.y);
+        Vector3 delta(0.0f, deltaY, 0.0f);
+
+        MOON_LOG_INFO("CSGBuilder",
+            "Attach '%s'.%s → '%s'.%s: delta=(%.4f, %.4f, %.4f)m",
+            ref->refId.c_str(), att.selfAnchor.c_str(),
+            targetName.c_str(), att.targetAnchor.c_str(),
+            delta.x, delta.y, delta.z);
+
+        // 5. 把 delta 应用到该 child 的所有 mesh worldTransform.position
+        for (auto& meshItem : builtChildren[i].result.meshes) {
+            meshItem.worldTransform.position = meshItem.worldTransform.position + delta;
+        }
+        // 同时更新 basePosition（万一后续其他节点 attach 到本节点）
+        builtChildren[i].basePosition = builtChildren[i].basePosition + delta;
+    }
+
+    // =========================================================================
+    // 合并所有子节点结果
+    // =========================================================================
+    BuildResult result;
+    for (auto& bc : builtChildren) {
+        result.Merge(std::move(bc.result));
+    }
     return result;
 }
 
@@ -319,13 +482,14 @@ BuildResult CSGBuilder::BuildReference(const RefNode* ref, ParameterScope& scope
     ParameterScope childScope = scope.CreateChild();
 
     // 应用 overrides
+    std::unordered_map<std::string, float> overrideValues;
     for (const auto& override : ref->overrides) {
         float value = ResolveValue(override.second, scope, outError);
-        childScope.SetValue(override.first, value);
+        overrideValues[override.first] = value;
     }
 
-    // 构建被引用的 Blueprint
-    BuildResult childResult = Build(refBlueprint, {}, outError);
+    // 构建被引用的 Blueprint（传入已求値的 overrides）
+    BuildResult childResult = Build(refBlueprint, overrideValues, outError);
 
     // 解析 Reference 的 transform
     Vector3 refPosition, refScale;
@@ -340,6 +504,39 @@ BuildResult CSGBuilder::BuildReference(const RefNode* ref, ParameterScope& scope
     }
 
     return childResult;
+}
+
+std::unordered_map<std::string, Vector3> CSGBuilder::EvaluateAnchors(
+    const Blueprint* blueprint, ParameterScope& scope, std::string& outError)
+{
+    static constexpr float CM_TO_M = 0.01f;
+    std::unordered_map<std::string, Vector3> result;
+
+    for (const auto& kv : blueprint->GetAnchors()) {
+        const std::string& name = kv.first;
+        const Blueprint::AnchorExpr& expr = kv.second;
+
+        float x = EvaluateStringExpr(expr[0], scope, outError) * CM_TO_M;
+        float y = EvaluateStringExpr(expr[1], scope, outError) * CM_TO_M;
+        float z = EvaluateStringExpr(expr[2], scope, outError) * CM_TO_M;
+
+        result[name] = Vector3(x, y, z);
+        MOON_LOG_INFO("CSGBuilder", "  Anchor '%s' = (%.4f, %.4f, %.4f) m", name.c_str(), x, y, z);
+    }
+
+    return result;
+}
+
+float CSGBuilder::EvaluateStringExpr(const std::string& exprStr, ParameterScope& scope, std::string& outError) {
+    // 尝试直接解析成数字（例如 "0" 或 "3.14"）
+    try {
+        size_t idx = 0;
+        float val = std::stof(exprStr, &idx);
+        if (idx == exprStr.size()) return val;
+    } catch (...) {}
+
+    // 否则走表达式求值器（与 EvaluateExpression 共用）
+    return EvaluateExpression(exprStr, scope, outError);
 }
 
 float CSGBuilder::ResolveValue(const ValueExpr& expr, ParameterScope& scope, std::string& outError) {
@@ -506,11 +703,16 @@ float CSGBuilder::EvaluateExpression(const std::string& exprStr, ParameterScope&
 void CSGBuilder::ResolveTransform(const TransformTRS& transformExpr, ParameterScope& scope,
                                    Vector3& outPosition, Quaternion& outRotation, Vector3& outScale,
                                    std::string& outError) {
-    // Position
-    float px = ResolveValue(transformExpr.positionX, scope, outError);
-    float py = ResolveValue(transformExpr.positionY, scope, outError);
-    float pz = ResolveValue(transformExpr.positionZ, scope, outError);
+    // Position - JSON 单位为 cm，乘以 0.01f 转换为引擎单位（米）
+    static constexpr float CM_TO_M = 0.01f;
+    float px = ResolveValue(transformExpr.positionX, scope, outError) * CM_TO_M;
+    float py = ResolveValue(transformExpr.positionY, scope, outError) * CM_TO_M;
+    float pz = ResolveValue(transformExpr.positionZ, scope, outError) * CM_TO_M;
     outPosition = Vector3(px, py, pz);
+    
+    if (px != 0.0f || py != 0.0f || pz != 0.0f) {
+        MOON_LOG_INFO("CSGBuilder", "Resolved position: (%.4f, %.4f, %.4f) m", px, py, pz);
+    }
 
     // Rotation (Euler angles in degrees -> Quaternion)
     float rx = ResolveValue(transformExpr.rotationX, scope, outError);

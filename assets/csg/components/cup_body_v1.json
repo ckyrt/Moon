@@ -9,6 +9,12 @@
     "thickness": 0.5,
     "bottom_thickness": 1.0
   },
+  "anchors": {
+    "origin":       [0, 0, 0],
+    "bottom_center": [0, 0, 0],
+    "rim_center":    [0, "$height", 0],
+    "center":        [0, "$height / 2", 0]
+  },
   "root": {
     "type": "csg",
     "operation": "subtract",
@@ -28,10 +34,10 @@
       "primitive": "cylinder",
       "params": {
         "radius": "$radius - $thickness",
-        "height": "$height - $bottom_thickness - $thickness"
+        "height": "$height - $bottom_thickness"
       },
       "transform": {
-        "position": [0, "($height + $bottom_thickness - $thickness) / 2", 0]
+        "position": [0, "($height + $bottom_thickness) / 2", 0]
       }
     }
   }

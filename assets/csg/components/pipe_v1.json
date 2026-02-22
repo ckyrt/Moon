@@ -1,12 +1,17 @@
 {
   "schema_version": 1,
   "name": "pipe_v1",
-  "description": "Hollow pipe (cylinder - cylinder)",
+  "description": "Hollow pipe (cylinder - cylinder). Origin at geometry center.",
   "version": 1,
   "parameters": {
     "length": 100.0,
     "outer_radius": 2.5,
     "wall_thickness": 0.3
+  },
+  "anchors": {
+    "center":        [0, 0, 0],
+    "bottom_center": [0, "-$length / 2", 0],
+    "top_center":    [0, "$length / 2",  0]
   },
   "root": {
     "type": "csg",

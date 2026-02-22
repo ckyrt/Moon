@@ -145,8 +145,16 @@ private:
     // 构建 Group
     BuildResult BuildGroup(const GroupNode* group, ParameterScope& scope, std::string& outError);
 
-    // 构建 Reference
+    // 构建 Reference（内部版本，返回结果 + 求值后的 anchor 坐标）
     BuildResult BuildReference(const RefNode* ref, ParameterScope& scope, std::string& outError);
+
+    // 对 blueprint 的 anchors 用指定 scope 求值，返回 name -> Vector3
+    // CM_TO_M 会在此处应用（anchors 坐标单位为 cm）
+    std::unordered_map<std::string, Vector3> EvaluateAnchors(
+        const Blueprint* blueprint, ParameterScope& scope, std::string& outError);
+
+    // 解析单个表达式字符串（用于 anchor 坐标）
+    float EvaluateStringExpr(const std::string& exprStr, ParameterScope& scope, std::string& outError);
 
     // 解析值表达式
     float ResolveValue(const ValueExpr& expr, ParameterScope& scope, std::string& outError);
@@ -161,6 +169,10 @@ private:
 
     // Blueprint 数据库（用于 Reference）
     BlueprintDatabase* m_database;
+
+    // 递归构建深度计数（0 = 最外层，>0 = 被 reference 调用）
+    // 用于避免对已经 FlatShading 的 mesh 重复转换
+    int m_buildDepth = 0;
 };
 
 } // namespace CSG

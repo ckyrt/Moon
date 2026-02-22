@@ -2,6 +2,7 @@
 
 #include "BlueprintTypes.h"
 #include <string>
+#include <array>
 #include <memory>
 #include <unordered_map>
 
@@ -36,6 +37,13 @@ public:
     const ParameterDef* GetParameter(const std::string& name) const;
     const std::unordered_map<std::string, ParameterDef>& GetParameters() const { return m_parameters; }
 
+    // Anchor 系统
+    // anchors 存储为表达式字符串三元组 [x, y, z]，在 Build 时用 ParameterScope 求值
+    using AnchorExpr = std::array<std::string, 3>;  // [x_expr, y_expr, z_expr]
+    void AddAnchor(const std::string& name, const AnchorExpr& expr) { m_anchors[name] = expr; }
+    bool HasAnchor(const std::string& name) const { return m_anchors.count(name) > 0; }
+    const std::unordered_map<std::string, AnchorExpr>& GetAnchors() const { return m_anchors; }
+
     // Node 树
     void SetRootNode(std::unique_ptr<Node> root);
     const Node* GetRootNode() const { return m_rootNode.get(); }
@@ -47,6 +55,7 @@ public:
 private:
     BlueprintMetadata m_metadata;
     std::unordered_map<std::string, ParameterDef> m_parameters;
+    std::unordered_map<std::string, std::array<std::string, 3>> m_anchors;  // name -> [x,y,z] expr
     std::unique_ptr<Node> m_rootNode;
 };
 

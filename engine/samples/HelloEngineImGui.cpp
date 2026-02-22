@@ -13,7 +13,7 @@ namespace HelloEngineImGui {
 static ImGuiContext* g_ImGuiContext = nullptr;
 static Diligent::ImGuiImplWin32* g_ImGuiWin32 = nullptr;
 static DiligentRenderer* g_Renderer = nullptr;
-static bool g_DebugGridEnabled = false;  // 调试网格开关
+static bool g_DebugGridEnabled = true;   // 调试网格开关
 
 } // namespace HelloEngineImGui
 
@@ -108,6 +108,8 @@ void RenderUI(Moon::PerspectiveCamera* camera, Moon::FPSCounter* fpsCounter)
                 ImGui::Text("  Y: %.2f", pos.y);
                 ImGui::Text("  Z: %.2f", pos.z);
             }
+            ImGui::Separator();
+            ImGui::Checkbox("Debug Grid", &g_DebugGridEnabled);
         }
         ImGui::End();
     }

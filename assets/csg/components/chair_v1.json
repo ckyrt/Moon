@@ -1,21 +1,82 @@
 {
   "schema_version": 1,
   "name": "chair_v1",
-  "description": "Simple chair with seat, backrest and four legs - using group (no CSG needed)",
+  "description": "Simple chair with seat, backrest and four legs. Origin at floor (y=0 = bottom of legs).",
   "version": 1,
   "parameters": {
-    "seat_width": 45.0,
-    "seat_depth": 45.0,
     "seat_height": 45.0,
     "seat_thickness": 3.0,
-    "backrest_height": 50.0,
+    "seat_width": 45.0,
+    "seat_depth": 40.0,
+    "backrest_height": 40.0,
     "backrest_thickness": 3.0,
-    "leg_radius": 2.0
+    "leg_radius": 2.5,
+    "leg_inset": 5.0
+  },
+  "anchors": {
+    "center":        [0, "($seat_height + $seat_thickness + $backrest_height) / 2", 0],
+    "bottom_center": [0, 0, 0],
+    "top_center":    [0, "$seat_height + $seat_thickness + $backrest_height", 0],
+    "seat_top":      [0, "$seat_height + $seat_thickness", 0]
   },
   "root": {
     "type": "group",
     "children": [
       {
+        "name": "leg_fl",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$seat_height"
+        },
+        "transform": {
+          "position": ["$seat_width / 2 - $leg_inset", "$seat_height / 2", "$seat_depth / 2 - $leg_inset"]
+        },
+        "material": "wood",
+        "comment": "Cylinder几何中心在原点，Y[-h/2, h/2]，position.y=$seat_height/2让底部在地面"
+      },
+      {
+        "name": "leg_fr",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$seat_height"
+        },
+        "transform": {
+          "position": ["$seat_width / 2 - $leg_inset", "$seat_height / 2", "-$seat_depth / 2 + $leg_inset"]
+        },
+        "material": "wood"
+      },
+      {
+        "name": "leg_bl",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$seat_height"
+        },
+        "transform": {
+          "position": ["-$seat_width / 2 + $leg_inset", "$seat_height / 2", "$seat_depth / 2 - $leg_inset"]
+        },
+        "material": "wood"
+      },
+      {
+        "name": "leg_br",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$seat_height"
+        },
+        "transform": {
+          "position": ["-$seat_width / 2 + $leg_inset", "$seat_height / 2", "-$seat_depth / 2 + $leg_inset"]
+        },
+        "material": "wood"
+      },
+      {
+        "name": "seat",
         "type": "primitive",
         "primitive": "cube",
         "params": {
@@ -24,11 +85,13 @@
           "size_z": "$seat_depth"
         },
         "transform": {
-          "position": [0, "$seat_height", 0]
+          "position": [0, "$seat_height + $seat_thickness / 2", 0]
         },
-        "material": "wood"
+        "material": "wood",
+        "comment": "Box几何中心在原点，Y[-t/2, t/2]，position.y=$seat_height+$seat_thickness/2让底部在seat_height"
       },
       {
+        "name": "backrest",
         "type": "primitive",
         "primitive": "cube",
         "params": {
@@ -37,55 +100,7 @@
           "size_z": "$backrest_thickness"
         },
         "transform": {
-          "position": [0, "$seat_height + $backrest_height / 2", "-$seat_depth / 2 + $backrest_thickness / 2"]
-        },
-        "material": "wood"
-      },
-      {
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$seat_height"
-        },
-        "transform": {
-          "position": ["$seat_width / 2 - 5", "$seat_height / 2", "$seat_depth / 2 - 5"]
-        },
-        "material": "wood"
-      },
-      {
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$seat_height"
-        },
-        "transform": {
-          "position": ["$seat_width / 2 - 5", "$seat_height / 2", "-$seat_depth / 2 + 5"]
-        },
-        "material": "wood"
-      },
-      {
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$seat_height"
-        },
-        "transform": {
-          "position": ["-$seat_width / 2 + 5", "$seat_height / 2", "$seat_depth / 2 - 5"]
-        },
-        "material": "wood"
-      },
-      {
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$seat_height"
-        },
-        "transform": {
-          "position": ["-$seat_width / 2 + 5", "$seat_height / 2", "-$seat_depth / 2 + 5"]
+          "position": [0, "$seat_height + $seat_thickness + $backrest_height / 2", "-$seat_depth / 2 + $backrest_thickness / 2"]
         },
         "material": "wood"
       }

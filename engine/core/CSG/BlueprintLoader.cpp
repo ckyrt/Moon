@@ -47,6 +47,14 @@ std::unique_ptr<Blueprint> BlueprintLoader::ParseFromString(const std::string& j
             }
         }
 
+        // 2b. 解析 anchors（可选）
+        if (j.contains("anchors")) {
+            MOON_LOG_INFO("BlueprintLoader", "Parsing anchors...");
+            if (!ParseAnchors(&j["anchors"], blueprint.get(), outError)) {
+                return nullptr;
+            }
+        }
+
         // 3. 解析 root 节点
         if (!j.contains("root")) {
             outError = "Blueprint missing 'root' node";
@@ -300,6 +308,12 @@ std::unique_ptr<Node> BlueprintLoader::ParseNode(const void* jsonPtr, std::strin
             for (const auto& childJson : j["children"]) {
                 auto child = ParseNode(&childJson, outError);
                 if (!child) return nullptr;
+                // 解析子节点名称（用于 attach target_path 解析）
+                std::string childName = "";
+                if (childJson.contains("name")) {
+                    childName = childJson["name"].get<std::string>();
+                }
+                group->childNames.push_back(childName);
                 group->children.push_back(std::move(child));
             }
 
@@ -337,6 +351,19 @@ std::unique_ptr<Node> BlueprintLoader::ParseNode(const void* jsonPtr, std::strin
                 }
             }
 
+            // attach（可选）
+            if (j.contains("attach")) {
+                const json& att = j["attach"];
+                if (!att.contains("self_anchor") || !att.contains("target_path") || !att.contains("target_anchor")) {
+                    outError = "'attach' missing required fields: self_anchor, target_path, target_anchor";
+                    return nullptr;
+                }
+                ref->attach.selfAnchor   = att["self_anchor"].get<std::string>();
+                ref->attach.targetPath   = att["target_path"].get<std::string>();
+                ref->attach.targetAnchor = att["target_anchor"].get<std::string>();
+                ref->attach.hasAttach    = true;
+            }
+
             break;
         }
     }
@@ -366,6 +393,52 @@ bool BlueprintLoader::ParseTransform(const void* jsonPtr, TransformTRS& transfor
         transform.scaleX = ParseValueExpr(&j["scale"][0], outError);
         transform.scaleY = ParseValueExpr(&j["scale"][1], outError);
         transform.scaleZ = ParseValueExpr(&j["scale"][2], outError);
+    }
+
+    return true;
+}
+
+bool BlueprintLoader::ParseAnchors(const void* jsonPtr, Blueprint* blueprint, std::string& outError) {
+    const json& j = *static_cast<const json*>(jsonPtr);
+
+    // anchors 格式：
+    // "anchors": {
+    //   "center":        [0, 0, 0],
+    //   "bottom_center": [0, "-$height/2", 0],
+    //   "top_center":    [0, "$height/2",  0]
+    // }
+    if (!j.is_object()) {
+        outError = "'anchors' must be a JSON object";
+        return false;
+    }
+
+    for (auto it = j.begin(); it != j.end(); ++it) {
+        const std::string& anchorName = it.key();
+        const json& val = it.value();
+
+        if (!val.is_array() || val.size() != 3) {
+            outError = "Anchor '" + anchorName + "' must be an array of 3 elements [x, y, z]";
+            return false;
+        }
+
+        // 每个分量可以是数字或字符串表达式
+        auto exprToString = [&](const json& elem) -> std::string {
+            if (elem.is_number()) {
+                return std::to_string(elem.get<float>());
+            } else if (elem.is_string()) {
+                return elem.get<std::string>();
+            }
+            return "0";
+        };
+
+        Blueprint::AnchorExpr expr;
+        expr[0] = exprToString(val[0]);
+        expr[1] = exprToString(val[1]);
+        expr[2] = exprToString(val[2]);
+
+        blueprint->AddAnchor(anchorName, expr);
+        MOON_LOG_INFO("BlueprintLoader", "  Anchor '%s': [%s, %s, %s]",
+                      anchorName.c_str(), expr[0].c_str(), expr[1].c_str(), expr[2].c_str());
     }
 
     return true;

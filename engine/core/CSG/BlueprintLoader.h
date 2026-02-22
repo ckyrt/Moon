@@ -33,6 +33,7 @@ private:
     // 内部解析辅助函数
     static bool ParseMetadata(const void* json, Blueprint* blueprint, std::string& outError);
     static bool ParseParameters(const void* json, Blueprint* blueprint, std::string& outError);
+    static bool ParseAnchors(const void* json, Blueprint* blueprint, std::string& outError);
     static std::unique_ptr<Node> ParseNode(const void* jsonNode, std::string& outError);
     static bool ParseTransform(const void* jsonTransform, TransformTRS& transform, std::string& outError);
     static ValueExpr ParseValueExpr(const void* jsonValue, std::string& outError);

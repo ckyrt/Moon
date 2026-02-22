@@ -1,12 +1,17 @@
 {
   "schema_version": 1,
   "name": "bottle_body_v1",
-  "description": "Bottle body (simple hollow cylinder)",
+  "description": "Bottle body (simple hollow cylinder). Origin at geometry center.",
   "version": 1,
   "parameters": {
     "radius": 3.5,
     "height": 20.0,
     "thickness": 0.2
+  },
+  "anchors": {
+    "center":        [0, 0, 0],
+    "bottom_center": [0, "-$height / 2", 0],
+    "top_center":    [0, "$height / 2",  0]
   },
   "root": {
     "type": "csg",
@@ -24,10 +29,10 @@
       "primitive": "cylinder",
       "params": {
         "radius": "$radius - $thickness",
-        "height": "$height - $thickness"
+        "height": "$height + 1.0"
       },
       "transform": {
-        "position": [0, "($height + $thickness) / 2 - $height / 2", 0]
+        "position": [0, "$thickness / 2", 0]
       }
     }
   }

@@ -2,6 +2,46 @@
   "schema_version": 1,
   "units": "centimeters",
   "description": "CSG Blueprint Library - All dimensions are in centimeters (cm)",
+  "coordinate_system": {
+    "description": "Left-Handed Coordinate System (Y-Up)",
+    "axes": {
+      "x": "right (positive), left (negative)",
+      "y": "up (positive), down (negative)",
+      "z": "forward (positive), backward (negative)"
+    },
+    "conventions": {
+      "position": "[x, y, z] where y=0 is ground level",
+      "rotation_euler": "[pitch, yaw, roll] in degrees",
+      "scale": "[x_scale, y_scale, z_scale]"
+    }
+  },
+  "primitive_origins": {
+    "description": "所有基础几何体的原点（pivot）均在几何中心。position 字段指定的是几何中心的坐标。",
+    "cube": {
+      "origin": "几何中心",
+      "note": "params: size_x(宽/X轴), size_y(高/Y轴), size_z(深/Z轴)。底面 y = -size_y/2，顶面 y = +size_y/2。放在地面上时 position.y = size_y/2。"
+    },
+    "cylinder": {
+      "origin": "几何中心（高度方向中点）",
+      "note": "params: radius(半径), height(高度，沿Y轴)。底面 y = -height/2，顶面 y = +height/2。放在地面上时 position.y = height/2。"
+    },
+    "sphere": {
+      "origin": "球心",
+      "note": "params: radius(半径)。放在地面上时 position.y = radius。"
+    },
+    "cone": {
+      "origin": "几何中心（高度方向中点）",
+      "note": "params: radius(底面半径), height(高度，沿Y轴，尖端朝上)。放在地面上时 position.y = height/2。"
+    }
+  },
+  "assembly_guide": {
+    "description": "组合物体时的位置计算规则",
+    "rules": [
+      "group 节点中每个子节点的 position 是相对于整个 blueprint 原点的偏移",
+      "桌腿（cylinder）中心 y = leg_height/2，桌面（cube）中心 y = leg_height + top_thickness/2",
+      "所有尺寸单位为 cm，引擎加载时自动 * 0.01 转换为米"
+    ]
+  },
   "items": [
     {
       "id": "beam_v1",
@@ -38,6 +78,12 @@
       "path": "components/cup_body_v1.json",
       "category": "container",
       "tags": ["level2", "container", "cup"]
+    },
+    {
+      "id": "hemisphere_down_v1",
+      "path": "components/hemisphere_down_v1.json",
+      "category": "structural",
+      "tags": ["level1", "primitive", "hemisphere", "half-sphere"]
     },
     {
       "id": "bowl_v1",
@@ -80,6 +126,18 @@
       "path": "components/door_v1.json",
       "category": "furniture",
       "tags": ["level3", "furniture", "door", "group"]
+    },
+    {
+      "id": "door_frame_v1",
+      "path": "components/door_frame_v1.json",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "door", "frame", "group"]
+    },
+    {
+      "id": "complete_door_v1",
+      "path": "components/complete_door_v1.json",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "door", "complete", "group"]
     }
   ]
 }

@@ -1,82 +1,80 @@
 {
   "schema_version": 1,
   "name": "table_v1",
-  "description": "Standard table with four legs - using group (no CSG needed)",
+  "description": "Standard table using anchor-attach system. Origin at floor (y=0 = bottom of legs). Leg Y is automatically computed via attach.",
   "version": 1,
   "parameters": {
-    "table_length": 120.0,
-    "table_width": 80.0,
-    "table_height": 75.0,
-    "top_thickness": 2.5,
-    "leg_radius": 3.0
+    "w":     120.0,
+    "d":      80.0,
+    "h":      73.0,
+    "t":       3.0,
+    "r":       3.0,
+    "inset":  10.0
+  },
+  "anchors": {
+    "center":        [0, "($h + $t) / 2", 0],
+    "bottom_center": [0, 0,                0],
+    "top_center":    [0, "$h + $t",        0]
   },
   "root": {
     "type": "group",
     "children": [
       {
-        "type": "primitive",
-        "primitive": "cube",
-        "params": {
-          "size_x": "$table_length",
-          "size_y": "$top_thickness",
-          "size_z": "$table_width"
-        },
-        "transform": {
-          "position": [0, "$table_height - $top_thickness / 2", 0]
-        },
-        "material": "wood"
+        "name": "top",
+        "type": "reference",
+        "ref": "table_top_v1",
+        "overrides": { "w": "$w", "d": "$d", "t": "$t" },
+        "transform": { "position": [0, "$h + $t / 2", 0] }
       },
       {
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$table_height - $top_thickness"
+        "name": "leg_fl",
+        "type": "reference",
+        "ref": "table_leg_v1",
+        "overrides": { "h": "$h", "r": "$r" },
+        "attach": {
+          "self_anchor":   "top_center",
+          "target_path":   "../top",
+          "target_anchor": "bottom_center"
         },
-        "transform": {
-          "position": ["$table_length / 2 - 10", "($table_height - $top_thickness) / 2", "$table_width / 2 - 10"]
-        },
-        "material": "wood"
+        "transform": { "position": ["$w / 2 - $inset", 0, "$d / 2 - $inset"] }
       },
       {
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$table_height - $top_thickness"
+        "name": "leg_fr",
+        "type": "reference",
+        "ref": "table_leg_v1",
+        "overrides": { "h": "$h", "r": "$r" },
+        "attach": {
+          "self_anchor":   "top_center",
+          "target_path":   "../top",
+          "target_anchor": "bottom_center"
         },
-        "transform": {
-          "position": ["$table_length / 2 - 10", "($table_height - $top_thickness) / 2", "-$table_width / 2 + 10"]
-        },
-        "material": "wood"
+        "transform": { "position": ["$w / 2 - $inset", 0, "-$d / 2 + $inset"] }
       },
       {
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$table_height - $top_thickness"
+        "name": "leg_bl",
+        "type": "reference",
+        "ref": "table_leg_v1",
+        "overrides": { "h": "$h", "r": "$r" },
+        "attach": {
+          "self_anchor":   "top_center",
+          "target_path":   "../top",
+          "target_anchor": "bottom_center"
         },
-        "transform": {
-          "position": ["-$table_length / 2 + 10", "($table_height - $top_thickness) / 2", "$table_width / 2 - 10"]
-        },
-        "material": "wood"
+        "transform": { "position": ["-$w / 2 + $inset", 0, "$d / 2 - $inset"] }
       },
       {
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$table_height - $top_thickness"
+        "name": "leg_br",
+        "type": "reference",
+        "ref": "table_leg_v1",
+        "overrides": { "h": "$h", "r": "$r" },
+        "attach": {
+          "self_anchor":   "top_center",
+          "target_path":   "../top",
+          "target_anchor": "bottom_center"
         },
-        "transform": {
-          "position": ["-$table_length / 2 + 10", "($table_height - $top_thickness) / 2", "-$table_width / 2 + 10"]
-        },
-        "material": "wood"
+        "transform": { "position": ["-$w / 2 + $inset", 0, "-$d / 2 + $inset"] }
       }
     ],
-    "output": {
-      "mode": "separate"
-    }
+    "output": { "mode": "separate" }
   }
 }

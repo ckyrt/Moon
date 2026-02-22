@@ -1,11 +1,16 @@
 {
   "schema_version": 1,
   "name": "rod_v1",
-  "description": "Thin rod (thin cylinder for legs/supports)",
+  "description": "Thin rod (thin cylinder for legs/supports). Origin at geometry center.",
   "version": 1,
   "parameters": {
     "length": 75.0,
     "radius": 2.0
+  },
+  "anchors": {
+    "center":        [0, 0, 0],
+    "bottom_center": [0, "-$length / 2", 0],
+    "top_center":    [0, "$length / 2",  0]
   },
   "root": {
     "type": "primitive",

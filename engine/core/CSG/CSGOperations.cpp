@@ -21,10 +21,12 @@ static manifold::Manifold MeshToManifold(const Mesh* mesh) {
     manifold::MeshGL meshGL;
     meshGL.numProp = 3;
     meshGL.vertProperties.reserve(vertices.size() * 3);
+    // 反向坐标转换：Engine (Y-up) → Manifold (Z-up)
+    // Engine (x, y, z) → Manifold (x, -z, y)
     for (const auto& v : vertices) {
-        meshGL.vertProperties.push_back(v.position.x);
-        meshGL.vertProperties.push_back(v.position.y);
-        meshGL.vertProperties.push_back(v.position.z);
+        meshGL.vertProperties.push_back(v.position.x);    // Engine X → Manifold X
+        meshGL.vertProperties.push_back(-v.position.z);   // Engine -Z → Manifold Y  
+        meshGL.vertProperties.push_back(v.position.y);    // Engine Y → Manifold Z
     }
 
     meshGL.triVerts.reserve(indices.size());
@@ -52,17 +54,29 @@ static std::shared_ptr<Mesh> ManifoldToMesh_PreserveTopology(const manifold::Man
     vertices.reserve(numVerts);
 
     // 保留顶点共享结构（用于布尔运算）
+    // ⚠️ Manifold使用Z-up坐标系，引擎使用Y-up，在这里统一转换：
+    // Manifold (x, y, z) → Engine (x, z, -y)  即：Z→Y, Y→-Z
     for (size_t i = 0; i < numVerts; ++i) {
         size_t offset = i * meshGL.numProp;
+        float mx = meshGL.vertProperties[offset + 0];
+        float my = meshGL.vertProperties[offset + 1];
+        float mz = meshGL.vertProperties[offset + 2];
+        
         Vertex v;
-        v.position.x = meshGL.vertProperties[offset + 0];
-        v.position.y = meshGL.vertProperties[offset + 1];
-        v.position.z = meshGL.vertProperties[offset + 2];
+        // 坐标系转换：Manifold的Z轴 → 引擎的Y轴
+        v.position.x = mx;
+        v.position.y = mz;  // Manifold的Z → 引擎的Y
+        v.position.z = -my; // Manifold的Y → 引擎的-Z
         v.normal = Vector3(0, 0, 0);  // 稍后计算
         
-        // 暂时使用简单投影，稍后根据法线重新计算
         v.uv = Vector2(0, 0);
         vertices.push_back(v);
+        
+        // DEBUG: 输出第一个顶点的转换
+        if (i == 0) {
+            MOON_LOG_INFO("CSG", "  ManifoldToMesh coord transform: Manifold(%.4f, %.4f, %.4f) → Engine(%.4f, %.4f, %.4f)",
+                mx, my, mz, v.position.x, v.position.y, v.position.z);
+        }
     }
 
     std::vector<uint32_t> indices(meshGL.triVerts.begin(), meshGL.triVerts.end());
@@ -143,21 +157,23 @@ static std::shared_ptr<Mesh> ManifoldToMesh_FlatShading(const manifold::Manifold
         uint32_t origIdx1 = meshGL.triVerts[triIdx * 3 + 1];
         uint32_t origIdx2 = meshGL.triVerts[triIdx * 3 + 2];
         
-        Vector3 p0(
-            meshGL.vertProperties[origIdx0 * meshGL.numProp + 0],
-            meshGL.vertProperties[origIdx0 * meshGL.numProp + 1],
-            meshGL.vertProperties[origIdx0 * meshGL.numProp + 2]
-        );
-        Vector3 p1(
-            meshGL.vertProperties[origIdx1 * meshGL.numProp + 0],
-            meshGL.vertProperties[origIdx1 * meshGL.numProp + 1],
-            meshGL.vertProperties[origIdx1 * meshGL.numProp + 2]
-        );
-        Vector3 p2(
-            meshGL.vertProperties[origIdx2 * meshGL.numProp + 0],
-            meshGL.vertProperties[origIdx2 * meshGL.numProp + 1],
-            meshGL.vertProperties[origIdx2 * meshGL.numProp + 2]
-        );
+        // 读取Manifold坐标（Z-up）
+        float mx0 = meshGL.vertProperties[origIdx0 * meshGL.numProp + 0];
+        float my0 = meshGL.vertProperties[origIdx0 * meshGL.numProp + 1];
+        float mz0 = meshGL.vertProperties[origIdx0 * meshGL.numProp + 2];
+        
+        float mx1 = meshGL.vertProperties[origIdx1 * meshGL.numProp + 0];
+        float my1 = meshGL.vertProperties[origIdx1 * meshGL.numProp + 1];
+        float mz1 = meshGL.vertProperties[origIdx1 * meshGL.numProp + 2];
+        
+        float mx2 = meshGL.vertProperties[origIdx2 * meshGL.numProp + 0];
+        float my2 = meshGL.vertProperties[origIdx2 * meshGL.numProp + 1];
+        float mz2 = meshGL.vertProperties[origIdx2 * meshGL.numProp + 2];
+        
+        // 转换到引擎坐标系（Y-up）: (x, y, z) → (x, z, -y)
+        Vector3 p0(mx0, mz0, -my0);
+        Vector3 p1(mx1, mz1, -my1);
+        Vector3 p2(mx2, mz2, -my2);
         
         Vector3 edge1(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z);
         Vector3 edge2(p2.x - p0.x, p2.y - p0.y, p2.z - p0.z);
@@ -270,16 +286,35 @@ std::shared_ptr<Mesh> PerformBoolean(const Mesh* meshA, const Mesh* meshB, Opera
     return ManifoldToMesh_PreserveTopology(result);
 }
 
+/**
+ * 创建CSG立方体
+ * 
+ * 【返回几何体说明 - 引擎坐标系(Y-up)】
+ * - 原点位置：几何中心
+ * - 示例：CreateCSGBox(1, 2, 3) 返回的立方体范围是
+ *   + X: [-0.5, 0.5] (宽度1)
+ *   + Y: [-1.0, 1.0] (高度2)
+ *   + Z: [-1.5, 1.5] (深度3)
+ * 
+ * @param width   宽度 (X轴方向)
+ * @param height  高度 (Y轴方向，向上)
+ * @param depth   深度 (Z轴方向)
+ * @param position 世界坐标位置（引擎坐标系），默认(0,0,0)
+ * @param rotation 旋转欧拉角(度)，默认无旋转
+ * @param scale   缩放系数，默认(1,1,1)
+ * @param flatShading 是否使用平面着色（硬边效果），默认true
+ */
 std::shared_ptr<Mesh> CreateCSGBox(float width, float height, float depth,
                                    const Vector3& position,
                                    const Vector3& rotation,
                                    const Vector3& scale,
                                    bool flatShading) {
-    MOON_LOG_INFO("CSG", "Creating box (%.2f x %.2f x %.2f) at pos(%.2f, %.2f, %.2f)", 
-                 width, height, depth, position.x, position.y, position.z);
+    // Manifold是Z-up，引擎是Y-up，所以需要转换参数顺序
+    // 引擎(width, height, depth) → Manifold(width, depth, height)
+    // 因为引擎Y轴(高度)对应ManifoldZ轴，引擎Z轴(深度)对应ManifoldY轴
+    manifold::Manifold box = manifold::Manifold::Cube({width, depth, height}, true);
     
-    manifold::Manifold box = manifold::Manifold::Cube({width, height, depth}, true);
-    
+    // 应用用户变换（在Manifold坐标系中）
     if (scale != Vector3(1, 1, 1)) {
         box = box.Scale({scale.x, scale.y, scale.z});
     }
@@ -287,13 +322,31 @@ std::shared_ptr<Mesh> CreateCSGBox(float width, float height, float depth,
         box = box.Rotate(rotation.x, rotation.y, rotation.z);
     }
     if (position != Vector3(0, 0, 0)) {
-        box = box.Translate({position.x, position.y, position.z});
+        // position是引擎坐标系(Y-up)，需要转换到Manifold坐标系(Z-up)
+        box = box.Translate({position.x, -position.z, position.y});
     }
     
-    // 根据flatShading参数选择转换方式
     return flatShading ? ManifoldToMesh_FlatShading(box) : ManifoldToMesh_PreserveTopology(box);
 }
 
+/**
+ * 创建CSG球体
+ * 
+ * 【返回几何体说明 - 引擎坐标系(Y-up)】
+ * - 原点位置：球心
+ * - 示例：CreateCSGSphere(1.0) 返回的球体范围是
+ *   + X: [-1.0, 1.0]
+ *   + Y: [-1.0, 1.0]
+ *   + Z: [-1.0, 1.0]
+ * - 注意：球体旋转无视觉差异
+ * 
+ * @param radius  球体半径
+ * @param segments 圆周细分数，越大越平滑，默认32
+ * @param position 世界坐标位置（引擎坐标系），默认(0,0,0)
+ * @param rotation 旋转欧拉角(度)，默认无旋转
+ * @param scale   缩放系数，默认(1,1,1)
+ * @param flatShading 是否使用平面着色（硬边效果），默认true
+ */
 std::shared_ptr<Mesh> CreateCSGSphere(float radius, int segments,
                                       const Vector3& position,
                                       const Vector3& rotation,
@@ -308,26 +361,46 @@ std::shared_ptr<Mesh> CreateCSGSphere(float radius, int segments,
         sphere = sphere.Rotate(rotation.x, rotation.y, rotation.z);
     }
     if (position != Vector3(0, 0, 0)) {
-        sphere = sphere.Translate({position.x, position.y, position.z});
+        // position是引擎坐标系(Y-up)，需要转换到Manifold坐标系(Z-up)
+        sphere = sphere.Translate({position.x, -position.z, position.y});
     }
     
     return flatShading ? ManifoldToMesh_FlatShading(sphere) : ManifoldToMesh_PreserveTopology(sphere);
 }
 
+/**
+ * 创建CSG圆柱体
+ * 
+ * 【返回几何体说明 - 引擎坐标系(Y-up)】
+ * - 原点位置：⚠️ 几何中心（已自动居中）
+ * - 朝向：沿Y轴向上延伸
+ * - 示例：CreateCSGCylinder(0.5, 2.0) 返回的圆柱范围是
+ *   + X: [-0.5, 0.5] (直径1.0)
+ *   + Y: [-1.0, 1.0] (高度2.0，几何中心在Y=0)
+ *   + Z: [-0.5, 0.5] (直径1.0)
+ * 
+ * @param radius  圆柱半径（底面和顶面相同）
+ * @param height  圆柱高度（沿Y轴方向）
+ * @param segments 圆周细分数，越大越平滑，默认32
+ * @param position 世界坐标位置（引擎坐标系，指定几何中心），默认(0,0,0)
+ * @param rotation 旋转欧拉角(度)，默认无旋转
+ * @param scale   缩放系数，默认(1,1,1)
+ * @param flatShading 是否使用平面着色（硬边效果），默认true
+ */
 std::shared_ptr<Mesh> CreateCSGCylinder(float radius, float height, int segments,
                                         const Vector3& position,
                                         const Vector3& rotation,
                                         const Vector3& scale,
                                         bool flatShading) {
-    // Manifold的Cylinder: 底部在原点，沿Z轴向上延伸height
+    // Manifold的Cylinder: 底部在原点(0,0,0)，沿Z轴向上延伸height
     manifold::Manifold cylinder = manifold::Manifold::Cylinder(height, radius, radius, segments);
     
-    // Manifold使用Z-up坐标系，引擎使用Y-up坐标系
-    // 1. 先将圆柱体中心移到原点（从底部原点移到中心）
-    cylinder = cylinder.Translate({0.0f, 0.0f, height / 2.0f});
-    // 2. 绕X轴旋转+90度将Z轴转换为Y轴（+Z → +Y，杯口朝上）
-    cylinder = cylinder.Rotate(90.0f, 0.0f, 0.0f);
+    // 在Manifold坐标系(Z-up)中将圆柱中心移到原点
+    // Manifold Cylinder原始范围: Z[0, height]，要让它居中到Z[-height/2, height/2]
+    // 所以需要向下平移-height/2
+    cylinder = cylinder.Translate({0.0f, 0.0f, -height / 2.0f});
     
+    // 应用用户变换
     if (scale != Vector3(1, 1, 1)) {
         cylinder = cylinder.Scale({scale.x, scale.y, scale.z});
     }
@@ -335,18 +408,40 @@ std::shared_ptr<Mesh> CreateCSGCylinder(float radius, float height, int segments
         cylinder = cylinder.Rotate(rotation.x, rotation.y, rotation.z);
     }
     if (position != Vector3(0, 0, 0)) {
-        cylinder = cylinder.Translate({position.x, position.y, position.z});
+        // position是引擎坐标系(Y-up)，需要转换到Manifold坐标系(Z-up)
+        cylinder = cylinder.Translate({position.x, -position.z, position.y});
     }
     
     return flatShading ? ManifoldToMesh_FlatShading(cylinder) : ManifoldToMesh_PreserveTopology(cylinder);
 }
 
+/**
+ * 创建CSG圆锥体
+ * 
+ * 【返回几何体说明 - 引擎坐标系(Y-up)】
+ * - 原点位置：几何中心（已自动居中）
+ * - 朝向：底面在下(-Y)，尖端在上(+Y)
+ * - 示例：CreateCSGCone(0.5, 2.0) 返回的圆锥范围是
+ *   + X: [-0.5, 0.5] (底面直径1.0)
+ *   + Y: [-1.0, 1.0] (高度2.0，几何中心在Y=0)
+ *   + Z: [-0.5, 0.5] (底面直径1.0)
+ *   + 顶点在(0, 1.0, 0)
+ * 
+ * @param radius  底面半径（顶端为尖点，半径为0）
+ * @param height  圆锥高度（沿Y轴方向）
+ * @param segments 圆周细分数，越大越平滑，默认32
+ * @param position 世界坐标位置（引擎坐标系，指定几何中心），默认(0,0,0)
+ * @param rotation 旋转欧拉角(度)，默认无旋转
+ * @param scale   缩放系数，默认(1,1,1)
+ * @param flatShading 是否使用平面着色（硬边效果），默认true
+ */
 std::shared_ptr<Mesh> CreateCSGCone(float radius, float height, int segments,
                                     const Vector3& position,
                                     const Vector3& rotation,
                                     const Vector3& scale,
                                     bool flatShading) {
-    // Manifold的Cylinder(height, radiusLow, radiusHigh): 底部在原点，沿Z轴向上
+    // Manifold::Cylinder(height, bottomRadius, topRadius)
+    // 圆锥是topRadius=0的特殊圆柱，底部在原点(0,0,0)，沿Z轴向上延伸
     manifold::Manifold cone = manifold::Manifold::Cylinder(height, radius, 0.0f, segments);
     
     if (cone.Status() != manifold::Manifold::Error::NoError) {
@@ -354,12 +449,12 @@ std::shared_ptr<Mesh> CreateCSGCone(float radius, float height, int segments,
         return nullptr;
     }
     
-    // Manifold使用Z-up坐标系，引擎使用Y-up坐标系
-    // 1. 先将圆锥中心移到原点（从底部原点移到中心）
-    cone = cone.Translate({0.0f, 0.0f, height / 2.0f});
-    // 2. 绕X轴旋转+90度将Z轴转换为Y轴（+Z → +Y，尖端朝上）
-    cone = cone.Rotate(90.0f, 0.0f, 0.0f);
+    // 在Manifold坐标系(Z-up)中将圆锥中心移到原点
+    // Manifold Cone原始范围: Z[0, height]，要让它居中到Z[-height/2, height/2]
+    // 所以需要向下平移-height/2
+    cone = cone.Translate({0.0f, 0.0f, -height / 2.0f});
     
+    // 应用用户变换
     if (scale != Vector3(1, 1, 1)) {
         cone = cone.Scale({scale.x, scale.y, scale.z});
     }
@@ -367,7 +462,8 @@ std::shared_ptr<Mesh> CreateCSGCone(float radius, float height, int segments,
         cone = cone.Rotate(rotation.x, rotation.y, rotation.z);
     }
     if (position != Vector3(0, 0, 0)) {
-        cone = cone.Translate({position.x, position.y, position.z});
+        // position是引擎坐标系(Y-up)，需要转换到Manifold坐标系(Z-up)
+        cone = cone.Translate({position.x, -position.z, position.y});
     }
     
     return flatShading ? ManifoldToMesh_FlatShading(cone) : ManifoldToMesh_PreserveTopology(cone);

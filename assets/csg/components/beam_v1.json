@@ -1,12 +1,19 @@
 {
   "schema_version": 1,
   "name": "beam_v1",
-  "description": "Basic beam (rectangular prism, structural component)",
+  "description": "Basic beam (rectangular prism, structural component). Origin at geometry center.",
   "version": 1,
   "parameters": {
     "length": 200.0,
     "width": 10.0,
     "height": 15.0
+  },
+  "anchors": {
+    "center":        [0, 0, 0],
+    "bottom_center": [0, "-$height / 2", 0],
+    "top_center":    [0, "$height / 2",  0],
+    "left_center":   ["-$length / 2", 0, 0],
+    "right_center":  ["$length / 2",  0, 0]
   },
   "root": {
     "type": "primitive",

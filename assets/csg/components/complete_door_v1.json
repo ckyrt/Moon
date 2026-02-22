@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "name": "complete_door_v1",
+  "description": "Complete door: door panel with handle + surrounding frame. Origin at floor center of opening.",
+  "version": 1,
+  "parameters": {
+    "door_width": 90.0,
+    "door_height": 200.0,
+    "door_thickness": 4.0,
+    "post_width": 8.0,
+    "frame_depth": 15.0,
+    "handle_width": 4.0,
+    "handle_height": 20.0,
+    "handle_protrusion": 6.0
+  },
+  "anchors": {
+    "origin":             [0, 0, 0],
+    "top_center":         [0, "$door_height", 0],
+    "hinge_bottom":       ["0 - $door_width / 2", 0, 0],
+    "hinge_top":          ["0 - $door_width / 2", "$door_height", 0],
+    "frame_bottom_left":  ["0 - $door_width / 2 - $post_width", 0, 0],
+    "frame_bottom_right": ["$door_width / 2 + $post_width", 0, 0],
+    "frame_top_center":   [0, "$door_height + $post_width", 0],
+    "handle_pos":         ["$door_width / 2 - 15", 100, "$door_thickness / 2"]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "panel",
+        "type": "reference",
+        "ref": "door_v1",
+        "overrides": {
+          "door_width": "$door_width",
+          "door_height": "$door_height",
+          "door_thickness": "$door_thickness",
+          "handle_width": "$handle_width",
+          "handle_height": "$handle_height",
+          "handle_protrusion": "$handle_protrusion"
+        }
+      },
+      {
+        "name": "frame",
+        "type": "reference",
+        "ref": "door_frame_v1",
+        "overrides": {
+          "inner_width": "$door_width",
+          "inner_height": "$door_height",
+          "post_width": "$post_width",
+          "depth": "$frame_depth"
+        }
+      }
+    ]
+  }
+}
