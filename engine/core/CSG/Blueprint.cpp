@@ -1,6 +1,11 @@
 #include "Blueprint.h"
 #include "BlueprintLoader.h"
 #include "../Logging/Logger.h"
+#include "../../../external/nlohmann/json.hpp"
+#include <fstream>
+#include <sstream>
+
+using json = nlohmann::json;
 
 namespace Moon {
 namespace CSG {
@@ -78,15 +83,57 @@ bool BlueprintDatabase::LoadBlueprint(const std::string& filepath, std::string& 
     m_blueprints[id] = std::move(blueprint);
     
     MOON_LOG_INFO("BlueprintDB", "Loaded blueprint: %s from %s", id.c_str(), filepath.c_str());
+    m_orderedIds.push_back(id);
     return true;
 }
 
 bool BlueprintDatabase::LoadIndex(const std::string& indexPath, std::string& outError) {
-    // TODO: 实现 index.json 解析
-    // 这将在阶段2实现
-    outError = "Index loading not implemented yet";
-    MOON_LOG_WARN("BlueprintDB", "LoadIndex called but not implemented: %s", indexPath.c_str());
-    return false;
+    std::ifstream file(indexPath);
+    if (!file.is_open()) {
+        outError = "Failed to open index: " + indexPath;
+        MOON_LOG_ERROR("BlueprintDB", "%s", outError.c_str());
+        return false;
+    }
+
+    // 提取 index 所在目录，用于拼接相对路径
+    std::string baseDir = indexPath;
+    size_t lastSlash = baseDir.find_last_of("/\\");
+    if (lastSlash != std::string::npos)
+        baseDir = baseDir.substr(0, lastSlash + 1);
+    else
+        baseDir = "";
+
+    json j;
+    try {
+        j = json::parse(file);
+    } catch (const json::exception& e) {
+        outError = std::string("JSON parse error in index: ") + e.what();
+        MOON_LOG_ERROR("BlueprintDB", "%s", outError.c_str());
+        return false;
+    }
+
+    if (!j.contains("items") || !j["items"].is_array()) {
+        outError = "index.json missing 'items' array";
+        MOON_LOG_ERROR("BlueprintDB", "%s", outError.c_str());
+        return false;
+    }
+
+    int loaded = 0, failed = 0;
+    for (const auto& item : j["items"]) {
+        if (!item.contains("path")) continue;
+        std::string relPath = item["path"].get<std::string>();
+        std::string fullPath = baseDir + relPath;
+        std::string itemError;
+        if (LoadBlueprint(fullPath, itemError)) {
+            loaded++;
+        } else {
+            MOON_LOG_WARN("BlueprintDB", "Skipping %s: %s", fullPath.c_str(), itemError.c_str());
+            failed++;
+        }
+    }
+
+    MOON_LOG_INFO("BlueprintDB", "LoadIndex done: %d loaded, %d failed", loaded, failed);
+    return loaded > 0;
 }
 
 const Blueprint* BlueprintDatabase::GetBlueprint(const std::string& id) const {
@@ -99,17 +146,13 @@ bool BlueprintDatabase::HasBlueprint(const std::string& id) const {
 }
 
 std::vector<std::string> BlueprintDatabase::GetAllIds() const {
-    std::vector<std::string> ids;
-    ids.reserve(m_blueprints.size());
-    for (const auto& pair : m_blueprints) {
-        ids.push_back(pair.first);
-    }
-    return ids;
+    return m_orderedIds;  // 返回按加载顺序排列的 IDs
 }
 
 void BlueprintDatabase::Clear() {
     m_blueprints.clear();
     m_idToPath.clear();
+    m_orderedIds.clear();
 }
 
 } // namespace CSG

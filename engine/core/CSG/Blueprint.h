@@ -100,6 +100,7 @@ public:
 private:
     std::unordered_map<std::string, std::unique_ptr<Blueprint>> m_blueprints;
     std::unordered_map<std::string, std::string> m_idToPath; // id -> filepath 映射
+    std::vector<std::string> m_orderedIds;                   // 按加载顺序排列
 };
 
 } // namespace CSG
