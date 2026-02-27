@@ -4,106 +4,17 @@
   "docs": "See README.md for coordinate system, primitive origins, rotation rules and assembly guide.",
   "items": [
     {
-      "id": "beam_v1",
-      "path": "components/beam_v1.json",
-      "category": "structural",
-      "tags": ["level1", "structural", "beam"]
+      "id": "window_v1",
+      "path": "components/window_v1.json",
+      "category": "architectural",
+      "tags": ["level2", "architectural", "window"],
+      "dependency": true
     },
     {
-      "id": "plank_v1",
-      "path": "components/plank_v1.json",
-      "category": "structural",
-      "tags": ["level1", "structural", "plank", "board"]
-    },
-    {
-      "id": "pipe_v1",
-      "path": "components/pipe_v1.json",
-      "category": "structural",
-      "tags": ["level1", "structural", "pipe", "hollow"]
-    },
-    {
-      "id": "disk_v1",
-      "path": "components/disk_v1.json",
-      "category": "structural",
-      "tags": ["level1", "structural", "disk", "flat"]
-    },
-    {
-      "id": "rod_v1",
-      "path": "components/rod_v1.json",
-      "category": "structural",
-      "tags": ["level1", "structural", "rod", "leg"]
-    },
-    {
-      "id": "cup_body_v1",
-      "path": "components/cup_body_v1.json",
-      "category": "container",
-      "tags": ["level2", "container", "cup"]
-    },
-    {
-      "id": "hemisphere_down_v1",
-      "path": "components/hemisphere_down_v1.json",
-      "category": "structural",
-      "tags": ["level1", "primitive", "hemisphere", "half-sphere"]
-    },
-    {
-      "id": "bowl_v1",
-      "path": "components/bowl_v1.json",
-      "category": "container",
-      "tags": ["level2", "container", "bowl"]
-    },
-    {
-      "id": "bottle_body_v1",
-      "path": "components/bottle_body_v1.json",
-      "category": "container",
-      "tags": ["level2", "container", "bottle"]
-    },
-    {
-      "id": "wheel_v1",
-      "path": "components/wheel_v1.json",
-      "category": "mechanical",
-      "tags": ["level2", "mechanical", "wheel"]
-    },
-    {
-      "id": "simple_table_v1",
-      "path": "components/simple_table_v1.json",
-      "category": "furniture",
-      "tags": ["level3", "furniture", "table", "simple", "group"]
-    },
-    {
-      "id": "table_v1",
-      "path": "components/table_v1.json",
-      "category": "furniture",
-      "tags": ["level3", "furniture", "table", "four-legs", "group"]
-    },
-    {
-      "id": "chair_v1",
-      "path": "components/chair_v1.json",
-      "category": "furniture",
-      "tags": ["level3", "furniture", "chair", "group"]
-    },
-    {
-      "id": "door_v1",
-      "path": "components/door_v1.json",
-      "category": "furniture",
-      "tags": ["level3", "furniture", "door", "group"]
-    },
-    {
-      "id": "door_frame_v1",
-      "path": "components/door_frame_v1.json",
-      "category": "furniture",
-      "tags": ["level3", "furniture", "door", "frame", "group"]
-    },
-    {
-      "id": "complete_door_v1",
-      "path": "components/complete_door_v1.json",
-      "category": "furniture",
-      "tags": ["level3", "furniture", "door", "complete", "group"]
-    },
-    {
-      "id": "desk_lamp_v1",
-      "path": "components/desk_lamp_v1.json",
-      "category": "furniture",
-      "tags": ["level3", "furniture", "lamp", "rotation", "group"]
+      "id": "simple_room_v1",
+      "path": "components/simple_room_v1.json",
+      "category": "architectural",
+      "tags": ["level4", "architectural", "room", "shell"]
     }
   ]
 }

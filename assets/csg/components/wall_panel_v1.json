@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "name": "wall_panel_v1",
+  "description": "Flat wall panel (parametric cube). Level 1 structural component. Origin at geometry center: X[-w/2,w/2], Y[-h/2,h/2], Z[-t/2,t/2].",
+  "version": 1,
+  "parameters": {
+    "w": 300.0,
+    "h": 250.0,
+    "t": 15.0
+  },
+  "anchors": {
+    "center":        [0, 0, 0],
+    "bottom_center": [0, "-$h / 2", 0],
+    "top_center":    [0, "$h / 2",  0],
+    "left_center":   ["-$w / 2", 0, 0],
+    "right_center":  ["$w / 2",  0, 0]
+  },
+  "root": {
+    "type": "primitive",
+    "primitive": "cube",
+    "params": {
+      "size_x": "$w",
+      "size_y": "$h",
+      "size_z": "$t"
+    }
+  }
+}

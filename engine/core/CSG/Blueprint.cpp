@@ -123,8 +123,13 @@ bool BlueprintDatabase::LoadIndex(const std::string& indexPath, std::string& out
         if (!item.contains("path")) continue;
         std::string relPath = item["path"].get<std::string>();
         std::string fullPath = baseDir + relPath;
+        bool isDependency = item.contains("dependency") && item["dependency"].get<bool>();
         std::string itemError;
         if (LoadBlueprint(fullPath, itemError)) {
+            // dependency 只加载进数据库，不加入 orderedIds（不出现在场景里）
+            if (isDependency && !m_orderedIds.empty()) {
+                m_orderedIds.pop_back();
+            }
             loaded++;
         } else {
             MOON_LOG_WARN("BlueprintDB", "Skipping %s: %s", fullPath.c_str(), itemError.c_str());

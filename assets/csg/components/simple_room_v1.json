@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "name": "simple_room_v1",
+  "description": "Simple room shell: floor + 4 walls + flat roof + one window on back wall. Level 4. Origin at exterior ground center (y=0 = bottom of floor). w/d = exterior footprint. h = interior wall height (excludes floor/roof thickness).",
+  "version": 1,
+  "parameters": {
+    "w":     500.0,
+    "d":     400.0,
+    "h":     280.0,
+    "t":      20.0,
+    "win_w": 100.0,
+    "win_h": 120.0
+  },
+  "anchors": {
+    "bottom_center":   [0, 0, 0],
+    "interior_center": [0, "$t + $h / 2", 0],
+    "top_center":      [0, "$t + $h + $t", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "floor",
+        "comment": "Floor slab. Full exterior footprint. Bottom at y=0, center at y=t/2.",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": { "size_x": "$w", "size_y": "$t", "size_z": "$d" },
+        "transform": { "position": [0, "$t / 2", 0] },
+        "material": "concrete"
+      },
+      {
+        "name": "roof",
+        "comment": "Flat roof. Full exterior footprint. Sits on top of walls. Center at y = t + h + t/2.",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": { "size_x": "$w", "size_y": "$t", "size_z": "$d" },
+        "transform": { "position": [0, "$t + $h + $t / 2", 0] },
+        "material": "concrete"
+      },
+      {
+        "name": "wall_front",
+        "comment": "Front wall (-Z side). Full exterior width, interior height h. Center Z = -(d/2 - t/2).",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": { "size_x": "$w", "size_y": "$h", "size_z": "$t" },
+        "transform": { "position": [0, "$t + $h / 2", "-($d / 2 - $t / 2)"] },
+        "material": "concrete"
+      },
+      {
+        "name": "wall_back",
+        "comment": "Back wall (+Z side). Mirror of front wall.",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": { "size_x": "$w", "size_y": "$h", "size_z": "$t" },
+        "transform": { "position": [0, "$t + $h / 2", "$d / 2 - $t / 2"] },
+        "material": "concrete"
+      },
+      {
+        "name": "wall_left",
+        "comment": "Left wall (-X side). Depth = d - 2*t (fits between front and back walls). Center X = -(w/2 - t/2).",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": { "size_x": "$t", "size_y": "$h", "size_z": "$d - 2 * $t" },
+        "transform": { "position": ["-($w / 2 - $t / 2)", "$t + $h / 2", 0] },
+        "material": "concrete"
+      },
+      {
+        "name": "wall_right",
+        "comment": "Right wall (+X side). Mirror of left wall.",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": { "size_x": "$t", "size_y": "$h", "size_z": "$d - 2 * $t" },
+        "transform": { "position": ["$w / 2 - $t / 2", "$t + $h / 2", 0] },
+        "material": "concrete"
+      },
+      {
+        "name": "window_back",
+        "comment": "Window on back wall. Centered horizontally, sill at 60% of wall height. Embedded in wall thickness (t matched to wall t).",
+        "type": "reference",
+        "ref": "window_v1",
+        "overrides": { "w": "$win_w", "h": "$win_h", "t": "$t" },
+        "transform": { "position": [0, "$t + $h * 0.6", "$d / 2 - $t / 2"] }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

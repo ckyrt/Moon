@@ -66,7 +66,23 @@ void TestCSGBlueprint(EngineCore* engine)
                 
                 auto renderer = node->AddComponent<Moon::MeshRenderer>();
                 renderer->SetMesh(item.mesh);
-                
+
+                // 根据 blueprint 中的 material 字符串应用材质预设
+                auto mat = node->AddComponent<Moon::Material>();
+                const std::string& matName = item.material;
+                if (matName == "glass")
+                    mat->SetMaterialPreset(Moon::MaterialPreset::Glass);
+                else if (matName == "metal")
+                    mat->SetMaterialPreset(Moon::MaterialPreset::Metal);
+                else if (matName == "wood")
+                    mat->SetMaterialPreset(Moon::MaterialPreset::Wood);
+                else if (matName == "rock" || matName == "stone" || matName == "concrete")
+                    mat->SetMaterialPreset(Moon::MaterialPreset::Rock);
+                else if (matName == "plastic" || matName == "emissive")
+                    mat->SetMaterialPreset(Moon::MaterialPreset::Plastic);
+                else
+                    mat->SetMaterialPreset(Moon::MaterialPreset::Wood); // 默认木材
+
                 // 计算边界
                 const auto& verts = item.mesh->GetVertices();
                 Moon::Vector3 minB(1e9f, 1e9f, 1e9f), maxB(-1e9f, -1e9f, -1e9f);

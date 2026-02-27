@@ -216,7 +216,7 @@ void Material::SetPresetGlass()
     m_metallic = 0.0f;           // 非金属
     m_roughness = 0.05f;         // 非常光滑（镜面反射）
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
-    m_opacity = 0.15f;           // 85%透明（业界标准范围：0.1-0.3）
+    m_opacity = 0.4f;            // 60%透明
     m_transmissionColor = Vector3(1.0f, 1.0f, 1.0f);  // 纯白色（标准玻璃）
     
     // 玻璃不使用纹理贴图，完全程序化

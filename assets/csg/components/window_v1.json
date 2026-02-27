@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "name": "window_v1",
+  "description": "Window: 4-beam frame + glass panel. Level 2. Origin at geometry center. Faces Z (glass is thin in Z). t = depth matching wall thickness.",
+  "version": 1,
+  "parameters": {
+    "w":       80.0,
+    "h":      100.0,
+    "t":       10.0,
+    "frame_t":  5.0
+  },
+  "anchors": {
+    "center":        [0, 0, 0],
+    "bottom_center": [0, "-$h / 2", 0],
+    "top_center":    [0, "$h / 2",  0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "frame_top",
+        "comment": "Top beam: spans full width, sits at top of frame.",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$w",
+          "size_y": "$frame_t",
+          "size_z": "$t"
+        },
+        "transform": {
+          "position": [0, "$h / 2 - $frame_t / 2", 0]
+        },
+        "material": "wood"
+      },
+      {
+        "name": "frame_bottom",
+        "comment": "Bottom beam: mirrors top.",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$w",
+          "size_y": "$frame_t",
+          "size_z": "$t"
+        },
+        "transform": {
+          "position": [0, "-($h / 2 - $frame_t / 2)", 0]
+        },
+        "material": "wood"
+      },
+      {
+        "name": "frame_left",
+        "comment": "Left beam: spans height minus top/bottom beams.",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$frame_t",
+          "size_y": "$h - 2 * $frame_t",
+          "size_z": "$t"
+        },
+        "transform": {
+          "position": ["-($w / 2 - $frame_t / 2)", 0, 0]
+        },
+        "material": "wood"
+      },
+      {
+        "name": "frame_right",
+        "comment": "Right beam: mirrors left.",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$frame_t",
+          "size_y": "$h - 2 * $frame_t",
+          "size_z": "$t"
+        },
+        "transform": {
+          "position": ["$w / 2 - $frame_t / 2", 0, 0]
+        },
+        "material": "wood"
+      },
+      {
+        "name": "glass",
+        "comment": "Glass panel: thin cube filling the interior of the frame.",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$w - 2 * $frame_t",
+          "size_y": "$h - 2 * $frame_t",
+          "size_z": 1.0
+        },
+        "transform": {
+          "position": [0, 0, 0]
+        },
+        "material": "glass"
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}
