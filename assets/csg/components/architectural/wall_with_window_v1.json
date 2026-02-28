@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "name": "wall_with_window_v1",
+  "description": "Wall with a window opening (CSG subtract method). Phase 1: Manual positioning.",
+  "version": 1,
+  "parameters": {
+    "wall_w": 400.0,
+    "wall_h": 250.0,
+    "wall_t": 15.0,
+    "window_w": 80.0,
+    "window_h": 100.0,
+    "window_y": 120.0,
+    "window_x": 0.0
+  },
+  "anchors": {
+    "center":        [0, 0, 0],
+    "bottom_center": [0, "-$wall_h / 2", 0],
+    "top_center":    [0, "$wall_h / 2",  0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "wall_with_opening",
+        "comment": "Wall body with window hole cut out using CSG subtract",
+        "type": "csg",
+        "operation": "subtract",
+        "left": {
+          "comment": "Solid wall panel",
+          "type": "primitive",
+          "primitive": "cube",
+          "params": {
+            "size_x": "$wall_w",
+            "size_y": "$wall_h",
+            "size_z": "$wall_t"
+          }
+        },
+        "right": {
+          "comment": "Window opening (slightly deeper than wall to avoid z-fighting)",
+          "type": "primitive",
+          "primitive": "cube",
+          "params": {
+            "size_x": "$window_w",
+            "size_y": "$window_h",
+            "size_z": "$wall_t + 2"
+          },
+          "transform": {
+            "position": ["$window_x", "$window_y - $wall_h / 2", 0]
+          }
+        }
+      },
+      {
+        "name": "window_frame",
+        "comment": "Window frame placed in the opening",
+        "type": "reference",
+        "ref": "window_v1",
+        "overrides": {
+          "w": "$window_w",
+          "h": "$window_h",
+          "t": "$wall_t"
+        },
+        "transform": {
+          "position": ["$window_x", "$window_y - $wall_h / 2", 0]
+        }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

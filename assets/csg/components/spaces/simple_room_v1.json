@@ -48,12 +48,30 @@
       },
       {
         "name": "wall_back",
-        "comment": "Back wall (+Z side). Mirror of front wall.",
-        "type": "primitive",
-        "primitive": "cube",
-        "params": { "size_x": "$w", "size_y": "$h", "size_z": "$t" },
-        "transform": { "position": [0, "$t + $h / 2", "$d / 2 - $t / 2"] },
-        "material": "concrete"
+        "comment": "Back wall (+Z side) with window opening cut out using CSG subtract.",
+        "type": "csg",
+        "operation": "subtract",
+        "left": {
+          "comment": "Solid back wall",
+          "type": "primitive",
+          "primitive": "cube",
+          "params": { "size_x": "$w", "size_y": "$h", "size_z": "$t" },
+          "transform": { "position": [0, "$t + $h / 2", "$d / 2 - $t / 2"] },
+          "material": "concrete"
+        },
+        "right": {
+          "comment": "Window opening (slightly deeper to avoid z-fighting)",
+          "type": "primitive",
+          "primitive": "cube",
+          "params": { 
+            "size_x": "$win_w", 
+            "size_y": "$win_h", 
+            "size_z": "$t + 2" 
+          },
+          "transform": { 
+            "position": [0, "$t + $h * 0.6", "$d / 2 - $t / 2"] 
+          }
+        }
       },
       {
         "name": "wall_left",
