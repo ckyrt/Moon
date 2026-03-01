@@ -68,6 +68,9 @@ public:
     void UpdateSceneSkybox(Moon::Scene* scene);                   // 从场景中查找并更新 Skybox 组件
     void RenderSkybox();  // 渲染 Skybox（在所有不透明物体之后调用）
 
+    // Shadow map
+    void RenderShadowMap(Moon::Scene* scene, Moon::Camera* camera);
+
     // 提供给 ImGui 等
     Diligent::IRenderDevice* GetDevice()   const { return m_pDevice; }
     Diligent::IDeviceContext* GetContext()  const { return m_pImmediateContext; }
@@ -89,6 +92,10 @@ private:
     struct VSConstantsCPU { // 128B
         Moon::Matrix4x4 WorldViewProjT;
         Moon::Matrix4x4 WorldT;
+    };
+
+    struct ShadowVSConstantsCPU { // 64B
+        Moon::Matrix4x4 WorldViewProjT;
     };
     struct PSMaterialCPU { // 16B 对齐（PBR 材质参数）
         float metallic = 0.0f;
@@ -113,6 +120,13 @@ private:
         Moon::Vector3 lightColor;          // 光源颜色
         float lightIntensity = 0.0f;       // 光源强度（0 = 无光源）
     };
+
+    struct ShadowConstantsCPU { // 16B 对齐
+        Moon::Matrix4x4 WorldToShadowClipT;
+        float shadowMapTexelSize[2] = {0.0f, 0.0f};
+        float shadowBias = 0.0015f;
+        float shadowStrength = 1.0f;
+    };
     struct PSConstantsCPU { // 16B 对齐（Picking）
         uint32_t ObjectID = 0;
         uint32_t pad[3] = { 0,0,0 };
@@ -136,12 +150,24 @@ private:
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pVSConstants;
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pPSMaterialConstants;  // PBR 材质参数
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pPSSceneConstants;     // 场景参数（相机位置等）
+    Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pShadowConstants;      // 阴影参数（PS）
     Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pPSO;
     Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pSRB;
     
     // ======== 透明物体渲染管线（Alpha Blending）========
     Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pTransparentPSO;
     Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pTransparentSRB;
+
+    // ======== Shadow Map Pass ========
+    Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pShadowVSConstants;
+    Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pShadowPSO;
+    Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pShadowSRB;
+    Diligent::RefCntAutoPtr<Diligent::ITexture>         m_pShadowMap;
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pShadowMapSRV;
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pShadowMapDSV;
+    uint32_t                                            m_ShadowMapSize = 2048;
+    Moon::Matrix4x4                                     m_LightViewProj; // row-major (world * VP)
+    bool                                                m_IsRenderingShadow = false;
 
     // ======== Skybox 渲染管线 ========
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pSkyboxVB;         // Skybox 立方体顶点缓冲
@@ -210,6 +236,8 @@ private:
     void CreateDefaultWhiteTexture();  // 创建默认白色纹理
     void CreateMainPass();  // 主渲染管线 PSO（不透明物体）
     void CreateTransparentPass();  // 透明物体渲染管线 PSO（Alpha Blending）
+    void CreateShadowPass();  // Shadow map depth-only PSO
+    void CreateShadowMapResources(); // Shadow map texture + SRV/DSV + bind to SRBs
     void CreateSkyboxPass(); // Skybox 渲染管线 PSO
     void PrecomputeIBL();    // 预计算 IBL 资源（BRDF LUT, Irradiance Map, Prefiltered Env Map）
     void LoadEnvironmentMap(const char* filepath); // 加载 HDR 环境贴图

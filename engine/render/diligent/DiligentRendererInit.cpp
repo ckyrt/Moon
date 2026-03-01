@@ -52,6 +52,15 @@ void DiligentRenderer::CreateVSConstants()
     cb.CPUAccessFlags = CPU_ACCESS_WRITE;
     cb.Size = sizeof(VSConstantsCPU);
     m_pDevice->CreateBuffer(cb, nullptr, &m_pVSConstants);
+
+    // Shadow VS constants (depth-only pass)
+    BufferDesc shadowVS{};
+    shadowVS.Name = "Shadow VS Constants";
+    shadowVS.BindFlags = BIND_UNIFORM_BUFFER;
+    shadowVS.Usage = USAGE_DYNAMIC;
+    shadowVS.CPUAccessFlags = CPU_ACCESS_WRITE;
+    shadowVS.Size = sizeof(ShadowVSConstantsCPU);
+    m_pDevice->CreateBuffer(shadowVS, nullptr, &m_pShadowVSConstants);
     
     // 创建 PS 材质常量缓冲区
     BufferDesc psCB{};
@@ -70,6 +79,15 @@ void DiligentRenderer::CreateVSConstants()
     psSceneCB.CPUAccessFlags = CPU_ACCESS_WRITE;
     psSceneCB.Size = sizeof(PSSceneCPU);
     m_pDevice->CreateBuffer(psSceneCB, nullptr, &m_pPSSceneConstants);
+
+    // 创建 Shadow 常量缓冲区（主渲染 pass 的 PS 采样 shadow map 用）
+    BufferDesc shadowCB{};
+    shadowCB.Name = "Shadow Constants";
+    shadowCB.BindFlags = BIND_UNIFORM_BUFFER;
+    shadowCB.Usage = USAGE_DYNAMIC;
+    shadowCB.CPUAccessFlags = CPU_ACCESS_WRITE;
+    shadowCB.Size = sizeof(ShadowConstantsCPU);
+    m_pDevice->CreateBuffer(shadowCB, nullptr, &m_pShadowConstants);
 }
 
 void DiligentRenderer::CreateDefaultWhiteTexture()

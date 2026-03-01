@@ -141,8 +141,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     // ============================================================================
 
     //TestScenes::TestCSG(&engine);
-    TestScenes::TestCSGBlueprint(&engine);  // 测试 JSON Blueprint 系统
-    //TestScenes::TestMaterial(&engine);
+    //TestScenes::TestCSGBlueprint(&engine);  // 测试 JSON Blueprint 系统
+    TestScenes::TestMaterial(&engine);
     //TestScenes::TestZipLoad(&engine);
 
     // ============================================================================

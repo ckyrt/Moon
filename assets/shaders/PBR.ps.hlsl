@@ -11,6 +11,7 @@
 #include "include/PBR_Common.hlsl"
 #include "include/PBR_Triplanar.hlsl"
 #include "include/PBR_Lighting.hlsl"
+#include "include/PBR_Shadow.hlsl"
 
 // ============================================================================
 // Main Pixel Shader
@@ -248,8 +249,10 @@ float4 main(in PSInput i) : SV_Target {
     if (g_LightIntensity > 0.0) {
         float3 L = normalize(-g_LightDirection);  // 光源方向（指向光源）
         float3 radiance = g_LightColor * g_LightIntensity;
-        
-        Lo += CalculateDirectionalLight(N, V, L, albedo, roughness, metallic, F0, radiance);
+
+        // Shadow factor only affects direct lighting
+        float shadow = ComputeShadowFactor(i.WorldPos, N, L);
+        Lo += CalculateDirectionalLight(N, V, L, albedo, roughness, metallic, F0, radiance) * shadow;
     }
     
     // === 环境光照（IBL - Image Based Lighting）===

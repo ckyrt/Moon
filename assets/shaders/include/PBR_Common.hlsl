@@ -33,6 +33,14 @@ cbuffer SceneConstants {
     float g_LightIntensity;
 };
 
+// 阴影（Shadow Map）参数
+cbuffer ShadowConstants {
+    float4x4 g_WorldToShadowClip;      // world -> light clip space
+    float2   g_ShadowMapTexelSize;     // 1.0 / shadowMapSize
+    float    g_ShadowBias;             // depth bias
+    float    g_ShadowStrength;         // 0=disable, 1=full
+};
+
 // 纹理资源和采样器
 Texture2D g_AlbedoMap;
 SamplerState g_AlbedoMap_sampler;
@@ -55,6 +63,10 @@ SamplerState g_EquirectMap_sampler;
 // BRDF LUT for IBL (256x256 RG16F)
 Texture2D g_BRDF_LUT;
 SamplerState g_BRDF_LUT_sampler;
+
+// Shadow map (depth)
+Texture2D              g_ShadowMap;
+SamplerComparisonState g_ShadowMap_sampler;
 
 struct PSInput { 
     float4 Pos      : SV_POSITION;
