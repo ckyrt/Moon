@@ -49,6 +49,15 @@ cbuffer ShadowConstants {
     float    g_ShadowStrength;         // 0=disable, 1=full
 };
 
+// 点光源阴影（Point Light Shadow Cubemap）参数
+cbuffer PointShadowConstants {
+    float3 g_PointShadowLightPos;
+    float  g_PointShadowInvRange;   // 1.0 / pointLightRange
+    float  g_PointShadowBias;       // normalized distance bias
+    float  g_PointShadowStrength;   // 0=disable, 1=full
+    float2 g_PointShadowPadding;
+};
+
 // 纹理资源和采样器
 Texture2D g_AlbedoMap;
 SamplerState g_AlbedoMap_sampler;
@@ -75,6 +84,10 @@ SamplerState g_BRDF_LUT_sampler;
 // Shadow map (depth)
 Texture2D              g_ShadowMap;
 SamplerComparisonState g_ShadowMap_sampler;
+
+// Point shadow map (cubemap storing normalized radial distance in R channel)
+TextureCube  g_PointShadowMap;
+SamplerState g_PointShadowMap_sampler;
 
 struct PSInput { 
     float4 Pos      : SV_POSITION;

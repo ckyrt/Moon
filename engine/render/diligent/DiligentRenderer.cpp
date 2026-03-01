@@ -43,6 +43,7 @@ void DiligentRenderer::UpdateCB(IBuffer* buf, const T& data)
 template void DiligentRenderer::UpdateCB<DiligentRenderer::VSConstantsCPU>(IBuffer*, const VSConstantsCPU&);
 template void DiligentRenderer::UpdateCB<DiligentRenderer::PSMaterialCPU>(IBuffer*, const PSMaterialCPU&);
 template void DiligentRenderer::UpdateCB<DiligentRenderer::PSSceneCPU>(IBuffer*, const PSSceneCPU&);
+template void DiligentRenderer::UpdateCB<DiligentRenderer::PointShadowConstantsCPU>(IBuffer*, const PointShadowConstantsCPU&);
 template void DiligentRenderer::UpdateCB<DiligentRenderer::PSConstantsCPU>(IBuffer*, const PSConstantsCPU&);
 template void DiligentRenderer::UpdateCB<Moon::Matrix4x4>(IBuffer*, const Moon::Matrix4x4&);
 
@@ -70,9 +71,11 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
         CreateDefaultWhiteTexture();  // 创建默认白色纹理
         CreateVSConstants();
         CreateShadowPass();  // Shadow map depth-only pipeline
+        CreatePointShadowPass();
         CreateMainPass();  // 主渲染管线（用于正常场景渲染，不透明物体）
         CreateTransparentPass();  // 透明物体渲染管线（Alpha Blending）
         CreateShadowMapResources();  // Shadow map texture + bind to SRBs
+        CreatePointShadowMapResources();
         CreateSkyboxPass(); // Skybox 渲染管线
         PrecomputeIBL();    // 预计算 IBL 资源
         
@@ -202,7 +205,8 @@ void DiligentRenderer::CreateMainPass()
         {SHADER_TYPE_PIXEL, "g_NormalMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
         {SHADER_TYPE_PIXEL, "g_EquirectMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
         {SHADER_TYPE_PIXEL, "g_BRDF_LUT", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_ShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
+        {SHADER_TYPE_PIXEL, "g_ShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_PointShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
     };
 
     GraphicsPipelineStateCreateInfo pci{};
@@ -261,6 +265,13 @@ void DiligentRenderer::CreateMainPass()
     } else {
         MOON_LOG_ERROR("DiligentRenderer", "Failed to get PS ShadowConstants variable");
     }
+
+    auto* psPointShadowConstants = m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "PointShadowConstants");
+    if (psPointShadowConstants) {
+        psPointShadowConstants->Set(m_pPointShadowConstants);
+    } else {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to get PS PointShadowConstants variable");
+    }
     
     // 创建 SRB（MUTABLE 变量会在渲染时动态绑定）
     m_pPSO->CreateShaderResourceBinding(&m_pSRB, true);
@@ -315,7 +326,8 @@ void DiligentRenderer::CreateTransparentPass()
         {SHADER_TYPE_PIXEL, "g_NormalMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
         {SHADER_TYPE_PIXEL, "g_EquirectMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
         {SHADER_TYPE_PIXEL, "g_BRDF_LUT", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_ShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
+        {SHADER_TYPE_PIXEL, "g_ShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_PointShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
     };
 
     GraphicsPipelineStateCreateInfo pci{};
@@ -372,6 +384,11 @@ void DiligentRenderer::CreateTransparentPass()
     auto* psShadowConstants = m_pTransparentPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "ShadowConstants");
     if (psShadowConstants) {
         psShadowConstants->Set(m_pShadowConstants);
+    }
+
+    auto* psPointShadowConstants = m_pTransparentPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "PointShadowConstants");
+    if (psPointShadowConstants) {
+        psPointShadowConstants->Set(m_pPointShadowConstants);
     }
     
     m_pTransparentPSO->CreateShaderResourceBinding(&m_pTransparentSRB, true);
@@ -646,6 +663,8 @@ void DiligentRenderer::UpdateSceneLights(Moon::Scene* scene)
     m_SceneDataCache.pointLightIntensity = 0.0f;
     m_SceneDataCache.pointLightRange = 0.0f;
     m_SceneDataCache.pointLightAttenuation = Moon::Vector3(1.0f, 0.0f, 0.0f);
+
+    m_PointLightCastsShadows = false;
     
     bool foundDirectional = false;
     bool foundPoint = false;
@@ -674,6 +693,7 @@ void DiligentRenderer::UpdateSceneLights(Moon::Scene* scene)
             float c = 1.0f, l = 0.0f, q = 0.0f;
             light->GetAttenuation(c, l, q);
             m_SceneDataCache.pointLightAttenuation = Moon::Vector3(c, l, q);
+            m_PointLightCastsShadows = light->GetCastShadows();
             foundPoint = (m_SceneDataCache.pointLightIntensity > 0.0f);
         }
     });
@@ -761,6 +781,18 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
         if (m_pShadowSRB) {
             m_pImmediateContext->CommitShaderResources(m_pShadowSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
         }
+    } else if (m_IsRenderingPointShadow) {
+        // Point shadow pass: world * faceVP
+        Moon::Matrix4x4 wvp = world * m_PointLightFaceViewProj;
+        VSConstantsCPU cbuf{};
+        cbuf.WorldViewProjT = DiligentRendererUtils::Transpose(wvp);
+        cbuf.WorldT = DiligentRendererUtils::Transpose(world);
+        UpdateCB(m_pVSConstants, cbuf);
+
+        m_pImmediateContext->SetPipelineState(m_pPointShadowPSO);
+        if (m_pPointShadowSRB) {
+            m_pImmediateContext->CommitShaderResources(m_pPointShadowSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+        }
     } else {
         // Main pass constants
         Moon::Matrix4x4 wvp = world * m_ViewProj;
@@ -791,6 +823,282 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
     da.NumIndices = static_cast<Uint32>(gpu->IndexCount);
     da.Flags = DRAW_FLAG_VERIFY_ALL;
     m_pImmediateContext->DrawIndexed(da);
+}
+
+void DiligentRenderer::CreatePointShadowPass()
+{
+    std::string vsCode = DiligentRendererUtils::LoadShaderSource("PointShadowDepth.vs.hlsl");
+    std::string psCode = DiligentRendererUtils::LoadShaderSource("PointShadowDepth.ps.hlsl");
+    if (vsCode.empty() || psCode.empty()) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to load point shadow depth shaders");
+        return;
+    }
+
+    RefCntAutoPtr<IShader> vs;
+    {
+        ShaderCreateInfo ci{};
+        ci.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
+        ci.Desc.ShaderType = SHADER_TYPE_VERTEX;
+        ci.Desc.Name = "Point Shadow Depth VS";
+        ci.Desc.UseCombinedTextureSamplers = true;
+        ci.Source = vsCode.c_str();
+        m_pDevice->CreateShader(ci, &vs);
+    }
+
+    RefCntAutoPtr<IShader> ps;
+    {
+        ShaderCreateInfo ci{};
+        ci.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
+        ci.Desc.ShaderType = SHADER_TYPE_PIXEL;
+        ci.Desc.Name = "Point Shadow Depth PS";
+        ci.Desc.UseCombinedTextureSamplers = true;
+        ci.Source = psCode.c_str();
+        m_pDevice->CreateShader(ci, &ps);
+    }
+
+    GraphicsPipelineStateCreateInfo pci{};
+    pci.PSODesc.Name = "Point Shadow PSO";
+    pci.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
+
+    pci.GraphicsPipeline.NumRenderTargets = 1;
+    pci.GraphicsPipeline.RTVFormats[0] = TEX_FORMAT_R32_FLOAT;
+    pci.GraphicsPipeline.DSVFormat = TEX_FORMAT_D32_FLOAT;
+    pci.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    pci.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
+    pci.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
+
+    LayoutElement layout[4];
+    Uint32 numElements;
+    DiligentRendererUtils::GetVertexLayout(layout, numElements);
+    pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
+    pci.GraphicsPipeline.InputLayout.NumElements = numElements;
+
+    pci.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
+
+    pci.pVS = vs;
+    pci.pPS = ps;
+
+    m_pDevice->CreateGraphicsPipelineState(pci, &m_pPointShadowPSO);
+    if (!m_pPointShadowPSO) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create point shadow PSO");
+        return;
+    }
+
+    if (auto* vsCB = m_pPointShadowPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants")) {
+        vsCB->Set(m_pVSConstants);
+    } else {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to get point shadow VS Constants variable");
+    }
+
+    if (auto* psCB = m_pPointShadowPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "PointShadowConstants")) {
+        psCB->Set(m_pPointShadowConstants);
+    } else {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to get point shadow PS PointShadowConstants variable");
+    }
+
+    m_pPointShadowPSO->CreateShaderResourceBinding(&m_pPointShadowSRB, true);
+    MOON_LOG_INFO("DiligentRenderer", "Point shadow PSO created");
+}
+
+void DiligentRenderer::CreatePointShadowMapResources()
+{
+    if (!m_pDevice) return;
+
+    TextureDesc cube{};
+    cube.Name = "Point Shadow Cubemap";
+    cube.Type = RESOURCE_DIM_TEX_CUBE;
+    cube.Width = m_PointShadowMapSize;
+    cube.Height = m_PointShadowMapSize;
+    cube.ArraySize = 6;
+    cube.Format = TEX_FORMAT_R32_FLOAT;
+    cube.MipLevels = 1;
+    cube.Usage = USAGE_DEFAULT;
+    cube.BindFlags = BIND_SHADER_RESOURCE | BIND_RENDER_TARGET;
+
+    m_pPointShadowCube.Release();
+    m_pPointShadowCubeSRV.Release();
+    for (auto& rtv : m_pPointShadowCubeRTV)
+        rtv.Release();
+
+    m_pDevice->CreateTexture(cube, nullptr, &m_pPointShadowCube);
+    if (!m_pPointShadowCube) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create point shadow cubemap texture");
+        return;
+    }
+
+    m_pPointShadowCubeSRV = m_pPointShadowCube->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+
+    // Sampler for cubemap distance lookup
+    SamplerDesc samp{};
+    samp.MinFilter = FILTER_TYPE_LINEAR;
+    samp.MagFilter = FILTER_TYPE_LINEAR;
+    samp.MipFilter = FILTER_TYPE_LINEAR;
+    samp.AddressU = TEXTURE_ADDRESS_CLAMP;
+    samp.AddressV = TEXTURE_ADDRESS_CLAMP;
+    samp.AddressW = TEXTURE_ADDRESS_CLAMP;
+    RefCntAutoPtr<ISampler> pSampler;
+    m_pDevice->CreateSampler(samp, &pSampler);
+    if (m_pPointShadowCubeSRV && pSampler) {
+        m_pPointShadowCubeSRV->SetSampler(pSampler);
+    }
+
+    // RTV per face
+    for (Uint32 face = 0; face < 6; ++face) {
+        TextureViewDesc rtvDesc{};
+        rtvDesc.Name = "Point Shadow Cubemap Face RTV";
+        rtvDesc.ViewType = TEXTURE_VIEW_RENDER_TARGET;
+        // Cubemap is a 2D texture array with 6 slices in D3D11.
+        // RTV for a single face must be a 2D-array view with one slice.
+        rtvDesc.TextureDim = RESOURCE_DIM_TEX_2D_ARRAY;
+        rtvDesc.FirstArraySlice = face;
+        rtvDesc.NumArraySlices = 1;
+        rtvDesc.MostDetailedMip = 0;
+        rtvDesc.NumMipLevels = 1;
+        rtvDesc.Format = cube.Format;
+        m_pPointShadowCube->CreateView(rtvDesc, &m_pPointShadowCubeRTV[face]);
+    }
+
+    // Depth buffer shared by all faces
+    TextureDesc depth{};
+    depth.Name = "Point Shadow Depth";
+    depth.Type = RESOURCE_DIM_TEX_2D;
+    depth.Width = m_PointShadowMapSize;
+    depth.Height = m_PointShadowMapSize;
+    depth.MipLevels = 1;
+    depth.ArraySize = 1;
+    depth.Format = TEX_FORMAT_D32_FLOAT;
+    depth.Usage = USAGE_DEFAULT;
+    depth.BindFlags = BIND_DEPTH_STENCIL;
+
+    m_pPointShadowDepth.Release();
+    m_pPointShadowDepthDSV.Release();
+    m_pDevice->CreateTexture(depth, nullptr, &m_pPointShadowDepth);
+    if (!m_pPointShadowDepth) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create point shadow depth texture");
+        return;
+    }
+    m_pPointShadowDepthDSV = m_pPointShadowDepth->GetDefaultView(TEXTURE_VIEW_DEPTH_STENCIL);
+
+    // Bind cubemap SRV to SRBs for main/transparent passes
+    if (m_pSRB && m_pPointShadowCubeSRV) {
+        if (auto* var = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_PointShadowMap")) {
+            var->Set(m_pPointShadowCubeSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+        }
+    }
+    if (m_pTransparentSRB && m_pPointShadowCubeSRV) {
+        if (auto* var = m_pTransparentSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_PointShadowMap")) {
+            var->Set(m_pPointShadowCubeSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+        }
+    }
+
+    // Initialize point shadow constants (disabled by default)
+    PointShadowConstantsCPU pc{};
+    pc.lightPosition = Moon::Vector3(0.0f, 0.0f, 0.0f);
+    pc.invRange = 0.0f;
+    pc.bias = 0.002f;
+    pc.strength = 0.0f;
+    UpdateCB(m_pPointShadowConstants, pc);
+
+    MOON_LOG_INFO("DiligentRenderer", "Point shadow cubemap created: %ux%u", m_PointShadowMapSize, m_PointShadowMapSize);
+}
+
+void DiligentRenderer::RenderPointShadowMap(Moon::Scene* scene)
+{
+    if (!scene) return;
+    if (!m_pPointShadowPSO || !m_pPointShadowCubeSRV || !m_pPointShadowDepthDSV) return;
+
+    // Require an enabled point light
+    if (m_SceneDataCache.pointLightIntensity <= 0.0f || m_SceneDataCache.pointLightRange <= 0.0f || !m_PointLightCastsShadows) {
+        PointShadowConstantsCPU pc{};
+        pc.lightPosition = m_SceneDataCache.pointLightPosition;
+        pc.invRange = (m_SceneDataCache.pointLightRange > 1e-4f) ? (1.0f / m_SceneDataCache.pointLightRange) : 0.0f;
+        pc.bias = 0.002f;
+        pc.strength = 0.0f;
+        UpdateCB(m_pPointShadowConstants, pc);
+        return;
+    }
+
+    const Moon::Vector3 lightPos = m_SceneDataCache.pointLightPosition;
+    const float range = m_SceneDataCache.pointLightRange;
+
+    static bool s_PointShadowActiveLogged = false;
+    if (!s_PointShadowActiveLogged) {
+        MOON_LOG_INFO("DiligentRenderer", "Point shadow active: lightPos=(%.2f, %.2f, %.2f), range=%.2f", lightPos.x, lightPos.y, lightPos.z, range);
+        s_PointShadowActiveLogged = true;
+    }
+
+    PointShadowConstantsCPU pc{};
+    pc.lightPosition = lightPos;
+    pc.invRange = (range > 1e-4f) ? (1.0f / range) : 0.0f;
+    pc.bias = 0.002f;
+    pc.strength = 1.0f;
+    UpdateCB(m_pPointShadowConstants, pc);
+
+    constexpr float OPACITY_THRESHOLD = 0.99f;
+    const float nearZ = 0.1f;
+    const float farZ = std::max(range, 0.2f);
+    const float fov = 3.14159265359f * 0.5f; // 90 deg
+
+    struct FaceDesc { Moon::Vector3 Dir; Moon::Vector3 Up; };
+    const FaceDesc Faces[6] = {
+        {Moon::Vector3( 1, 0, 0), Moon::Vector3(0, 1, 0)},
+        {Moon::Vector3(-1, 0, 0), Moon::Vector3(0, 1, 0)},
+        {Moon::Vector3( 0, 1, 0), Moon::Vector3(0, 0,-1)},
+        {Moon::Vector3( 0,-1, 0), Moon::Vector3(0, 0, 1)},
+        {Moon::Vector3( 0, 0, 1), Moon::Vector3(0, 1, 0)},
+        {Moon::Vector3( 0, 0,-1), Moon::Vector3(0, 1, 0)},
+    };
+
+    Viewport vp{};
+    vp.Width = static_cast<float>(m_PointShadowMapSize);
+    vp.Height = static_cast<float>(m_PointShadowMapSize);
+    vp.MinDepth = 0.f;
+    vp.MaxDepth = 1.f;
+
+    Moon::Matrix4x4 proj = Moon::Matrix4x4::PerspectiveFovLH(fov, 1.0f, nearZ, farZ);
+
+    m_IsRenderingPointShadow = true;
+    for (Uint32 face = 0; face < 6; ++face) {
+        if (!m_pPointShadowCubeRTV[face]) {
+            MOON_LOG_ERROR("DiligentRenderer", "Point shadow RTV for face %u is null", face);
+            continue;
+        }
+
+        ITextureView* rtvs[] = { m_pPointShadowCubeRTV[face] };
+        m_pImmediateContext->SetRenderTargets(1, rtvs, m_pPointShadowDepthDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+        const float ClearValue[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+        m_pImmediateContext->ClearRenderTarget(rtvs[0], ClearValue, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+        m_pImmediateContext->ClearDepthStencil(m_pPointShadowDepthDSV, CLEAR_DEPTH_FLAG, 1.0f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+        m_pImmediateContext->SetViewports(1, &vp, 0, 0);
+
+        Moon::Matrix4x4 view = Moon::Matrix4x4::LookAtLH(lightPos, lightPos + Faces[face].Dir, Faces[face].Up);
+        m_PointLightFaceViewProj = view * proj;
+
+        scene->Traverse([&](Moon::SceneNode* node) {
+            auto* meshRenderer = node->GetComponent<Moon::MeshRenderer>();
+            if (!meshRenderer || !meshRenderer->IsEnabled() || !meshRenderer->IsVisible()) {
+                return;
+            }
+            auto* material = node->GetComponent<Moon::Material>();
+            if (material && material->IsEnabled() && material->GetOpacity() < OPACITY_THRESHOLD) {
+                return;
+            }
+            meshRenderer->Render(this);
+        });
+    }
+    m_IsRenderingPointShadow = false;
+
+    // Restore main framebuffer targets & viewport (no clear)
+    ITextureView* rtvs[] = { m_pRTV };
+    m_pImmediateContext->SetRenderTargets(1, rtvs, m_pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+    Viewport mainVp{};
+    mainVp.Width = static_cast<float>(m_Width);
+    mainVp.Height = static_cast<float>(m_Height);
+    mainVp.MinDepth = 0.f;
+    mainVp.MaxDepth = 1.f;
+    m_pImmediateContext->SetViewports(1, &mainVp, 0, 0);
 }
 
 void DiligentRenderer::RenderShadowMap(Moon::Scene* scene, Moon::Camera* camera)
@@ -916,6 +1224,7 @@ void DiligentRenderer::Shutdown()
     m_pPSMaterialConstants.Release();
     m_pPSSceneConstants.Release();
     m_pShadowConstants.Release();
+    m_pPointShadowConstants.Release();
 
     // Shadow pass
     m_pShadowMapDSV.Release();
@@ -924,6 +1233,16 @@ void DiligentRenderer::Shutdown()
     m_pShadowPSO.Release();
     m_pShadowSRB.Release();
     m_pShadowVSConstants.Release();
+
+    // Point shadow pass
+    m_pPointShadowDepthDSV.Release();
+    m_pPointShadowDepth.Release();
+    for (auto& rtv : m_pPointShadowCubeRTV)
+        rtv.Release();
+    m_pPointShadowCubeSRV.Release();
+    m_pPointShadowCube.Release();
+    m_pPointShadowPSO.Release();
+    m_pPointShadowSRB.Release();
     
     // Skybox 渲染管线
     m_pSkyboxSRB.Release();

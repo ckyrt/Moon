@@ -268,7 +268,8 @@ float4 main(in PSInput i) : SV_Target {
         float rangeAtt = t * t;
         float3 radiance = g_PointLightColor * g_PointLightIntensity * att * rangeAtt;
 
-        Lo += CalculateDirectionalLight(N, V, L, albedo, roughness, metallic, F0, radiance);
+        float pointShadow = ComputePointShadowFactor(i.WorldPos, N, L);
+        Lo += CalculateDirectionalLight(N, V, L, albedo, roughness, metallic, F0, radiance) * pointShadow;
     }
     
     // === 环境光照（IBL - Image Based Lighting）===

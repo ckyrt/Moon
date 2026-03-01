@@ -70,6 +70,7 @@ public:
 
     // Shadow map
     void RenderShadowMap(Moon::Scene* scene, Moon::Camera* camera);
+    void RenderPointShadowMap(Moon::Scene* scene);
 
     // 提供给 ImGui 等
     Diligent::IRenderDevice* GetDevice()   const { return m_pDevice; }
@@ -135,6 +136,14 @@ private:
         float shadowBias = 0.0015f;
         float shadowStrength = 1.0f;
     };
+
+    struct PointShadowConstantsCPU { // 16B 对齐
+        Moon::Vector3 lightPosition;
+        float invRange = 0.0f;
+        float bias = 0.002f;
+        float strength = 0.0f;
+        float padding[2] = {0.0f, 0.0f};
+    };
     struct PSConstantsCPU { // 16B 对齐（Picking）
         uint32_t ObjectID = 0;
         uint32_t pad[3] = { 0,0,0 };
@@ -159,6 +168,7 @@ private:
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pPSMaterialConstants;  // PBR 材质参数
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pPSSceneConstants;     // 场景参数（相机位置等）
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pShadowConstants;      // 阴影参数（PS）
+    Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pPointShadowConstants; // 点光源阴影参数（PS + shadow gen PS）
     Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pPSO;
     Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pSRB;
     
@@ -176,6 +186,19 @@ private:
     uint32_t                                            m_ShadowMapSize = 2048;
     Moon::Matrix4x4                                     m_LightViewProj; // row-major (world * VP)
     bool                                                m_IsRenderingShadow = false;
+
+    // ======== Point Shadow (Cubemap) Pass ========
+    Diligent::RefCntAutoPtr<Diligent::IPipelineState>   m_pPointShadowPSO;
+    Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pPointShadowSRB;
+    Diligent::RefCntAutoPtr<Diligent::ITexture>         m_pPointShadowCube;
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pPointShadowCubeSRV;
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pPointShadowCubeRTV[6];
+    Diligent::RefCntAutoPtr<Diligent::ITexture>         m_pPointShadowDepth;
+    Diligent::RefCntAutoPtr<Diligent::ITextureView>     m_pPointShadowDepthDSV;
+    uint32_t                                            m_PointShadowMapSize = 1024;
+    Moon::Matrix4x4                                     m_PointLightFaceViewProj; // view*proj for current face
+    bool                                                m_IsRenderingPointShadow = false;
+    bool                                                m_PointLightCastsShadows = false;
 
     // ======== Skybox 渲染管线 ========
     Diligent::RefCntAutoPtr<Diligent::IBuffer>          m_pSkyboxVB;         // Skybox 立方体顶点缓冲
@@ -246,6 +269,8 @@ private:
     void CreateTransparentPass();  // 透明物体渲染管线 PSO（Alpha Blending）
     void CreateShadowPass();  // Shadow map depth-only PSO
     void CreateShadowMapResources(); // Shadow map texture + SRV/DSV + bind to SRBs
+    void CreatePointShadowPass();
+    void CreatePointShadowMapResources();
     void CreateSkyboxPass(); // Skybox 渲染管线 PSO
     void PrecomputeIBL();    // 预计算 IBL 资源（BRDF LUT, Irradiance Map, Prefiltered Env Map）
     void LoadEnvironmentMap(const char* filepath); // 加载 HDR 环境贴图

@@ -88,6 +88,15 @@ void DiligentRenderer::CreateVSConstants()
     shadowCB.CPUAccessFlags = CPU_ACCESS_WRITE;
     shadowCB.Size = sizeof(ShadowConstantsCPU);
     m_pDevice->CreateBuffer(shadowCB, nullptr, &m_pShadowConstants);
+
+    // 创建 Point Shadow 常量缓冲区（点光源阴影 cubemap 生成 + 主渲染采样用）
+    BufferDesc pointShadowCB{};
+    pointShadowCB.Name = "Point Shadow Constants";
+    pointShadowCB.BindFlags = BIND_UNIFORM_BUFFER;
+    pointShadowCB.Usage = USAGE_DYNAMIC;
+    pointShadowCB.CPUAccessFlags = CPU_ACCESS_WRITE;
+    pointShadowCB.Size = sizeof(PointShadowConstantsCPU);
+    m_pDevice->CreateBuffer(pointShadowCB, nullptr, &m_pPointShadowConstants);
 }
 
 void DiligentRenderer::CreateDefaultWhiteTexture()

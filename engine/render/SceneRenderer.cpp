@@ -206,6 +206,9 @@ void RenderScene(DiligentRenderer* renderer, Scene* scene, Camera* camera)
 
     // 1.5 渲染 Shadow Map（在主渲染之前）
     renderer->RenderShadowMap(scene, camera);
+
+    // 1.6 渲染点光源 Shadow Map（在主渲染之前）
+    renderer->RenderPointShadowMap(scene);
     
     // 2. 渲染所有不透明物体（Pass 1）
     renderer->SetRenderingTransparent(false);
