@@ -166,6 +166,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     MOON_LOG_INFO("Sample", "Main directional light created (Intensity: %.1f)", 
                   mainLight->GetIntensity());
 
+    // Light direction test controls
+    // Hold Left/Right arrow keys to rotate the directional light around world up.
+    constexpr float kLightYawDegPerSec = 60.0f;
+
     // ============================================================================
     // 创建 Skybox（天空盒）
     // ============================================================================
@@ -216,6 +220,18 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         
         // Update Camera Controller
         cameraController.Update(static_cast<float>(dt));
+
+        // ============================================================================
+        // Directional light direction testing
+        // ============================================================================
+        if (inputSystem && mainLightNode) {
+            float yawDelta = 0.0f;
+            if (inputSystem->IsKeyDown(Moon::KeyCode::Left))  yawDelta -= kLightYawDegPerSec * static_cast<float>(dt);
+            if (inputSystem->IsKeyDown(Moon::KeyCode::Right)) yawDelta += kLightYawDegPerSec * static_cast<float>(dt);
+            if (yawDelta != 0.0f) {
+                mainLightNode->GetTransform()->Rotate(Moon::Vector3(0.0f, yawDelta, 0.0f), /*worldSpace*/ true);
+            }
+        }
         
         // ============================================================================
         // 渲染场景和ImGui UI
