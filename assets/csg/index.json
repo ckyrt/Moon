@@ -1,20 +1,175 @@
 {
   "schema_version": 1,
   "units": "centimeters",
-  "docs": "See README.md for coordinate system, primitive origins, rotation rules and assembly guide.",
+  "docs": "Component index for fast lookup. Used to find component path by name, or for AI to select appropriate component by description.",
   "items": [
     {
       "id": "window_v1",
-      "path": "components/window_v1.json",
+      "path": "components/architectural/window_v1.json",
+      "description": "Basic window with frame and glass pane",
       "category": "architectural",
-      "tags": ["level2", "architectural", "window"],
-      "dependency": true
+      "tags": ["level2", "architectural", "window"]
+    },
+    {
+      "id": "door_v1",
+      "path": "components/architectural/door_v1.json",
+      "description": "Simple door panel",
+      "category": "architectural",
+      "tags": ["level2", "architectural", "door"]
+    },
+    {
+      "id": "door_frame_v1",
+      "path": "components/architectural/door_frame_v1.json",
+      "description": "Door frame structure",
+      "category": "architectural",
+      "tags": ["level2", "architectural", "door", "frame"]
+    },
+    {
+      "id": "complete_door_v1",
+      "path": "components/architectural/complete_door_v1.json",
+      "description": "Complete door with frame and panel",
+      "category": "architectural",
+      "tags": ["level3", "architectural", "door"]
+    },
+    {
+      "id": "wall_panel_v1",
+      "path": "components/architectural/wall_panel_v1.json",
+      "description": "Simple wall panel",
+      "category": "architectural",
+      "tags": ["level1", "architectural", "wall"]
+    },
+    {
+      "id": "wall_with_window_v1",
+      "path": "components/architectural/wall_with_window_v1.json",
+      "description": "Wall panel with embedded window",
+      "category": "architectural",
+      "tags": ["level3", "architectural", "wall", "window"]
     },
     {
       "id": "simple_room_v1",
-      "path": "components/simple_room_v1.json",
-      "category": "architectural",
+      "path": "components/spaces/simple_room_v1.json",
+      "description": "Simple room shell: floor + 4 walls + flat roof + one window on back wall",
+      "category": "spaces",
       "tags": ["level4", "architectural", "room", "shell"]
+    },
+    {
+      "id": "table_leg_v1",
+      "path": "components/furniture/parts/table_leg_v1.json",
+      "description": "Single table leg",
+      "category": "furniture_parts",
+      "tags": ["level1", "furniture", "part", "leg"]
+    },
+    {
+      "id": "table_top_v1",
+      "path": "components/furniture/parts/table_top_v1.json",
+      "description": "Flat table top surface",
+      "category": "furniture_parts",
+      "tags": ["level1", "furniture", "part", "top"]
+    },
+    {
+      "id": "simple_table_v1",
+      "path": "components/furniture/simple_table_v1.json",
+      "description": "Simple table with basic design",
+      "category": "furniture",
+      "tags": ["level2", "furniture", "table"]
+    },
+    {
+      "id": "table_v1",
+      "path": "components/furniture/table_v1.json",
+      "description": "Standard table with 4 legs and flat top",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "table"]
+    },
+    {
+      "id": "chair_v1",
+      "path": "components/furniture/chair_v1.json",
+      "description": "Simple chair with seat, backrest and 4 legs",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "chair"]
+    },
+    {
+      "id": "desk_lamp_v1",
+      "path": "components/furniture/desk_lamp_v1.json",
+      "description": "Desk lamp with base, arm and lampshade",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "lamp", "lighting"]
+    },
+    {
+      "id": "beam_v1",
+      "path": "components/structural/beam_v1.json",
+      "description": "Rectangular beam (horizontal structural element)",
+      "category": "structural",
+      "tags": ["level1", "structural", "beam"]
+    },
+    {
+      "id": "rod_v1",
+      "path": "components/structural/rod_v1.json",
+      "description": "Cylindrical rod",
+      "category": "structural",
+      "tags": ["level1", "structural", "rod", "cylinder"]
+    },
+    {
+      "id": "disk_v1",
+      "path": "components/structural/disk_v1.json",
+      "description": "Flat circular disk",
+      "category": "structural",
+      "tags": ["level1", "structural", "disk", "circle"]
+    },
+    {
+      "id": "pipe_v1",
+      "path": "components/structural/pipe_v1.json",
+      "description": "Hollow cylindrical pipe",
+      "category": "structural",
+      "tags": ["level2", "structural", "pipe", "hollow"]
+    },
+    {
+      "id": "plank_v1",
+      "path": "components/structural/plank_v1.json",
+      "description": "Flat rectangular plank",
+      "category": "structural",
+      "tags": ["level1", "structural", "plank", "board"]
+    },
+    {
+      "id": "wheel_v1",
+      "path": "components/mechanical/wheel_v1.json",
+      "description": "Wheel with rim and hub",
+      "category": "mechanical",
+      "tags": ["level2", "mechanical", "wheel"]
+    },
+    {
+      "id": "bowl_v1",
+      "path": "components/containers/bowl_v1.json",
+      "description": "Bowl container with hollow interior",
+      "category": "containers",
+      "tags": ["level2", "container", "bowl"]
+    },
+    {
+      "id": "cup_body_v1",
+      "path": "components/containers/cup_body_v1.json",
+      "description": "Cup body with hollow interior",
+      "category": "containers",
+      "tags": ["level2", "container", "cup"]
+    },
+    {
+      "id": "bottle_body_v1",
+      "path": "components/containers/bottle_body_v1.json",
+      "description": "Bottle body with neck and hollow interior",
+      "category": "containers",
+      "tags": ["level2", "container", "bottle"]
+    },
+    {
+      "id": "hemisphere_down_v1",
+      "path": "components/structural/hemisphere_down_v1.json",
+      "description": "Hemisphere facing downward (base primitive for bowls, domes, etc.)",
+      "category": "structural",
+      "tags": ["level1", "structural", "primitive", "hemisphere", "sphere"]
+    },
+    {
+      "id": "test_scene",
+      "path": "test_scene.json",
+      "description": "Test scene configuration",
+      "category": "scene",
+      "tags": ["scene", "test"]
     }
   ]
 }

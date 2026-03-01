@@ -73,24 +73,24 @@ public:
     bool LoadBlueprint(const std::string& filepath, std::string& outError);
 
     /**
-     * @brief 加载索引文件 index.json
+     * @brief 设置组件目录路径（用于懒加载）
+     */
+    void SetComponentsDirectory(const std::string& baseDir);
+
+    /**
+     * @brief 加载索引文件 index.json（只加载场景物体列表，不加载所有蓝图）
      */
     bool LoadIndex(const std::string& indexPath, std::string& outError);
 
     /**
-     * @brief 根据 ID 获取 Blueprint
+     * @brief 根据 ID 获取 Blueprint（懒加载：如未缓存则从文件加载）
      */
-    const Blueprint* GetBlueprint(const std::string& id) const;
+    const Blueprint* GetBlueprint(const std::string& id);
 
     /**
-     * @brief 检查 Blueprint 是否存在
+     * @brief 检查 Blueprint 是否已缓存
      */
     bool HasBlueprint(const std::string& id) const;
-
-    /**
-     * @brief 获取所有 Blueprint ID
-     */
-    std::vector<std::string> GetAllIds() const;
 
     /**
      * @brief 清空数据库
@@ -98,9 +98,14 @@ public:
     void Clear();
 
 private:
-    std::unordered_map<std::string, std::unique_ptr<Blueprint>> m_blueprints;
-    std::unordered_map<std::string, std::string> m_idToPath; // id -> filepath 映射
-    std::vector<std::string> m_orderedIds;                   // 按加载顺序排列
+    /**
+     * @brief 内部加载方法（用于懒加载）
+     */
+    const Blueprint* LoadBlueprintLazy(const std::string& id);
+
+    std::unordered_map<std::string, std::unique_ptr<Blueprint>> m_blueprints;  // 缓存
+    std::unordered_map<std::string, std::string> m_idToPath;   // id -> filepath 映射
+    std::string m_baseDir;                                     // 组件基础目录
 };
 
 } // namespace CSG

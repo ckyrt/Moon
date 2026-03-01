@@ -511,9 +511,17 @@ BuildResult CSGBuilder::BuildReference(const RefNode* ref, ParameterScope& scope
 
     // 应用 transform 到所有生成的 mesh
     for (auto& meshItem : childResult.meshes) {
-        // 简化版：直接应用位置偏移
-        // TODO: 完整的 transform 组合（包括rotation和scale）
-        meshItem.worldTransform.position = meshItem.worldTransform.position + refPosition;
+        // 应用旋转：先旋转position，再旋转rotation
+        Vector3 rotatedPos = refRotation * meshItem.worldTransform.position;
+        meshItem.worldTransform.position = rotatedPos + refPosition;
+        meshItem.worldTransform.rotation = refRotation * meshItem.worldTransform.rotation;
+        
+        // 应用缩放
+        meshItem.worldTransform.scale = Vector3(
+            meshItem.worldTransform.scale.x * refScale.x,
+            meshItem.worldTransform.scale.y * refScale.y,
+            meshItem.worldTransform.scale.z * refScale.z
+        );
     }
 
     return childResult;

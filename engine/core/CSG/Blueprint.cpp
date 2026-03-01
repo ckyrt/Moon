@@ -64,6 +64,11 @@ BlueprintDatabase::BlueprintDatabase() {
 BlueprintDatabase::~BlueprintDatabase() {
 }
 
+void BlueprintDatabase::SetComponentsDirectory(const std::string& baseDir) {
+    m_baseDir = baseDir;
+    MOON_LOG_INFO("BlueprintDB", "Set components directory: %s", baseDir.c_str());
+}
+
 bool BlueprintDatabase::LoadBlueprint(const std::string& filepath, std::string& outError) {
     auto blueprint = BlueprintLoader::LoadFromFile(filepath, outError);
     if (!blueprint) {
@@ -83,7 +88,6 @@ bool BlueprintDatabase::LoadBlueprint(const std::string& filepath, std::string& 
     m_blueprints[id] = std::move(blueprint);
     
     MOON_LOG_INFO("BlueprintDB", "Loaded blueprint: %s from %s", id.c_str(), filepath.c_str());
-    m_orderedIds.push_back(id);
     return true;
 }
 
@@ -118,46 +122,71 @@ bool BlueprintDatabase::LoadIndex(const std::string& indexPath, std::string& out
         return false;
     }
 
-    int loaded = 0, failed = 0;
+    // 读取所有组件索引信息，建立 id -> path 映射（用于懒加载）
+    m_idToPath.clear();
+    
     for (const auto& item : j["items"]) {
-        if (!item.contains("path")) continue;
+        if (!item.contains("id") || !item.contains("path")) continue;
+        
+        std::string id = item["id"].get<std::string>();
         std::string relPath = item["path"].get<std::string>();
         std::string fullPath = baseDir + relPath;
-        bool isDependency = item.contains("dependency") && item["dependency"].get<bool>();
-        std::string itemError;
-        if (LoadBlueprint(fullPath, itemError)) {
-            // dependency 只加载进数据库，不加入 orderedIds（不出现在场景里）
-            if (isDependency && !m_orderedIds.empty()) {
-                m_orderedIds.pop_back();
-            }
-            loaded++;
-        } else {
-            MOON_LOG_WARN("BlueprintDB", "Skipping %s: %s", fullPath.c_str(), itemError.c_str());
-            failed++;
-        }
+        
+        // 注册路径映射（所有组件都注册，不区分 dependency）
+        m_idToPath[id] = fullPath;
+        
+        std::string desc = item.contains("description") ? item["description"].get<std::string>() : "";
+        MOON_LOG_INFO("BlueprintDB", "Registered: %s -> %s (%s)", 
+            id.c_str(), fullPath.c_str(), desc.c_str());
     }
 
-    MOON_LOG_INFO("BlueprintDB", "LoadIndex done: %d loaded, %d failed", loaded, failed);
-    return loaded > 0;
+    MOON_LOG_INFO("BlueprintDB", "Index loaded: %d components registered", (int)m_idToPath.size());
+    return m_idToPath.size() > 0;
 }
 
-const Blueprint* BlueprintDatabase::GetBlueprint(const std::string& id) const {
+const Blueprint* BlueprintDatabase::GetBlueprint(const std::string& id) {
+    // 先查缓存
     auto it = m_blueprints.find(id);
-    return (it != m_blueprints.end()) ? it->second.get() : nullptr;
+    if (it != m_blueprints.end()) {
+        return it->second.get();
+    }
+    
+    // 缓存未命中，尝试懒加载
+    return LoadBlueprintLazy(id);
+}
+
+const Blueprint* BlueprintDatabase::LoadBlueprintLazy(const std::string& id) {
+    // 只从 index.json 注册的路径加载
+    auto pathIt = m_idToPath.find(id);
+    if (pathIt == m_idToPath.end()) {
+        MOON_LOG_WARN("BlueprintDB", "Blueprint not found in index: %s", id.c_str());
+        return nullptr;
+    }
+    
+    std::string filepath = pathIt->second;
+    std::string error;
+    auto blueprint = BlueprintLoader::LoadFromFile(filepath, error);
+    
+    if (!blueprint) {
+        MOON_LOG_ERROR("BlueprintDB", "Failed to lazy-load %s: %s", id.c_str(), error.c_str());
+        return nullptr;
+    }
+    
+    MOON_LOG_INFO("BlueprintDB", "Lazy-loaded blueprint: %s from %s", id.c_str(), filepath.c_str());
+    
+    const Blueprint* ptr = blueprint.get();
+    m_blueprints[id] = std::move(blueprint);
+    return ptr;
 }
 
 bool BlueprintDatabase::HasBlueprint(const std::string& id) const {
     return m_blueprints.find(id) != m_blueprints.end();
 }
 
-std::vector<std::string> BlueprintDatabase::GetAllIds() const {
-    return m_orderedIds;  // 返回按加载顺序排列的 IDs
-}
-
 void BlueprintDatabase::Clear() {
     m_blueprints.clear();
     m_idToPath.clear();
-    m_orderedIds.clear();
+    m_baseDir.clear();
 }
 
 } // namespace CSG

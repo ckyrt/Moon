@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "name": "test_scene",
+  "description": "Test scene with room, table and 4 chairs",
+  "version": 1,
+  "parameters": {},
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "room",
+        "comment": "Simple room shell at origin",
+        "type": "reference",
+        "ref": "simple_room_v1",
+        "transform": { "position": [0, 0, 0] }
+      },
+      {
+        "name": "table",
+        "comment": "Table in the center of the room",
+        "type": "reference",
+        "ref": "table_v1",
+        "transform": { "position": [0, 0, 0] }
+      },
+      {
+        "name": "chair_front",
+        "comment": "Chair on front side (-Z), facing table",
+        "type": "reference",
+        "ref": "chair_v1",
+        "transform": { 
+          "position": [0, 0, -90],
+          "rotation_euler": [0, 0, 0]
+        }
+      },
+      {
+        "name": "chair_back",
+        "comment": "Chair on back side (+Z), facing table",
+        "type": "reference",
+        "ref": "chair_v1",
+        "transform": { 
+          "position": [0, 0, 90],
+          "rotation_euler": [180, 0, 0]
+        }
+      },
+      {
+        "name": "chair_left",
+        "comment": "Chair on left side (-X), facing table",
+        "type": "reference",
+        "ref": "chair_v1",
+        "transform": { 
+          "position": [-90, 0, 0],
+          "rotation_euler": [90, 0, 0]
+        }
+      },
+      {
+        "name": "chair_right",
+        "comment": "Chair on right side (+X), facing table",
+        "type": "reference",
+        "ref": "chair_v1",
+        "transform": { 
+          "position": [90, 0, 0],
+          "rotation_euler": [-90, 0, 0]
+        }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}
