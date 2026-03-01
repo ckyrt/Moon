@@ -19,6 +19,7 @@
       <Filter>TestScenes</Filter>
     </ClCompile>
     <ClCompile Include="HelloEngineImGui.cpp" />
+    <ClCompile Include="DebugGridRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SceneZipLoader.h" />
@@ -29,6 +30,7 @@
       <Filter>TestScenes</Filter>
     </ClInclude>
     <ClInclude Include="HelloEngineImGui.h" />
+    <ClInclude Include="DebugGridRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="TestScenes">

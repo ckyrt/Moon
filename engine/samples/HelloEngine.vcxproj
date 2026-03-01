@@ -104,6 +104,7 @@
     </ClCompile>
     <ClCompile Include="hello_win32.cpp" />
     <ClCompile Include="HelloEngineImGui.cpp" />
+    <ClCompile Include="DebugGridRenderer.cpp" />
     <ClCompile Include="CSGUnitTest.cpp" />
     <ClCompile Include="SceneZipLoader.cpp" />
     <ClCompile Include="TestCSG.cpp" />
@@ -114,6 +115,7 @@
   <ItemGroup>
     <ClInclude Include="CSGUnitTest.h" />
     <ClInclude Include="HelloEngineImGui.h" />
+    <ClInclude Include="DebugGridRenderer.h" />
     <ClInclude Include="SceneZipLoader.h" />
     <ClInclude Include="TestScenes.h" />
   </ItemGroup>

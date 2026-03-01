@@ -3,6 +3,7 @@
 #include "../core/Camera/PerspectiveCamera.h"
 #include "../core/Profiling/FPSCounter.h"
 #include "../render/diligent/DiligentRenderer.h"
+#include "DebugGridRenderer.h"
 #include "imgui.h"
 #include "ImGuizmo.h"
 #include "ImGuiImplWin32.hpp"
@@ -15,6 +16,8 @@ static Diligent::ImGuiImplWin32* g_ImGuiWin32 = nullptr;
 static DiligentRenderer* g_Renderer = nullptr;
 static bool g_DebugGridEnabled = true;   // 调试网格开关
 
+static DebugGridRenderer g_DebugGridRenderer;
+
 } // namespace HelloEngineImGui
 
 // Forward declare ImGui Win32 message handler (global scope)
@@ -25,6 +28,7 @@ namespace HelloEngineImGui {
 void Initialize(HWND hwnd, DiligentRenderer* renderer)
 {
     g_Renderer = renderer;
+    g_DebugGridRenderer.Initialize(renderer);
 
     IMGUI_CHECKVERSION();
     g_ImGuiContext = ImGui::CreateContext();
@@ -50,6 +54,8 @@ void Shutdown()
         delete g_ImGuiWin32;
         g_ImGuiWin32 = nullptr;
     }
+
+    g_DebugGridRenderer.Shutdown();
 
     // 注意：不要手动调用 ImGui::DestroyContext()
     // ImGuiImplWin32 的析构函数会自动处理 ImGui 的清理
@@ -144,20 +150,7 @@ void RenderUI(Moon::PerspectiveCamera* camera, Moon::FPSCounter* fpsCounter)
 void RenderDebugGrid(Moon::PerspectiveCamera* camera)
 {
     if (!camera || !g_DebugGridEnabled) return;
-
-    auto view = camera->GetViewMatrix();
-    auto proj = camera->GetProjectionMatrix();
-
-    // 单位矩阵（网格在原点）
-    float identityMatrix[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    };
-
-    // 绘制100x100的网格，每格10单位
-    ImGuizmo::DrawGrid(&view.m[0][0], &proj.m[0][0], identityMatrix, 100.0f);
+    g_DebugGridRenderer.Render(camera);
 }
 
 void EnableDebugGrid(bool enable)

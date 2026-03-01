@@ -25,7 +25,7 @@ namespace HelloEngineImGui {
     // 渲染调试网格和坐标轴
     void RenderDebugGrid(Moon::PerspectiveCamera* camera);
 
-    // 启用/禁用调试网格（默认禁用）
+    // 启用/禁用调试网格（默认启用）
     void EnableDebugGrid(bool enable);
     bool IsDebugGridEnabled();
 
