@@ -39,12 +39,30 @@
       },
       {
         "name": "wall_front",
-        "comment": "Front wall (-Z side). Full exterior width, interior height h. Center Z = -(d/2 - t/2).",
-        "type": "primitive",
-        "primitive": "cube",
-        "params": { "size_x": "$w", "size_y": "$h", "size_z": "$t" },
-        "transform": { "position": [0, "$t + $h / 2", "-($d / 2 - $t / 2)"] },
-        "material": "concrete"
+        "comment": "Front wall (-Z side) with door opening cut out using CSG subtract.",
+        "type": "csg",
+        "operation": "subtract",
+        "left": {
+          "comment": "Solid front wall",
+          "type": "primitive",
+          "primitive": "cube",
+          "params": { "size_x": "$w", "size_y": "$h", "size_z": "$t" },
+          "transform": { "position": [0, "$t + $h / 2", "-($d / 2 - $t / 2)"] },
+          "material": "concrete"
+        },
+        "right": {
+          "comment": "Door opening (door panel 90x200 + frame post_width 8 = total 106x208)",
+          "type": "primitive",
+          "primitive": "cube",
+          "params": { 
+            "size_x": 106.0, 
+            "size_y": 208.0, 
+            "size_z": "$t + 2" 
+          },
+          "transform": { 
+            "position": [0, "$t + 104.0", "-($d / 2 - $t / 2)"] 
+          }
+        }
       },
       {
         "name": "wall_back",
@@ -98,6 +116,18 @@
         "ref": "window_v1",
         "overrides": { "w": "$win_w", "h": "$win_h", "t": "$t" },
         "transform": { "position": [0, "$t + $h * 0.6", "$d / 2 - $t / 2"] }
+      },
+      {
+        "name": "door_front",
+        "comment": "Door on front wall. Centered horizontally, floor level at y=$t. Embedded in wall thickness.",
+        "type": "reference",
+        "ref": "complete_door_v1",
+        "overrides": { 
+          "door_width": 90.0,
+          "door_height": 200.0,
+          "frame_depth": "$t"
+        },
+        "transform": { "position": [0, "$t", "-($d / 2 - $t / 2)"] }
       }
     ],
     "output": { "mode": "separate" }
