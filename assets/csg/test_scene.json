@@ -60,6 +60,24 @@
           "position": [90, 0, 0],
           "rotation_euler": [-90, 0, 0]
         }
+      },
+      {
+        "name": "desk_lamp",
+        "comment": "Desk lamp on table, left side",
+        "type": "reference",
+        "ref": "desk_lamp_v1",
+        "transform": { 
+          "position": [-40, 76, 25]
+        }
+      },
+      {
+        "name": "cup",
+        "comment": "Cup on table, right front area",
+        "type": "reference",
+        "ref": "cup_body_v1",
+        "transform": { 
+          "position": [30, 76, -20]
+        }
       }
     ],
     "output": { "mode": "separate" }

@@ -27,7 +27,8 @@
       },
       "transform": {
         "position": [0, "$height / 2", 0]
-      }
+      },
+      "material": "glass"
     },
     "right": {
       "type": "primitive",
