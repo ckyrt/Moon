@@ -78,6 +78,15 @@
         "transform": { 
           "position": [30, 76, -20]
         }
+      },
+      {
+        "name": "bed",
+        "comment": "Bed in the back left corner of the room, headboard against back wall",
+        "type": "reference",
+        "ref": "bed_v1",
+        "transform": { 
+          "position": [-200, 0, -150]
+        }
       }
     ],
     "output": { "mode": "separate" }

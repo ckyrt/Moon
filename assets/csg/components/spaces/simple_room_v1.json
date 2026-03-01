@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
   "name": "simple_room_v1",
-  "description": "Simple room shell: floor + 4 walls + flat roof + one window on back wall. Level 4. Origin at exterior ground center (y=0 = bottom of floor). w/d = exterior footprint. h = interior wall height (excludes floor/roof thickness).",
+  "description": "Simple room shell: floor + 4 walls (no roof) + one window on back wall. Level 4. Origin at exterior ground center (y=0 = bottom of floor). w/d = exterior footprint. h = interior wall height (excludes floor thickness).",
   "version": 1,
   "parameters": {
-    "w":     500.0,
-    "d":     400.0,
-    "h":     280.0,
+    "w":     750.0,
+    "d":     600.0,
+    "h":     350.0,
     "t":      20.0,
-    "win_w": 100.0,
-    "win_h": 120.0
+    "win_w": 150.0,
+    "win_h": 150.0
   },
   "anchors": {
     "bottom_center":   [0, 0, 0],
     "interior_center": [0, "$t + $h / 2", 0],
-    "top_center":      [0, "$t + $h + $t", 0]
+    "top_center":      [0, "$t + $h", 0]
   },
   "root": {
     "type": "group",
@@ -26,15 +26,6 @@
         "primitive": "cube",
         "params": { "size_x": "$w", "size_y": "$t", "size_z": "$d" },
         "transform": { "position": [0, "$t / 2", 0] },
-        "material": "concrete"
-      },
-      {
-        "name": "roof",
-        "comment": "Flat roof. Full exterior footprint. Sits on top of walls. Center at y = t + h + t/2.",
-        "type": "primitive",
-        "primitive": "cube",
-        "params": { "size_x": "$w", "size_y": "$t", "size_z": "$d" },
-        "transform": { "position": [0, "$t + $h + $t / 2", 0] },
         "material": "concrete"
       },
       {

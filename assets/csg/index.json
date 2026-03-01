@@ -95,6 +95,13 @@
       "tags": ["level3", "furniture", "lamp", "lighting"]
     },
     {
+      "id": "bed_v1",
+      "path": "components/furniture/bed_v1.json",
+      "description": "Simple bed with mattress, frame, 4 legs and headboard",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "bed"]
+    },
+    {
       "id": "beam_v1",
       "path": "components/structural/beam_v1.json",
       "description": "Rectangular beam (horizontal structural element)",

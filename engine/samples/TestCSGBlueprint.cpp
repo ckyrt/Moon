@@ -72,6 +72,8 @@ void TestCSGBlueprint(EngineCore* engine)
                 mat->SetMaterialPreset(Moon::MaterialPreset::Rock);
             else if (matName == "plastic" || matName == "emissive")
                 mat->SetMaterialPreset(Moon::MaterialPreset::Plastic);
+            else if (matName == "fabric" || matName == "cloth")
+                mat->SetMaterialPreset(Moon::MaterialPreset::Fabric);
             else
                 mat->SetMaterialPreset(Moon::MaterialPreset::Wood);
             

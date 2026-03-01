@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "name": "bed_v1",
+  "description": "Simple bed with mattress, frame, 4 legs and headboard. Origin at floor (y=0 = bottom of legs).",
+  "version": 1,
+  "parameters": {
+    "bed_length": 200.0,
+    "bed_width": 150.0,
+    "leg_height": 35.0,
+    "leg_radius": 3.0,
+    "leg_inset": 10.0,
+    "frame_height": 3.0,
+    "frame_thickness": 3.0,
+    "mattress_height": 20.0,
+    "headboard_height": 80.0,
+    "headboard_thickness": 5.0
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "top_center": [0, "$leg_height + $frame_height + $mattress_height + $headboard_height", 0],
+    "mattress_top": [0, "$leg_height + $frame_height + $mattress_height", 0],
+    "center": [0, "($leg_height + $frame_height + $mattress_height) / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "leg_fl",
+        "comment": "Front left leg - cylinder with bottom at floor",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$leg_height"
+        },
+        "transform": {
+          "position": ["$bed_width / 2 - $leg_inset", "$leg_height / 2", "$bed_length / 2 - $leg_inset"]
+        },
+        "material": "metal"
+      },
+      {
+        "name": "leg_fr",
+        "comment": "Front right leg",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$leg_height"
+        },
+        "transform": {
+          "position": ["-$bed_width / 2 + $leg_inset", "$leg_height / 2", "$bed_length / 2 - $leg_inset"]
+        },
+        "material": "metal"
+      },
+      {
+        "name": "leg_bl",
+        "comment": "Back left leg (near headboard)",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$leg_height"
+        },
+        "transform": {
+          "position": ["$bed_width / 2 - $leg_inset", "$leg_height / 2", "-$bed_length / 2 + $leg_inset"]
+        },
+        "material": "metal"
+      },
+      {
+        "name": "leg_br",
+        "comment": "Back right leg (near headboard)",
+        "type": "primitive",
+        "primitive": "cylinder",
+        "params": {
+          "radius": "$leg_radius",
+          "height": "$leg_height"
+        },
+        "transform": {
+          "position": ["-$bed_width / 2 + $leg_inset", "$leg_height / 2", "-$bed_length / 2 + $leg_inset"]
+        },
+        "material": "metal"
+      },
+      {
+        "name": "frame",
+        "comment": "Bed frame - thin support platform on top of legs",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$bed_width",
+          "size_y": "$frame_height",
+          "size_z": "$bed_length"
+        },
+        "transform": {
+          "position": [0, "$leg_height + $frame_height / 2", 0]
+        },
+        "material": "wood"
+      },
+      {
+        "name": "mattress",
+        "comment": "Mattress - sits on top of frame",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$bed_width - $frame_thickness * 2",
+          "size_y": "$mattress_height",
+          "size_z": "$bed_length - $frame_thickness * 2"
+        },
+        "transform": {
+          "position": [0, "$leg_height + $frame_height + $mattress_height / 2", 0]
+        },
+        "material": "fabric"
+      },
+      {
+        "name": "headboard",
+        "comment": "Headboard at back end (-Z) of bed, extends from floor to top",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$bed_width",
+          "size_y": "$headboard_height",
+          "size_z": "$headboard_thickness"
+        },
+        "transform": {
+          "position": [0, "$leg_height + $headboard_height / 2", "-$bed_length / 2 + $headboard_thickness / 2"]
+        },
+        "material": "wood"
+      }
+    ],
+    "output": {
+      "mode": "separate"
+    }
+  }
+}
