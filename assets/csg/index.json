@@ -165,6 +165,13 @@
       "tags": ["level1", "structural", "primitive", "hemisphere", "sphere"]
     },
     {
+      "id": "point_light_warm_v1",
+      "path": "components/lighting/point_light_warm_v1.json",
+      "description": "Warm point light source (yellowish white) for lamps and fixtures",
+      "category": "lighting",
+      "tags": ["level1", "lighting", "light", "point", "warm", "reusable"]
+    },
+    {
       "id": "test_scene",
       "path": "test_scene.json",
       "description": "Test scene configuration",

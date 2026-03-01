@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "name": "point_light_warm_v1",
+  "description": "Warm point light source (yellowish white). Reusable lighting component for lamps, candles, etc.",
+  "version": 1,
+  "parameters": {
+    "color_r": 1.0,
+    "color_g": 0.95,
+    "color_b": 0.9,
+    "intensity": 6.0,
+    "range": 180.0
+  },
+  "anchors": {
+    "light_center": [0, 0, 0]
+  },
+  "root": {
+    "type": "light",
+    "light": {
+      "type": "point",
+      "color": ["$color_r", "$color_g", "$color_b"],
+      "intensity": "$intensity",
+      "range": "$range",
+      "attenuation": [1.0, 0.35, 0.44],
+      "cast_shadows": true
+    },
+    "transform": {
+      "position": [0, 0, 0]
+    }
+  }
+}

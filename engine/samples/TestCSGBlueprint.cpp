@@ -74,6 +74,8 @@ void TestCSGBlueprint(EngineCore* engine)
                 mat->SetMaterialPreset(Moon::MaterialPreset::Plastic);
             else
                 mat->SetMaterialPreset(Moon::MaterialPreset::Wood);
+            
+            mat->SetMappingMode(Moon::MappingMode::Triplanar);
 
             // 计算边界
             const auto& verts = item.mesh->GetVertices();

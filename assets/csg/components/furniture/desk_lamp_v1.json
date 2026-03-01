@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "desk_lamp_v1",
-  "description": "Desk lamp. Level 3 furniture. Components: flat base (cylinder) + vertical pole (cylinder) + horizontal arm (cylinder, rotation_euler Z=90) + conical shade (cone, tip-up) + bulb (sphere). Origin at floor (y=0 = base bottom).",
+  "description": "Desk lamp. Level 3 furniture. Components: flat base (cylinder) + vertical pole (cylinder) + horizontal arm (cylinder) + bowl lampshade (inverted hollow hemisphere) + bulb (sphere) + point light. Origin at floor (y=0 = base bottom).",
   "version": 1,
   "parameters": {
     "base_r":   8.0,
@@ -11,13 +11,17 @@
     "arm_r":    0.8,
     "arm_len": 20.0,
     "shade_r":  7.0,
-    "shade_h": 12.0,
-    "bulb_r":   2.5
+    "shade_thickness": 1.2,
+    "bulb_r":   2.5,
+    "light_color_r": 1.0,
+    "light_color_g": 0.8,
+    "light_color_b": 0.6
   },
   "anchors": {
     "bottom_center": [0, 0, 0],
     "top_center":    [0, "$base_h + $pole_h", 0],
     "arm_end":       ["$arm_len", "$base_h + $pole_h", 0],
+    "shade_bottom":  ["$arm_len", "$base_h + $pole_h - $shade_r", 0],
     "center":        ["$arm_len / 2", "($base_h + $pole_h) / 2", 0]
   },
   "root": {
@@ -59,39 +63,44 @@
       },
       {
         "name": "shade",
-        "comment": "Cone shade: tip at +Y (top), opening at -Y (bottom). Tip positioned at arm end (x=arm_len, y=pole_top). Center = tip_y - shade_h/2 = base_h+pole_h - shade_h/2.",
-        "type": "primitive",
-        "primitive": "cone",
-        "params": { "radius": "$shade_r", "height": "$shade_h" },
-        "transform": {
-          "position": ["$arm_len", "$base_h + $pole_h - $shade_h / 2", 0]
+        "comment": "Lampshade using bowl component (hollow hemisphere), flipped upside-down so opening faces down.",
+        "type": "reference",
+        "ref": "bowl_v1",
+        "overrides": {
+          "radius": "$shade_r",
+          "thickness": "$shade_thickness"
         },
-        "material": "wood"
+        "transform": {
+          "position": ["$arm_len", "$base_h + $pole_h", 0],
+          "rotation_euler": [0, 0, 180]
+        },
+        "material": "metal"
       },
       {
         "name": "bulb",
-        "comment": "Light bulb sphere inside the shade, centered at shade midpoint.",
+        "comment": "Light bulb sphere inside the hollow shade (bowl interior).",
         "type": "primitive",
         "primitive": "sphere",
         "params": { "radius": "$bulb_r" },
         "transform": {
-          "position": ["$arm_len", "$base_h + $pole_h - $shade_h / 2", 0]
+          "position": ["$arm_len", "$base_h + $pole_h - $shade_r / 2", 0]
         },
         "material": "emissive"
       },
       {
         "name": "bulb_light",
-        "comment": "Point light source at bulb center (range is in cm; converted to meters at build time).",
-        "type": "light",
-        "light": {
-          "type": "point",
-          "color": [1.0, 0.95, 0.9],
+        "comment": "Point light reference at bulb position with custom color.",
+        "type": "reference",
+        "ref": "point_light_warm_v1",
+        "overrides": {
+          "color_r": "$light_color_r",
+          "color_g": "$light_color_g",
+          "color_b": "$light_color_b",
           "intensity": 6.0,
-          "range": 180.0,
-          "attenuation": [1.0, 0.35, 0.44]
+          "range": 180.0
         },
         "transform": {
-          "position": ["$arm_len", "$base_h + $pole_h - $shade_h / 2", 0]
+          "position": ["$arm_len", "$base_h + $pole_h - $shade_r / 2", 0]
         }
       }
     ],

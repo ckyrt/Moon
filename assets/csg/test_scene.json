@@ -67,7 +67,7 @@
         "type": "reference",
         "ref": "desk_lamp_v1",
         "transform": { 
-          "position": [-40, 76, 25]
+          "position": [0, 76, 0]
         }
       },
       {
