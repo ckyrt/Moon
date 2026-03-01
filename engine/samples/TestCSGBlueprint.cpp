@@ -7,6 +7,7 @@
 #include <EngineCore.h>
 #include <Scene/MeshRenderer.h>
 #include <Scene/Material.h>
+#include <Scene/Light.h>
 
 namespace TestScenes {
 
@@ -37,8 +38,8 @@ void TestCSGBlueprint(EngineCore* engine)
     // 构建场景
     std::unordered_map<std::string, float> params;
     Moon::CSG::BuildResult result = builder.Build(sceneBlueprint, params, error);
-    
-    if (result.meshes.empty()) {
+
+    if (result.meshes.empty() && result.lights.empty()) {
         MOON_LOG_ERROR("CSGBlueprint", "Failed to build scene: %s", error.c_str());
         return;
     }
@@ -89,6 +90,40 @@ void TestCSGBlueprint(EngineCore* engine)
             MOON_LOG_INFO("CSGBlueprint", "  Part %d: Pos(%.2f, %.2f, %.2f) Bounds Y[%.3f, %.3f]", 
                 (int)i, item.worldTransform.position.x, item.worldTransform.position.y, item.worldTransform.position.z, minB.y, maxB.y);
         }
+    }
+
+    // 创建光源
+    for (size_t i = 0; i < result.lights.size(); ++i) {
+        const auto& item = result.lights[i];
+        auto node = scene->CreateNode("scene_light_" + std::to_string(i));
+
+        node->GetTransform()->SetLocalPosition(item.worldTransform.position);
+        node->GetTransform()->SetLocalRotation(item.worldTransform.rotation);
+        node->GetTransform()->SetLocalScale(item.worldTransform.scale);
+
+        auto light = node->AddComponent<Moon::Light>();
+        switch (item.type) {
+            case Moon::CSG::LightItem::Type::Directional: light->SetType(Moon::Light::Type::Directional); break;
+            case Moon::CSG::LightItem::Type::Point:       light->SetType(Moon::Light::Type::Point); break;
+            case Moon::CSG::LightItem::Type::Spot:        light->SetType(Moon::Light::Type::Spot); break;
+        }
+        light->SetColor(item.color);
+        light->SetIntensity(item.intensity);
+
+        if (light->GetType() == Moon::Light::Type::Point || light->GetType() == Moon::Light::Type::Spot) {
+            light->SetRange(item.range);
+            light->SetAttenuation(item.attenuation.x, item.attenuation.y, item.attenuation.z);
+        }
+        if (light->GetType() == Moon::Light::Type::Spot) {
+            light->SetSpotAngles(item.spotInnerConeAngle, item.spotOuterConeAngle);
+        }
+
+        light->SetCastShadows(item.castShadows);
+
+        MOON_LOG_INFO("CSGBlueprint", "  Light %d: type=%d pos(%.2f, %.2f, %.2f) intensity=%.2f",
+            (int)i, (int)light->GetType(),
+            item.worldTransform.position.x, item.worldTransform.position.y, item.worldTransform.position.z,
+            item.intensity);
     }
 
     MOON_LOG_INFO("CSGBlueprint", "=== Scene loaded successfully ===");

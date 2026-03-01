@@ -85,11 +85,62 @@ BuildResult CSGBuilder::BuildNode(const Node* node, ParameterScope& scope, std::
         
         case NodeType::Reference:
             return BuildReference(node->data.ref, scope, outError);
+
+        case NodeType::Light:
+            return BuildLight(node->data.light, scope, outError);
         
         default:
             outError = "Unknown node type";
             return BuildResult();
     }
+}
+
+BuildResult CSGBuilder::BuildLight(const LightNode* light, ParameterScope& scope, std::string& outError)
+{
+    if (!light) {
+        outError = "LightNode is null";
+        return BuildResult();
+    }
+
+    // Resolve transform (position cm->m handled inside ResolveTransform)
+    Vector3 position, scale;
+    Quaternion rotation;
+    ResolveTransform(light->localTransform, scope, position, rotation, scale, outError);
+
+    // Resolve light params
+    const float r = ResolveValue(light->colorR, scope, outError);
+    const float g = ResolveValue(light->colorG, scope, outError);
+    const float b = ResolveValue(light->colorB, scope, outError);
+    const float intensity = ResolveValue(light->intensity, scope, outError);
+
+    static constexpr float CM_TO_M = 0.01f;
+    const float rangeMeters = ResolveValue(light->range, scope, outError) * CM_TO_M;
+
+    const float attC = ResolveValue(light->attenuationConstant, scope, outError);
+    const float attL = ResolveValue(light->attenuationLinear, scope, outError);
+    const float attQ = ResolveValue(light->attenuationQuadratic, scope, outError);
+
+    const float innerDeg = ResolveValue(light->spotInnerConeAngle, scope, outError);
+    const float outerDeg = ResolveValue(light->spotOuterConeAngle, scope, outError);
+
+    LightItem item;
+    switch (light->type) {
+        case LightNode::Type::Directional: item.type = LightItem::Type::Directional; break;
+        case LightNode::Type::Point:       item.type = LightItem::Type::Point; break;
+        case LightNode::Type::Spot:        item.type = LightItem::Type::Spot; break;
+    }
+    item.color = Vector3(r, g, b);
+    item.intensity = intensity;
+    item.range = rangeMeters;
+    item.attenuation = Vector3(attC, attL, attQ);
+    item.spotInnerConeAngle = innerDeg;
+    item.spotOuterConeAngle = outerDeg;
+    item.castShadows = light->castShadows;
+    item.worldTransform = ResolvedTransform(position, rotation, scale);
+
+    BuildResult result;
+    result.AddLight(item);
+    return result;
 }
 
 BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope& scope, std::string& outError) {
@@ -457,6 +508,11 @@ BuildResult CSGBuilder::BuildGroup(const GroupNode* group, ParameterScope& scope
         for (auto& meshItem : builtChildren[i].result.meshes) {
             meshItem.worldTransform.position = meshItem.worldTransform.position + delta;
         }
+
+        // 同时应用到该 child 的所有 light
+        for (auto& lightItem : builtChildren[i].result.lights) {
+            lightItem.worldTransform.position = lightItem.worldTransform.position + delta;
+        }
         // 同时更新 basePosition（万一后续其他节点 attach 到本节点）
         builtChildren[i].basePosition = builtChildren[i].basePosition + delta;
     }
@@ -521,6 +577,19 @@ BuildResult CSGBuilder::BuildReference(const RefNode* ref, ParameterScope& scope
             meshItem.worldTransform.scale.x * refScale.x,
             meshItem.worldTransform.scale.y * refScale.y,
             meshItem.worldTransform.scale.z * refScale.z
+        );
+    }
+
+    // 应用 transform 到所有生成的 light
+    for (auto& lightItem : childResult.lights) {
+        Vector3 rotatedPos = refRotation * lightItem.worldTransform.position;
+        lightItem.worldTransform.position = rotatedPos + refPosition;
+        lightItem.worldTransform.rotation = refRotation * lightItem.worldTransform.rotation;
+
+        lightItem.worldTransform.scale = Vector3(
+            lightItem.worldTransform.scale.x * refScale.x,
+            lightItem.worldTransform.scale.y * refScale.y,
+            lightItem.worldTransform.scale.z * refScale.z
         );
     }
 

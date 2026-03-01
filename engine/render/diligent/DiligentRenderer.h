@@ -119,6 +119,14 @@ private:
         float padding2 = 0.0f;
         Moon::Vector3 lightColor;          // 光源颜色
         float lightIntensity = 0.0f;       // 光源强度（0 = 无光源）
+
+        // 单点光源（Point Light, v1: 只支持场景中第一个启用的点光源）
+        Moon::Vector3 pointLightPosition;  // 世界坐标
+        float pointLightRange = 0.0f;      // 米
+        Moon::Vector3 pointLightColor;
+        float pointLightIntensity = 0.0f;
+        Moon::Vector3 pointLightAttenuation; // (constant, linear, quadratic)
+        float paddingPoint = 0.0f;
     };
 
     struct ShadowConstantsCPU { // 16B 对齐

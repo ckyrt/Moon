@@ -31,6 +31,14 @@ cbuffer SceneConstants {
     float g_Padding4;
     float3 g_LightColor;
     float g_LightIntensity;
+
+    // 单点光源（v1: 只支持一个点光源）
+    float3 g_PointLightPosition;
+    float g_PointLightRange;
+    float3 g_PointLightColor;
+    float g_PointLightIntensity;
+    float3 g_PointLightAttenuation; // (constant, linear, quadratic)
+    float g_PointLightPadding;
 };
 
 // 阴影（Shadow Map）参数

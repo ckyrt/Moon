@@ -254,6 +254,22 @@ float4 main(in PSInput i) : SV_Target {
         float shadow = ComputeShadowFactor(i.WorldPos, N, L);
         Lo += CalculateDirectionalLight(N, V, L, albedo, roughness, metallic, F0, radiance) * shadow;
     }
+
+    // === 直接光照（点光源，单个）===
+    if (g_PointLightIntensity > 0.0 && g_PointLightRange > 0.0) {
+        float3 Lvec = g_PointLightPosition - i.WorldPos;
+        float dist = length(Lvec);
+        float invDist = (dist > 1e-4) ? (1.0 / dist) : 0.0;
+        float3 L = Lvec * invDist;
+
+        // 距离衰减 + range 软裁剪
+        float att = 1.0 / (g_PointLightAttenuation.x + g_PointLightAttenuation.y * dist + g_PointLightAttenuation.z * dist * dist);
+        float t = saturate(1.0 - dist / g_PointLightRange);
+        float rangeAtt = t * t;
+        float3 radiance = g_PointLightColor * g_PointLightIntensity * att * rangeAtt;
+
+        Lo += CalculateDirectionalLight(N, V, L, albedo, roughness, metallic, F0, radiance);
+    }
     
     // === 环境光照（IBL - Image Based Lighting）===
     // ✅ 移除人工baseAmbient，让IBL亮度完全来自HDR环境本身

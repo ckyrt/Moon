@@ -90,19 +90,50 @@ struct MeshItem {
 };
 
 /**
+ * @brief CSG 构建结果 - Light 项
+ */
+struct LightItem {
+    enum class Type {
+        Directional,
+        Point,
+        Spot
+    };
+
+    Type type = Type::Point;
+    Vector3 color = Vector3(1, 1, 1);
+    float intensity = 1.0f;
+    float range = 0.0f; // meters, for point/spot
+    Vector3 attenuation = Vector3(1.0f, 0.0f, 0.0f);
+    float spotInnerConeAngle = 15.0f;
+    float spotOuterConeAngle = 30.0f;
+    bool castShadows = false;
+
+    ResolvedTransform worldTransform;
+};
+
+/**
  * @brief 构建结果 - 可包含多个 Mesh
  */
 struct BuildResult {
     std::vector<MeshItem> meshes;
+    std::vector<LightItem> lights;
 
     void AddMesh(const MeshItem& item) {
         meshes.push_back(item);
+    }
+
+    void AddLight(const LightItem& item) {
+        lights.push_back(item);
     }
 
     void Merge(BuildResult&& other) {
         meshes.insert(meshes.end(), 
             std::make_move_iterator(other.meshes.begin()),
             std::make_move_iterator(other.meshes.end()));
+
+        lights.insert(lights.end(),
+            std::make_move_iterator(other.lights.begin()),
+            std::make_move_iterator(other.lights.end()));
     }
 };
 
@@ -147,6 +178,9 @@ private:
 
     // 构建 Reference（内部版本，返回结果 + 求值后的 anchor 坐标）
     BuildResult BuildReference(const RefNode* ref, ParameterScope& scope, std::string& outError);
+
+    // 构建 Light
+    BuildResult BuildLight(const LightNode* light, ParameterScope& scope, std::string& outError);
 
     // 对 blueprint 的 anchors 用指定 scope 求值，返回 name -> Vector3
     // CM_TO_M 会在此处应用（anchors 坐标单位为 cm）

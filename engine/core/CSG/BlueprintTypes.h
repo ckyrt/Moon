@@ -17,7 +17,8 @@ enum class NodeType {
     Primitive,   // 基础几何体
     Csg,         // 布尔运算
     Group,       // 组节点
-    Reference    // 引用其他 Blueprint
+    Reference,   // 引用其他 Blueprint
+    Light        // 光源节点（不产生 mesh，输出 LightItem）
 };
 
 /**
@@ -222,6 +223,45 @@ struct RefNode {
 };
 
 /**
+ * @brief Light 节点数据
+ *
+ * Light 节点本身不参与 CSG/mesh 运算，只在 BuildResult.lights 输出。
+ *
+ * 约定：
+ * - position 单位为 cm（与其他节点一致），Build 时会转换为米。
+ * - intensity 为无单位标量（沿用 Light 组件语义）。
+ * - range 单位为 cm（Build 时转换为米）。
+ */
+struct LightNode {
+    enum class Type {
+        Directional,
+        Point,
+        Spot
+    };
+
+    Type type = Type::Point;
+    TransformTRS localTransform;
+
+    // 基本属性
+    ValueExpr colorR = ValueExpr::Constant(1.0f);
+    ValueExpr colorG = ValueExpr::Constant(1.0f);
+    ValueExpr colorB = ValueExpr::Constant(1.0f);
+    ValueExpr intensity = ValueExpr::Constant(1.0f);
+
+    // Point/Spot
+    ValueExpr range = ValueExpr::Constant(200.0f); // cm
+    ValueExpr attenuationConstant  = ValueExpr::Constant(1.0f);
+    ValueExpr attenuationLinear    = ValueExpr::Constant(0.0f);
+    ValueExpr attenuationQuadratic = ValueExpr::Constant(0.0f);
+
+    // Spot
+    ValueExpr spotInnerConeAngle = ValueExpr::Constant(15.0f); // degrees
+    ValueExpr spotOuterConeAngle = ValueExpr::Constant(30.0f); // degrees
+
+    bool castShadows = false;
+};
+
+/**
  * @brief 通用 Node 结构
  */
 struct Node {
@@ -233,6 +273,7 @@ struct Node {
         CsgNode* csg;
         GroupNode* group;
         RefNode* ref;
+        LightNode* light;
     } data;
 
     Node() : type(NodeType::Primitive) {
@@ -246,6 +287,7 @@ struct Node {
             case NodeType::Csg: data.csg = new CsgNode(); break;
             case NodeType::Group: data.group = new GroupNode(); break;
             case NodeType::Reference: data.ref = new RefNode(); break;
+            case NodeType::Light: data.light = new LightNode(); break;
         }
     }
     
@@ -255,6 +297,7 @@ struct Node {
             case NodeType::Csg: delete data.csg; break;
             case NodeType::Group: delete data.group; break;
             case NodeType::Reference: delete data.ref; break;
+            case NodeType::Light: delete data.light; break;
         }
     }
     
@@ -287,6 +330,10 @@ struct Node {
     }
     RefNode* AsRef() {
         return type == NodeType::Reference ? data.ref : nullptr;
+    }
+
+    LightNode* AsLight() {
+        return type == NodeType::Light ? data.light : nullptr;
     }
 };
 

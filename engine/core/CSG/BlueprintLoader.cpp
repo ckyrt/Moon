@@ -202,6 +202,8 @@ std::unique_ptr<Node> BlueprintLoader::ParseNode(const void* jsonPtr, std::strin
         nodeType = NodeType::Group;
     } else if (typeStr == "reference") {
         nodeType = NodeType::Reference;
+    } else if (typeStr == "light") {
+        nodeType = NodeType::Light;
     } else {
         outError = "Unknown node type: " + typeStr;
         return nullptr;
@@ -362,6 +364,73 @@ std::unique_ptr<Node> BlueprintLoader::ParseNode(const void* jsonPtr, std::strin
                 ref->attach.targetPath   = att["target_path"].get<std::string>();
                 ref->attach.targetAnchor = att["target_anchor"].get<std::string>();
                 ref->attach.hasAttach    = true;
+            }
+
+            break;
+        }
+
+        case NodeType::Light: {
+            LightNode* light = node->AsLight();
+
+            if (!j.contains("light") || !j["light"].is_object()) {
+                outError = "Light node missing 'light' object";
+                return nullptr;
+            }
+
+            const json& lj = j["light"];
+
+            // light.type
+            if (!lj.contains("type")) {
+                outError = "Light node missing 'light.type' field";
+                return nullptr;
+            }
+            std::string lt = lj["type"].get<std::string>();
+            if (lt == "directional") light->type = LightNode::Type::Directional;
+            else if (lt == "point") light->type = LightNode::Type::Point;
+            else if (lt == "spot") light->type = LightNode::Type::Spot;
+            else {
+                outError = "Unknown light type: " + lt;
+                return nullptr;
+            }
+
+            // transform
+            if (j.contains("transform")) {
+                ParseTransform(&j["transform"], light->localTransform, outError);
+            }
+
+            // color
+            if (lj.contains("color") && lj["color"].is_array() && lj["color"].size() == 3) {
+                light->colorR = ParseValueExpr(&lj["color"][0], outError);
+                light->colorG = ParseValueExpr(&lj["color"][1], outError);
+                light->colorB = ParseValueExpr(&lj["color"][2], outError);
+            }
+
+            // intensity
+            if (lj.contains("intensity")) {
+                light->intensity = ParseValueExpr(&lj["intensity"], outError);
+            }
+
+            // range (cm)
+            if (lj.contains("range")) {
+                light->range = ParseValueExpr(&lj["range"], outError);
+            }
+
+            // attenuation: [constant, linear, quadratic]
+            if (lj.contains("attenuation") && lj["attenuation"].is_array() && lj["attenuation"].size() == 3) {
+                light->attenuationConstant  = ParseValueExpr(&lj["attenuation"][0], outError);
+                light->attenuationLinear    = ParseValueExpr(&lj["attenuation"][1], outError);
+                light->attenuationQuadratic = ParseValueExpr(&lj["attenuation"][2], outError);
+            }
+
+            // spot angles: [innerDeg, outerDeg]
+            if (lj.contains("spot_angles") && lj["spot_angles"].is_array() && lj["spot_angles"].size() == 2) {
+                light->spotInnerConeAngle = ParseValueExpr(&lj["spot_angles"][0], outError);
+                light->spotOuterConeAngle = ParseValueExpr(&lj["spot_angles"][1], outError);
+            }
+
+            // cast shadows
+            if (lj.contains("cast_shadows")) {
+                light->castShadows = lj["cast_shadows"].get<bool>();
             }
 
             break;

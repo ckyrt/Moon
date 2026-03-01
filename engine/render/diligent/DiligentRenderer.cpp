@@ -625,6 +625,13 @@ void DiligentRenderer::UpdateSceneLights(Moon::Scene* scene)
         m_SceneDataCache.lightDirection = Moon::Vector3(0.0f, -1.0f, 0.0f);
         m_SceneDataCache.lightColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
         m_SceneDataCache.lightIntensity = 0.0f;
+
+        m_SceneDataCache.pointLightPosition = Moon::Vector3(0.0f, 0.0f, 0.0f);
+        m_SceneDataCache.pointLightColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
+        m_SceneDataCache.pointLightIntensity = 0.0f;
+        m_SceneDataCache.pointLightRange = 0.0f;
+        m_SceneDataCache.pointLightAttenuation = Moon::Vector3(1.0f, 0.0f, 0.0f);
+
         UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
         return;
     }
@@ -633,18 +640,41 @@ void DiligentRenderer::UpdateSceneLights(Moon::Scene* scene)
     m_SceneDataCache.lightDirection = Moon::Vector3(0.0f, -1.0f, 0.0f);
     m_SceneDataCache.lightColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
     m_SceneDataCache.lightIntensity = 0.0f;  // 0 = 无光源，shader 中会检测这个值
+
+    m_SceneDataCache.pointLightPosition = Moon::Vector3(0.0f, 0.0f, 0.0f);
+    m_SceneDataCache.pointLightColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
+    m_SceneDataCache.pointLightIntensity = 0.0f;
+    m_SceneDataCache.pointLightRange = 0.0f;
+    m_SceneDataCache.pointLightAttenuation = Moon::Vector3(1.0f, 0.0f, 0.0f);
     
-    // 查找第一个启用的方向光
+    bool foundDirectional = false;
+    bool foundPoint = false;
+
+    // 查找第一个启用的方向光 + 点光源
     scene->Traverse([&](Moon::SceneNode* node) {
-        if (m_SceneDataCache.lightIntensity > 0.0f) return;  // 已找到光源
-        
+        if (foundDirectional && foundPoint) return;
+
         Moon::Light* light = node->GetComponent<Moon::Light>();
-        if (light && light->IsEnabled() && 
-            light->GetType() == Moon::Light::Type::Directional) {
-            
+        if (!light || !light->IsEnabled()) {
+            return;
+        }
+
+        if (!foundDirectional && light->GetType() == Moon::Light::Type::Directional) {
             m_SceneDataCache.lightDirection = light->GetDirection();
             m_SceneDataCache.lightColor = light->GetColor();
             m_SceneDataCache.lightIntensity = light->GetIntensity();
+            foundDirectional = (m_SceneDataCache.lightIntensity > 0.0f);
+        }
+
+        if (!foundPoint && light->GetType() == Moon::Light::Type::Point) {
+            m_SceneDataCache.pointLightPosition = node->GetTransform()->GetWorldPosition();
+            m_SceneDataCache.pointLightColor = light->GetColor();
+            m_SceneDataCache.pointLightIntensity = light->GetIntensity();
+            m_SceneDataCache.pointLightRange = light->GetRange();
+            float c = 1.0f, l = 0.0f, q = 0.0f;
+            light->GetAttenuation(c, l, q);
+            m_SceneDataCache.pointLightAttenuation = Moon::Vector3(c, l, q);
+            foundPoint = (m_SceneDataCache.pointLightIntensity > 0.0f);
         }
     });
     

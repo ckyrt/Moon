@@ -78,6 +78,21 @@
           "position": ["$arm_len", "$base_h + $pole_h - $shade_h / 2", 0]
         },
         "material": "emissive"
+      },
+      {
+        "name": "bulb_light",
+        "comment": "Point light source at bulb center (range is in cm; converted to meters at build time).",
+        "type": "light",
+        "light": {
+          "type": "point",
+          "color": [1.0, 0.95, 0.9],
+          "intensity": 6.0,
+          "range": 180.0,
+          "attenuation": [1.0, 0.35, 0.44]
+        },
+        "transform": {
+          "position": ["$arm_len", "$base_h + $pole_h - $shade_h / 2", 0]
+        }
       }
     ],
     "output": { "mode": "separate" }
