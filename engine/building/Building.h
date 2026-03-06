@@ -58,5 +58,8 @@
 #include "StairGenerator.h"
 #include "FacadeGenerator.h"
 
+// Converters
+#include "BuildingToCSGConverter.h"
+
 // Main pipeline
 #include "BuildingPipeline.h"

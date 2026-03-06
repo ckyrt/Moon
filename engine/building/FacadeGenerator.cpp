@@ -39,12 +39,7 @@ void FacadeGenerator::GenerateWindows(const BuildingDefinition& definition,
     // Process only exterior walls
     for (const auto& wall : walls) {
         if (wall.type != WallType::Exterior) continue;
-        
-        // Get floor level from space ID
-        int floorLevel = 0; // Would need to look this up from definition
-        
-        // Place windows based on style
-        PlaceWindowsOnWall(wall, definition.style, floorLevel, outWindows);
+        PlaceWindowsOnWall(wall, definition, outWindows);
     }
 }
 
@@ -71,9 +66,9 @@ void FacadeGenerator::GenerateBalconies(const BuildingDefinition& definition,
 }
 
 void FacadeGenerator::PlaceWindowsOnWall(const WallSegment& wall,
-                                         const BuildingStyle& style,
-                                         int floorLevel,
+                                         const BuildingDefinition& definition,
                                          std::vector<Window>& outWindows) {
+    const BuildingStyle& style = definition.style;
     // Calculate wall length
     float dx = wall.end[0] - wall.start[0];
     float dy = wall.end[1] - wall.start[1];
@@ -104,6 +99,7 @@ void FacadeGenerator::PlaceWindowsOnWall(const WallSegment& wall,
         window.height = m_windowHeight;
         window.sillHeight = m_windowSillHeight;
         window.spaceId = wall.spaceId;
+        window.floorLevel = wall.floorLevel;
         
         outWindows.push_back(window);
     }

@@ -11,11 +11,8 @@
 #include <CSG/Blueprint.h>
 #include <CSG/BlueprintLoader.h>
 #include <CSG/CSGBuilder.h>
-#include "../../external/nlohmann/json.hpp"
 #include <fstream>
 #include <sstream>
-
-using json = nlohmann::json;
 
 namespace TestScenes {
 
@@ -30,151 +27,14 @@ static std::string ReadFileToString(const std::string& filePath) {
     return buffer.str();
 }
 
-// Convert Building System V8 output to CSG Blueprint JSON
-static json ConvertToCSGBlueprint(const Moon::Building::GeneratedBuilding& building) {
-    json blueprint;
-    blueprint["schema_version"] = 1;
-    blueprint["name"] = "generated_building_v8";
-    blueprint["description"] = "Auto-generated from Building System V8";
-    blueprint["version"] = 1;
-    
-    json children = json::array();
-    const float wallThickness = 0.2f; // 20cm walls
-    
-    // Generate floors
-    int floorIdx = 0;
-    for (const auto& floor : building.definition.floors) {
-        for (const auto& space : floor.spaces) {
-            for (const auto& rect : space.rects) {
-                json floorNode;
-                floorNode["name"] = "floor_" + std::to_string(space.spaceId) + "_" + rect.rectId;
-                floorNode["type"] = "primitive";
-                floorNode["primitive"] = "cube";
-                
-                // rect.origin is [X, Y], rect.size is [width, depth]
-                // Convert meters to centimeters (x100)
-                float centerX = (rect.origin[0] + rect.size[0] * 0.5f) * 100.0f;
-                float centerY = (floor.level * floor.floorHeight + 0.025f) * 100.0f; // 5cm thick floor
-                float centerZ = (rect.origin[1] + rect.size[1] * 0.5f) * 100.0f;
-                
-                floorNode["params"] = {
-                    {"size_x", rect.size[0] * 100.0f},
-                    {"size_y", 5.0f}, // 5cm thick
-                    {"size_z", rect.size[1] * 100.0f}
-                };
-                floorNode["transform"] = {
-                    {"position", json::array({centerX, centerY, centerZ})}
-                };
-                
-                // Material based on space usage
-                if (space.properties.usageHint == "living") {
-                    floorNode["material"] = "wood_floor";
-                } else if (space.properties.usageHint == "kitchen") {
-                    floorNode["material"] = "tile_ceramic";
-                } else if (space.properties.usageHint == "bedroom") {
-                    floorNode["material"] = "carpet";
-                } else {
-                    floorNode["material"] = "concrete_floor";
-                }
-                
-                children.push_back(floorNode);
-                floorIdx++;
-            }
-        }
-    }
-    
-    // Generate walls
-    int wallIdx = 0;
-    for (const auto& wall : building.walls) {
-        // wall.start and wall.end are GridPos2D [X, Y]
-        float dx = wall.end[0] - wall.start[0];
-        float dz = wall.end[1] - wall.start[1];
-        float length = std::sqrt(dx * dx + dz * dz);
-        
-        if (length < 0.01f) continue;
-        
-        float centerX = (wall.start[0] + wall.end[0]) * 0.5f * 100.0f;
-        float centerY = wall.height * 0.5f * 100.0f; // Assume wall starts at Y=0
-        float centerZ = (wall.start[1] + wall.end[1]) * 0.5f * 100.0f;
-        
-        // Wall is along X or Z axis
-        bool alongX = std::abs(dz) < 0.01f;
-        
-        json wallNode;
-        wallNode["name"] = "wall_" + std::to_string(wallIdx);
-        wallNode["type"] = "primitive";
-        wallNode["primitive"] = "cube";
-        wallNode["params"] = {
-            {"size_x", (alongX ? length : wall.thickness) * 100.0f},
-            {"size_y", wall.height * 100.0f},
-            {"size_z", (alongX ? wall.thickness : length) * 100.0f}
-        };
-        wallNode["transform"] = {
-            {"position", json::array({centerX, centerY, centerZ})}
-        };
-        wallNode["material"] = (wall.type == Moon::Building::WallType::Exterior) ? "brick" : "plaster";
-        
-        children.push_back(wallNode);
-        wallIdx++;
-    }
-    
-    // Add doors
-    int doorIdx = 0;
-    for (const auto& door : building.doors) {
-        json doorNode;
-        doorNode["name"] = "door_" + std::to_string(doorIdx++);
-        doorNode["type"] = "reference";
-        doorNode["ref"] = "complete_door_v1";
-        doorNode["overrides"] = {
-            {"door_width", door.width * 100.0f},
-            {"door_height", door.height * 100.0f},
-            {"frame_depth", wallThickness * 100.0f}
-        };
-        doorNode["transform"] = {
-            {"position", json::array({door.position[0] * 100.0f, 0.0f, door.position[1] * 100.0f})},
-            {"rotation", json::array({0.0f, door.rotation, 0.0f})}
-        };
-        
-        children.push_back(doorNode);
-    }
-    
-    // Add windows
-    int windowIdx = 0;
-    for (const auto& window : building.windows) {
-        json windowNode;
-        windowNode["name"] = "window_" + std::to_string(windowIdx++);
-        windowNode["type"] = "reference";
-        windowNode["ref"] = "window_v1";
-        windowNode["overrides"] = {
-            {"w", window.width * 100.0f},
-            {"h", window.height * 100.0f},
-            {"t", wallThickness * 100.0f}
-        };
-        windowNode["transform"] = {
-            {"position", json::array({window.position[0] * 100.0f, window.sillHeight * 100.0f, window.position[1] * 100.0f})},
-            {"rotation", json::array({0.0f, window.rotation, 0.0f})}
-        };
-        
-        children.push_back(windowNode);
-    }
-    
-    blueprint["root"] = {
-        {"type", "group"},
-        {"children", children},
-        {"output", {{"mode", "separate"}}}
-    };
-    
-    return blueprint;
-}
-
 void TestBuildingV8(EngineCore* engine)
 {
     MOON_LOG_INFO("BuildingV8", "=== Testing Building System V8 with CSG ===");
     
     // Read Building System V8 JSON input
-    std::string jsonContent = ReadFileToString("assets/csg/test_building.json");
+    std::string jsonContent = ReadFileToString("assets/building/residential/luxury_villa.json");
     if (jsonContent.empty()) {
-        MOON_LOG_ERROR("BuildingV8", "Failed to read test_building.json");
+        MOON_LOG_ERROR("BuildingV8", "Failed to read luxury_villa.json");
         return;
     }
     
@@ -198,16 +58,16 @@ void TestBuildingV8(EngineCore* engine)
     
     // Convert to CSG Blueprint
     MOON_LOG_INFO("BuildingV8", "Converting to CSG Blueprint...");
-    json csgBlueprint = ConvertToCSGBlueprint(result);
-    
+    std::string blueprintJsonStr = Moon::Building::BuildingToCSGConverter::Convert(result);
+
     // Save CSG Blueprint to file
     std::string outputPath = "assets/csg/generated_building_v8.json";
     std::ofstream outFile(outputPath);
     if (outFile.is_open()) {
-        outFile << csgBlueprint.dump(2);
+        outFile << blueprintJsonStr;
         outFile.close();
         MOON_LOG_INFO("BuildingV8", "Saved CSG Blueprint to: %s", outputPath.c_str());
-        MOON_LOG_INFO("BuildingV8", "CSG Blueprint size: %zu bytes", csgBlueprint.dump(2).size());
+        MOON_LOG_INFO("BuildingV8", "CSG Blueprint size: %zu bytes", blueprintJsonStr.size());
     } else {
         MOON_LOG_ERROR("BuildingV8", "Failed to save CSG Blueprint to %s", outputPath.c_str());
         return;
@@ -229,7 +89,6 @@ void TestBuildingV8(EngineCore* engine)
     }
     
     // Parse the generated blueprint from JSON string
-    std::string blueprintJsonStr = csgBlueprint.dump();
     auto generatedBlueprint = Moon::CSG::BlueprintLoader::ParseFromString(blueprintJsonStr, loadError);
     if (!generatedBlueprint) {
         MOON_LOG_ERROR("BuildingV8", "Failed to parse generated blueprint: %s", loadError.c_str());

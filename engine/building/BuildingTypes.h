@@ -157,7 +157,8 @@ struct WallSegment {
     WallType type;
     int spaceId;            // Space on one side
     int neighborSpaceId;    // Space on other side (-1 if exterior)
-    float height;           // Wall height
+    int floorLevel = 0;     // Floor level (0 = ground); use with Floor::floorHeight to get world Y
+    float height;           // Wall height (floor-to-ceiling)
     float thickness;        // Wall thickness
 };
 
@@ -180,6 +181,7 @@ struct Door {
     float height;           // Door height
     int spaceA;             // Space on one side
     int spaceB;             // Space on other side
+    int floorLevel = 0;     // Floor level (0 = ground)
 };
 
 /**
@@ -190,7 +192,8 @@ struct Window {
     float rotation;
     float width;
     float height;
-    float sillHeight;       // Height from floor to bottom of window
+    float sillHeight;       // Height from floor to bottom of window (relative to this floor)
+    int floorLevel = 0;     // Floor level (0 = ground)
     int spaceId;
 };
 

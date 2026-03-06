@@ -71,8 +71,7 @@ private:
                           std::vector<FacadeElement>& outElements);
     
     void PlaceWindowsOnWall(const WallSegment& wall,
-                           const BuildingStyle& style,
-                           int floorLevel,
+                           const BuildingDefinition& definition,
                            std::vector<Window>& outWindows);
     
     float GetWindowSpacing(const BuildingStyle& style) const;

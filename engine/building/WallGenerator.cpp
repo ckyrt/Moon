@@ -123,6 +123,7 @@ void WallGenerator::ClassifyEdges(const std::vector<EdgeInfo>& edges,
                 wall.neighborSpaceId = otherEdge.spaceId;
                 wall.height = std::max(edge.height, otherEdge.height);
                 wall.thickness = m_wallThickness;
+                wall.floorLevel = edge.floorLevel;
                 
                 outWalls.push_back(wall);
                 
@@ -143,6 +144,7 @@ void WallGenerator::ClassifyEdges(const std::vector<EdgeInfo>& edges,
             wall.neighborSpaceId = -1;
             wall.height = edge.height;
             wall.thickness = m_wallThickness;
+            wall.floorLevel = edge.floorLevel;
             
             outWalls.push_back(wall);
             

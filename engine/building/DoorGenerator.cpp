@@ -41,6 +41,16 @@ void DoorGenerator::GenerateDoors(const BuildingDefinition& definition,
         door.type = DetermineDoorType(adjacency, definition);
         door.width = m_defaultDoorWidth;
         door.height = m_defaultDoorHeight;
+
+        // Determine which floor spaceA lives on
+        for (const auto& floor : definition.floors) {
+            for (const auto& space : floor.spaces) {
+                if (space.spaceId == adjacency.spaceA) {
+                    door.floorLevel = floor.level;
+                    break;
+                }
+            }
+        }
         
         outDoors.push_back(door);
     }
