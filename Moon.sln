@@ -30,6 +30,21 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EditorApp", "editor\app\Edi
 		{A9F5D891-2E3C-4B7D-8F1A-6E9C3D4B5A72} = {A9F5D891-2E3C-4B7D-8F1A-6E9C3D4B5A72}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GTest", "thirdparty\googletest\GTest.vcxproj", "{3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GTestMain", "thirdparty\googletest\GTestMain.vcxproj", "{4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D} = {3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EngineBuildingTests", "engine\building\tests\EngineBuildingTests.vcxproj", "{E7F8A9B0-1C2D-3E4F-5A6B-7C8D9E0F1A2B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C4E6F6F1-0A2B-4E3C-9D8E-1F2A3B4C5D6E} = {C4E6F6F1-0A2B-4E3C-9D8E-1F2A3B4C5D6E}
+		{7B8C9D0E-1F2A-3B4C-5D6E-7F8A9B0C1D2E} = {7B8C9D0E-1F2A-3B4C-5D6E-7F8A9B0C1D2E}
+		{3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D} = {3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}
+		{4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E} = {4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -72,6 +87,18 @@ Global
 		{8FA3C2D1-9F5E-4B2A-A1D7-3E8F4C5B6A97}.Debug|x64.Build.0 = Debug|x64
 		{8FA3C2D1-9F5E-4B2A-A1D7-3E8F4C5B6A97}.Release|x64.ActiveCfg = Release|x64
 		{8FA3C2D1-9F5E-4B2A-A1D7-3E8F4C5B6A97}.Release|x64.Build.0 = Release|x64
+		{3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}.Debug|x64.ActiveCfg = Debug|x64
+		{3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}.Debug|x64.Build.0 = Debug|x64
+		{3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}.Release|x64.ActiveCfg = Release|x64
+		{3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}.Release|x64.Build.0 = Release|x64
+		{4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E}.Debug|x64.ActiveCfg = Debug|x64
+		{4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E}.Debug|x64.Build.0 = Debug|x64
+		{4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E}.Release|x64.ActiveCfg = Release|x64
+		{4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E}.Release|x64.Build.0 = Release|x64
+		{E7F8A9B0-1C2D-3E4F-5A6B-7C8D9E0F1A2B}.Debug|x64.ActiveCfg = Debug|x64
+		{E7F8A9B0-1C2D-3E4F-5A6B-7C8D9E0F1A2B}.Debug|x64.Build.0 = Debug|x64
+		{E7F8A9B0-1C2D-3E4F-5A6B-7C8D9E0F1A2B}.Release|x64.ActiveCfg = Release|x64
+		{E7F8A9B0-1C2D-3E4F-5A6B-7C8D9E0F1A2B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,44 @@
+{
+  "schema": "moon_building_v8",
+  "grid": 0.5,
+  "style": {
+    "category": "modern",
+    "facade": "glass",
+    "roof": "flat",
+    "window_style": "large",
+    "material": "concrete"
+  },
+  "masses": [
+    {
+      "mass_id": "main",
+      "origin": [0.0, 0.0],
+      "size": [10.0, 8.0],
+      "floors": 1
+    }
+  ],
+  "floors": [
+    {
+      "level": 0,
+      "mass_id": "main",
+      "floor_height": 3.0,
+      "spaces": [
+        {
+          "space_id": 1,
+          "rects": [
+            {
+              "rect_id": "main_space",
+              "origin": [0.5, 0.5],
+              "size": [9.0, 7.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "living",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        }
+      ]
+    }
+  ]
+}

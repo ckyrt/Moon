@@ -1,0 +1,175 @@
+{
+  "schema": "moon_building_v8",
+  "grid": 0.5,
+  "style": {
+    "category": "modern",
+    "facade": "concrete",
+    "roof": "flat",
+    "window_style": "standard",
+    "material": "concrete_white"
+  },
+  "masses": [
+    {
+      "mass_id": "apartment_tower",
+      "origin": [0.0, 0.0],
+      "size": [20.0, 15.0],
+      "floors": 5
+    }
+  ],
+  "floors": [
+    {
+      "level": 0,
+      "mass_id": "apartment_tower",
+      "floor_height": 3.5,
+      "spaces": [
+        {
+          "space_id": 1,
+          "rects": [
+            {
+              "rect_id": "lobby",
+              "origin": [7.5, 0.5],
+              "size": [5.0, 6.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "entrance",
+            "is_outdoor": false,
+            "has_stairs": true,
+            "ceiling_height": 4.0
+          },
+          "stairs": {
+            "type": "straight",
+            "connect_to_level": 1,
+            "position": [9.0, 3.0],
+            "width": 2.0
+          }
+        },
+        {
+          "space_id": 2,
+          "rects": [
+            {
+              "rect_id": "retail_1",
+              "origin": [0.5, 0.5],
+              "size": [7.0, 6.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "office",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.5
+          }
+        },
+        {
+          "space_id": 3,
+          "rects": [
+            {
+              "rect_id": "retail_2",
+              "origin": [12.5, 0.5],
+              "size": [7.0, 6.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "office",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.5
+          }
+        }
+      ]
+    },
+    {
+      "level": 1,
+      "mass_id": "apartment_tower",
+      "floor_height": 3.0,
+      "spaces": [
+        {
+          "space_id": 11,
+          "rects": [
+            {
+              "rect_id": "apt1_living",
+              "origin": [0.5, 0.5],
+              "size": [6.0, 5.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "living",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        },
+        {
+          "space_id": 12,
+          "rects": [
+            {
+              "rect_id": "apt1_bedroom",
+              "origin": [0.5, 6.0],
+              "size": [4.5, 4.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "bedroom",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        },
+        {
+          "space_id": 13,
+          "rects": [
+            {
+              "rect_id": "corridor",
+              "origin": [7.0, 0.5],
+              "size": [6.0, 2.5]
+            }
+          ],
+          "properties": {
+            "usage_hint": "corridor",
+            "is_outdoor": false,
+            "has_stairs": true,
+            "ceiling_height": 3.0
+          },
+          "stairs": {
+            "type": "straight",
+            "connect_to_level": 2,
+            "position": [9.0, 1.5],
+            "width": 2.0
+          }
+        },
+        {
+          "space_id": 14,
+          "rects": [
+            {
+              "rect_id": "apt2_living",
+              "origin": [13.5, 0.5],
+              "size": [6.0, 5.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "living",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        },
+        {
+          "space_id": 15,
+          "rects": [
+            {
+              "rect_id": "apt2_bedroom",
+              "origin": [15.0, 6.0],
+              "size": [4.5, 4.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "bedroom",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        }
+      ]
+    }
+  ]
+}

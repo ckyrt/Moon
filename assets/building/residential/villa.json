@@ -1,0 +1,182 @@
+{
+  "schema": "moon_building_v8",
+  "grid": 0.5,
+  "style": {
+    "category": "modern",
+    "facade": "glass_white",
+    "roof": "flat",
+    "window_style": "full_height",
+    "material": "concrete_white"
+  },
+  "masses": [
+    {
+      "mass_id": "main_house",
+      "origin": [0.0, 0.0],
+      "size": [15.0, 12.0],
+      "floors": 2
+    },
+    {
+      "mass_id": "garage",
+      "origin": [15.0, 0.0],
+      "size": [6.0, 6.0],
+      "floors": 1
+    }
+  ],
+  "floors": [
+    {
+      "level": 0,
+      "mass_id": "main_house",
+      "floor_height": 3.0,
+      "spaces": [
+        {
+          "space_id": 1,
+          "rects": [
+            {
+              "rect_id": "living_room",
+              "origin": [0.5, 0.5],
+              "size": [7.0, 5.5]
+            }
+          ],
+          "properties": {
+            "usage_hint": "living",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        },
+        {
+          "space_id": 2,
+          "rects": [
+            {
+              "rect_id": "kitchen",
+              "origin": [7.5, 0.5],
+              "size": [7.0, 5.5]
+            }
+          ],
+          "properties": {
+            "usage_hint": "kitchen",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        },
+        {
+          "space_id": 3,
+          "rects": [
+            {
+              "rect_id": "corridor",
+              "origin": [0.5, 6.5],
+              "size": [14.0, 2.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "corridor",
+            "is_outdoor": false,
+            "has_stairs": true,
+            "ceiling_height": 3.0
+          },
+          "stairs": {
+            "type": "straight",
+            "connect_to_level": 1,
+            "position": [7.0, 7.0],
+            "width": 1.5
+          }
+        },
+        {
+          "space_id": 4,
+          "rects": [
+            {
+              "rect_id": "bathroom",
+              "origin": [0.5, 9.0],
+              "size": [3.0, 2.5]
+            }
+          ],
+          "properties": {
+            "usage_hint": "bathroom",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        }
+      ]
+    },
+    {
+      "level": 0,
+      "mass_id": "garage",
+      "floor_height": 3.0,
+      "spaces": [
+        {
+          "space_id": 5,
+          "rects": [
+            {
+              "rect_id": "garage_space",
+              "origin": [0.5, 0.5],
+              "size": [5.0, 5.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "storage",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        }
+      ]
+    },
+    {
+      "level": 1,
+      "mass_id": "main_house",
+      "floor_height": 3.0,
+      "spaces": [
+        {
+          "space_id": 6,
+          "rects": [
+            {
+              "rect_id": "master_bedroom",
+              "origin": [0.5, 0.5],
+              "size": [7.0, 5.5]
+            }
+          ],
+          "properties": {
+            "usage_hint": "bedroom",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        },
+        {
+          "space_id": 7,
+          "rects": [
+            {
+              "rect_id": "bedroom_2",
+              "origin": [7.5, 0.5],
+              "size": [7.0, 5.5]
+            }
+          ],
+          "properties": {
+            "usage_hint": "bedroom",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        },
+        {
+          "space_id": 8,
+          "rects": [
+            {
+              "rect_id": "upstairs_bathroom",
+              "origin": [0.5, 6.5],
+              "size": [4.0, 3.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "bathroom",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        }
+      ]
+    }
+  ]
+}

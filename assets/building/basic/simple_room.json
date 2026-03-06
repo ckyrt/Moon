@@ -1,0 +1,44 @@
+{
+  "schema": "moon_building_v8",
+  "grid": 0.5,
+  "style": {
+    "category": "minimal",
+    "facade": "white",
+    "roof": "flat",
+    "window_style": "standard",
+    "material": "plaster"
+  },
+  "masses": [
+    {
+      "mass_id": "room",
+      "origin": [0.0, 0.0],
+      "size": [5.0, 4.0],
+      "floors": 1
+    }
+  ],
+  "floors": [
+    {
+      "level": 0,
+      "mass_id": "room",
+      "floor_height": 3.0,
+      "spaces": [
+        {
+          "space_id": 1,
+          "rects": [
+            {
+              "rect_id": "single_room",
+              "origin": [0.5, 0.5],
+              "size": [4.0, 3.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "living",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          }
+        }
+      ]
+    }
+  ]
+}
