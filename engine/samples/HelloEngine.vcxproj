@@ -59,7 +59,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>PLATFORM_WIN32=1;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine\core;$(SolutionDir)engine\render;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine\core;$(SolutionDir)engine\render;$(SolutionDir)engine\building;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -67,7 +67,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>EngineCore.lib;EngineRender.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>EngineCore.lib;EngineRender.lib;EngineBuilding.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -82,7 +82,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>PLATFORM_WIN32=1;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine\core;$(SolutionDir)engine\render;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine\core;$(SolutionDir)engine\render;$(SolutionDir)engine\building;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -91,7 +91,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>EngineCore.lib;EngineRender.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>EngineCore.lib;EngineRender.lib;EngineBuilding.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -109,6 +109,7 @@
     <ClCompile Include="SceneZipLoader.cpp" />
     <ClCompile Include="TestCSG.cpp" />
     <ClCompile Include="TestCSGBlueprint.cpp" />
+    <ClCompile Include="TestBuildingV8.cpp" />
     <ClCompile Include="TestMaterial.cpp" />
     <ClCompile Include="TestZipLoad.cpp" />
   </ItemGroup>
@@ -125,6 +126,9 @@
     </ProjectReference>
     <ProjectReference Include="..\render\EngineRender.vcxproj">
       <Project>{256A3289-BE13-44ED-B3AE-BFDCAA130227}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\building\EngineBuilding.vcxproj">
+      <Project>{8D6C8F4E-9A3B-4C7E-B8D2-F1E3A5C7D9B4}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

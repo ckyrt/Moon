@@ -1,0 +1,103 @@
+{
+  "schema": "moon_building_v8",
+  "grid": 0.5,
+  "style": {
+    "category": "modern",
+    "facade": "concrete_white",
+    "roof": "flat",
+    "window_style": "standard",
+    "material": "concrete_white"
+  },
+  "masses": [
+    {
+      "mass_id": "main_house",
+      "origin": [0.0, 0.0],
+      "size": [10.0, 5.0],
+      "floors": 2
+    }
+  ],
+  "floors": [
+    {
+      "level": 0,
+      "mass_id": "main_house",
+      "floor_height": 3.0,
+      "spaces": [
+        {
+          "space_id": 1,
+          "rects": [
+            {
+              "rect_id": "living_main",
+              "origin": [0.0, 0.0],
+              "size": [6.0, 5.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "living",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          },
+          "anchors": []
+        },
+        {
+          "space_id": 2,
+          "rects": [
+            {
+              "rect_id": "kitchen_main",
+              "origin": [6.0, 0.0],
+              "size": [4.0, 5.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "kitchen",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          },
+          "anchors": []
+        }
+      ]
+    },
+    {
+      "level": 1,
+      "mass_id": "main_house",
+      "floor_height": 3.0,
+      "spaces": [
+        {
+          "space_id": 3,
+          "rects": [
+            {
+              "rect_id": "bedroom_1_main",
+              "origin": [0.0, 0.0],
+              "size": [5.0, 5.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "bedroom",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          },
+          "anchors": []
+        },
+        {
+          "space_id": 4,
+          "rects": [
+            {
+              "rect_id": "bedroom_2_main",
+              "origin": [5.0, 0.0],
+              "size": [5.0, 5.0]
+            }
+          ],
+          "properties": {
+            "usage_hint": "bedroom",
+            "is_outdoor": false,
+            "has_stairs": false,
+            "ceiling_height": 3.0
+          },
+          "anchors": []
+        }
+      ]
+    }
+  ]
+}

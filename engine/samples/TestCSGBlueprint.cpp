@@ -26,7 +26,7 @@ void TestCSGBlueprint(EngineCore* engine)
     }
 
     // 从 index 中获取场景蓝图（懒加载）
-    const Moon::CSG::Blueprint* sceneBlueprint = database.GetBlueprint("test_scene");
+    const Moon::CSG::Blueprint* sceneBlueprint = database.GetBlueprint("test_room");
     if (!sceneBlueprint) {
         MOON_LOG_ERROR("CSGBlueprint", "Scene blueprint not found in index!");
         return;
