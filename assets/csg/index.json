@@ -2,6 +2,66 @@
   "schema_version": 1,
   "units": "centimeters",
   "docs": "Component index for fast lookup. Used to find component path by name, or for AI to select appropriate component by description.",
+  
+  "materials": {
+    "docs": "Supported material types for CSG components. AI-generated components MUST only use materials from this list.",
+    "count": 25,
+    "allowed": [
+      "concrete", "concrete_floor", "concrete_polished",
+      "rock", "brick", "stone", "plaster", "tile_ceramic",
+      "wood", "wood_floor", "wood_polished", "wood_painted",
+      "metal", "steel", "aluminum", "chrome", "copper",
+      "glass", "glass_frosted", "glass_tinted",
+      "fabric", "leather", "carpet",
+      "plastic", "rubber"
+    ],
+    "aliases": {
+      "stone": "rock"
+    },
+    "categories": {
+      "concrete": ["concrete", "concrete_floor", "concrete_polished"],
+      "masonry": ["rock", "brick", "stone", "plaster", "tile_ceramic"],
+      "wood": ["wood", "wood_floor", "wood_polished", "wood_painted"],
+      "metal": ["metal", "steel", "aluminum", "chrome", "copper"],
+      "glass": ["glass", "glass_frosted", "glass_tinted"],
+      "soft": ["fabric", "leather", "carpet"],
+      "polymer": ["plastic", "rubber"]
+    },
+    "descriptions": {
+      "concrete": "Raw concrete (foundations, structural). Rough, non-metallic, gray.",
+      "concrete_floor": "Cement floor (garage, basement). Medium roughness.",
+      "concrete_polished": "Polished concrete (modern interiors). Smooth, reflective.",
+      
+      "rock": "Rock/natural stone. Very rough, varied colors.",
+      "brick": "Red brick wall. Rough, traditional masonry.",
+      "stone": "Stone facade/cladding. Smooth to rough, architectural.",
+      "plaster": "Interior plaster wall. Smooth, matte white/cream.",
+      "tile_ceramic": "Ceramic tile (kitchen/bath). Smooth, glossy.",
+      
+      "wood": "Raw wood. Medium roughness, warm tones.",
+      "wood_floor": "Wood flooring. Smooth, natural grain.",
+      "wood_polished": "Polished wood (high-end furniture). Smooth, glossy.",
+      "wood_painted": "Painted wood (cabinets, trim). Smooth, matte/satin.",
+      
+      "metal": "Generic metal. Fully metallic, medium roughness.",
+      "steel": "Stainless steel (kitchen/bath). Smooth, metallic.",
+      "aluminum": "Aluminum alloy (window frames). Light, metallic.",
+      "chrome": "Chrome plating (hardware). Very smooth, mirror-like.",
+      "copper": "Copper/brass (decorative). Metallic, warm tones.",
+      
+      "glass": "Transparent glass (windows). Non-metallic, 60% transparent.",
+      "glass_frosted": "Frosted glass (privacy). Translucent, diffused.",
+      "glass_tinted": "Tinted glass (exterior). Semi-transparent, colored.",
+      
+      "fabric": "Textile/fabric (upholstery). Very rough, matte.",
+      "leather": "Leather (sofas). Medium roughness, soft sheen.",
+      "carpet": "Carpet/rug. Extremely rough, matte, soft.",
+      
+      "plastic": "Plastic/polymer. Smooth, non-metallic, modern.",
+      "rubber": "Rubber (tires, seals). Rough, dark, non-metallic."
+    }
+  },
+  
   "items": [
     {
       "id": "window_v1",

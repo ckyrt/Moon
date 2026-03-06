@@ -27,6 +27,7 @@
     "type": "csg",
     "operation": "subtract",
     "left": {
+      "comment": "Tire (outer cylinder)",
       "type": "primitive",
       "primitive": "cylinder",
       "params": {
@@ -36,13 +37,14 @@
       "material": "rubber"
     },
     "right": {
+      "comment": "Hub (inner hole)",
       "type": "primitive",
       "primitive": "cylinder",
       "params": {
         "radius": 30.0,
         "height": "$thickness"
       },
-      "material": "default"
+      "material": "metal"
     }
   }
 }

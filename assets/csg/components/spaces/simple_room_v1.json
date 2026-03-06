@@ -26,7 +26,7 @@
         "primitive": "cube",
         "params": { "size_x": "$w", "size_y": "$t", "size_z": "$d" },
         "transform": { "position": [0, "$t / 2", 0] },
-        "material": "concrete"
+        "material": "carpet"
       },
       {
         "name": "wall_front",
@@ -39,7 +39,7 @@
           "primitive": "cube",
           "params": { "size_x": "$w", "size_y": "$h", "size_z": "$t" },
           "transform": { "position": [0, "$t + $h / 2", "-($d / 2 - $t / 2)"] },
-          "material": "concrete"
+          "material": "brick"
         },
         "right": {
           "comment": "Door opening (door panel 90x200 + frame post_width 8 = total 106x208)",
@@ -66,7 +66,7 @@
           "primitive": "cube",
           "params": { "size_x": "$w", "size_y": "$h", "size_z": "$t" },
           "transform": { "position": [0, "$t + $h / 2", "$d / 2 - $t / 2"] },
-          "material": "concrete"
+          "material": "brick"
         },
         "right": {
           "comment": "Window opening (slightly deeper to avoid z-fighting)",
@@ -89,7 +89,7 @@
         "primitive": "cube",
         "params": { "size_x": "$t", "size_y": "$h", "size_z": "$d - 2 * $t" },
         "transform": { "position": ["-($w / 2 - $t / 2)", "$t + $h / 2", 0] },
-        "material": "concrete"
+        "material": "brick"
       },
       {
         "name": "wall_right",
@@ -98,7 +98,7 @@
         "primitive": "cube",
         "params": { "size_x": "$t", "size_y": "$h", "size_z": "$d - 2 * $t" },
         "transform": { "position": ["$w / 2 - $t / 2", "$t + $h / 2", 0] },
-        "material": "concrete"
+        "material": "brick"
       },
       {
         "name": "window_back",

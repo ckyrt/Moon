@@ -59,23 +59,53 @@ void TestCSGBlueprint(EngineCore* engine)
             auto renderer = node->AddComponent<Moon::MeshRenderer>();
             renderer->SetMesh(item.mesh);
 
-            // 根据 blueprint 中的 material 字符串应用材质预设
+            // 根据 blueprint 中的 material 字符串应用材质预设（25种材质）
             auto mat = node->AddComponent<Moon::Material>();
             const std::string& matName = item.material;
-            if (matName == "glass")
-                mat->SetMaterialPreset(Moon::MaterialPreset::Glass);
-            else if (matName == "metal")
-                mat->SetMaterialPreset(Moon::MaterialPreset::Metal);
-            else if (matName == "wood")
-                mat->SetMaterialPreset(Moon::MaterialPreset::Wood);
-            else if (matName == "rock" || matName == "stone" || matName == "concrete")
-                mat->SetMaterialPreset(Moon::MaterialPreset::Rock);
-            else if (matName == "plastic" || matName == "emissive")
-                mat->SetMaterialPreset(Moon::MaterialPreset::Plastic);
-            else if (matName == "fabric" || matName == "cloth")
-                mat->SetMaterialPreset(Moon::MaterialPreset::Fabric);
-            else
-                mat->SetMaterialPreset(Moon::MaterialPreset::Wood);
+            
+            bool materialApplied = false;
+            
+            // === 混凝土系列 ===
+            if (matName == "concrete")              { mat->SetMaterialPreset(Moon::MaterialPreset::Concrete); materialApplied = true; }
+            else if (matName == "concrete_floor")   { mat->SetMaterialPreset(Moon::MaterialPreset::ConcreteFloor); materialApplied = true; }
+            else if (matName == "concrete_polished"){ mat->SetMaterialPreset(Moon::MaterialPreset::ConcretePolished); materialApplied = true; }
+            
+            // === 岩石/砖石系列 ===
+            else if (matName == "rock" || matName == "stone") { mat->SetMaterialPreset(Moon::MaterialPreset::Rock); materialApplied = true; }
+            else if (matName == "brick")            { mat->SetMaterialPreset(Moon::MaterialPreset::Brick); materialApplied = true; }
+            else if (matName == "plaster")          { mat->SetMaterialPreset(Moon::MaterialPreset::Plaster); materialApplied = true; }
+            else if (matName == "tile_ceramic")     { mat->SetMaterialPreset(Moon::MaterialPreset::TileCeramic); materialApplied = true; }
+            
+            // === 木材系列 ===
+            else if (matName == "wood")             { mat->SetMaterialPreset(Moon::MaterialPreset::Wood); materialApplied = true; }
+            else if (matName == "wood_floor")       { mat->SetMaterialPreset(Moon::MaterialPreset::WoodFloor); materialApplied = true; }
+            else if (matName == "wood_polished")    { mat->SetMaterialPreset(Moon::MaterialPreset::WoodPolished); materialApplied = true; }
+            else if (matName == "wood_painted")     { mat->SetMaterialPreset(Moon::MaterialPreset::WoodPainted); materialApplied = true; }
+            
+            // === 金属系列 ===
+            else if (matName == "metal")            { mat->SetMaterialPreset(Moon::MaterialPreset::Metal); materialApplied = true; }
+            else if (matName == "steel")            { mat->SetMaterialPreset(Moon::MaterialPreset::Steel); materialApplied = true; }
+            else if (matName == "aluminum")         { mat->SetMaterialPreset(Moon::MaterialPreset::Aluminum); materialApplied = true; }
+            else if (matName == "chrome")           { mat->SetMaterialPreset(Moon::MaterialPreset::Chrome); materialApplied = true; }
+            else if (matName == "copper")           { mat->SetMaterialPreset(Moon::MaterialPreset::Copper); materialApplied = true; }
+            
+            // === 玻璃系列 ===
+            else if (matName == "glass")            { mat->SetMaterialPreset(Moon::MaterialPreset::Glass); materialApplied = true; }
+            else if (matName == "glass_frosted")    { mat->SetMaterialPreset(Moon::MaterialPreset::GlassFrosted); materialApplied = true; }
+            else if (matName == "glass_tinted")     { mat->SetMaterialPreset(Moon::MaterialPreset::GlassTinted); materialApplied = true; }
+            
+            // === 软装系列 ===
+            else if (matName == "fabric")           { mat->SetMaterialPreset(Moon::MaterialPreset::Fabric); materialApplied = true; }
+            else if (matName == "leather")          { mat->SetMaterialPreset(Moon::MaterialPreset::Leather); materialApplied = true; }
+            else if (matName == "carpet")           { mat->SetMaterialPreset(Moon::MaterialPreset::Carpet); materialApplied = true; }
+            
+            // === 塑料/橡胶系列 ===
+            else if (matName == "plastic")          { mat->SetMaterialPreset(Moon::MaterialPreset::Plastic); materialApplied = true; }
+            else if (matName == "rubber")           { mat->SetMaterialPreset(Moon::MaterialPreset::Rubber); materialApplied = true; }
+            
+            else if (!matName.empty()) {
+                MOON_LOG_WARN("CSGBlueprint", "Unknown material '%s' - see index.json for allowed materials", matName.c_str());
+            }
             
             mat->SetMappingMode(Moon::MappingMode::Triplanar);
 

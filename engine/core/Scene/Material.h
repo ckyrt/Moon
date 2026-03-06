@@ -9,17 +9,50 @@ namespace Moon {
 class Texture;
 
 /**
- * @brief 材质预设枚举
+ * @brief 材质预设枚举 - 别墅级材质系统（25种）
+ * 基于 6 种 PBR 贴图 + 参数变体实现
  */
 enum class MaterialPreset {
-    None,           // 无预设
-    Concrete,       // 混凝土
-    Fabric,         // 布料/橡胶
-    Metal,          // 金属
-    Plastic,        // 塑料/石膏
-    Rock,           // 岩石/砖块
-    Wood,           // 木材
-    Glass,          // 玻璃 (程序化，无贴图)
+    None,                // 无预设
+    
+    // === 混凝土系列（Concrete044D 贴图）===
+    Concrete,            // 原始混凝土（结构、地基）
+    ConcreteFloor,       // 水泥地坪（车库、地下室）
+    ConcretePolished,    // 抛光混凝土（现代室内地面）
+    
+    // === 岩石/砖石系列（Rock030 贴图）===
+    Rock,                // 岩石
+    Brick,               // 红砖墙
+    Stone,               // 石材外立面
+    Plaster,             // 室内石膏墙
+    TileCeramic,         // 瓷砖（厨卫）
+    
+    // === 木材系列（Wood049 贴图）===
+    Wood,                // 原木
+    WoodFloor,           // 木地板
+    WoodPolished,        // 抛光木（高档家具）
+    WoodPainted,         // 油漆木（柜子、门框）
+    
+    // === 金属系列（Metal061B 贴图）===
+    Metal,               // 通用金属
+    Steel,               // 不锈钢（厨卫）
+    Aluminum,            // 铝合金（窗框）
+    Chrome,              // 镀铬（五金件）
+    Copper,              // 铜/黄铜（装饰）
+    
+    // === 玻璃系列（程序化）===
+    Glass,               // 透明玻璃
+    GlassFrosted,        // 磨砂玻璃
+    GlassTinted,         // 有色玻璃
+    
+    // === 软装系列（Fabric061 贴图）===
+    Fabric,              // 布料
+    Leather,             // 皮革（沙发）
+    Carpet,              // 地毯
+    
+    // === 塑料/橡胶系列（Plastic018A + Fabric061 贴图）===
+    Plastic,             // 塑料
+    Rubber,              // 橡胶（轮胎、密封条）
 };
 
 /**
@@ -200,14 +233,38 @@ private:
     float m_triplanarTiling = 0.5f;               ///< Triplanar平铺密度
     float m_triplanarBlend = 4.0f;                ///< Triplanar混合锐度
     
-    // 材质预设内部实现
+    // 材质预设内部实现（25种）
     void SetPresetConcrete();
-    void SetPresetFabric();
-    void SetPresetMetal();
-    void SetPresetPlastic();
+    void SetPresetConcreteFloor();
+    void SetPresetConcretePolished();
+    
     void SetPresetRock();
+    void SetPresetBrick();
+    void SetPresetStone();
+    void SetPresetPlaster();
+    void SetPresetTileCeramic();
+    
     void SetPresetWood();
+    void SetPresetWoodFloor();
+    void SetPresetWoodPolished();
+    void SetPresetWoodPainted();
+    
+    void SetPresetMetal();
+    void SetPresetSteel();
+    void SetPresetAluminum();
+    void SetPresetChrome();
+    void SetPresetCopper();
+    
     void SetPresetGlass();
+    void SetPresetGlassFrosted();
+    void SetPresetGlassTinted();
+    
+    void SetPresetFabric();
+    void SetPresetLeather();
+    void SetPresetCarpet();
+    
+    void SetPresetPlastic();
+    void SetPresetRubber();
 };
 
 } // namespace Moon

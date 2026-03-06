@@ -87,7 +87,7 @@
         "transform": {
           "position": [0, "$seat_height + $seat_thickness / 2", 0]
         },
-        "material": "wood",
+        "material": "leather",
         "comment": "Box几何中心在原点，Y[-t/2, t/2]，position.y=$seat_height+$seat_thickness/2让底部在seat_height"
       },
       {
@@ -102,7 +102,7 @@
         "transform": {
           "position": [0, "$seat_height + $seat_thickness + $backrest_height / 2", "-$seat_depth / 2 + $backrest_thickness / 2"]
         },
-        "material": "wood"
+        "material": "leather"
       }
     ],
     "output": {
