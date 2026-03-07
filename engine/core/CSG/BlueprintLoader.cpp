@@ -319,6 +319,11 @@ std::unique_ptr<Node> BlueprintLoader::ParseNode(const void* jsonPtr, std::strin
                 group->children.push_back(std::move(child));
             }
 
+            // transform (optional)
+            if (j.contains("transform")) {
+                ParseTransform(&j["transform"], group->localTransform, outError);
+            }
+
             // output mode
             if (j.contains("output") && j["output"].contains("mode")) {
                 std::string mode = j["output"]["mode"].get<std::string>();

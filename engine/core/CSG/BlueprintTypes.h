@@ -206,6 +206,7 @@ struct GroupNode {
     std::vector<std::unique_ptr<Node>> children;
     std::vector<std::string> childNames;        // 与 children 一一对应，空字符串表示无名
     GroupOutputMode outputMode;
+    TransformTRS localTransform;                // Group-level transform
 
     GroupNode() : outputMode(GroupOutputMode::Separate) {}
 };

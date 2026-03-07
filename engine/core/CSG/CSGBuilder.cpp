@@ -524,6 +524,41 @@ BuildResult CSGBuilder::BuildGroup(const GroupNode* group, ParameterScope& scope
     for (auto& bc : builtChildren) {
         result.Merge(std::move(bc.result));
     }
+    
+    // =========================================================================
+    // 应用 Group 的 transform（如果有的话）
+    // =========================================================================
+    Vector3 groupPosition, groupScale;
+    Quaternion groupRotation;
+    ResolveTransform(group->localTransform, scope, groupPosition, groupRotation, groupScale, outError);
+    
+    // 如果group有非identity的transform，应用到所有meshes
+    bool hasTransform = (groupPosition.x != 0 || groupPosition.y != 0 || groupPosition.z != 0) ||
+                        (groupRotation.x != 0 || groupRotation.y != 0 || groupRotation.z != 0 || groupRotation.w != 1) ||
+                        (groupScale.x != 1 || groupScale.y != 1 || groupScale.z != 1);
+    
+    if (hasTransform) {
+        for (auto& meshItem : result.meshes) {
+            // 组合旋转：先应用child（内部），再应用group（外层）
+            meshItem.worldTransform.rotation = groupRotation * meshItem.worldTransform.rotation;
+            
+            // 组合缩放：component-wise multiplication
+            meshItem.worldTransform.scale = Vector3(
+                meshItem.worldTransform.scale.x * groupScale.x,
+                meshItem.worldTransform.scale.y * groupScale.y,
+                meshItem.worldTransform.scale.z * groupScale.z
+            );
+            
+            // 先缩放子物体位置，再旋转，最后加上group位置
+            Vector3 scaledChildPos = Vector3(
+                meshItem.worldTransform.position.x * groupScale.x,
+                meshItem.worldTransform.position.y * groupScale.y,
+                meshItem.worldTransform.position.z * groupScale.z
+            );
+            meshItem.worldTransform.position = groupRotation * scaledChildPos + groupPosition;
+        }
+    }
+    
     return result;
 }
 
