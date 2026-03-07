@@ -98,6 +98,9 @@
     <ClCompile Include="SpaceGraphBuilderTests.cpp" />
     <ClCompile Include="WallGeneratorTests.cpp" />
     <ClCompile Include="DoorGeneratorTests.cpp" />
+    <ClCompile Include="FacadeGeneratorTests.cpp" />
+    <ClCompile Include="StairGeneratorTests.cpp" />
+    <ClCompile Include="BuildingToCSGConverterTests.cpp" />
     <ClCompile Include="RealWorldBuildingTests.cpp" />
     <ClCompile Include="TestHelpers.cpp" />
     <ClCompile Include="ComplexTestData.cpp" />
