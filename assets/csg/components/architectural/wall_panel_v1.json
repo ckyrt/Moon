@@ -1,19 +1,20 @@
 {
   "schema_version": 1,
   "name": "wall_panel_v1",
-  "description": "Flat wall panel (parametric cube). Level 1 structural component. Origin at geometry center: X[-w/2,w/2], Y[-h/2,h/2], Z[-t/2,t/2].",
+  "description": "Flat wall panel (parametric cube). Level 1 structural component. POSITIONING CONVENTION: Component position represents bottom center point. Wall extends from y=0 to y=h in local space. Supports Y-axis rotation.",
   "version": 1,
   "parameters": {
     "w": 300.0,
     "h": 250.0,
-    "t": 15.0
+    "t": 15.0,
+    "rotation_y": 0.0
   },
   "anchors": {
-    "center":        [0, 0, 0],
-    "bottom_center": [0, "-$h / 2", 0],
-    "top_center":    [0, "$h / 2",  0],
-    "left_center":   ["-$w / 2", 0, 0],
-    "right_center":  ["$w / 2",  0, 0]
+    "bottom_center": [0, 0, 0],
+    "center":        [0, "$h / 2", 0],
+    "top_center":    [0, "$h",  0],
+    "left_center":   ["-$w / 2", "$h / 2", 0],
+    "right_center":  ["$w / 2",  "$h / 2", 0]
   },
   "root": {
     "type": "primitive",
@@ -22,6 +23,10 @@
       "size_x": "$w",
       "size_y": "$h",
       "size_z": "$t"
+    },
+    "transform": {
+      "position": [0, "$h / 2", 0],
+      "rotation_euler": [0, "$rotation_y", 0]
     }
   }
 }

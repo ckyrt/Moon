@@ -1,21 +1,25 @@
 {
   "schema_version": 1,
   "name": "window_v1",
-  "description": "Window: 4-beam frame + glass panel. Level 2. Origin at geometry center. Faces Z (glass is thin in Z). t = depth matching wall thickness.",
+  "description": "Window: 4-beam frame + glass panel. POSITIONING CONVENTION: Component position represents bottom center point (sill level). Window extends from y=0 to y=h. Faces Z (glass is thin in Z). t = depth matching wall thickness. Supports Y-axis rotation.",
   "version": 1,
   "parameters": {
     "w":       80.0,
     "h":      100.0,
     "t":       10.0,
-    "frame_t":  5.0
+    "frame_t":  5.0,
+    "rotation_y": 0.0
   },
   "anchors": {
-    "center":        [0, 0, 0],
-    "bottom_center": [0, "-$h / 2", 0],
-    "top_center":    [0, "$h / 2",  0]
+    "bottom_center": [0, 0, 0],
+    "center":        [0, "$h / 2", 0],
+    "top_center":    [0, "$h",  0]
   },
   "root": {
     "type": "group",
+    "transform": {
+      "rotation_euler": [0, "$rotation_y", 0]
+    },
     "children": [
       {
         "name": "frame_top",
@@ -28,7 +32,7 @@
           "size_z": "$t"
         },
         "transform": {
-          "position": [0, "$h / 2 - $frame_t / 2", 0]
+          "position": [0, "$h - $frame_t / 2", 0]
         },
         "material": "wood"
       },
@@ -43,7 +47,7 @@
           "size_z": "$t"
         },
         "transform": {
-          "position": [0, "-($h / 2 - $frame_t / 2)", 0]
+          "position": [0, "$frame_t / 2", 0]
         },
         "material": "wood"
       },
@@ -58,7 +62,7 @@
           "size_z": "$t"
         },
         "transform": {
-          "position": ["-($w / 2 - $frame_t / 2)", 0, 0]
+          "position": ["-($w / 2 - $frame_t / 2)", "$h / 2", 0]
         },
         "material": "wood"
       },
@@ -73,7 +77,7 @@
           "size_z": "$t"
         },
         "transform": {
-          "position": ["$w / 2 - $frame_t / 2", 0, 0]
+          "position": ["$w / 2 - $frame_t / 2", "$h / 2", 0]
         },
         "material": "wood"
       },
@@ -88,7 +92,7 @@
           "size_z": 1.0
         },
         "transform": {
-          "position": [0, 0, 0]
+          "position": [0, "$h / 2", 0]
         },
         "material": "glass"
       }

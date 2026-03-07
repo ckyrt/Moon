@@ -71,6 +71,13 @@
       "tags": ["level2", "architectural", "window"]
     },
     {
+      "id": "opening_v1",
+      "path": "components/architectural/opening_v1.json",
+      "description": "Simple parametric box for openings (windows, doors, etc.) in CSG subtract operations",
+      "category": "architectural",
+      "tags": ["level1", "architectural", "csg", "opening"]
+    },
+    {
       "id": "door_v1",
       "path": "components/architectural/door_v1.json",
       "description": "Simple door panel",

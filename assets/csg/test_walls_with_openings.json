@@ -1,0 +1,249 @@
+{
+  "schema_version": 1,
+  "name": "test_walls_with_openings",
+  "description": "Four walls with windows, front wall with door - testing CSG subtract on rotated walls. POSITIONING CONVENTION: All positions represent bottom center points - walls start from ground (y=0), windows start from sill height (y=110cm), doors start from ground (y=0).",
+  "version": 1,
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "north_wall_with_openings",
+        "comment": "Front wall (North): 0° rotation, has both window and door",
+        "type": "csg",
+        "operation": "subtract",
+        "left": {
+          "type": "csg",
+          "operation": "subtract",
+          "left": {
+            "name": "north_wall",
+            "type": "reference",
+            "ref": "wall_panel_v1",
+            "overrides": {
+              "w": 400.0,
+              "h": 250.0,
+              "t": 15.0,
+              "rotation_y": 0.0
+            },
+            "transform": {
+              "position": [0, 0, 200]
+            },
+            "material": "brick"
+          },
+          "right": {
+            "name": "north_window_hole",
+            "comment": "Window hole using opening_v1 component",
+            "type": "reference",
+            "ref": "opening_v1",
+            "overrides": {
+              "w": 90.0,
+              "h": 110.0,
+              "t": 20.0,
+              "rotation_y": 0.0
+            },
+            "transform": {
+              "position": [-80, 110, 200]
+            }
+          }
+        },
+        "right": {
+          "name": "north_door_hole",
+          "comment": "Door hole using opening_v1 component (reusable for rectangular openings)",
+          "type": "reference",
+          "ref": "opening_v1",
+          "overrides": {
+            "w": 95.0,
+            "h": 205.0,
+            "t": 20.0,
+            "rotation_y": 0.0
+          },
+          "transform": {
+            "position": [80, 0, 200]
+          }
+        }
+      },
+      {
+        "name": "east_wall_with_window",
+        "comment": "Right wall (East): 90° rotation",
+        "type": "csg",
+        "operation": "subtract",
+        "left": {
+          "name": "east_wall",
+          "type": "reference",
+          "ref": "wall_panel_v1",
+          "overrides": {
+            "w": 400.0,
+            "h": 250.0,
+            "t": 15.0,
+            "rotation_y": 90.0
+          },
+          "transform": {
+            "position": [200, 0, 0]
+          },
+          "material": "plaster"
+        },
+        "right": {
+          "name": "east_window_hole",
+          "comment": "Window hole rotated 90° to match east wall orientation",
+          "type": "reference",
+          "ref": "opening_v1",
+          "overrides": {
+            "w": 90.0,
+            "h": 110.0,
+            "t": 20.0,
+            "rotation_y": 90.0
+          },
+          "transform": {
+            "position": [200, 110, 0]
+          }
+        }
+      },
+      {
+        "name": "south_wall_with_window",
+        "comment": "Back wall (South): 180° rotation",
+        "type": "csg",
+        "operation": "subtract",
+        "left": {
+          "name": "south_wall",
+          "type": "reference",
+          "ref": "wall_panel_v1",
+          "overrides": {
+            "w": 400.0,
+            "h": 250.0,
+            "t": 15.0,
+            "rotation_y": 180.0
+          },
+          "transform": {
+            "position": [0, 0, -200]
+          },
+          "material": "concrete"
+        },
+        "right": {
+          "name": "south_window_hole",
+          "comment": "Window hole rotated 180° to match south wall orientation",
+          "type": "reference",
+          "ref": "opening_v1",
+          "overrides": {
+            "w": 90.0,
+            "h": 110.0,
+            "t": 20.0,
+            "rotation_y": 180.0
+          },
+          "transform": {
+            "position": [0, 110, -200]
+          }
+        }
+      },
+      {
+        "name": "west_wall_with_window",
+        "comment": "Left wall (West): 270° rotation",
+        "type": "csg",
+        "operation": "subtract",
+        "left": {
+          "name": "west_wall",
+          "type": "reference",
+          "ref": "wall_panel_v1",
+          "overrides": {
+            "w": 400.0,
+            "h": 250.0,
+            "t": 15.0,
+            "rotation_y": 270.0
+          },
+          "transform": {
+            "position": [-200, 0, 0]
+          },
+          "material": "wood"
+        },
+        "right": {
+          "name": "west_window_hole",
+          "comment": "Window hole rotated 270° to match west wall orientation",
+          "type": "reference",
+          "ref": "opening_v1",
+          "overrides": {
+            "w": 90.0,
+            "h": 110.0,
+            "t": 20.0,
+            "rotation_y": 270.0
+          },
+          "transform": {
+            "position": [-200, 110, 0]
+          }
+        }
+      },
+      {
+        "name": "north_window",
+        "comment": "Actual window in the north wall opening",
+        "type": "reference",
+        "ref": "window_v1",
+        "overrides": {
+          "w": 80.0,
+          "h": 100.0,
+          "t": 10.0,
+          "rotation_y": 0.0
+        },
+        "transform": {
+          "position": [-80, 110, 200]
+        }
+      },
+      {
+        "name": "north_door",
+        "comment": "Actual door in the north wall opening",
+        "type": "reference",
+        "ref": "door_v1",
+        "overrides": {
+          "door_width": 90.0,
+          "door_height": 200.0,
+          "door_thickness": 4.0,
+          "rotation_y": 0.0
+        },
+        "transform": {
+          "position": [80, 0, 200]
+        }
+      },
+      {
+        "name": "east_window",
+        "comment": "Actual window in the east wall opening",
+        "type": "reference",
+        "ref": "window_v1",
+        "overrides": {
+          "w": 80.0,
+          "h": 100.0,
+          "t": 10.0,
+          "rotation_y": 90.0
+        },
+        "transform": {
+          "position": [200, 110, 0]
+        }
+      },
+      {
+        "name": "south_window",
+        "comment": "Actual window in the south wall opening",
+        "type": "reference",
+        "ref": "window_v1",
+        "overrides": {
+          "w": 80.0,
+          "h": 100.0,
+          "t": 10.0,
+          "rotation_y": 180.0
+        },
+        "transform": {
+          "position": [0, 110, -200]
+        }
+      },
+      {
+        "name": "west_window",
+        "comment": "Actual window in the west wall opening",
+        "type": "reference",
+        "ref": "window_v1",
+        "overrides": {
+          "w": 80.0,
+          "h": 100.0,
+          "t": 10.0,
+          "rotation_y": 270.0
+        },
+        "transform": {
+          "position": [-200, 110, 0]
+        }
+      }
+    ]
+  }
+}
