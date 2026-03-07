@@ -42,7 +42,7 @@ TEST_F(SchemaValidatorTest, ValidateSimpleRoom_Success) {
     ASSERT_EQ(definition.floors[0].spaces.size(), 1);
     
     const Space& space = definition.floors[0].spaces[0];
-    EXPECT_EQ(space.properties.usageHint, "living");
+    EXPECT_EQ(space.properties.usage, SpaceUsage::Living);
     EXPECT_FLOAT_EQ(space.properties.ceilingHeight, 3.0f);
 }
 

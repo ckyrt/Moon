@@ -120,9 +120,9 @@ TEST_F(RealWorldBuildingTest, LuxuryVilla_FirstFloorLayout) {
     // Verify space types
     bool hasLiving = false, hasKitchen = false, hasBathroom = false;
     for (const auto& space : floor1->spaces) {
-        if (space.properties.usageHint == "living") hasLiving = true;
-        if (space.properties.usageHint == "kitchen") hasKitchen = true;
-        if (space.properties.usageHint == "bathroom") hasBathroom = true;
+        if (space.properties.usage == SpaceUsage::Living) hasLiving = true;
+        if (space.properties.usage == SpaceUsage::Kitchen) hasKitchen = true;
+        if (space.properties.usage == SpaceUsage::Bathroom) hasBathroom = true;
     }
     
     EXPECT_TRUE(hasLiving) << "First floor should have living room";
@@ -151,7 +151,7 @@ TEST_F(RealWorldBuildingTest, LuxuryVilla_SecondFloorLayout) {
     // Count bedrooms
     int bedroomCount = 0;
     for (const auto& space : floor2->spaces) {
-        if (space.properties.usageHint == "bedroom") {
+        if (space.properties.usage == SpaceUsage::Bedroom) {
             bedroomCount++;
         }
     }
@@ -180,7 +180,7 @@ TEST_F(RealWorldBuildingTest, LuxuryVilla_MasterSuite) {
     const Space* masterBedroom = nullptr;
     float maxArea = 0;
     for (const auto& space : floor2->spaces) {
-        if (space.properties.usageHint == "bedroom") {
+        if (space.properties.usage == SpaceUsage::Bedroom) {
             float area = 0;
             for (const auto& rect : space.rects) {
                 area += rect.size[0] * rect.size[1];

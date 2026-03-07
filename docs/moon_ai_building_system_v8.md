@@ -224,14 +224,36 @@ Rooms are defined using rectangles.
 }
 ```
 
-Usage hints:
+## Valid usage_hint values (MUST use exactly these):
 
--   living
--   bedroom
--   kitchen
--   corridor
--   balcony
--   stair
+**Required rooms:**
+- `living` - Living room / lounge
+- `dining` - Dining room  
+- `kitchen` - Kitchen
+- `bedroom` - Bedroom
+- `bathroom` - Bathroom / toilet
+
+**Circulation:**
+- `corridor` - Hallway / corridor
+- `entrance` - Entrance hall / foyer
+
+**Storage:**
+- `closet` - Closet / wardrobe / walk-in closet
+- `storage` - Storage room / utility room
+- `laundry` - Laundry room
+
+**Work & Special:**
+- `office` - Office / study
+
+**Outdoor:**
+- `balcony` - Balcony (must set is_outdoor: true)
+- `terrace` - Terrace (must set is_outdoor: true)
+
+**Vehicle:**
+- `garage` - Garage / parking
+- `stairwell` - Stairwell space
+
+**IMPORTANT:** AI must use these exact lowercase values. Do not invent new values.
 
 ------------------------------------------------------------------------
 
