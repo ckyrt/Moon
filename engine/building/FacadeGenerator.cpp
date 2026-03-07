@@ -1,4 +1,5 @@
 #include "FacadeGenerator.h"
+#include "BuildingIndex.h"
 #include <cmath>
 
 namespace Moon {
@@ -21,30 +22,33 @@ void FacadeGenerator::SetWindowParameters(float width, float height, float sillH
 
 void FacadeGenerator::GenerateFacade(const BuildingDefinition& definition,
                                      const std::vector<WallSegment>& walls,
+                                     const BuildingIndex& index,
                                      std::vector<Window>& outWindows,
                                      std::vector<FacadeElement>& outElements) {
     outWindows.clear();
     outElements.clear();
     
     // Generate windows on exterior walls
-    GenerateWindows(definition, walls, outWindows);
+    GenerateWindows(definition, walls, index, outWindows);
     
     // Generate balconies (if style supports it)
-    GenerateBalconies(definition, walls, outElements);
+    GenerateBalconies(definition, walls, index, outElements);
 }
 
 void FacadeGenerator::GenerateWindows(const BuildingDefinition& definition,
                                       const std::vector<WallSegment>& walls,
+                                      const BuildingIndex& index,
                                       std::vector<Window>& outWindows) {
     // Process only exterior walls
     for (const auto& wall : walls) {
         if (wall.type != WallType::Exterior) continue;
-        PlaceWindowsOnWall(wall, definition, outWindows);
+        PlaceWindowsOnWall(wall, definition, index, outWindows);
     }
 }
 
 void FacadeGenerator::GenerateBalconies(const BuildingDefinition& definition,
                                         const std::vector<WallSegment>& walls,
+                                        const BuildingIndex& index,
                                         std::vector<FacadeElement>& outElements) {
     // TODO: Implement balcony generation
     // Current implementation only creates placeholder logic
@@ -79,23 +83,10 @@ void FacadeGenerator::GenerateBalconies(const BuildingDefinition& definition,
 
 void FacadeGenerator::PlaceWindowsOnWall(const WallSegment& wall,
                                          const BuildingDefinition& definition,
+                                         const BuildingIndex& index,
                                          std::vector<Window>& outWindows) {
-    // Note: Only exterior walls are passed here (wall.neighborSpaceId == -1)
-    // We only need to check wall.spaceId (the indoor space on one side)
-    
-    // Find the space this wall belongs to
-    const Space* space = nullptr;
-    for (const auto& floor : definition.floors) {
-        if (floor.level == wall.floorLevel) {
-            for (const auto& s : floor.spaces) {
-                if (s.spaceId == wall.spaceId) {
-                    space = &s;
-                    break;
-                }
-            }
-            break;
-        }
-    }
+    // Use BuildingIndex for O(1) space lookup instead of nested loops
+    const Space* space = index.GetSpace(wall.spaceId);
     
     if (!space) return;
     

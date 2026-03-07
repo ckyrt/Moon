@@ -4,6 +4,7 @@
 #include "building/SpaceGraphBuilder.h"
 #include "building/SchemaValidator.h"
 #include "building/BuildingTypes.h"
+#include "building/BuildingIndex.h"
 #include "TestHelpers.h"
 
 using namespace Moon::Building;
@@ -21,6 +22,7 @@ protected:
     std::vector<WallSegment> walls;
     std::vector<Door> doors;
     std::vector<SpaceConnection> connections;
+    BuildingIndex buildingIndex;
     
     void SetUp() override {
         doorGenerator.SetDefaultDoorSize(0.9f, 2.1f);
@@ -42,7 +44,8 @@ TEST_F(DoorGeneratorTest, SimpleRoom_NoInteriorDoors) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     // Single room should have at least one door (entrance)
     EXPECT_GE(doors.size(), 0);
@@ -56,7 +59,8 @@ TEST_F(DoorGeneratorTest, Villa_ConnectingRoomDoors) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     // Villa should have doors between connected spaces
     EXPECT_GT(doors.size(), 0) << "Villa should have doors";
@@ -76,7 +80,8 @@ TEST_F(DoorGeneratorTest, Apartment_HasMultipleFloors) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     // Apartment building should be multi-floor
     EXPECT_GT(definition.floors.size(), 1);
@@ -101,7 +106,8 @@ TEST_F(DoorGeneratorTest, CustomDoorSize_Applied) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     if (doors.size() > 0) {
         // Check default sizes are applied
@@ -126,7 +132,8 @@ TEST_F(DoorGeneratorTest, EmptyBuilding_NoDoors) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     EXPECT_EQ(doors.size(), 0);
 }
@@ -139,7 +146,8 @@ TEST_F(DoorGeneratorTest, DoorsNotInWalls_Validation) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     // All doors should reference valid spaces
     for (const auto& door : doors) {

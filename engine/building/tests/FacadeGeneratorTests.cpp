@@ -4,6 +4,7 @@
 #include "building/SpaceGraphBuilder.h"
 #include "building/SchemaValidator.h"
 #include "building/BuildingTypes.h"
+#include "building/BuildingIndex.h"
 #include "TestHelpers.h"
 
 using namespace Moon::Building;
@@ -22,6 +23,7 @@ protected:
     std::vector<Window> windows;
     std::vector<FacadeElement> elements;
     std::vector<SpaceConnection> connections;
+    BuildingIndex buildingIndex;
     
     void SetUp() override {
         facadeGenerator.SetWindowParameters(1.2f, 1.5f, 0.9f);
@@ -42,7 +44,8 @@ TEST_F(FacadeGeneratorTest, SimpleRoom_HasWindows) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // Simple room should have windows on exterior walls
     EXPECT_GT(windows.size(), 0) << "Simple room should have windows";
@@ -62,7 +65,8 @@ TEST_F(FacadeGeneratorTest, Villa_MultipleWindows) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // Villa with multiple rooms should have many windows
     EXPECT_GT(windows.size(), 3) << "Villa should have multiple windows";
@@ -76,7 +80,8 @@ TEST_F(FacadeGeneratorTest, Apartment_WindowsPerFloor) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // Multi-floor building should have windows on all floors
     EXPECT_GT(windows.size(), 5) << "Apartment building should have many windows";
@@ -106,7 +111,8 @@ TEST_F(FacadeGeneratorTest, CustomWindowSize_Applied) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     if (windows.size() > 0) {
         // Check that custom sizes are applied
@@ -133,7 +139,8 @@ TEST_F(FacadeGeneratorTest, WindowsOnExteriorWallsOnly) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // Verify windows are generated for exterior walls
     // Windows should reference a valid space
@@ -154,7 +161,8 @@ TEST_F(FacadeGeneratorTest, BathroomNoWindows) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // Check that windows are properly generated based on space usage
     EXPECT_GE(windows.size(), 0);
@@ -175,7 +183,8 @@ TEST_F(FacadeGeneratorTest, ModernStyle_MayHaveBalconies) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // Modern style buildings may have facade elements (balconies, etc.)
     // This is a basic test that the system handles facade elements
@@ -192,7 +201,8 @@ TEST_F(FacadeGeneratorTest, EmptyBuilding_NoWindows) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     EXPECT_EQ(windows.size(), 0);
     EXPECT_EQ(elements.size(), 0);
@@ -212,7 +222,8 @@ TEST_F(FacadeGeneratorTest, NoExteriorWalls_NoWindows) {
         [](const WallSegment& wall) { return wall.type == WallType::Exterior; }),
         walls.end());
     
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     EXPECT_EQ(windows.size(), 0) << "No exterior walls means no windows";
 }
@@ -225,7 +236,8 @@ TEST_F(FacadeGeneratorTest, LargeBuilding_ManyWindows) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // Large building should generate many windows
     EXPECT_GT(windows.size(), 10) << "Large apartment building should have many windows";

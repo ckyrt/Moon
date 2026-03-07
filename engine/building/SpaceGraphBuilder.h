@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BuildingTypes.h"
+#include "EdgeTopologyBuilder.h"
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
@@ -53,36 +54,10 @@ public:
     bool GetSharedEdge(int spaceA, int spaceB, SpaceAdjacency& outAdjacency) const;
 
 private:
-    struct Edge {
-        GridPos2D start;
-        GridPos2D end;
-        int spaceId;
-        int floorLevel;
-        
-        bool IsHorizontal() const {
-            return std::abs(start[1] - end[1]) < 0.001f;
-        }
-        
-        bool IsVertical() const {
-            return std::abs(start[0] - end[0]) < 0.001f;
-        }
-        
-        float Length() const;
-        
-        // Normalize edge to canonical direction (start <= end)
-        void Normalize() {
-            if (start[0] > end[0] || (start[0] == end[0] && start[1] > end[1])) {
-                std::swap(start, end);
-            }
-        }
-    };
-
-    void ExtractEdges(const BuildingDefinition& definition);
-    void SegmentEdges();  // Add edge segmentation for T-junctions
-    void FindAdjacencies();
+    void FindAdjacencies(const std::vector<EdgeInfo>& edges);
     void BuildConnections(std::vector<SpaceConnection>& outConnections);
     
-    bool EdgesOverlap(const Edge& a, const Edge& b, 
+    bool EdgesOverlap(const EdgeInfo& a, const EdgeInfo& b, 
                      GridPos2D& outStart, GridPos2D& outEnd, 
                      float& outLength) const;
     
@@ -93,7 +68,6 @@ private:
         return ((uint64_t)minSpace << 32) | (uint64_t)maxSpace;
     }
     
-    std::vector<Edge> m_edges;
     std::vector<SpaceAdjacency> m_adjacencies;
     std::unordered_set<uint64_t> m_adjacencySet;  // O(1) lookup: key = (min(A,B) << 32) | max(A,B)
 };

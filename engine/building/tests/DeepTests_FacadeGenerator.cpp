@@ -5,6 +5,7 @@
 #include "building/SpaceGraphBuilder.h"
 #include "building/SchemaValidator.h"
 #include "building/BuildingTypes.h"
+#include "building/BuildingIndex.h"
 #include "TestHelpers.h"
 
 using namespace Moon::Building;
@@ -20,6 +21,7 @@ protected:
     std::vector<Window> windows;
     std::vector<FacadeElement> elements;
     std::vector<SpaceConnection> connections;
+    BuildingIndex buildingIndex;
     
     void SetUp() override {
         facadeGenerator.SetWindowParameters(1.2f, 1.5f, 0.9f);
@@ -40,7 +42,8 @@ TEST_F(FacadeGeneratorDeepTest, Windows_OnlyOnExteriorWalls) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // 收集外墙
     std::vector<const WallSegment*> exteriorWalls;
@@ -95,7 +98,8 @@ TEST_F(FacadeGeneratorDeepTest, Windows_ProperSpacing) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // 验证同一面墙上的窗户间距合理
     for (size_t i = 0; i < windows.size(); ++i) {
@@ -127,7 +131,8 @@ TEST_F(FacadeGeneratorDeepTest, Window_DimensionsValid) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     ASSERT_GT(windows.size(), 0) << "简单房间应该有窗户";
     
@@ -152,7 +157,8 @@ TEST_F(FacadeGeneratorDeepTest, Window_FitsWithinWall) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // 验证每个窗户的宽度不超过其所在墙的长度
     for (const auto& window : windows) {
@@ -205,7 +211,8 @@ TEST_F(FacadeGeneratorDeepTest, CustomWindowParameters_Applied) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // 至少一些窗户应该使用自定义参数
     int windowsWithCustomSize = 0;
@@ -266,7 +273,8 @@ TEST_F(FacadeGeneratorDeepTest, Bathroom_NoWindows) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // 验证：浴室的外墙上不应该有窗户（或很少）
     // 这取决于具体实现，但至少卧室应该有窗户
@@ -285,7 +293,8 @@ TEST_F(FacadeGeneratorDeepTest, MultiFloor_WindowsOnEachFloor) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     ASSERT_GT(definition.floors.size(), 1) << "应该是多层建筑";
     EXPECT_GT(windows.size(), definition.floors.size()) 
@@ -321,7 +330,8 @@ TEST_F(FacadeGeneratorDeepTest, LargeWall_MultipleWindows) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    facadeGenerator.GenerateFacade(definition, walls, windows, elements);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    facadeGenerator.GenerateFacade(definition, walls, buildingIndex, windows, elements);
     
     // 长墙应该有多个窗户
     EXPECT_GT(windows.size(), 3) 

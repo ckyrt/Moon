@@ -103,6 +103,9 @@
     <ClInclude Include="StairGenerator.h" />
     <ClInclude Include="FacadeGenerator.h" />
     <ClInclude Include="BuildingToCSGConverter.h" />
+    <ClInclude Include="EdgeTopologyBuilder.h" />
+    <ClInclude Include="BuildingIndex.h" />
+    <ClInclude Include="GridCoord.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BuildingPipeline.cpp" />
@@ -111,6 +114,8 @@
     <ClCompile Include="SpaceGraphBuilder.cpp" />
     <ClCompile Include="WallGenerator.cpp" />
     <ClCompile Include="DoorGenerator.cpp" />
+    <ClCompile Include="EdgeTopologyBuilder.cpp" />
+    <ClCompile Include="BuildingIndex.cpp" />
     <ClCompile Include="StairGenerator.cpp" />
     <ClCompile Include="FacadeGenerator.cpp" />
     <ClCompile Include="BuildingToCSGConverter.cpp" />

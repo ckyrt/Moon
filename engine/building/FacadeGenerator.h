@@ -6,6 +6,9 @@
 namespace Moon {
 namespace Building {
 
+// Forward declaration
+class BuildingIndex;
+
 /**
  * @brief Facade element types
  */
@@ -50,11 +53,13 @@ public:
      * @brief Generate facade elements
      * @param definition Building definition
      * @param walls Wall segments
+     * @param index Building index for fast lookups
      * @param outWindows Output window placements
      * @param outElements Output facade elements
      */
     void GenerateFacade(const BuildingDefinition& definition,
                        const std::vector<WallSegment>& walls,
+                       const BuildingIndex& index,
                        std::vector<Window>& outWindows,
                        std::vector<FacadeElement>& outElements);
 
@@ -66,14 +71,17 @@ public:
 private:
     void GenerateWindows(const BuildingDefinition& definition,
                         const std::vector<WallSegment>& walls,
+                        const BuildingIndex& index,
                         std::vector<Window>& outWindows);
     
     void GenerateBalconies(const BuildingDefinition& definition,
                           const std::vector<WallSegment>& walls,
+                          const BuildingIndex& index,
                           std::vector<FacadeElement>& outElements);
     
     void PlaceWindowsOnWall(const WallSegment& wall,
                            const BuildingDefinition& definition,
+                           const BuildingIndex& index,
                            std::vector<Window>& outWindows);
     
     float GetWindowSpacing(const BuildingStyle& style) const;

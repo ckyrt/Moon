@@ -21,6 +21,7 @@ void DoorGenerator::SetDefaultDoorSize(float width, float height) {
 void DoorGenerator::GenerateDoors(const BuildingDefinition& definition,
                                   const SpaceGraphBuilder& spaceGraph,
                                   const std::vector<WallSegment>& walls,
+                                  const BuildingIndex& index,
                                   std::vector<Door>& outDoors) {
     outDoors.clear();
     
@@ -28,62 +29,44 @@ void DoorGenerator::GenerateDoors(const BuildingDefinition& definition,
     
     for (const auto& adjacency : adjacencies) {
         // Check if door should be placed
-        if (!ShouldPlaceDoor(adjacency, definition)) {
+        if (!ShouldPlaceDoor(adjacency, index)) {
             continue;
         }
         
-        // Verify that a wall exists for this adjacency
-        bool wallExists = false;
-        for (const auto& wall : walls) {
-            if (wall.type == WallType::Interior) {
-                // Check if this wall corresponds to the adjacency
-                if ((wall.spaceId == adjacency.spaceA && wall.neighborSpaceId == adjacency.spaceB) ||
-                    (wall.spaceId == adjacency.spaceB && wall.neighborSpaceId == adjacency.spaceA)) {
-                    wallExists = true;
-                    break;
-                }
-            }
-        }
+        // Use BuildingIndex to find wall (O(1) instead of O(n) loop)
+        const WallSegment* wall = index.FindWall(adjacency.spaceA, adjacency.spaceB, adjacency.floorLevel);
         
-        if (!wallExists) {
+        if (!wall) {
             // No wall found for this adjacency, skip door placement
             continue;
         }
         
         // Create door
         Door door;
+        door.wallId = wall->wallId;  // Record which wall this door is in
         door.spaceA = adjacency.spaceA;
         door.spaceB = adjacency.spaceB;
-        door.position = CalculateDoorPosition(adjacency, definition);
+        door.position = CalculateDoorPosition(adjacency, index);
         door.rotation = CalculateDoorRotation(adjacency);
-        door.type = DetermineDoorType(adjacency, definition);
+        door.type = DetermineDoorType(adjacency, index);
         door.width = m_defaultDoorWidth;
         door.height = m_defaultDoorHeight;
-
-        // Determine which floor spaceA lives on
-        for (const auto& floor : definition.floors) {
-            for (const auto& space : floor.spaces) {
-                if (space.spaceId == adjacency.spaceA) {
-                    door.floorLevel = floor.level;
-                    break;
-                }
-            }
-        }
+        door.floorLevel = adjacency.floorLevel;  // Use floor level from adjacency
         
         outDoors.push_back(door);
     }
 }
 
 bool DoorGenerator::ShouldPlaceDoor(const SpaceAdjacency& adjacency,
-                                    const BuildingDefinition& definition) const {
+                                    const BuildingIndex& index) const {
     // Check if shared edge is long enough
     if (adjacency.sharedEdgeLength < m_minDoorWidth) {
         return false;
     }
     
-    // Check if either space is outdoor (may want different rules)
-    const Space* spaceA = FindSpace(definition, adjacency.spaceA);
-    const Space* spaceB = FindSpace(definition, adjacency.spaceB);
+    // Use BuildingIndex for O(1) space lookup
+    const Space* spaceA = index.GetSpace(adjacency.spaceA);
+    const Space* spaceB = index.GetSpace(adjacency.spaceB);
     
     if (!spaceA || !spaceB) {
         return false;
@@ -138,9 +121,9 @@ bool DoorGenerator::ShouldPlaceDoor(const SpaceAdjacency& adjacency,
 }
 
 GridPos2D DoorGenerator::CalculateDoorPosition(const SpaceAdjacency& adjacency,
-                                               const BuildingDefinition& definition) const {
-    const Space* spaceA = FindSpace(definition, adjacency.spaceA);
-    const Space* spaceB = FindSpace(definition, adjacency.spaceB);
+                                               const BuildingIndex& index) const {
+    const Space* spaceA = index.GetSpace(adjacency.spaceA);
+    const Space* spaceB = index.GetSpace(adjacency.spaceB);
     
     const float maxDistanceToEdge = 0.5f;
     
@@ -209,9 +192,9 @@ GridPos2D DoorGenerator::CalculateDoorPosition(const SpaceAdjacency& adjacency,
 }
 
 DoorType DoorGenerator::DetermineDoorType(const SpaceAdjacency& adjacency,
-                                          const BuildingDefinition& definition) const {
-    const Space* spaceA = FindSpace(definition, adjacency.spaceA);
-    const Space* spaceB = FindSpace(definition, adjacency.spaceB);
+                                          const BuildingIndex& index) const {
+    const Space* spaceA = index.GetSpace(adjacency.spaceA);
+    const Space* spaceB = index.GetSpace(adjacency.spaceB);
     
     if (!spaceA || !spaceB) {
         return DoorType::Interior;
@@ -308,17 +291,6 @@ bool DoorGenerator::HasDoorHint(const Space& space, const SpaceAdjacency& adjace
         }
     }
     return false;
-}
-
-const Space* DoorGenerator::FindSpace(const BuildingDefinition& definition, int spaceId) const {
-    for (const auto& floor : definition.floors) {
-        for (const auto& space : floor.spaces) {
-            if (space.spaceId == spaceId) {
-                return &space;
-            }
-        }
-    }
-    return nullptr;
 }
 
 } // namespace Building

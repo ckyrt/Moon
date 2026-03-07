@@ -5,6 +5,7 @@
 #include "building/SpaceGraphBuilder.h"
 #include "building/SchemaValidator.h"
 #include "building/BuildingTypes.h"
+#include "building/BuildingIndex.h"
 #include "TestHelpers.h"
 
 using namespace Moon::Building;
@@ -19,6 +20,7 @@ protected:
     std::vector<WallSegment> walls;
     std::vector<Door> doors;
     std::vector<SpaceConnection> connections;
+    BuildingIndex buildingIndex;
     
     void SetUp() override {
         doorGenerator.SetDefaultDoorSize(0.9f, 2.1f);
@@ -40,7 +42,8 @@ TEST_F(DoorGeneratorDeepTest, Door_MustBeOnWall) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     ASSERT_GT(doors.size(), 0) << "别墅应该有门";
     
@@ -101,7 +104,8 @@ TEST_F(DoorGeneratorDeepTest, Door_WidthMeetsMinimum) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     for (const auto& door : doors) {
         EXPECT_GE(door.width, 0.8f) 
@@ -119,7 +123,8 @@ TEST_F(DoorGeneratorDeepTest, Door_HeightMatchesWallHeight) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     for (const auto& door : doors) {
         EXPECT_GT(door.height, 0.0f) << "门的高度必须 > 0";
@@ -136,7 +141,8 @@ TEST_F(DoorGeneratorDeepTest, ConnectedSpaces_HaveDoor) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     const auto& adjacencies = spaceGraph.GetAdjacencies();
     
@@ -162,7 +168,8 @@ TEST_F(DoorGeneratorDeepTest, CustomDoorSize_Applied) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     // 至少一些门应该使用自定义尺寸（如果没有特殊要求）
     int doorsWithDefaultSize = 0;
@@ -188,7 +195,8 @@ TEST_F(DoorGeneratorDeepTest, Door_NotOverlapping) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     // 验证门之间不重叠（同一面墙上的门）
     for (size_t i = 0; i < doors.size(); ++i) {
@@ -222,7 +230,8 @@ TEST_F(DoorGeneratorDeepTest, InteriorDoor_OnInteriorWall) {
     
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
-    doorGenerator.GenerateDoors(definition, spaceGraph, walls, doors);
+    buildingIndex.Build(definition, &spaceGraph, &walls);
+    doorGenerator.GenerateDoors(definition, spaceGraph, walls, buildingIndex, doors);
     
     // 收集内墙
     std::vector<const WallSegment*> interiorWalls;

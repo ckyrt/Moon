@@ -1,7 +1,10 @@
 #include "WallGenerator.h"
+#include "EdgeTopologyBuilder.h"
+#include "GridCoord.h"
 #include "core/Logging/Logger.h"
 #include <cmath>
 #include <algorithm>
+#include <unordered_map>
 
 namespace Moon {
 namespace Building {
@@ -9,6 +12,7 @@ namespace Building {
 WallGenerator::WallGenerator()
     : m_wallThickness(0.2f)      // 0.2m default thickness
     , m_defaultWallHeight(3.0f)   // 3m default height
+    , m_nextWallId(0)            // Start wall ID counter
 {
 }
 
@@ -22,28 +26,36 @@ void WallGenerator::SetDefaultWallHeight(float height) {
     m_defaultWallHeight = height;
 }
 
+size_t WallGenerator::EdgeHash::operator()(const EdgeInfo& e) const {
+    // Use GridCoord for consistent hashing with integer units
+    return GridCoord::HashEdge(e.start, e.end) ^ std::hash<int>{}(e.floorLevel);
+}
+
+bool WallGenerator::EdgeEqual::operator()(const EdgeInfo& a, const EdgeInfo& b) const {
+    // Use GridCoord for consistent equality with integer units
+    return GridCoord::EdgesEqual(a.start, a.end, b.start, b.end) && 
+           a.floorLevel == b.floorLevel;
+}
+
 void WallGenerator::GenerateWalls(const BuildingDefinition& definition,
                                   const SpaceGraphBuilder& spaceGraph,
                                   std::vector<WallSegment>& outWalls) {
     outWalls.clear();
+    m_nextWallId = 0;  // Reset wall ID counter
     
     MOON_LOG_INFO("Building", "=== Starting Wall Generation ===");
     
-    // Step 1: Extract all space edges (normalized and from all rects)
-    std::vector<EdgeInfo> edges;
-    ExtractSpaceEdges(definition, edges);
-    MOON_LOG_INFO("Building", "Extracted %zu raw edges", edges.size());
+    // Step 1: Use EdgeTopologyBuilder to extract and segment edges
+    // This replaces ExtractSpaceEdges() and SegmentEdges()
+    std::vector<EdgeInfo> edges = EdgeTopologyBuilder::BuildTopology(definition);
+    MOON_LOG_INFO("Building", "EdgeTopologyBuilder generated %zu segmented edges", edges.size());
     
-    // Step 2: Segment edges at T-junctions (split long edges at intersection points)
-    SegmentEdges(edges);
-    MOON_LOG_INFO("Building", "After T-junction segmentation: %zu edges", edges.size());
-    
-    // Step 3: Build edge-to-spaces mapping (deduplicates and merges)
-    std::unordered_map<EdgeInfo, EdgeSpaces, EdgeInfo::Hash, EdgeInfo::Equal> edgeMap;
+    // Step 2: Build edge-to-spaces mapping (deduplicates and merges)
+    std::unordered_map<EdgeInfo, EdgeSpaces, EdgeHash, EdgeEqual> edgeMap;
     BuildEdgeMap(edges, edgeMap);
     MOON_LOG_INFO("Building", "After deduplication: %zu unique edges", edgeMap.size());
     
-    // Step 3.5: Remove internal edges (rect seams within same space)
+    // Step 2.5: Remove internal edges (rect seams within same space)
     // If an edge appears twice with same spaceId, it's an internal seam
     for (auto it = edgeMap.begin(); it != edgeMap.end(); ) {
         const auto& spaces = it->second;
@@ -52,7 +64,6 @@ void WallGenerator::GenerateWalls(const BuildingDefinition& definition,
         if (spaces.spaceIds.size() == 2 && 
             spaces.spaceIds[0] == spaces.spaceIds[1]) {
             // Internal edge: both sides are same space (rect seam)
-            // printf("[WallGen] Removed internal seam for space %d\\n", spaces.spaceIds[0]);
             it = edgeMap.erase(it);
         } else {
             ++it;
@@ -60,11 +71,11 @@ void WallGenerator::GenerateWalls(const BuildingDefinition& definition,
     }
     MOON_LOG_INFO("Building", "After removing internal seams: %zu boundary edges", edgeMap.size());
     
-    // Step 4: Classify edges as interior or exterior walls
+    // Step 3: Classify edges as interior or exterior walls
     ClassifyEdges(edgeMap, outWalls);
     MOON_LOG_INFO("Building", "Generated %zu wall segments", outWalls.size());
     
-    // Step 5: Merge collinear walls of same type
+    // Step 4: Merge collinear walls of same type
     // This fixes T-junction segmentation side-effects where one wall is split into
     // multiple segments (some interior, some exterior)
     MergeCollinearWalls(outWalls);
@@ -73,191 +84,8 @@ void WallGenerator::GenerateWalls(const BuildingDefinition& definition,
     MOON_LOG_INFO("Building", "=== Wall Generation Complete ===");
 }
 
-void WallGenerator::ExtractSpaceEdges(const BuildingDefinition& definition,
-                                      std::vector<EdgeInfo>& outEdges) {
-    for (const auto& floor : definition.floors) {
-        for (const auto& space : floor.spaces) {
-            float height = space.properties.ceilingHeight;
-            if (height <= 0) {
-                height = m_defaultWallHeight;
-            }
-            
-            bool isOutdoor = space.properties.isOutdoor;
-            
-            for (const auto& rect : space.rects) {
-                float x = rect.origin[0];
-                float y = rect.origin[1];
-                float w = rect.size[0];
-                float h = rect.size[1];
-                
-                // Extract 4 edges from rectangle
-                
-                // Bottom edge (Y min)
-                EdgeInfo bottom;
-                bottom.start = {x, y};
-                bottom.end = {x + w, y};
-                bottom.spaceId = space.spaceId;
-                bottom.floorLevel = floor.level;
-                bottom.height = height;
-                bottom.isOutdoor = isOutdoor;
-                bottom.Normalize();  // ✅ Ensure canonical direction
-                outEdges.push_back(bottom);
-                
-                // Right edge (X max)
-                EdgeInfo right;
-                right.start = {x + w, y};
-                right.end = {x + w, y + h};
-                right.spaceId = space.spaceId;
-                right.floorLevel = floor.level;
-                right.height = height;
-                right.isOutdoor = isOutdoor;
-                right.Normalize();  // ✅ Ensure canonical direction
-                outEdges.push_back(right);
-                
-                // Top edge (Y max)
-                EdgeInfo top;
-                top.start = {x + w, y + h};
-                top.end = {x, y + h};
-                top.spaceId = space.spaceId;
-                top.floorLevel = floor.level;
-                top.height = height;
-                top.isOutdoor = isOutdoor;
-                top.Normalize();  // ✅ Ensure canonical direction
-                outEdges.push_back(top);
-                
-                // Left edge (X min)
-                EdgeInfo left;
-                left.start = {x, y + h};
-                left.end = {x, y};
-                left.spaceId = space.spaceId;
-                left.floorLevel = floor.level;
-                left.height = height;
-                left.isOutdoor = isOutdoor;
-                left.Normalize();  // ✅ Ensure canonical direction
-                outEdges.push_back(left);
-            }
-        }
-    }
-}
-
-void WallGenerator::SegmentEdges(std::vector<EdgeInfo>& edges) {
-    const float epsilon = 0.001f;
-    
-    // Helper: Check if point is on edge (between start and end)
-    auto PointOnEdge = [epsilon](const GridPos2D& point, const GridPos2D& start, const GridPos2D& end) -> bool {
-        // Check if point is collinear with edge
-        float dx = end[0] - start[0];
-        float dy = end[1] - start[1];
-        float edgeLength = std::sqrt(dx * dx + dy * dy);
-        if (edgeLength < epsilon) return false;
-        
-        // Distance from point to line
-        float cross = std::abs((point[0] - start[0]) * dy - (point[1] - start[1]) * dx);
-        if (cross / edgeLength > epsilon) return false;  // Not collinear
-        
-        // Check if point is between start and end
-        float dot = (point[0] - start[0]) * dx + (point[1] - start[1]) * dy;
-        if (dot < epsilon || dot > edgeLength * edgeLength - epsilon) return false;  // Outside range
-        
-        return true;
-    };
-    
-    // Helper: Check if two edges are collinear (parallel and on same line)
-    auto EdgesCollinear = [epsilon](const EdgeInfo& a, const EdgeInfo& b) -> bool {
-        // Check if all 4 points are on the same line
-        float dx = a.end[0] - a.start[0];
-        float dy = a.end[1] - a.start[1];
-        float edgeLength = std::sqrt(dx * dx + dy * dy);
-        if (edgeLength < epsilon) return false;
-        
-        // Check if b.start and b.end are on the line defined by a
-        float cross1 = std::abs((b.start[0] - a.start[0]) * dy - (b.start[1] - a.start[1]) * dx);
-        float cross2 = std::abs((b.end[0] - a.start[0]) * dy - (b.end[1] - a.start[1]) * dx);
-        
-        return (cross1 / edgeLength < epsilon) && (cross2 / edgeLength < epsilon);
-    };
-    
-    // Collect split points for each edge
-    std::vector<std::vector<GridPos2D>> splitPoints(edges.size());
-    
-    for (size_t i = 0; i < edges.size(); ++i) {
-        const EdgeInfo& edge = edges[i];
-        
-        // Look for other edges that might create split points
-        for (size_t j = 0; j < edges.size(); ++j) {
-            if (i == j) continue;
-            if (edge.floorLevel != edges[j].floorLevel) continue;
-            
-            const EdgeInfo& other = edges[j];
-            
-            // Check if edges are collinear
-            if (!EdgesCollinear(edge, other)) continue;
-            
-            // Check if other.start is on edge (not at endpoints)
-            if (PointOnEdge(other.start, edge.start, edge.end)) {
-                splitPoints[i].push_back(other.start);
-            }
-            
-            // Check if other.end is on edge (not at endpoints)
-            if (PointOnEdge(other.end, edge.start, edge.end)) {
-                splitPoints[i].push_back(other.end);
-            }
-        }
-    }
-    
-    // Create new segmented edges
-    std::vector<EdgeInfo> newEdges;
-    
-    for (size_t i = 0; i < edges.size(); ++i) {
-        if (splitPoints[i].empty()) {
-            // No splits needed
-            newEdges.push_back(edges[i]);
-            continue;
-        }
-        
-        // Sort split points along the edge
-        const EdgeInfo& edge = edges[i];
-        std::vector<GridPos2D> points = splitPoints[i];
-        
-        // Add edge endpoints
-        points.push_back(edge.start);
-        points.push_back(edge.end);
-        
-        // Sort by distance from start
-        std::sort(points.begin(), points.end(), [&](const GridPos2D& a, const GridPos2D& b) {
-            float distA = static_cast<float>(std::sqrt(std::pow(a[0] - edge.start[0], 2) + std::pow(a[1] - edge.start[1], 2)));
-            float distB = static_cast<float>(std::sqrt(std::pow(b[0] - edge.start[0], 2) + std::pow(b[1] - edge.start[1], 2)));
-            return distA < distB;
-        });
-        
-        // Remove duplicates
-        auto last = std::unique(points.begin(), points.end(), [epsilon](const GridPos2D& a, const GridPos2D& b) {
-            return std::abs(a[0] - b[0]) < epsilon && std::abs(a[1] - b[1]) < epsilon;
-        });
-        points.erase(last, points.end());
-        
-        // Create segments
-        for (size_t k = 0; k + 1 < points.size(); ++k) {
-            EdgeInfo segment = edge;  // Copy properties
-            segment.start = points[k];
-            segment.end = points[k + 1];
-            segment.Normalize();
-            
-            // Skip degenerate segments
-            float length = static_cast<float>(std::sqrt(std::pow(segment.end[0] - segment.start[0], 2) + 
-                                   std::pow(segment.end[1] - segment.start[1], 2)));
-            if (length > epsilon) {
-                newEdges.push_back(segment);
-            }
-        }
-    }
-    
-    // Replace edges with segmented edges
-    edges = newEdges;
-}
-
 void WallGenerator::BuildEdgeMap(const std::vector<EdgeInfo>& edges,
-                                 std::unordered_map<EdgeInfo, EdgeSpaces, EdgeInfo::Hash, EdgeInfo::Equal>& outEdgeMap) {
+                                 std::unordered_map<EdgeInfo, EdgeSpaces, EdgeHash, EdgeEqual>& outEdgeMap) {
     // ============================================================================
     // Edge Count Algorithm for Rect Union
     // ============================================================================
@@ -311,7 +139,7 @@ void WallGenerator::BuildEdgeMap(const std::vector<EdgeInfo>& edges,
     }
 }
 
-void WallGenerator::ClassifyEdges(const std::unordered_map<EdgeInfo, EdgeSpaces, EdgeInfo::Hash, EdgeInfo::Equal>& edgeMap,
+void WallGenerator::ClassifyEdges(const std::unordered_map<EdgeInfo, EdgeSpaces, EdgeHash, EdgeEqual>& edgeMap,
                                   std::vector<WallSegment>& outWalls) {
     // ============================================================================
     // Wall Classification Rules (Correct)
@@ -367,6 +195,7 @@ void WallGenerator::CreateInteriorWall(const GridPos2D& start, const GridPos2D& 
                                        float height, float thickness, bool hasOutdoor,
                                        std::vector<WallSegment>& outWalls) {
     WallSegment wall;
+    wall.wallId = m_nextWallId++;  // Assign unique wall ID
     wall.start = start;
     wall.end = end;
     wall.type = WallType::Interior;
@@ -389,6 +218,7 @@ void WallGenerator::CreateExteriorWall(const GridPos2D& start, const GridPos2D& 
                                        float thickness, bool isOutdoor,
                                        std::vector<WallSegment>& outWalls) {
     WallSegment wall;
+    wall.wallId = m_nextWallId++;  // Assign unique wall ID
     wall.start = start;
     wall.end = end;
     wall.type = WallType::Exterior;

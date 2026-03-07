@@ -137,8 +137,12 @@ bool BuildingPipeline::GenerateWalls(const BuildingDefinition& definition,
 
 bool BuildingPipeline::GenerateDoors(const BuildingDefinition& definition,
                                      GeneratedBuilding& outBuilding) {
+    // Build index for fast lookups (O(1) instead of O(n) scans)
+    BuildingIndex index;
+    index.Build(definition, &m_spaceGraphBuilder, &outBuilding.walls);
+    
     m_doorGenerator.GenerateDoors(definition, m_spaceGraphBuilder, 
-                                  outBuilding.walls, outBuilding.doors);
+                                  outBuilding.walls, index, outBuilding.doors);
     return true;
 }
 
@@ -152,7 +156,11 @@ bool BuildingPipeline::GenerateStairs(const BuildingDefinition& definition,
 
 bool BuildingPipeline::GenerateFacade(const BuildingDefinition& definition,
                                       GeneratedBuilding& outBuilding) {
-    m_facadeGenerator.GenerateFacade(definition, outBuilding.walls,
+    // Build index for fast lookups
+    BuildingIndex index;
+    index.Build(definition, &m_spaceGraphBuilder, &outBuilding.walls);
+    
+    m_facadeGenerator.GenerateFacade(definition, outBuilding.walls, index,
                                      outBuilding.windows, m_facadeElements);
     return true;
 }

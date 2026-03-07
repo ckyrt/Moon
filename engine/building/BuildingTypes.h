@@ -274,6 +274,7 @@ enum class WallType {
 };
 
 struct WallSegment {
+    int wallId = -1;        // Unique wall identifier (assigned during generation)
     GridPos2D start;
     GridPos2D end;
     WallType type;
@@ -296,6 +297,7 @@ enum class DoorType {
 };
 
 struct Door {
+    int wallId = -1;        // Wall this door is placed in (-1 if not assigned)
     GridPos2D position;
     float rotation;         // Rotation in degrees
     DoorType type;
@@ -310,6 +312,7 @@ struct Door {
  * @brief Window placement
  */
 struct Window {
+    int wallId = -1;        // Wall this window is placed in (-1 if not assigned)
     GridPos2D position;
     float rotation;
     float width;
