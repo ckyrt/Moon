@@ -55,7 +55,7 @@ TEST_F(RealWorldBuildingTest, LuxuryVilla_CompleteProcessing) {
     // Count total spaces
     int totalSpaces = 0;
     for (const auto& floor : definition.floors) {
-        totalSpaces += floor.spaces.size();
+        totalSpaces += static_cast<int>(floor.spaces.size());
     }
     EXPECT_GE(totalSpaces, 15) << "Luxury villa should have at least 15 spaces";
     

@@ -70,10 +70,10 @@ TEST_F(FacadeGeneratorDeepTest, Windows_OnlyOnExteriorWalls) {
             if (t >= -0.1f && t <= 1.1f) {
                 float projX = wall->start[0] + t * wx;
                 float projY = wall->start[1] + t * wy;
-                float dist = std::sqrt(
+                float dist = static_cast<float>(std::sqrt(
                     std::pow(window.position[0] - projX, 2) +
                     std::pow(window.position[1] - projY, 2)
-                );
+                ));
                 
                 if (dist < 0.5f) {
                     foundExteriorWall = true;
@@ -172,10 +172,10 @@ TEST_F(FacadeGeneratorDeepTest, Window_FitsWithinWall) {
             if (t >= 0.0f && t <= 1.0f) {
                 float projX = wall.start[0] + t * wx;
                 float projY = wall.start[1] + t * wy;
-                float dist = std::sqrt(
+                float dist = static_cast<float>(std::sqrt(
                     std::pow(window.position[0] - projX, 2) +
                     std::pow(window.position[1] - projY, 2)
-                );
+                ));
                 
                 if (dist < 0.5f) {
                     foundWall = true;

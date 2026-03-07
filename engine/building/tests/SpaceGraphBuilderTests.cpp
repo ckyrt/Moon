@@ -73,7 +73,7 @@ TEST_F(SpaceGraphBuilderTest, Apartment_HasMultipleSpaces) {
     
     int totalSpaces = 0;
     for (const auto& floor : definition.floors) {
-        totalSpaces += floor.spaces.size();
+        totalSpaces += static_cast<int>(floor.spaces.size());
     }
     EXPECT_GT(totalSpaces, 5) << "Apartment should have multiple spaces";
 }

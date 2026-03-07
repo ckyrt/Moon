@@ -158,10 +158,10 @@ TEST_F(BuildingToCSGConverterDeepTest, Wall_HasCorrectDimensions) {
     
     // 记录原始墙的尺寸
     const auto& firstWall = building.walls[0];
-    float wallLength = std::sqrt(
+    float wallLength = static_cast<float>(std::sqrt(
         std::pow(firstWall.end[0] - firstWall.start[0], 2) +
         std::pow(firstWall.end[1] - firstWall.start[1], 2)
-    );
+    ));
     
     std::string csgJson = BuildingToCSGConverter::Convert(building);
     json csg = ParseJSON(csgJson);

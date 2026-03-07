@@ -69,10 +69,10 @@ TEST_F(DoorGeneratorDeepTest, Door_MustBeOnWall) {
                 float projY = wall.start[1] + t * wy;
                 
                 // 门到投影点的距离
-                float distToWall = std::sqrt(
+                float distToWall = static_cast<float>(std::sqrt(
                     std::pow(door.position[0] - projX, 2) +
                     std::pow(door.position[1] - projY, 2)
-                );
+                ));
                 
                 if (distToWall < 0.5f) {  // 门应该在墙附近
                     foundWall = true;
@@ -253,10 +253,10 @@ TEST_F(DoorGeneratorDeepTest, InteriorDoor_OnInteriorWall) {
             if (t >= 0.0f && t <= 1.0f) {
                 float projX = wall->start[0] + t * wx;
                 float projY = wall->start[1] + t * wy;
-                float dist = std::sqrt(
+                float dist = static_cast<float>(std::sqrt(
                     std::pow(door.position[0] - projX, 2) +
                     std::pow(door.position[1] - projY, 2)
-                );
+                ));
                 
                 if (dist < 0.5f) {
                     doorsOnInteriorWalls++;

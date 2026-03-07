@@ -200,16 +200,16 @@ TEST_F(StairGeneratorDeepTest, StraightStair_StepsLinear) {
     
     // 直梯的台阶应该沿直线排列
     // 检查相邻台阶之间的距离应该恒定
-    float firstSpacing = std::sqrt(
+    float firstSpacing = static_cast<float>(std::sqrt(
         std::pow(stair.steps[1].position[0] - stair.steps[0].position[0], 2) +
         std::pow(stair.steps[1].position[1] - stair.steps[0].position[1], 2)
-    );
+    ));
     
     for (size_t i = 2; i < stair.steps.size(); ++i) {
-        float spacing = std::sqrt(
+        float spacing = static_cast<float>(std::sqrt(
             std::pow(stair.steps[i].position[0] - stair.steps[i-1].position[0], 2) +
             std::pow(stair.steps[i].position[1] - stair.steps[i-1].position[1], 2)
-        );
+        ));
         
         EXPECT_NEAR(spacing, firstSpacing, 0.5f) 
             << "直梯台阶 " << i << " 的间距必须均匀";
@@ -368,17 +368,17 @@ TEST_F(StairGeneratorDeepTest, SpiralStair_CircularPattern) {
     float centerY = stair.config.position[1];
     
     // 计算第一个台阶到中心的半径
-    float r1 = std::sqrt(
+    float r1 = static_cast<float>(std::sqrt(
         std::pow(stair.steps[0].position[0] - centerX, 2) +
         std::pow(stair.steps[0].position[1] - centerY, 2)
-    );
+    ));
     
     // 验证所有台阶到中心的距离大致相等（圆形）
     for (size_t i = 1; i < stair.steps.size(); ++i) {
-        float ri = std::sqrt(
+        float ri = static_cast<float>(std::sqrt(
             std::pow(stair.steps[i].position[0] - centerX, 2) +
             std::pow(stair.steps[i].position[1] - centerY, 2)
-        );
+        ));
         
         EXPECT_NEAR(ri, r1, 0.5f) 
             << "螺旋楼梯台阶 " << i << " 必须在圆形路径上";

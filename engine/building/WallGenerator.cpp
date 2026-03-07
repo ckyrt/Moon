@@ -225,8 +225,8 @@ void WallGenerator::SegmentEdges(std::vector<EdgeInfo>& edges) {
         
         // Sort by distance from start
         std::sort(points.begin(), points.end(), [&](const GridPos2D& a, const GridPos2D& b) {
-            float distA = std::sqrt(std::pow(a[0] - edge.start[0], 2) + std::pow(a[1] - edge.start[1], 2));
-            float distB = std::sqrt(std::pow(b[0] - edge.start[0], 2) + std::pow(b[1] - edge.start[1], 2));
+            float distA = static_cast<float>(std::sqrt(std::pow(a[0] - edge.start[0], 2) + std::pow(a[1] - edge.start[1], 2)));
+            float distB = static_cast<float>(std::sqrt(std::pow(b[0] - edge.start[0], 2) + std::pow(b[1] - edge.start[1], 2)));
             return distA < distB;
         });
         
@@ -244,8 +244,8 @@ void WallGenerator::SegmentEdges(std::vector<EdgeInfo>& edges) {
             segment.Normalize();
             
             // Skip degenerate segments
-            float length = std::sqrt(std::pow(segment.end[0] - segment.start[0], 2) + 
-                                   std::pow(segment.end[1] - segment.start[1], 2));
+            float length = static_cast<float>(std::sqrt(std::pow(segment.end[0] - segment.start[0], 2) + 
+                                   std::pow(segment.end[1] - segment.start[1], 2)));
             if (length > epsilon) {
                 newEdges.push_back(segment);
             }
