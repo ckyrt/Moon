@@ -46,7 +46,7 @@ protected:
             
             // 只在第一层添加楼梯
             if (level == 0) {
-                space.hasStairs = true;
+                space.properties.hasStairs = true;
                 space.stairsConfig.type = type;
                 space.stairsConfig.connectToLevel = 1;
                 space.stairsConfig.position = {5, 5};

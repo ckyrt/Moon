@@ -104,6 +104,15 @@
     <ClCompile Include="RealWorldBuildingTests.cpp" />
     <ClCompile Include="TestHelpers.cpp" />
     <ClCompile Include="ComplexTestData.cpp" />
+    <!-- Deep Tests -->
+    <ClCompile Include="DeepTests_WallGenerator.cpp" />
+    <ClCompile Include="DeepTests_StairGenerator.cpp" />
+    <ClCompile Include="DeepTests_SpaceGraphBuilder.cpp" />
+    <ClCompile Include="DeepTests_LayoutValidator.cpp" />
+    <ClCompile Include="DeepTests_FacadeGenerator.cpp" />
+    <ClCompile Include="DeepTests_DoorGenerator.cpp" />
+    <ClCompile Include="DeepTests_BuildingToCSGConverter.cpp" />
+    <ClCompile Include="DeepTests_BuildingPipeline.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TestHelpers.h" />

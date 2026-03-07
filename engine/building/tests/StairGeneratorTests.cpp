@@ -46,7 +46,7 @@ protected:
         space0.properties.isOutdoor = false;
         space0.properties.hasStairs = true;
         space0.properties.ceilingHeight = 3.0f;
-        space0.hasStairs = true;
+        space0.properties.hasStairs = true;
         space0.stairsConfig.type = type;
         space0.stairsConfig.connectToLevel = 1;
         space0.stairsConfig.position = {5, 5};
@@ -234,7 +234,7 @@ TEST_F(StairGeneratorTest, NoStairs_NothingGenerated) {
     // Remove stair flag
     for (auto& floor : definition.floors) {
         for (auto& space : floor.spaces) {
-            space.hasStairs = false;
+            space.properties.hasStairs = false;
         }
     }
     
@@ -267,7 +267,7 @@ TEST_F(StairGeneratorTest, MultipleStaircases) {
     space2.properties.isOutdoor = false;
     space2.properties.hasStairs = true;
     space2.properties.ceilingHeight = 3.0f;
-    space2.hasStairs = true;
+    space2.properties.hasStairs = true;
     space2.stairsConfig.type = StairType::L;
     space2.stairsConfig.connectToLevel = 1;
     space2.stairsConfig.position = {7, 7};
@@ -487,7 +487,7 @@ TEST_F(StairGeneratorTest, StairGeometry_SpansMultipleFloors) {
         
         // Add stair from level 0 to level 3 (spanning 3 floors)
         if (level == 0) {
-            space.hasStairs = true;
+            space.properties.hasStairs = true;
             space.stairsConfig.type = StairType::Spiral;
             space.stairsConfig.connectToLevel = 3;
             space.stairsConfig.position = {5, 5};

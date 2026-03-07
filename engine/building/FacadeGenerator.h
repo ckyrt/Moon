@@ -27,6 +27,8 @@ struct FacadeElement {
     float width;
     float elementHeight;
     std::string style;          // Style identifier
+    int floorLevel;             // Floor level
+    int spaceId;                // Associated space ID
 };
 
 /**

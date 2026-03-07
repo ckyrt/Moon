@@ -46,20 +46,32 @@ void FacadeGenerator::GenerateWindows(const BuildingDefinition& definition,
 void FacadeGenerator::GenerateBalconies(const BuildingDefinition& definition,
                                         const std::vector<WallSegment>& walls,
                                         std::vector<FacadeElement>& outElements) {
-    // Check if style supports balconies
+    // TODO: Implement balcony generation
+    // Current implementation only creates placeholder logic
+    // Full implementation would:
+    // 1. Identify outdoor spaces (balconies, terraces)
+    // 2. Generate railing elements around their perimeter  
+    // 3. Create floor platforms
+    // 4. Add support structures if needed
+    
+    // For now, just check if style supports balconies
     if (definition.style.category != "modern") {
         return; // Only modern buildings get balconies in this simple implementation
     }
     
-    // Find outdoor spaces
+    // Find outdoor spaces on upper floors
     for (const auto& floor : definition.floors) {
         if (floor.level == 0) continue; // No balconies on ground floor
         
         for (const auto& space : floor.spaces) {
             if (space.properties.isOutdoor && space.properties.usage == SpaceUsage::Balcony) {
-                // Create balcony element
-                // (In full implementation, would create railing and floor)
-                // For now, just mark it as a facade element
+                // Create balcony railing element (simplified)
+                FacadeElement element;
+                element.type = FacadeElementType::Railing;
+                element.floorLevel = floor.level;
+                element.spaceId = space.spaceId;
+                // In full implementation, would calculate proper position, dimensions, etc.
+                outElements.push_back(element);
             }
         }
     }
@@ -137,7 +149,11 @@ void FacadeGenerator::PlaceWindowsOnWall(const WallSegment& wall,
     }
     
     // Calculate number of windows that fit
-    int numWindows = static_cast<int>(wallLength / spacing);
+    // Consider window width and minimum spacing between windows
+    const float minEdgeMargin = 0.3f;  // 30cm minimum margin from wall edges
+    const float minWindowSpacing = m_windowWidth / 2.0f + 0.5f;  // Half window width + 0.5m gap
+    
+    int numWindows = static_cast<int>((wallLength - 2 * minEdgeMargin + minWindowSpacing) / (spacing + m_windowWidth));
     
     // Limit max windows per wall (avoid too many windows on one wall)
     const int maxWindowsPerWall = 4;
@@ -145,15 +161,28 @@ void FacadeGenerator::PlaceWindowsOnWall(const WallSegment& wall,
     
     if (numWindows < 1) return;
     
-    // Calculate actual spacing
-    float actualSpacing = wallLength / (numWindows + 1);
+    // Calculate actual spacing between window centers
+    float totalWindowWidth = numWindows * m_windowWidth;
+    float availableSpaceForGaps = wallLength - totalWindowWidth - 2 * minEdgeMargin;
+    float actualSpacing = availableSpaceForGaps / (numWindows + 1);
+    
+    // If spacing is too tight, reduce number of windows
+    if (actualSpacing < minWindowSpacing) {
+        numWindows = std::max(1, numWindows - 1);
+        totalWindowWidth = numWindows * m_windowWidth;
+        availableSpaceForGaps = wallLength - totalWindowWidth - 2 * minEdgeMargin;
+        actualSpacing = availableSpaceForGaps / (numWindows + 1);
+    }
+    
+    if (actualSpacing < 0.2f) return;  // Wall is too narrow
     
     // Calculate wall rotation
     float rotation = std::atan2(dy, dx) * 180.0f / 3.14159265f;
     
-    // Place windows
+    // Place windows with proper spacing
+    float currentOffset = minEdgeMargin + actualSpacing + m_windowWidth / 2.0f;
     for (int i = 0; i < numWindows; ++i) {
-        float t = (i + 1) * actualSpacing / wallLength;
+        float t = currentOffset / wallLength;
         
         Window window;
         window.position[0] = wall.start[0] + dx * t;
@@ -166,6 +195,9 @@ void FacadeGenerator::PlaceWindowsOnWall(const WallSegment& wall,
         window.floorLevel = wall.floorLevel;
         
         outWindows.push_back(window);
+        
+        // Move to next window position
+        currentOffset += m_windowWidth + actualSpacing;
     }
 }
 

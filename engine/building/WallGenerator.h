@@ -118,7 +118,6 @@ private:
                      std::unordered_map<EdgeInfo, EdgeSpaces, EdgeInfo::Hash, EdgeInfo::Equal>& outEdgeMap);
     
     void ClassifyEdges(const std::unordered_map<EdgeInfo, EdgeSpaces, EdgeInfo::Hash, EdgeInfo::Equal>& edgeMap,
-                      const SpaceGraphBuilder& spaceGraph,
                       std::vector<WallSegment>& outWalls);
     
     void MergeCollinearWalls(std::vector<WallSegment>& walls);

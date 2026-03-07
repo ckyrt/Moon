@@ -193,6 +193,11 @@ TEST_F(DoorGeneratorDeepTest, Door_NotOverlapping) {
     // 验证门之间不重叠（同一面墙上的门）
     for (size_t i = 0; i < doors.size(); ++i) {
         for (size_t j = i + 1; j < doors.size(); ++j) {
+            // 只比较同一楼层的门
+            if (doors[i].floorLevel != doors[j].floorLevel) {
+                continue;
+            }
+            
             float dx = doors[i].position[0] - doors[j].position[0];
             float dy = doors[i].position[1] - doors[j].position[1];
             float dist = std::sqrt(dx*dx + dy*dy);

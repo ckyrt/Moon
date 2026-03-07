@@ -20,14 +20,8 @@ static inline json pos3(float x, float y, float z)
     return json::array({x, y, z});
 }
 
-// Returns the world Y of a floor's base given its level.
-static float GetFloorBaseHeight(const BuildingDefinition& def, int floorLevel)
-{
-    for (const auto& f : def.floors)
-        if (f.level == floorLevel)
-            return f.level * f.floorHeight;
-    return 0.0f;
-}
+// Note: GetFloorBaseHeight is now in BuildingTypes.h as inline function
+// using cumulative floor height calculation
 
 // ---------------------------------------------------------------------------
 // Wall / window / door association helpers
@@ -113,7 +107,7 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
     // 1. Floor slabs
     // -----------------------------------------------------------------------
     for (const auto& floor : building.definition.floors) {
-        const float floorBaseY = floor.level * floor.floorHeight;
+        const float floorBaseY = GetFloorBaseHeight(building.definition, floor.level);
         for (const auto& space : floor.spaces) {
             for (const auto& rect : space.rects) {
                 const float slabThickness = 0.05f; // 5 cm

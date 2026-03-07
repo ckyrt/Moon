@@ -3,6 +3,7 @@
 #include <unordered_set>
 #include <sstream>
 #include <algorithm>
+#include <cmath>
 
 namespace Moon {
 namespace Building {
@@ -51,6 +52,11 @@ ValidationResult LayoutValidator::Validate(const BuildingDefinition& definition)
 
     // Validate minimum sizes
     if (!ValidateMinimumSizes(definition, result)) {
+        result.valid = false;
+    }
+
+    // Validate grid alignment
+    if (!ValidateGridAlignment(definition, result)) {
         result.valid = false;
     }
 
@@ -219,27 +225,74 @@ bool LayoutValidator::ValidateMinimumSizes(const BuildingDefinition& definition,
 
     for (const auto& floor : definition.floors) {
         for (const auto& space : floor.spaces) {
-            float totalArea = 0;
             for (const auto& rect : space.rects) {
-                // Check minimum dimensions
+                // Check minimum dimensions - treat as errors (not warnings)
                 if (rect.size[0] < m_minRoomWidth || rect.size[1] < m_minRoomDepth) {
                     std::ostringstream oss;
                     oss << "Space " << space.spaceId << " rect '" << rect.rectId 
                         << "' is smaller than minimum size (" << m_minRoomWidth 
                         << "m x " << m_minRoomDepth << "m)";
-                    result.warnings.push_back(oss.str());
+                    result.errors.push_back(oss.str());
+                    valid = false;
                 }
-
-                totalArea += GetRectangleArea(rect);
             }
+        }
+    }
 
-            // Check total space area
-            const float minTotalArea = m_minRoomWidth * m_minRoomDepth;
-            if (totalArea < minTotalArea) {
-                std::ostringstream oss;
-                oss << "Space " << space.spaceId << " total area (" << totalArea 
-                    << "m²) is smaller than minimum (" << minTotalArea << "m²)";
-                result.warnings.push_back(oss.str());
+    return valid;
+}
+
+bool LayoutValidator::ValidateGridAlignment(const BuildingDefinition& definition, ValidationResult& result) {
+    bool valid = true;
+    const float grid = definition.grid;
+    const float epsilon = 0.001f;
+
+    // Helper lambda to check if a value is aligned to grid
+    auto isAligned = [grid, epsilon](float value) -> bool {
+        float remainder = fmodf(value, grid);
+        return (remainder < epsilon) || (remainder > grid - epsilon);
+    };
+
+    // Check mass alignment
+    for (const auto& mass : definition.masses) {
+        if (!isAligned(mass.origin[0]) || !isAligned(mass.origin[1])) {
+            std::ostringstream oss;
+            oss << "Mass '" << mass.massId << "' origin (" 
+                << mass.origin[0] << ", " << mass.origin[1] 
+                << ") is not aligned to grid (" << grid << ")";
+            result.errors.push_back(oss.str());
+            valid = false;
+        }
+        if (!isAligned(mass.size[0]) || !isAligned(mass.size[1])) {
+            std::ostringstream oss;
+            oss << "Mass '" << mass.massId << "' size (" 
+                << mass.size[0] << ", " << mass.size[1] 
+                << ") is not aligned to grid (" << grid << ")";
+            result.errors.push_back(oss.str());
+            valid = false;
+        }
+    }
+
+    // Check space alignment
+    for (const auto& floor : definition.floors) {
+        for (const auto& space : floor.spaces) {
+            for (const auto& rect : space.rects) {
+                if (!isAligned(rect.origin[0]) || !isAligned(rect.origin[1])) {
+                    std::ostringstream oss;
+                    oss << "Space " << space.spaceId << " rect '" << rect.rectId 
+                        << "' origin (" << rect.origin[0] << ", " << rect.origin[1] 
+                        << ") is not aligned to grid (" << grid << ")";
+                    result.errors.push_back(oss.str());
+                    valid = false;
+                }
+                if (!isAligned(rect.size[0]) || !isAligned(rect.size[1])) {
+                    std::ostringstream oss;
+                    oss << "Space " << space.spaceId << " rect '" << rect.rectId 
+                        << "' size (" << rect.size[0] << ", " << rect.size[1] 
+                        << ") is not aligned to grid (" << grid << ")";
+                    result.errors.push_back(oss.str());
+                    valid = false;
+                }
             }
         }
     }
@@ -259,7 +312,7 @@ bool LayoutValidator::ValidateStairConnections(const BuildingDefinition& definit
     // Check stair connections
     for (const auto& floor : definition.floors) {
         for (const auto& space : floor.spaces) {
-            if (space.hasStairs) {
+            if (space.properties.hasStairs) {
                 int targetLevel = space.stairsConfig.connectToLevel;
                 if (!floorLevels.count(targetLevel)) {
                     std::ostringstream oss;

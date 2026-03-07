@@ -23,7 +23,7 @@ void StairGenerator::GenerateStairs(const BuildingDefinition& definition,
     
     for (const auto& floor : definition.floors) {
         for (const auto& space : floor.spaces) {
-            if (!space.hasStairs) continue;
+            if (!space.properties.hasStairs) continue;
             
             // Calculate actual height difference between floors
             int fromLevel = floor.level;

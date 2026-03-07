@@ -110,7 +110,7 @@
           "rects": [
             {
               "rect_id": "garage_space",
-              "origin": [0.5, 0.5],
+              "origin": [15.5, 0.5],
               "size": [5.0, 5.0]
             }
           ],

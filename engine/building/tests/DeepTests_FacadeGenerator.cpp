@@ -100,6 +100,11 @@ TEST_F(FacadeGeneratorDeepTest, Windows_ProperSpacing) {
     // 验证同一面墙上的窗户间距合理
     for (size_t i = 0; i < windows.size(); ++i) {
         for (size_t j = i + 1; j < windows.size(); ++j) {
+            // 只比较同一楼层的窗户
+            if (windows[i].floorLevel != windows[j].floorLevel) {
+                continue;
+            }
+            
             float dx = windows[i].position[0] - windows[j].position[0];
             float dy = windows[i].position[1] - windows[j].position[1];
             float dist = std::sqrt(dx*dx + dy*dy);

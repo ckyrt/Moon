@@ -1,6 +1,8 @@
 #include "SchemaValidator.h"
 #include <cmath>
 #include <sstream>
+#include <unordered_set>
+#include <unordered_map>
 
 namespace Moon {
 namespace Building {
@@ -46,19 +48,59 @@ bool SchemaValidator::ValidateAndParse(const nlohmann::json& json,
     
     if (!ParseStyle(json["style"], outDefinition.style, outError)) return false;
     
-    // Parse masses
+    // Parse masses and check for duplicate mass IDs
     outDefinition.masses.clear();
+    std::unordered_set<std::string> massIds;
     for (const auto& massJson : json["masses"]) {
         Mass mass;
         if (!ParseMass(massJson, mass, outError)) return false;
+        
+        if (massIds.count(mass.massId)) {
+            outError = "Duplicate mass_id: " + mass.massId;
+            return false;
+        }
+        massIds.insert(mass.massId);
+        
         outDefinition.masses.push_back(mass);
     }
     
-    // Parse floors
+    // Parse floors and check for duplicate floor levels per mass
     outDefinition.floors.clear();
+    std::unordered_map<std::string, std::unordered_set<int>> floorLevelsByMass;
+    std::unordered_set<int> allSpaceIds;
+    
     for (const auto& floorJson : json["floors"]) {
         Floor floor;
         if (!ParseFloor(floorJson, floor, outError)) return false;
+        
+        // Check for duplicate floor level within same mass
+        if (floorLevelsByMass[floor.massId].count(floor.level)) {
+            outError = "Duplicate floor level " + std::to_string(floor.level) + 
+                       " in mass '" + floor.massId + "'";
+            return false;
+        }
+        floorLevelsByMass[floor.massId].insert(floor.level);
+        
+        // Check for duplicate space IDs and rect IDs
+        for (const auto& space : floor.spaces) {
+            if (allSpaceIds.count(space.spaceId)) {
+                outError = "Duplicate space_id: " + std::to_string(space.spaceId);
+                return false;
+            }
+            allSpaceIds.insert(space.spaceId);
+            
+            // Check for duplicate rect IDs within same space
+            std::unordered_set<std::string> rectIds;
+            for (const auto& rect : space.rects) {
+                if (rectIds.count(rect.rectId)) {
+                    outError = "Duplicate rect_id '" + rect.rectId + 
+                               "' in space " + std::to_string(space.spaceId);
+                    return false;
+                }
+                rectIds.insert(rect.rectId);
+            }
+        }
+        
         outDefinition.floors.push_back(floor);
     }
     
@@ -319,9 +361,9 @@ bool SchemaValidator::ParseSpace(const nlohmann::json& json, Space& space, std::
             if (!ParseStairs(json["stairs"], space.stairsConfig, outError)) {
                 return false;
             }
-            space.hasStairs = true;
+            space.properties.hasStairs = true;
         } else {
-            space.hasStairs = false;
+            space.properties.hasStairs = false;
         }
         
         return true;

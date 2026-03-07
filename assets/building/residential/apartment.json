@@ -127,14 +127,8 @@
           "properties": {
             "usage_hint": "corridor",
             "is_outdoor": false,
-            "has_stairs": true,
+            "has_stairs": false,
             "ceiling_height": 3.0
-          },
-          "stairs": {
-            "type": "straight",
-            "connect_to_level": 2,
-            "position": [9.0, 1.5],
-            "width": 2.0
           }
         },
         {

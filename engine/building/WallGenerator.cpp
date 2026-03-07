@@ -61,7 +61,7 @@ void WallGenerator::GenerateWalls(const BuildingDefinition& definition,
     MOON_LOG_INFO("Building", "After removing internal seams: %zu boundary edges", edgeMap.size());
     
     // Step 4: Classify edges as interior or exterior walls
-    ClassifyEdges(edgeMap, spaceGraph, outWalls);
+    ClassifyEdges(edgeMap, outWalls);
     MOON_LOG_INFO("Building", "Generated %zu wall segments", outWalls.size());
     
     // Step 5: Merge collinear walls of same type
@@ -312,7 +312,6 @@ void WallGenerator::BuildEdgeMap(const std::vector<EdgeInfo>& edges,
 }
 
 void WallGenerator::ClassifyEdges(const std::unordered_map<EdgeInfo, EdgeSpaces, EdgeInfo::Hash, EdgeInfo::Equal>& edgeMap,
-                                  const SpaceGraphBuilder& spaceGraph,
                                   std::vector<WallSegment>& outWalls) {
     // ============================================================================
     // Wall Classification Rules (Correct)

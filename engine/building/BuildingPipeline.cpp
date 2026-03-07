@@ -145,7 +145,8 @@ bool BuildingPipeline::GenerateDoors(const BuildingDefinition& definition,
 bool BuildingPipeline::GenerateStairs(const BuildingDefinition& definition,
                                       GeneratedBuilding& outBuilding) {
     m_stairGenerator.GenerateStairs(definition, m_stairs);
-    // Stair geometry is stored internally for mesh generation
+    // Copy stairs to output building
+    outBuilding.stairs = m_stairs;
     return true;
 }
 

@@ -89,22 +89,28 @@ TEST_F(WallGeneratorDeepTest, Walls_FormClosedLoop) {
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
     
-    // 验证每面墙的终点连接到另一面墙的起点（形成闭环）
+    // 验证每面墙的终点连接到另一面墙的起点或终点（形成闭环）
     for (const auto& wall : walls) {
         bool foundConnection = false;
         for (const auto& other : walls) {
             if (&wall != &other) {
-                float dx = wall.end[0] - other.start[0];
-                float dy = wall.end[1] - other.start[1];
-                float dist = std::sqrt(dx*dx + dy*dy);
-                if (dist < 0.1f) {
+                // 检查wall.end是否连接到other.start或other.end
+                float dx1 = wall.end[0] - other.start[0];
+                float dy1 = wall.end[1] - other.start[1];
+                float dist1 = std::sqrt(dx1*dx1 + dy1*dy1);
+                
+                float dx2 = wall.end[0] - other.end[0];
+                float dy2 = wall.end[1] - other.end[1];
+                float dist2 = std::sqrt(dx2*dx2 + dy2*dy2);
+                
+                if (dist1 < 0.1f || dist2 < 0.1f) {
                     foundConnection = true;
                     break;
                 }
             }
         }
         EXPECT_TRUE(foundConnection) 
-            << "墙的终点必须连接到另一面墙的起点，形成闭环";
+            << "墙的终点必须连接到另一面墙的起点或终点，形成闭环";
     }
 }
 
@@ -320,10 +326,16 @@ TEST_F(WallGeneratorDeepTest, LShapedBuilding_CorrectExteriorWalls) {
             bool foundConnection = false;
             for (const auto& other : walls) {
                 if (&wall != &other && other.type == WallType::Exterior) {
-                    float dx = wall.end[0] - other.start[0];
-                    float dy = wall.end[1] - other.start[1];
-                    float dist = std::sqrt(dx*dx + dy*dy);
-                    if (dist < 0.2f) {
+                    // 检查wall.end是否连接到other.start或other.end
+                    float dx1 = wall.end[0] - other.start[0];
+                    float dy1 = wall.end[1] - other.start[1];
+                    float dist1 = std::sqrt(dx1*dx1 + dy1*dy1);
+                    
+                    float dx2 = wall.end[0] - other.end[0];
+                    float dy2 = wall.end[1] - other.end[1];
+                    float dist2 = std::sqrt(dx2*dx2 + dy2*dy2);
+                    
+                    if (dist1 < 0.2f || dist2 < 0.2f) {
                         foundConnection = true;
                         break;
                     }

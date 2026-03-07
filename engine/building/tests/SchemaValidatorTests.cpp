@@ -61,7 +61,7 @@ TEST_F(SchemaValidatorTest, ValidateMultiFloorBuilding_Success) {
     // Check stairs connection
     ASSERT_EQ(definition.floors[0].spaces.size(), 1);
     const Space& groundFloor = definition.floors[0].spaces[0];
-    EXPECT_TRUE(groundFloor.hasStairs);
+    EXPECT_TRUE(groundFloor.properties.hasStairs);
     EXPECT_EQ(groundFloor.stairsConfig.connectToLevel, 1);
 }
 

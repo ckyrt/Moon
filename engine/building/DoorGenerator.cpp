@@ -32,6 +32,24 @@ void DoorGenerator::GenerateDoors(const BuildingDefinition& definition,
             continue;
         }
         
+        // Verify that a wall exists for this adjacency
+        bool wallExists = false;
+        for (const auto& wall : walls) {
+            if (wall.type == WallType::Interior) {
+                // Check if this wall corresponds to the adjacency
+                if ((wall.spaceId == adjacency.spaceA && wall.neighborSpaceId == adjacency.spaceB) ||
+                    (wall.spaceId == adjacency.spaceB && wall.neighborSpaceId == adjacency.spaceA)) {
+                    wallExists = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!wallExists) {
+            // No wall found for this adjacency, skip door placement
+            continue;
+        }
+        
         // Create door
         Door door;
         door.spaceA = adjacency.spaceA;
@@ -124,21 +142,62 @@ GridPos2D DoorGenerator::CalculateDoorPosition(const SpaceAdjacency& adjacency,
     const Space* spaceA = FindSpace(definition, adjacency.spaceA);
     const Space* spaceB = FindSpace(definition, adjacency.spaceB);
     
-    // Check for door hints in either space
-    if (spaceA && HasDoorHint(*spaceA, adjacency)) {
-        for (const auto& anchor : spaceA->anchors) {
+    const float maxDistanceToEdge = 0.5f;
+    
+    // Check for door hints in either space - but they must be near this edge
+    auto findClosestHint = [&](const Space* space) -> GridPos2D* {
+        static GridPos2D hintPos;
+        float bestDist = maxDistanceToEdge;
+        bool found = false;
+        
+        if (!space) return nullptr;
+        
+        for (const auto& anchor : space->anchors) {
             if (anchor.type == AnchorType::DoorHint) {
-                return anchor.position;
+                // Calculate distance from anchor to the edge line segment
+                float ax = anchor.position[0];
+                float ay = anchor.position[1];
+                float x1 = adjacency.sharedEdgeStart[0];
+                float y1 = adjacency.sharedEdgeStart[1];
+                float x2 = adjacency.sharedEdgeEnd[0];
+                float y2 = adjacency.sharedEdgeEnd[1];
+                
+                float dx = x2 - x1;
+                float dy = y2 - y1;
+                float edgeLength = std::sqrt(dx*dx + dy*dy);
+                
+                if (edgeLength < 0.01f) continue;
+                
+                float nx = dx / edgeLength;
+                float ny = dy / edgeLength;
+                float vx = ax - x1;
+                float vy = ay - y1;
+                float t = vx*nx + vy*ny;
+                t = std::max(0.0f, std::min(t, edgeLength));
+                float px = x1 + t * nx;
+                float py = y1 + t * ny;
+                float dist = std::sqrt((ax-px)*(ax-px) + (ay-py)*(ay-py));
+                
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    hintPos[0] = px;  // Use projected position on edge
+                    hintPos[1] = py;
+                    found = true;
+                }
             }
         }
+        
+        return found ? &hintPos : nullptr;
+    };
+    
+    // Try spaceA hints first
+    if (GridPos2D* hint = findClosestHint(spaceA)) {
+        return *hint;
     }
     
-    if (spaceB && HasDoorHint(*spaceB, adjacency)) {
-        for (const auto& anchor : spaceB->anchors) {
-            if (anchor.type == AnchorType::DoorHint) {
-                return anchor.position;
-            }
-        }
+    // Try spaceB hints  
+    if (GridPos2D* hint = findClosestHint(spaceB)) {
+        return *hint;
     }
     
     // Default: place door at center of shared edge
@@ -202,11 +261,50 @@ float DoorGenerator::CalculateDoorRotation(const SpaceAdjacency& adjacency) cons
 }
 
 bool DoorGenerator::HasDoorHint(const Space& space, const SpaceAdjacency& adjacency) const {
+    const float maxDistanceToEdge = 0.5f;  // DoorHint must be within 0.5m of edge
+    
     for (const auto& anchor : space.anchors) {
         if (anchor.type == AnchorType::DoorHint) {
-            // Check if hint is near shared edge (simplified check)
-            // In a full implementation, would check if anchor is along the shared edge
-            return true;
+            // Check if hint is near the shared edge
+            // Calculate distance from anchor to the edge line segment
+            float ax = anchor.position[0];
+            float ay = anchor.position[1];
+            float x1 = adjacency.sharedEdgeStart[0];
+            float y1 = adjacency.sharedEdgeStart[1];
+            float x2 = adjacency.sharedEdgeEnd[0];
+            float y2 = adjacency.sharedEdgeEnd[1];
+            
+            // Vector from edge start to end
+            float dx = x2 - x1;
+            float dy = y2 - y1;
+            float edgeLength = std::sqrt(dx*dx + dy*dy);
+            
+            if (edgeLength < 0.01f) continue;  // Degenerate edge
+            
+            // Normalized direction
+            float nx = dx / edgeLength;
+            float ny = dy / edgeLength;
+            
+            // Vector from edge start to anchor
+            float vx = ax - x1;
+            float vy = ay - y1;
+            
+            // Project onto edge
+            float t = vx*nx + vy*ny;
+            
+            // Clamp t to [0, edgeLength]
+            t = std::max(0.0f, std::min(t, edgeLength));
+            
+            // Closest point on edge
+            float px = x1 + t * nx;
+            float py = y1 + t * ny;
+            
+            // Distance from anchor to edge
+            float dist = std::sqrt((ax-px)*(ax-px) + (ay-py)*(ay-py));
+            
+            if (dist < maxDistanceToEdge) {
+                return true;
+            }
         }
     }
     return false;

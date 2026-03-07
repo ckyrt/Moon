@@ -1,5 +1,6 @@
 // 深入测试 BuildingPipeline - 验证完整流程
 #include <gtest/gtest.h>
+#include <chrono>
 #include "building/BuildingPipeline.h"
 #include "building/BuildingTypes.h"
 #include "TestHelpers.h"

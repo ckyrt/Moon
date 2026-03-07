@@ -73,6 +73,51 @@ struct StairConfig {
 };
 
 /**
+ * @brief Landing platform data
+ */
+struct LandingPlatform {
+    GridPos2D position;         // Center position
+    float width;                // Platform width
+    float depth;                // Platform depth
+    float height;               // Height above base level
+    float rotation;             // Rotation in degrees
+};
+
+/**
+ * @brief Individual step data
+ */
+struct StepData {
+    GridPos2D position;         // Step center position
+    float height;               // Height above base level
+    float rotation;             // Rotation in degrees (for spiral)
+};
+
+/**
+ * @brief Stair geometry data
+ */
+struct StairGeometry {
+    StairConfig config;
+    GridPos2D position;         // Base position
+    int fromLevel;              // Starting floor level
+    int toLevel;                // Target floor level
+    float totalHeight;          // Actual height difference between floors
+    float rotation;             // Base rotation in degrees
+    int numSteps;
+    float stepHeight;           // Actual step rise
+    float stepDepth;            // Actual step depth/run
+    float stairLength;          // Total length along main direction
+    float stairWidth;           // Stair width
+    
+    // Detailed geometry
+    std::vector<StepData> steps;            // Individual step positions
+    std::vector<LandingPlatform> landings;  // Landing platforms
+    
+    // Validation flags
+    bool meetsCodeRequirements;  // Does it meet building codes?
+    std::string validationNotes; // Any warnings or issues
+};
+
+/**
  * @brief Anchor for procedural object placement
  */
 enum class AnchorType {
@@ -190,10 +235,9 @@ struct Space {
     std::vector<Rect> rects;                // Rectangle components
     SpaceProperties properties;
     std::vector<Anchor> anchors;            // Placement hints
-    bool hasStairs;                         // Does this space have stairs?
-    StairConfig stairsConfig;               // Stair configuration (only valid if hasStairs==true)
+    StairConfig stairsConfig;               // Stair configuration (only valid if properties.hasStairs==true)
     
-    Space() : spaceId(0), hasStairs(false) {}
+    Space() : spaceId(0) {}
 };
 
 /**
@@ -293,6 +337,7 @@ struct GeneratedBuilding {
     std::vector<WallSegment> walls;
     std::vector<Door> doors;
     std::vector<Window> windows;
+    std::vector<StairGeometry> stairs;  // ✅ Add stairs field
     std::vector<SpaceConnection> connections;
     // Mesh data will be generated from this structure
 };
@@ -305,6 +350,33 @@ struct ValidationResult {
     std::vector<std::string> errors;
     std::vector<std::string> warnings;
 };
+
+/**
+ * @brief Helper function: Get the base height (Y coordinate) of a floor
+ * Uses cumulative floor heights (not level * height) to support variable floor heights
+ * @param definition Building definition
+ * @param targetLevel Target floor level
+ * @return Base height in meters (0.0 for level 0, cumulative for higher levels)
+ */
+inline float GetFloorBaseHeight(const BuildingDefinition& definition, int targetLevel) {
+    if (targetLevel <= 0) {
+        return 0.0f;
+    }
+    
+    float cumulativeHeight = 0.0f;
+    
+    // Accumulate heights of all floors below targetLevel
+    for (int level = 0; level < targetLevel; ++level) {
+        for (const auto& floor : definition.floors) {
+            if (floor.level == level) {
+                cumulativeHeight += floor.floorHeight;
+                break;
+            }
+        }
+    }
+    
+    return cumulativeHeight;
+}
 
 } // namespace Building
 } // namespace Moon

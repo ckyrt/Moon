@@ -46,6 +46,7 @@ private:
     bool ValidateSpaceOverlaps(const BuildingDefinition& definition, ValidationResult& result);
     bool ValidateSpaceBoundaries(const BuildingDefinition& definition, ValidationResult& result);
     bool ValidateMinimumSizes(const BuildingDefinition& definition, ValidationResult& result);
+    bool ValidateGridAlignment(const BuildingDefinition& definition, ValidationResult& result);
     bool ValidateStairConnections(const BuildingDefinition& definition, ValidationResult& result);
     
     bool RectanglesOverlap(const Rectangle& a, const Rectangle& b) const;
