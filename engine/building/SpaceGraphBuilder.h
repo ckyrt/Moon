@@ -3,6 +3,7 @@
 #include "BuildingTypes.h"
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace Moon {
 namespace Building {
@@ -67,9 +68,17 @@ private:
         }
         
         float Length() const;
+        
+        // Normalize edge to canonical direction (start <= end)
+        void Normalize() {
+            if (start[0] > end[0] || (start[0] == end[0] && start[1] > end[1])) {
+                std::swap(start, end);
+            }
+        }
     };
 
     void ExtractEdges(const BuildingDefinition& definition);
+    void SegmentEdges();  // Add edge segmentation for T-junctions
     void FindAdjacencies();
     void BuildConnections(std::vector<SpaceConnection>& outConnections);
     
@@ -77,9 +86,16 @@ private:
                      GridPos2D& outStart, GridPos2D& outEnd, 
                      float& outLength) const;
     
+    // Helper function to create unique key for space pair
+    static uint64_t MakeAdjacencyKey(int spaceA, int spaceB) {
+        int minSpace = (spaceA < spaceB) ? spaceA : spaceB;
+        int maxSpace = (spaceA < spaceB) ? spaceB : spaceA;
+        return ((uint64_t)minSpace << 32) | (uint64_t)maxSpace;
+    }
+    
     std::vector<Edge> m_edges;
     std::vector<SpaceAdjacency> m_adjacencies;
-    std::unordered_map<int, std::vector<int>> m_adjacencyMap;  // spaceId -> list of adjacent spaceIds
+    std::unordered_set<uint64_t> m_adjacencySet;  // O(1) lookup: key = (min(A,B) << 32) | max(A,B)
 };
 
 } // namespace Building

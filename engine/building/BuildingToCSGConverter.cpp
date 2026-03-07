@@ -133,11 +133,11 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
                     m2cm(rect.origin[1] + rect.size[1] * 0.5f)
                 )}};
 
-                const std::string& usage = space.properties.usageHint;
-                if      (usage == "living")   node["material"] = "wood_floor";
-                else if (usage == "kitchen")  node["material"] = "tile_ceramic";
-                else if (usage == "bedroom")  node["material"] = "carpet";
-                else                          node["material"] = "concrete_floor";
+                SpaceUsage usage = space.properties.usage;
+                if      (usage == SpaceUsage::Living)   node["material"] = "wood_floor";
+                else if (usage == SpaceUsage::Kitchen)  node["material"] = "tile_ceramic";
+                else if (usage == SpaceUsage::Bedroom)  node["material"] = "carpet";
+                else                                    node["material"] = "concrete_floor";
 
                 children.push_back(node);
             }
@@ -162,6 +162,8 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
     for (size_t di = 0; di < building.doors.size(); ++di)
         for (size_t wali = 0; wali < building.walls.size(); ++wali)
             if (IsDoorOnWall(building.doors[di], building.walls[wali])) {
+                wallDoorIdx[wali].push_back(static_cast<int>(di));
+                break;
             }
 
     int wallIdx = 0;
@@ -172,66 +174,71 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
         float length = std::sqrt(dx * dx + dz * dz);
         if (length < 0.01f) { wallIdx++; continue; }
 
-        const bool alongX = std::abs(dz) < 0.01f;
+        // Calculate wall rotation: angle from +X axis to (dx, dz) direction in degrees
+        float wallRotationY = std::atan2(dz, dx) * 180.0f / 3.14159265f;
 
-        // Wall cube: center X/Z at segment midpoint,
-        // center Y at floorBaseHeight + height/2
+        // Wall reference: use wall_panel_v1 component for proper UV mapping
+        // Panel is created along X axis, then rotated via rotation_y parameter
         json wallCube;
-        wallCube["type"]      = "primitive";
-        wallCube["primitive"] = "cube";
-        wallCube["params"]    = {
-            {"size_x", m2cm(alongX ? length        : wall.thickness)},
-            {"size_y", m2cm(wall.height)},
-            {"size_z", m2cm(alongX ? wall.thickness : length)}
+        wallCube["type"] = "reference";
+        wallCube["ref"]  = "wall_panel_v1";
+        wallCube["overrides"] = {
+            {"w", m2cm(length)},         // Width along X (before rotation)
+            {"h", m2cm(wall.height)},    // Height along Y
+            {"t", m2cm(wall.thickness)}, // Thickness along Z
+            {"rotation_y", wallRotationY}
         };
-        wallCube["transform"] = {{"position", pos3(
-            m2cm((wall.start[0] + wall.end[0]) * 0.5f),
-            m2cm(GetFloorBaseHeight(building.definition, wall.floorLevel) + wall.height * 0.5f),
-            m2cm((wall.start[1] + wall.end[1]) * 0.5f)
-        )}};
+        // POSITIONING: wall_panel_v1 uses bottom-center convention (y=0 at base)
+        wallCube["transform"] = {
+            {"position", pos3(
+                m2cm((wall.start[0] + wall.end[0]) * 0.5f),
+                m2cm(GetFloorBaseHeight(building.definition, wall.floorLevel)),  // Bottom of wall
+                m2cm((wall.start[1] + wall.end[1]) * 0.5f)
+            )}
+        };
         wallCube["material"] = (wall.type == WallType::Exterior) ? "brick" : "plaster";
 
         // Hole cubes
         std::vector<json> holes;
 
-        // Window holes
+        // Window holes - use opening_v1 component
         for (int wi : wallWindowIdx[wali]) {
             const auto& win = building.windows[wi];
-            // World Y of window opening centre
-            float holeY = GetFloorBaseHeight(building.definition, win.floorLevel) + win.sillHeight + win.height * 0.5f;
+            // POSITIONING: opening_v1 uses bottom-center convention (y=0 at sill)
+            float holeY = GetFloorBaseHeight(building.definition, win.floorLevel) + win.sillHeight;
 
             json hole;
-            hole["type"]      = "primitive";
-            hole["primitive"] = "cube";
-            hole["params"]    = {
-                {"size_x", m2cm(win.width)},
-                {"size_y", m2cm(win.height) + 2.0f},        // +2 cm clearance
-                {"size_z", m2cm(wall.thickness) + 2.0f}     // punch through
+            hole["type"] = "reference";
+            hole["ref"]  = "opening_v1";
+            hole["overrides"] = {
+                {"w", m2cm(win.width) + 2.0f},           // +2 cm clearance
+                {"h", m2cm(win.height) + 2.0f},          // +2 cm clearance
+                {"t", m2cm(wall.thickness) + 2.0f},      // punch through
+                {"rotation_y", wallRotationY}
             };
             hole["transform"] = {
-                {"position", pos3(m2cm(win.position[0]), m2cm(holeY), m2cm(win.position[1]))},
-                {"rotation", json::array({0.0f, win.rotation, 0.0f})}
+                {"position", pos3(m2cm(win.position[0]), m2cm(holeY), m2cm(win.position[1]))}
             };
             holes.push_back(hole);
         }
 
-        // Door holes
+        // Door holes - use opening_v1 component
         for (int di : wallDoorIdx[wali]) {
             const auto& door = building.doors[di];
-            // Door opening sits at floor base; hole centre at floorBase + height/2
-            float holeY = GetFloorBaseHeight(building.definition, door.floorLevel) + door.height * 0.5f;
+            // POSITIONING: opening_v1 uses bottom-center convention (y=0 at ground)
+            float holeY = GetFloorBaseHeight(building.definition, door.floorLevel);
 
             json hole;
-            hole["type"]      = "primitive";
-            hole["primitive"] = "cube";
-            hole["params"]    = {
-                {"size_x", m2cm(door.width)},
-                {"size_y", m2cm(door.height) + 2.0f},       // +2 cm clearance
-                {"size_z", m2cm(wall.thickness) + 2.0f}     // punch through
+            hole["type"] = "reference";
+            hole["ref"]  = "opening_v1";
+            hole["overrides"] = {
+                {"w", m2cm(door.width) + 2.0f},          // +2 cm clearance
+                {"h", m2cm(door.height) + 2.0f},         // +2 cm clearance
+                {"t", m2cm(wall.thickness) + 2.0f},      // punch through
+                {"rotation_y", wallRotationY}
             };
             hole["transform"] = {
-                {"position", pos3(m2cm(door.position[0]), m2cm(holeY), m2cm(door.position[1]))},
-                {"rotation", json::array({0.0f, door.rotation, 0.0f})}
+                {"position", pos3(m2cm(door.position[0]), m2cm(holeY), m2cm(door.position[1]))}
             };
             holes.push_back(hole);
         }
@@ -246,18 +253,19 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
     // -----------------------------------------------------------------------
     int doorIdx = 0;
     for (const auto& door : building.doors) {
+        // POSITIONING: door_v1 uses bottom-center convention (y=0 at ground)
         json node;
         node["name"] = "door_" + std::to_string(doorIdx++);
         node["type"] = "reference";
-        node["ref"]  = "complete_door_v1";
+        node["ref"]  = "door_v1";
         node["overrides"] = {
             {"door_width",  m2cm(door.width)},
             {"door_height", m2cm(door.height)},
-            {"frame_depth", m2cm(wallThickness)}
+            {"door_thickness", 4.0f},  // Standard door thickness
+            {"rotation_y", door.rotation}
         };
         node["transform"] = {
-            {"position", pos3(m2cm(door.position[0]), m2cm(GetFloorBaseHeight(building.definition, door.floorLevel)), m2cm(door.position[1]))},
-            {"rotation", json::array({0.0f, door.rotation, 0.0f})}
+            {"position", pos3(m2cm(door.position[0]), m2cm(GetFloorBaseHeight(building.definition, door.floorLevel)), m2cm(door.position[1]))}
         };
         children.push_back(node);
     }
@@ -267,7 +275,8 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
     // -----------------------------------------------------------------------
     int windowIdx = 0;
     for (const auto& window : building.windows) {
-        float winCenterY = GetFloorBaseHeight(building.definition, window.floorLevel) + window.sillHeight + window.height * 0.5f;
+        // POSITIONING: window_v1 uses bottom-center convention (y=0 at sill)
+        float winBaseY = GetFloorBaseHeight(building.definition, window.floorLevel) + window.sillHeight;
 
         json node;
         node["name"] = "window_" + std::to_string(windowIdx++);
@@ -276,11 +285,11 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
         node["overrides"] = {
             {"w", m2cm(window.width)},
             {"h", m2cm(window.height)},
-            {"t", m2cm(wallThickness)}
+            {"t", m2cm(wallThickness)},
+            {"rotation_y", window.rotation}
         };
         node["transform"] = {
-            {"position", pos3(m2cm(window.position[0]), m2cm(winCenterY), m2cm(window.position[1]))},
-            {"rotation", json::array({0.0f, window.rotation, 0.0f})}
+            {"position", pos3(m2cm(window.position[0]), m2cm(winBaseY), m2cm(window.position[1]))}
         };
         children.push_back(node);
     }

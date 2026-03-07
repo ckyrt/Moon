@@ -94,10 +94,80 @@ struct Anchor {
 };
 
 /**
+ * @brief Space usage type
+ * Defines the functional purpose of a space
+ * IMPORTANT: AI must use these exact values in JSON "usage_hint" field
+ */
+enum class SpaceUsage {
+    Unknown,        // Unspecified or unknown
+    Living,         // Living room / lounge
+    Dining,         // Dining room
+    Kitchen,        // Kitchen
+    Bedroom,        // Bedroom
+    Bathroom,       // Bathroom / toilet
+    Corridor,       // Hallway / corridor
+    Entrance,       // Entrance hall / foyer
+    Closet,         // Closet / wardrobe
+    Storage,        // Storage room / utility room
+    Office,         // Office / study
+    Balcony,        // Balcony
+    Terrace,        // Terrace
+    Garage,         // Garage / parking
+    Laundry,        // Laundry room
+    Stairwell       // Stairwell space
+};
+
+/**
+ * @brief Convert string to SpaceUsage enum
+ */
+inline SpaceUsage StringToSpaceUsage(const std::string& str) {
+    if (str == "living") return SpaceUsage::Living;
+    if (str == "dining") return SpaceUsage::Dining;
+    if (str == "kitchen") return SpaceUsage::Kitchen;
+    if (str == "bedroom") return SpaceUsage::Bedroom;
+    if (str == "bathroom") return SpaceUsage::Bathroom;
+    if (str == "corridor") return SpaceUsage::Corridor;
+    if (str == "entrance") return SpaceUsage::Entrance;
+    if (str == "closet") return SpaceUsage::Closet;
+    if (str == "storage") return SpaceUsage::Storage;
+    if (str == "office") return SpaceUsage::Office;
+    if (str == "balcony") return SpaceUsage::Balcony;
+    if (str == "terrace") return SpaceUsage::Terrace;
+    if (str == "garage") return SpaceUsage::Garage;
+    if (str == "laundry") return SpaceUsage::Laundry;
+    if (str == "stairwell") return SpaceUsage::Stairwell;
+    return SpaceUsage::Unknown;
+}
+
+/**
+ * @brief Convert SpaceUsage enum to string
+ */
+inline std::string SpaceUsageToString(SpaceUsage usage) {
+    switch (usage) {
+        case SpaceUsage::Living: return "living";
+        case SpaceUsage::Dining: return "dining";
+        case SpaceUsage::Kitchen: return "kitchen";
+        case SpaceUsage::Bedroom: return "bedroom";
+        case SpaceUsage::Bathroom: return "bathroom";
+        case SpaceUsage::Corridor: return "corridor";
+        case SpaceUsage::Entrance: return "entrance";
+        case SpaceUsage::Closet: return "closet";
+        case SpaceUsage::Storage: return "storage";
+        case SpaceUsage::Office: return "office";
+        case SpaceUsage::Balcony: return "balcony";
+        case SpaceUsage::Terrace: return "terrace";
+        case SpaceUsage::Garage: return "garage";
+        case SpaceUsage::Laundry: return "laundry";
+        case SpaceUsage::Stairwell: return "stairwell";
+        default: return "unknown";
+    }
+}
+
+/**
  * @brief Space properties
  */
 struct SpaceProperties {
-    std::string usageHint;      // "living", "bedroom", "kitchen", "corridor", etc.
+    SpaceUsage usage;           // Space functional purpose (use enum, not string)
     bool isOutdoor;             // Is this an outdoor space (balcony, terrace)?
     bool hasStairs;             // Does this space contain stairs?
     float ceilingHeight;        // Height of ceiling (meters)

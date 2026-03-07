@@ -76,7 +76,46 @@ bool DoorGenerator::ShouldPlaceDoor(const SpaceAdjacency& adjacency,
         return false;
     }
     
-    // Always place door between indoor spaces
+    // Get usage types
+    SpaceUsage usageA = spaceA->properties.usage;
+    SpaceUsage usageB = spaceB->properties.usage;
+    
+    // Spaces that don't need doors (only need openings):
+    // - Small closets (walk-in closets are open)
+    // - Small storage rooms
+    // - Corridor to living/open areas
+    // - Open plan connections
+    
+    // Check if this is an open-plan connection (corridor to living/kitchen)
+    if ((usageA == SpaceUsage::Corridor && (usageB == SpaceUsage::Living || usageB == SpaceUsage::Kitchen)) ||
+        (usageB == SpaceUsage::Corridor && (usageA == SpaceUsage::Living || usageA == SpaceUsage::Kitchen))) {
+        return false;  // No door needed for open plan
+    }
+    
+    // Check if this is a closet connection - only small closets (<4m²) need no door
+    if (usageA == SpaceUsage::Closet || usageB == SpaceUsage::Closet) {
+        const Space* closet = (usageA == SpaceUsage::Closet) ? spaceA : spaceB;
+        float closetArea = 0.0f;
+        for (const auto& rect : closet->rects) {
+            closetArea += rect.size[0] * rect.size[1];
+        }
+        // Small walk-in closets (< 4m²) can be open, larger ones need doors
+        if (closetArea < 4.0f) {
+            return false;  // Small closet - just an opening
+        }
+    }
+    
+    // Living room to dining room - open plan
+    if ((usageA == SpaceUsage::Living && usageB == SpaceUsage::Dining) || 
+        (usageA == SpaceUsage::Dining && usageB == SpaceUsage::Living)) {
+        return false;  // Open plan living/dining
+    }
+    
+    // All other indoor connections need doors (privacy, sound isolation)
+    // - Bedrooms need doors
+    // - Bathrooms need doors
+    // - Offices need doors
+    // - Larger storage rooms need doors
     return true;
 }
 
@@ -127,13 +166,13 @@ DoorType DoorGenerator::DetermineDoorType(const SpaceAdjacency& adjacency,
     // Glass door for modern buildings
     // (Would need to check building style, defaulting to interior for now)
     
-    // Check usage hints
-    std::string usageA = spaceA->properties.usageHint;
-    std::string usageB = spaceB->properties.usageHint;
+    // Check usage types
+    SpaceUsage usageA = spaceA->properties.usage;
+    SpaceUsage usageB = spaceB->properties.usage;
     
     // Sliding door for bathrooms or closets
-    if (usageA == "bathroom" || usageB == "bathroom" ||
-        usageA == "closet" || usageB == "closet") {
+    if (usageA == SpaceUsage::Bathroom || usageB == SpaceUsage::Bathroom ||
+        usageA == SpaceUsage::Closet || usageB == SpaceUsage::Closet) {
         return DoorType::Sliding;
     }
     
@@ -153,7 +192,7 @@ float DoorGenerator::CalculateDoorRotation(const SpaceAdjacency& adjacency) cons
     dx /= length;
     dy /= length;
     
-    // Calculate angle
+    // Calculate angle from edge direction
     float angle = std::atan2(dy, dx);
     
     // Convert to degrees

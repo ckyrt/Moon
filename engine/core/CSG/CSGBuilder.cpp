@@ -85,62 +85,11 @@ BuildResult CSGBuilder::BuildNode(const Node* node, ParameterScope& scope, std::
         
         case NodeType::Reference:
             return BuildReference(node->data.ref, scope, outError);
-
-        case NodeType::Light:
-            return BuildLight(node->data.light, scope, outError);
         
         default:
             outError = "Unknown node type";
             return BuildResult();
     }
-}
-
-BuildResult CSGBuilder::BuildLight(const LightNode* light, ParameterScope& scope, std::string& outError)
-{
-    if (!light) {
-        outError = "LightNode is null";
-        return BuildResult();
-    }
-
-    // Resolve transform (position cm->m handled inside ResolveTransform)
-    Vector3 position, scale;
-    Quaternion rotation;
-    ResolveTransform(light->localTransform, scope, position, rotation, scale, outError);
-
-    // Resolve light params
-    const float r = ResolveValue(light->colorR, scope, outError);
-    const float g = ResolveValue(light->colorG, scope, outError);
-    const float b = ResolveValue(light->colorB, scope, outError);
-    const float intensity = ResolveValue(light->intensity, scope, outError);
-
-    static constexpr float CM_TO_M = 0.01f;
-    const float rangeMeters = ResolveValue(light->range, scope, outError) * CM_TO_M;
-
-    const float attC = ResolveValue(light->attenuationConstant, scope, outError);
-    const float attL = ResolveValue(light->attenuationLinear, scope, outError);
-    const float attQ = ResolveValue(light->attenuationQuadratic, scope, outError);
-
-    const float innerDeg = ResolveValue(light->spotInnerConeAngle, scope, outError);
-    const float outerDeg = ResolveValue(light->spotOuterConeAngle, scope, outError);
-
-    LightItem item;
-    switch (light->type) {
-        case LightNode::Type::Directional: item.type = LightItem::Type::Directional; break;
-        case LightNode::Type::Point:       item.type = LightItem::Type::Point; break;
-        case LightNode::Type::Spot:        item.type = LightItem::Type::Spot; break;
-    }
-    item.color = Vector3(r, g, b);
-    item.intensity = intensity;
-    item.range = rangeMeters;
-    item.attenuation = Vector3(attC, attL, attQ);
-    item.spotInnerConeAngle = innerDeg;
-    item.spotOuterConeAngle = outerDeg;
-    item.castShadows = light->castShadows;
-    item.worldTransform = ResolvedTransform(position, rotation, scale);
-
-    BuildResult result;
-    result.AddLight(item);
-    return result;
 }
 
 BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope& scope, std::string& outError) {
@@ -190,7 +139,7 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
             mesh = CreateCSGBox(size_x * CM_TO_M, size_y * CM_TO_M, size_z * CM_TO_M,
                 Vector3(0, 0, 0),  // Keep mesh at origin, position applied via worldTransform
                 Vector3(0, 0, 0), // rotation 将通过四元数应用
-                scale,
+                Vector3(1, 1, 1),  // scale applied via worldTransform
                 false); // flatShading = false for CSG operations
 
             break;
@@ -207,7 +156,7 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
             mesh = CreateCSGSphere(radius * CM_TO_M, 32,
                 Vector3(0, 0, 0),  // Keep mesh at origin, position applied via worldTransform
                 Vector3(0, 0, 0),
-                scale,
+                Vector3(1, 1, 1),  // scale applied via worldTransform
                 false);
 
             break;
@@ -231,7 +180,7 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
             mesh = CreateCSGCylinder(radius * CM_TO_M, height * CM_TO_M, 32,
                 Vector3(0, 0, 0),  // Keep mesh at origin, position applied via worldTransform
                 Vector3(0, 0, 0),
-                scale,
+                Vector3(1, 1, 1),  // scale applied via worldTransform
                 false);
 
             break;
@@ -255,7 +204,7 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
             mesh = CreateCSGCone(radius * CM_TO_M, height * CM_TO_M, 32,
                 Vector3(0, 0, 0),  // Keep mesh at origin, position applied via worldTransform
                 Vector3(0, 0, 0),
-                scale,
+                Vector3(1, 1, 1),  // scale applied via worldTransform
                 false);
 
             break;
@@ -274,22 +223,8 @@ BuildResult CSGBuilder::BuildPrimitive(const PrimitiveNode* prim, ParameterScope
         return BuildResult();
     }
 
-    // Bake rotation into vertex positions and normals.
-    // This keeps geometry correct for both CSG boolean ops and group/separate output,
-    // consistent with how position is baked before CSG operations.
-    if (rotation.x != 0.0f || rotation.y != 0.0f || rotation.z != 0.0f) {
-        std::vector<Vertex> verts = mesh->GetVertices();
-        for (auto& v : verts) {
-            v.position = rotation * v.position;
-            v.normal   = rotation * v.normal;
-        }
-        mesh->SetVertices(std::move(verts));
-        MOON_LOG_INFO("CSGBuilder", "Baked rotation (%.1f,%.1f,%.1f,%.1f) into %zu vertices",
-                      rotation.x, rotation.y, rotation.z, rotation.w,
-                      mesh->GetVertices().size());
-        rotation = Quaternion::Identity(); // already baked, don't apply twice
-    }
-
+    // 不再烘焙旋转到顶点，让 scene node 的 transform 处理
+    // 这样可以避免坐标系转换的问题
     BuildResult result;
     result.AddMesh(MeshItem(mesh, prim->material, ResolvedTransform(position, rotation, scale)));
     return result;
@@ -301,7 +236,7 @@ BuildResult CSGBuilder::BuildCSG(const CsgNode* csg, ParameterScope& scope, std:
         return BuildResult();
     }
 
-    // 构建左右子节点
+    //构建左右子节点
     BuildResult leftResult = BuildNode(csg->left.get(), scope, outError);
     if (leftResult.meshes.empty()) {
         outError = "CSG left child produced no meshes";
@@ -321,6 +256,59 @@ BuildResult CSGBuilder::BuildCSG(const CsgNode* csg, ParameterScope& scope, std:
         return BuildResult();
     }
 
+    // CRITICAL FIX: Transform meshes to world coordinates before CSG operation
+    // CSG boolean operations must be performed in a common coordinate space
+    const auto& leftItem = leftResult.meshes[0];
+    const auto& rightItem = rightResult.meshes[0];
+    
+    // Create transformed copies if transforms are non-identity
+    std::shared_ptr<Mesh> leftMeshTransformed = std::make_shared<Mesh>();
+    std::shared_ptr<Mesh> rightMeshTransformed = std::make_shared<Mesh>();
+    
+    // Copy and transform left mesh vertices
+    {
+        const auto& srcVertices = leftItem.mesh->GetVertices();
+        std::vector<Vertex> transformedVertices = srcVertices;
+        
+        for (auto& vertex : transformedVertices) {
+            // Apply rotation
+            Vector3 rotated = leftItem.worldTransform.rotation * vertex.position;
+            // Apply scale
+            Vector3 scaled(
+                rotated.x * leftItem.worldTransform.scale.x,
+                rotated.y * leftItem.worldTransform.scale.y,
+                rotated.z * leftItem.worldTransform.scale.z
+            );
+            // Apply position
+            vertex.position = scaled + leftItem.worldTransform.position;
+        }
+        
+        leftMeshTransformed->SetVertices(std::move(transformedVertices));
+        leftMeshTransformed->SetIndices(leftItem.mesh->GetIndices());
+    }
+    
+    // Copy and transform right mesh vertices
+    {
+        const auto& srcVertices = rightItem.mesh->GetVertices();
+        std::vector<Vertex> transformedVertices = srcVertices;
+        
+        for (auto& vertex : transformedVertices) {
+            // Apply rotation
+            Vector3 rotated = rightItem.worldTransform.rotation * vertex.position;
+            // Apply scale
+            Vector3 scaled(
+                rotated.x * rightItem.worldTransform.scale.x,
+                rotated.y * rightItem.worldTransform.scale.y,
+                rotated.z * rightItem.worldTransform.scale.z
+            );
+            // Apply position
+            vertex.position = scaled + rightItem.worldTransform.position;
+        }
+        
+        rightMeshTransformed->SetVertices(std::move(transformedVertices));
+        rightMeshTransformed->SetIndices(rightItem.mesh->GetIndices());
+    }
+
     // 执行 CSG 运算
     Operation op;
     switch (csg->operation) {
@@ -332,31 +320,11 @@ BuildResult CSGBuilder::BuildCSG(const CsgNode* csg, ParameterScope& scope, std:
             return BuildResult();
     }
 
-    // BuildPrimitive 故意把 mesh 保留在原点，position 存在 worldTransform 里（"applied later"）
-    // 在 CSG 布尔运算之前必须把 position bake 进顶点，否则所有 primitive 都在原点做运算
-    auto bakePosition = [](const Mesh* src, const Vector3& pos) -> std::shared_ptr<Mesh> {
-        if (pos.x == 0.0f && pos.y == 0.0f && pos.z == 0.0f) return nullptr;
-        std::vector<Vertex> verts = src->GetVertices();
-        for (auto& v : verts) {
-            v.position.x += pos.x;
-            v.position.y += pos.y;
-            v.position.z += pos.z;
-        }
-        auto m = std::make_shared<Mesh>();
-        m->SetVertices(std::move(verts));
-        auto idx = src->GetIndices();
-        m->SetIndices(std::move(idx));
-        return m;
-    };
-
-    const Vector3& leftPos  = leftResult.meshes[0].worldTransform.position;
-    const Vector3& rightPos = rightResult.meshes[0].worldTransform.position;
-    std::shared_ptr<Mesh> leftBaked  = bakePosition(leftResult.meshes[0].mesh.get(),  leftPos);
-    std::shared_ptr<Mesh> rightBaked = bakePosition(rightResult.meshes[0].mesh.get(), rightPos);
-    const Mesh* leftMesh  = leftBaked  ? leftBaked.get()  : leftResult.meshes[0].mesh.get();
-    const Mesh* rightMesh = rightBaked ? rightBaked.get() : rightResult.meshes[0].mesh.get();
-
-    std::shared_ptr<Mesh> resultMesh = PerformBoolean(leftMesh, rightMesh, op);
+    std::shared_ptr<Mesh> resultMesh = PerformBoolean(
+        leftMeshTransformed.get(),
+        rightMeshTransformed.get(),
+        op
+    );
 
     if (!resultMesh) {
         outError = "CSG boolean operation failed";
@@ -365,8 +333,9 @@ BuildResult CSGBuilder::BuildCSG(const CsgNode* csg, ParameterScope& scope, std:
     }
 
     // 合并材质（优先使用左侧）
-    std::string material = leftResult.meshes[0].material;
+    std::string material = leftItem.material;
 
+    // Result mesh vertices are already in world coordinates, so use identity transform
     BuildResult result;
     result.AddMesh(MeshItem(resultMesh, material, ResolvedTransform()));
     return result;
@@ -508,11 +477,6 @@ BuildResult CSGBuilder::BuildGroup(const GroupNode* group, ParameterScope& scope
         for (auto& meshItem : builtChildren[i].result.meshes) {
             meshItem.worldTransform.position = meshItem.worldTransform.position + delta;
         }
-
-        // 同时应用到该 child 的所有 light
-        for (auto& lightItem : builtChildren[i].result.lights) {
-            lightItem.worldTransform.position = lightItem.worldTransform.position + delta;
-        }
         // 同时更新 basePosition（万一后续其他节点 attach 到本节点）
         builtChildren[i].basePosition = builtChildren[i].basePosition + delta;
     }
@@ -600,32 +564,26 @@ BuildResult CSGBuilder::BuildReference(const RefNode* ref, ParameterScope& scope
     Quaternion refRotation;
     ResolveTransform(ref->localTransform, scope, refPosition, refRotation, refScale, outError);
 
-    // 应用 transform 到所有生成的 mesh
+    // 应用 transform 到所有生成的 mesh（完整的组合：rotation + scale + position）
     for (auto& meshItem : childResult.meshes) {
-        // 应用旋转：先旋转position，再旋转rotation
-        Vector3 rotatedPos = refRotation * meshItem.worldTransform.position;
-        meshItem.worldTransform.position = rotatedPos + refPosition;
+        // 组合旋转：先应用child（内部），再应用ref（外层）
+        // 正确的顺序是 refRotation * childRotation
         meshItem.worldTransform.rotation = refRotation * meshItem.worldTransform.rotation;
         
-        // 应用缩放
+        // 组合缩放：component-wise multiplication
         meshItem.worldTransform.scale = Vector3(
             meshItem.worldTransform.scale.x * refScale.x,
             meshItem.worldTransform.scale.y * refScale.y,
             meshItem.worldTransform.scale.z * refScale.z
         );
-    }
-
-    // 应用 transform 到所有生成的 light
-    for (auto& lightItem : childResult.lights) {
-        Vector3 rotatedPos = refRotation * lightItem.worldTransform.position;
-        lightItem.worldTransform.position = rotatedPos + refPosition;
-        lightItem.worldTransform.rotation = refRotation * lightItem.worldTransform.rotation;
-
-        lightItem.worldTransform.scale = Vector3(
-            lightItem.worldTransform.scale.x * refScale.x,
-            lightItem.worldTransform.scale.y * refScale.y,
-            lightItem.worldTransform.scale.z * refScale.z
+        
+        // 先缩放子物体位置，再旋转，最后加上父位置
+        Vector3 scaledChildPos = Vector3(
+            meshItem.worldTransform.position.x * refScale.x,
+            meshItem.worldTransform.position.y * refScale.y,
+            meshItem.worldTransform.position.z * refScale.z
         );
+        meshItem.worldTransform.position = refRotation * scaledChildPos + refPosition;
     }
 
     return childResult;

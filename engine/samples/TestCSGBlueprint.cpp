@@ -13,22 +13,22 @@ namespace TestScenes {
 
 void TestCSGBlueprint(EngineCore* engine)
 {
-    MOON_LOG_INFO("CSGBlueprint", "=== Testing CSG Blueprint Scene ===");
+    MOON_LOG_INFO("CSGBlueprint", "=== Testing Wall Rotation ===");
 
     Moon::Scene* scene = engine->GetScene();
     Moon::CSG::BlueprintDatabase database;
     std::string error;
 
-    // 加载 index.json - 注册所有组件（包括场景配置）
+    // 加载 index.json
     if (!database.LoadIndex("assets/csg/index.json", error)) {
         MOON_LOG_ERROR("CSGBlueprint", "Failed to load index: %s", error.c_str());
         return;
     }
 
-    // 从 index 中获取场景蓝图（懒加载）
-    const Moon::CSG::Blueprint* sceneBlueprint = database.GetBlueprint("test_room");
+    // 加载 4 墙 + 窗户 + 门测试
+    auto sceneBlueprint = Moon::CSG::BlueprintLoader::LoadFromFile("assets/csg/test_walls_with_openings.json", error);
     if (!sceneBlueprint) {
-        MOON_LOG_ERROR("CSGBlueprint", "Scene blueprint not found in index!");
+        MOON_LOG_ERROR("CSGBlueprint", "Failed to load test_walls_with_openings.json: %s", error.c_str());
         return;
     }
 
@@ -37,7 +37,7 @@ void TestCSGBlueprint(EngineCore* engine)
 
     // 构建场景
     std::unordered_map<std::string, float> params;
-    Moon::CSG::BuildResult result = builder.Build(sceneBlueprint, params, error);
+    Moon::CSG::BuildResult result = builder.Build(sceneBlueprint.get(), params, error);
 
     if (result.meshes.empty() && result.lights.empty()) {
         MOON_LOG_ERROR("CSGBlueprint", "Failed to build scene: %s", error.c_str());

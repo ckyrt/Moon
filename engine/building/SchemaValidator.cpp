@@ -296,7 +296,8 @@ bool SchemaValidator::ParseSpace(const nlohmann::json& json, Space& space, std::
         
         // Parse properties
         const auto& props = json["properties"];
-        space.properties.usageHint = props.value("usage_hint", "");
+        std::string usageStr = props.value("usage_hint", "");
+        space.properties.usage = StringToSpaceUsage(usageStr);
         space.properties.isOutdoor = props.value("is_outdoor", false);
         space.properties.hasStairs = props.value("stairs", false);
         space.properties.ceilingHeight = props.value("ceiling_height", 3.0f);

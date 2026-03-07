@@ -56,7 +56,7 @@ void FacadeGenerator::GenerateBalconies(const BuildingDefinition& definition,
         if (floor.level == 0) continue; // No balconies on ground floor
         
         for (const auto& space : floor.spaces) {
-            if (space.properties.isOutdoor && space.properties.usageHint == "balcony") {
+            if (space.properties.isOutdoor && space.properties.usage == SpaceUsage::Balcony) {
                 // Create balcony element
                 // (In full implementation, would create railing and floor)
                 // For now, just mark it as a facade element
@@ -68,17 +68,81 @@ void FacadeGenerator::GenerateBalconies(const BuildingDefinition& definition,
 void FacadeGenerator::PlaceWindowsOnWall(const WallSegment& wall,
                                          const BuildingDefinition& definition,
                                          std::vector<Window>& outWindows) {
-    const BuildingStyle& style = definition.style;
+    // Note: Only exterior walls are passed here (wall.neighborSpaceId == -1)
+    // We only need to check wall.spaceId (the indoor space on one side)
+    
+    // Find the space this wall belongs to
+    const Space* space = nullptr;
+    for (const auto& floor : definition.floors) {
+        if (floor.level == wall.floorLevel) {
+            for (const auto& s : floor.spaces) {
+                if (s.spaceId == wall.spaceId) {
+                    space = &s;
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    
+    if (!space) return;
+    
+    // Don't place windows on outdoor spaces (balconies, terraces, etc.)
+    if (space->properties.isOutdoor) {
+        return;
+    }
+    
+    // Determine if this space type needs windows
+    SpaceUsage usage = space->properties.usage;
+    
+    // Spaces that should NOT have windows
+    if (usage == SpaceUsage::Bathroom ||    // Privacy
+        usage == SpaceUsage::Storage ||     // No need for light
+        usage == SpaceUsage::Garage ||      // No need for windows
+        usage == SpaceUsage::Laundry ||     // Usually no windows
+        usage == SpaceUsage::Closet) {      // Small spaces, no windows
+        return;
+    }
+    
+    // Corridors typically don't have windows (unless specified otherwise)
+    if (usage == SpaceUsage::Corridor) {
+        return;
+    }
+    
     // Calculate wall length
     float dx = wall.end[0] - wall.start[0];
     float dy = wall.end[1] - wall.start[1];
     float wallLength = std::sqrt(dx * dx + dy * dy);
     
-    // Get window spacing based on style
+    // Minimum wall length to place windows (walls too short don't get windows)
+    const float minWallLength = 2.0f;  // 2m minimum
+    if (wallLength < minWallLength) {
+        return;
+    }
+    
+    const BuildingStyle& style = definition.style;
+    
+    // Get window spacing based on space usage and style
     float spacing = GetWindowSpacing(style);
+    
+    // Adjust window density based on space usage
+    if (usage == SpaceUsage::Living || usage == SpaceUsage::Dining) {
+        spacing *= 0.8f;  // More windows for living/dining rooms
+    } else if (usage == SpaceUsage::Kitchen || usage == SpaceUsage::Office) {
+        spacing *= 1.2f;  // Moderate windows for kitchen/office
+    } else if (usage == SpaceUsage::Bedroom) {
+        spacing *= 1.0f;  // Standard windows for bedrooms
+    } else {
+        spacing *= 1.5f;  // Fewer windows for other spaces
+    }
     
     // Calculate number of windows that fit
     int numWindows = static_cast<int>(wallLength / spacing);
+    
+    // Limit max windows per wall (avoid too many windows on one wall)
+    const int maxWindowsPerWall = 4;
+    numWindows = std::min(numWindows, maxWindowsPerWall);
+    
     if (numWindows < 1) return;
     
     // Calculate actual spacing
