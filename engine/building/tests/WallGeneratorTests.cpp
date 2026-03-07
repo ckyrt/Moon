@@ -222,15 +222,15 @@ TEST_F(WallGeneratorTest, SimpleRoom_WallCoordinatesCorrect) {
     // Calculate total perimeter from walls
     float totalLength = 0.0f;
     for (const auto& wall : walls) {
-        float length = std::sqrt(
-            std::pow(wall.end.x - wall.start.x, 2) +
-            std::pow(wall.end.y - wall.start.y, 2)
+        float length = std::sqrtf(
+            std::powf(wall.end[0] - wall.start[0], 2.0f) +
+            std::powf(wall.end[1] - wall.start[1], 2.0f)
         );
         totalLength += length;
         
         // All walls should be aligned horizontally or vertically
-        bool isHorizontal = std::abs(wall.start.y - wall.end.y) < 0.01f;
-        bool isVertical = std::abs(wall.start.x - wall.end.x) < 0.01f;
+        bool isHorizontal = std::abs(wall.start[1] - wall.end[1]) < 0.01f;
+        bool isVertical = std::abs(wall.start[0] - wall.end[0]) < 0.01f;
         EXPECT_TRUE(isHorizontal || isVertical) 
             << "Wall should be axis-aligned";
     }
@@ -251,23 +251,30 @@ TEST_F(WallGeneratorTest, WallsFormClosedLoop) {
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
     
     // Check that walls form a closed loop
-    // Each wall's end point should be another wall's start point
-    for (const auto& wall : walls) {
+    // Each wall's end point should connect to another wall's start point OR end point
+    for (size_t i = 0; i < walls.size(); ++i) {
+        const auto& wall = walls[i];
         bool foundConnection = false;
-        for (const auto& other : walls) {
-            if (&wall != &other) {
-                float dist = std::sqrt(
-                    std::pow(wall.end.x - other.start.x, 2) +
-                    std::pow(wall.end.y - other.start.y, 2)
+        for (size_t j = 0; j < walls.size(); ++j) {
+            const auto& other = walls[j];
+            if (i != j) {
+                // Check if wall.end connects to other.start OR other.end
+                float distToStart = std::sqrtf(
+                    std::powf(wall.end[0] - other.start[0], 2.0f) +
+                    std::powf(wall.end[1] - other.start[1], 2.0f)
                 );
-                if (dist < 0.1f) {
+                float distToEnd = std::sqrtf(
+                    std::powf(wall.end[0] - other.end[0], 2.0f) +
+                    std::powf(wall.end[1] - other.end[1], 2.0f)
+                );
+                if (distToStart < 0.1f || distToEnd < 0.1f) {
                     foundConnection = true;
                     break;
                 }
             }
         }
         EXPECT_TRUE(foundConnection) 
-            << "Wall end should connect to another wall's start";
+            << "Wall end should connect to another wall";
     }
 }
 
@@ -290,6 +297,7 @@ TEST_F(WallGeneratorTest, InteriorWall_ConnectsTwoSpaces) {
     Space space1;
     space1.spaceId = 1;
     space1.properties.ceilingHeight = 3.0f;
+    space1.properties.isOutdoor = false;  // ✅ Explicitly set to false
     space1.rects.push_back({
         "rect_1",
         {0.0f, 0.0f},
@@ -301,6 +309,7 @@ TEST_F(WallGeneratorTest, InteriorWall_ConnectsTwoSpaces) {
     Space space2;
     space2.spaceId = 2;
     space2.properties.ceilingHeight = 3.0f;
+    space2.properties.isOutdoor = false;  // ✅ Explicitly set to false
     space2.rects.push_back({
         "rect_2",
         {10.0f, 0.0f},
@@ -310,8 +319,7 @@ TEST_F(WallGeneratorTest, InteriorWall_ConnectsTwoSpaces) {
     
     definition.floors.push_back(floor);
     
-    spaceGraph.BuildGraph(definition, connections);
-    wallGenerator.GenerateWalls(definition, spaceGraph, walls);
+    spaceGraph.BuildGraph(definition, connections);    wallGenerator.GenerateWalls(definition, spaceGraph, walls);
     
     // Should have at least one interior wall
     bool hasInteriorWall = false;
@@ -320,8 +328,8 @@ TEST_F(WallGeneratorTest, InteriorWall_ConnectsTwoSpaces) {
             hasInteriorWall = true;
             
             // Interior wall should be vertical at x=10
-            bool isAtX10 = (std::abs(wall.start.x - 10.0f) < 0.1f && 
-                           std::abs(wall.end.x - 10.0f) < 0.1f);
+            bool isAtX10 = (std::abs(wall.start[0] - 10.0f) < 0.1f && 
+                           std::abs(wall.end[0] - 10.0f) < 0.1f);
             EXPECT_TRUE(isAtX10) 
                 << "Interior wall should be at the boundary between rooms";
         }

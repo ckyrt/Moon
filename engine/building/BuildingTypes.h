@@ -171,6 +171,14 @@ struct SpaceProperties {
     bool isOutdoor;             // Is this an outdoor space (balcony, terrace)?
     bool hasStairs;             // Does this space contain stairs?
     float ceilingHeight;        // Height of ceiling (meters)
+    
+    // Default constructor with safe defaults
+    SpaceProperties() 
+        : usage(SpaceUsage::Unknown)
+        , isOutdoor(false)       // ✅ Default to indoor
+        , hasStairs(false)
+        , ceilingHeight(0.0f)
+    {}
 };
 
 /**

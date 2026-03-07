@@ -459,6 +459,8 @@ TEST_F(StairGeneratorTest, StairGeometry_HasFromToLevels) {
     EXPECT_EQ(stair.fromLevel, 0) << "Stair should start from level 0";
     EXPECT_EQ(stair.toLevel, 1) << "Stair should connect to level 1";
 }
+
+TEST_F(StairGeneratorTest, StairGeometry_SpansMultipleFloors) {
     // Create a 4-floor building
     Mass mass;
     mass.massId = "mass0";
@@ -542,16 +544,16 @@ TEST_F(StairGeneratorTest, SpiralStair_HasCircularPattern) {
     float centerY = stair.config.position[1];
     
     // Calculate radius from center to first step
-    float r1 = std::sqrt(
-        std::pow(stair.steps[0].position[0] - centerX, 2) +
-        std::pow(stair.steps[0].position[1] - centerY, 2)
+    float r1 = std::sqrtf(
+        std::powf(stair.steps[0].position[0] - centerX, 2.0f) +
+        std::powf(stair.steps[0].position[1] - centerY, 2.0f)
     );
     
     // All steps should be at approximately same distance from center
     for (size_t i = 1; i < stair.steps.size(); ++i) {
-        float ri = std::sqrt(
-            std::pow(stair.steps[i].position[0] - centerX, 2) +
-            std::pow(stair.steps[i].position[1] - centerY, 2)
+        float ri = std::sqrtf(
+            std::powf(stair.steps[i].position[0] - centerX, 2.0f) +
+            std::powf(stair.steps[i].position[1] - centerY, 2.0f)
         );
         
         EXPECT_NEAR(ri, r1, 0.5f) 
