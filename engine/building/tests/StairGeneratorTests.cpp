@@ -106,7 +106,7 @@ TEST_F(StairGeneratorTest, LStair_Generated) {
     const auto& stair = stairs[0];
     EXPECT_EQ(stair.config.type, StairType::L);
     EXPECT_GT(stair.numSteps, 0);
-    EXPECT_GT(stair.landingPositions.size(), 0) << "L-stair should have landing";
+    EXPECT_GT(stair.landings.size(), 0) << "L-stair should have landing";
 }
 
 TEST_F(StairGeneratorTest, UStair_Generated) {
@@ -207,7 +207,7 @@ TEST_F(StairGeneratorTest, LStair_HasLanding) {
     ASSERT_GT(stairs.size(), 0);
     const auto& stair = stairs[0];
     
-    EXPECT_GT(stair.landingPositions.size(), 0) 
+    EXPECT_GT(stair.landings.size(), 0) 
         << "L-shaped stair should have at least one landing";
 }
 
@@ -220,7 +220,7 @@ TEST_F(StairGeneratorTest, StraightStair_NoLandings) {
     const auto& stair = stairs[0];
     
     // Simple straight stairs typically don't need landings
-    EXPECT_EQ(stair.landingPositions.size(), 0) 
+    EXPECT_EQ(stair.landings.size(), 0) 
         << "Simple straight stair should not have landings";
 }
 
