@@ -11,6 +11,7 @@
 #include "../core/Scene/Material.h"
 #include "../core/Scene/Light.h"
 #include "../core/Scene/Skybox.h"
+#include "../core/Assets/AssetPaths.h"
 #include "../core/Mesh/Mesh.h"
 #include "../core/Geometry/MeshGenerator.h"
 #include "../core/CSG/CSGOperations.h"
@@ -180,7 +181,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     
     // 添加 Skybox 组件
     Moon::Skybox* skybox = skyboxNode->AddComponent<Moon::Skybox>();
-    skybox->LoadEnvironmentMap("assets/textures/environment.hdr");
+    skybox->LoadEnvironmentMap(Moon::Assets::BuildTexturePath("environment.hdr"));
     skybox->SetEnableIBL(true);  // 启用基于图像的照明
     
     MOON_LOG_INFO("Sample", "Skybox created with HDR environment map");

@@ -1,4 +1,5 @@
 #include "DiligentRendererUtils.h"
+#include "../../core/Assets/AssetPaths.h"
 #include "../../core/Math/Matrix4x4.h"
 #include "../../core/Mesh/Mesh.h"
 #include "../../core/Logging/Logger.h"
@@ -86,7 +87,7 @@ void UpdateConstantBuffer(Diligent::IBuffer* buf, Diligent::IDeviceContext* cont
 
 std::string LoadShaderSource(const char* filename)
 {
-    std::string shaderPath = GetExecutableDirectory() + "assets\\shaders\\" + filename;
+    std::string shaderPath = Moon::Assets::BuildShaderPath(filename);
     
     std::ifstream file(shaderPath);
     if (!file.is_open()) {
@@ -99,7 +100,7 @@ std::string LoadShaderSource(const char* filename)
     std::string content = buffer.str();
     
     // Process #include directives manually
-    std::string baseDir = GetExecutableDirectory() + "assets\\shaders\\";
+    std::string baseDir = Moon::Assets::BuildShaderPath("") + "/";
     size_t pos = 0;
     while ((pos = content.find("#include", pos)) != std::string::npos) {
         // Find the line containing #include

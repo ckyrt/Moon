@@ -4,6 +4,7 @@
 #include <CSG/BlueprintLoader.h>
 #include <CSG/CSGBuilder.h>
 #include <CSG/CSGOperations.h>
+#include <Assets/AssetPaths.h>
 #include <EngineCore.h>
 #include <Scene/MeshRenderer.h>
 #include <Scene/Material.h>
@@ -20,13 +21,13 @@ void TestCSGBlueprint(EngineCore* engine)
     std::string error;
 
     // 加载 index.json
-    if (!database.LoadIndex("assets/csg/index.json", error)) {
+    if (!database.LoadIndex(Moon::Assets::BuildCsgPath("index.json"), error)) {
         MOON_LOG_ERROR("CSGBlueprint", "Failed to load index: %s", error.c_str());
         return;
     }
 
     // 加载 4 墙 + 窗户 + 门测试
-    auto sceneBlueprint = Moon::CSG::BlueprintLoader::LoadFromFile("assets/csg/test_walls_with_openings.json", error);
+    auto sceneBlueprint = Moon::CSG::BlueprintLoader::LoadFromFile(Moon::Assets::BuildCsgPath("test_walls_with_openings.json"), error);
     if (!sceneBlueprint) {
         MOON_LOG_ERROR("CSGBlueprint", "Failed to load test_walls_with_openings.json: %s", error.c_str());
         return;

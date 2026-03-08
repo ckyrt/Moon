@@ -1,4 +1,5 @@
 #include "TestHelpers.h"
+#include "../../core/Assets/AssetPaths.h"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -12,39 +13,23 @@ namespace Test {
 // Helper function to load JSON from file
 // ========================================
 std::string TestHelpers::LoadFromFile(const std::string& relativePath) {
-    // Try multiple possible locations (for running tests from different directories)
-    std::vector<std::string> searchPaths = {
-        "assets/building/" + relativePath,
-        "../assets/building/" + relativePath,
-        "../../assets/building/" + relativePath,
-        "../../../assets/building/" + relativePath,
-        "../../../../assets/building/" + relativePath
-    };
-    
-    for (const auto& path : searchPaths) {
-        std::ifstream file(path);
-        if (file.good()) {
-            std::stringstream buffer;
-            buffer << file.rdbuf();
-            file.close();
-            std::string content = buffer.str();
-            // Strip UTF-8 BOM if present (EF BB BF)
-            if (content.size() >= 3 &&
-                (unsigned char)content[0] == 0xEF &&
-                (unsigned char)content[1] == 0xBB &&
-                (unsigned char)content[2] == 0xBF) {
-                content = content.substr(3);
-            }
-            return content;
-        }
+  const std::string path = Moon::Assets::BuildBuildingPath(relativePath);
+  std::ifstream file(path);
+  if (file.good()) {
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    file.close();
+    std::string content = buffer.str();
+    if (content.size() >= 3 &&
+      (unsigned char)content[0] == 0xEF &&
+      (unsigned char)content[1] == 0xBB &&
+      (unsigned char)content[2] == 0xBF) {
+      content = content.substr(3);
     }
-    
-    // Fallback: throw error with all attempted paths
-    std::string errorMsg = "Failed to load test data: " + relativePath + "\nTried paths:\n";
-    for (const auto& path : searchPaths) {
-        errorMsg += "  - " + path + "\n";
+    return content;
     }
-    throw std::runtime_error(errorMsg);
+
+  throw std::runtime_error("Failed to load test data: " + path);
 }
 
 // ========================================

@@ -7,6 +7,7 @@
 #include <Scene/Material.h>
 #include <Scene/Light.h>
 #include <Mesh/Mesh.h>
+#include <Assets/AssetPaths.h>
 #include <Building.h>
 #include <LayoutResolver.h>
 #include <CSG/Blueprint.h>
@@ -31,11 +32,12 @@ static std::string ReadFileToString(const std::string& filePath) {
 void TestBuildingV8(EngineCore* engine)
 {
     MOON_LOG_INFO("BuildingV8", "=== Testing Building System V8 with CSG ===");
+    MOON_LOG_INFO("BuildingV8", "Using fixed asset root: %s", Moon::Assets::kAssetRootPath);
     
     // ============================================================================
     // Try V11 format first (semantic → geometric via Layout Resolver)
     // ============================================================================
-    std::string v11FilePath = "assets/building/test_house_v11.json";
+    std::string v11FilePath = Moon::Assets::BuildBuildingPath("test_building_v11.json");
     std::ifstream v11Check(v11FilePath);
     bool useV11 = v11Check.good();
     v11Check.close();
@@ -43,7 +45,8 @@ void TestBuildingV8(EngineCore* engine)
     std::string jsonContent;
     
     if (useV11) {
-        MOON_LOG_INFO("BuildingV8", "Found V11 semantic building definition, using Layout Resolver");
+        MOON_LOG_INFO("BuildingV8", "Found V11 semantic building definition: %s", v11FilePath.c_str());
+        MOON_LOG_INFO("BuildingV8", "Using Layout Resolver for semantic building input");
         
         // Parse V11 semantic building
         Moon::Building::SemanticBuilding semanticBuilding;
@@ -92,12 +95,13 @@ void TestBuildingV8(EngineCore* engine)
     // ============================================================================
     if (!useV11) {
         MOON_LOG_INFO("BuildingV8", "Using V8 geometric building definition");
-        jsonContent = ReadFileToString("assets/building/residential/luxury_villa.json");
+        const std::string fallbackV8Path = Moon::Assets::BuildBuildingPath("residential/luxury_villa.json");
+        jsonContent = ReadFileToString(fallbackV8Path);
         if (jsonContent.empty()) {
-            MOON_LOG_ERROR("BuildingV8", "Failed to read luxury_villa.json");
+            MOON_LOG_ERROR("BuildingV8", "Failed to read fallback V8 JSON: %s", fallbackV8Path.c_str());
             return;
         }
-        MOON_LOG_INFO("BuildingV8", "Loaded Building V8 JSON: %zu bytes", jsonContent.size());
+        MOON_LOG_INFO("BuildingV8", "Loaded Building V8 JSON from %s: %zu bytes", fallbackV8Path.c_str(), jsonContent.size());
     }
     
     // Process building through Building System V8 pipeline
@@ -121,7 +125,7 @@ void TestBuildingV8(EngineCore* engine)
     std::string blueprintJsonStr = Moon::Building::BuildingToCSGConverter::Convert(result);
 
     // Save CSG Blueprint to file
-    std::string outputPath = "assets/csg/generated_building_v8.json";
+    std::string outputPath = Moon::Assets::BuildCsgPath("generated_building_v8.json");
     std::ofstream outFile(outputPath);
     if (outFile.is_open()) {
         outFile << blueprintJsonStr;
@@ -143,7 +147,8 @@ void TestBuildingV8(EngineCore* engine)
     std::string loadError;
     
     // Load index.json for component references
-    if (!database.LoadIndex("assets/csg/index.json", loadError)) {
+    const std::string csgIndexPath = Moon::Assets::BuildCsgPath("index.json");
+    if (!database.LoadIndex(csgIndexPath, loadError)) {
         MOON_LOG_ERROR("BuildingV8", "Failed to load CSG index: %s", loadError.c_str());
         return;
     }

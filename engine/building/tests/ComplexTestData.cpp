@@ -1,4 +1,5 @@
 ﻿#include "TestHelpers.h"
+#include "../../core/Assets/AssetPaths.h"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -13,31 +14,22 @@ namespace Test {
 // Helper function to load JSON from file
 // ========================================
 static std::string LoadFromFile(const std::string& relativePath) {
-    // Try multiple possible locations
-    std::vector<std::string> searchPaths = {
-        "assets/building/" + relativePath,
-        "../assets/building/" + relativePath,
-        "../../assets/building/" + relativePath,
-        "../../../assets/building/" + relativePath
-    };
-    
-    for (const auto& path : searchPaths) {
-        std::ifstream file(path);
-        if (file.good()) {
-            std::stringstream buffer;
-            buffer << file.rdbuf();
-            file.close();
-            return buffer.str();
-        }
+    const std::string path = Moon::Assets::BuildBuildingPath(relativePath);
+    std::ifstream file(path);
+    if (file.good()) {
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        file.close();
+        return buffer.str();
     }
-    
-    throw std::runtime_error("Failed to load test data: " + relativePath);
+
+    throw std::runtime_error("Failed to load test data: " + path);
 }
 
 // ========================================
 // Complex Building Scenarios
 // ========================================
-// All test data now loaded from assets/building/ directory
+// All test data now loaded from the fixed source assets/building/ directory
 // This makes the data accessible for AI reference and easier to maintain
 
 std::string TestHelpers::CreateVilla() {

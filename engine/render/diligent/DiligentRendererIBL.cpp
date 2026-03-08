@@ -8,6 +8,7 @@
 
 #include "DiligentRenderer.h"
 #include "DiligentRendererUtils.h"
+#include "../../core/Assets/AssetPaths.h"
 
 // Diligent includes
 #include "Graphics/GraphicsEngine/interface/RenderDevice.h"
@@ -253,9 +254,7 @@ void DiligentRenderer::RenderSkybox()
 // ======= 加载 HDR 环境贴图 =======
 void DiligentRenderer::LoadEnvironmentMap(const char* filepath)
 {
-    // 构建相对于 exe 的完整路径
-    std::string exeDir = DiligentRendererUtils::GetExecutableDirectory();
-    std::string fullPath = exeDir + filepath;
+    std::string fullPath = Moon::Assets::BuildAssetPath(filepath);
     
     MOON_LOG_INFO("DiligentRenderer", "Loading environment map from: %s", fullPath.c_str());
     

@@ -1,4 +1,5 @@
 #include "TextureManager.h"
+#include "../Assets/AssetPaths.h"
 #include "../Logging/Logger.h"
 
 // 声明 stb_image 函数（实际定义在 DiligentRenderer.cpp 中）
@@ -69,12 +70,12 @@ void TextureManager::ClearCache()
 
 std::shared_ptr<TextureData> TextureManager::LoadTextureData(const std::string& filepath, bool sRGB)
 {
-    // 构建完整路径：资源根路径 + assets/textures/ + 相对路径
+    // 构建完整路径：优先使用显式资源根，否则使用固定 assets 根路径
     std::string fullPath;
     if (!s_resourceBasePath.empty()) {
         fullPath = s_resourceBasePath + "/assets/textures/" + filepath;
     } else {
-        fullPath = "assets/textures/" + filepath;
+        fullPath = Moon::Assets::BuildTexturePath(filepath);
     }
     MOON_LOG_INFO("TextureManager", "Attempting to load texture: %s", fullPath.c_str());
     
