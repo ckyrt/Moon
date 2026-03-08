@@ -109,7 +109,7 @@
     <ClCompile Include="SceneZipLoader.cpp" />
     <ClCompile Include="TestCSG.cpp" />
     <ClCompile Include="TestCSGBlueprint.cpp" />
-    <ClCompile Include="TestBuildingV8.cpp" />
+    <ClCompile Include="TestBuildingSample.cpp" />
     <ClCompile Include="TestMaterial.cpp" />
     <ClCompile Include="TestZipLoad.cpp" />
   </ItemGroup>
@@ -128,7 +128,7 @@
       <Project>{256A3289-BE13-44ED-B3AE-BFDCAA130227}</Project>
     </ProjectReference>
     <ProjectReference Include="..\building\EngineBuilding.vcxproj">
-      <Project>{8D6C8F4E-9A3B-4C7E-B8D2-F1E3A5C7D9B4}</Project>
+      <Project>{7B8C9D0E-1F2A-3B4C-5D6E-7F8A9B0C1D2E}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

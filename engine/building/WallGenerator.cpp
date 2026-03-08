@@ -201,7 +201,7 @@ void WallGenerator::CreateInteriorWall(const GridPos2D& start, const GridPos2D& 
     wall.type = WallType::Interior;
     wall.spaceId = spaceIdA;
     wall.neighborSpaceId = spaceIdB;
-    wall.height = height;
+    wall.height = height > 0.0f ? height : m_defaultWallHeight;
     wall.thickness = thickness;
     wall.floorLevel = floorLevel;
     
@@ -227,10 +227,12 @@ void WallGenerator::CreateExteriorWall(const GridPos2D& start, const GridPos2D& 
     wall.thickness = thickness;
     wall.floorLevel = floorLevel;
     
+    const float resolvedHeight = height > 0.0f ? height : m_defaultWallHeight;
+
     if (isOutdoor) {
-        wall.height = GetOutdoorWallHeight(floorLevel, height);
+        wall.height = GetOutdoorWallHeight(floorLevel, resolvedHeight);
     } else {
-        wall.height = height;
+        wall.height = resolvedHeight;
     }
     
     outWalls.push_back(wall);

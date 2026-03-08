@@ -20,6 +20,46 @@ static inline json pos3(float x, float y, float z)
     return json::array({x, y, z});
 }
 
+static inline float NormalizeRotation(float rotationDegrees)
+{
+    float normalized = std::fmod(rotationDegrees, 360.0f);
+    if (normalized < 0.0f) {
+        normalized += 360.0f;
+    }
+    return normalized;
+}
+
+static inline bool IsQuarterTurn(float rotationDegrees)
+{
+    const float normalized = NormalizeRotation(rotationDegrees);
+    return std::abs(normalized - 90.0f) < 1.0f || std::abs(normalized - 270.0f) < 1.0f;
+}
+
+static json CreateCubeNode(const std::string& name,
+                           float centerX,
+                           float centerY,
+                           float centerZ,
+                           float sizeX,
+                           float sizeY,
+                           float sizeZ,
+                           const char* material)
+{
+    json node;
+    node["name"] = name;
+    node["type"] = "primitive";
+    node["primitive"] = "cube";
+    node["params"] = {
+        {"size_x", m2cm(sizeX)},
+        {"size_y", m2cm(sizeY)},
+        {"size_z", m2cm(sizeZ)}
+    };
+    node["transform"] = {
+        {"position", pos3(m2cm(centerX), m2cm(centerY), m2cm(centerZ))}
+    };
+    node["material"] = material;
+    return node;
+}
+
 // Note: GetFloorBaseHeight is now in BuildingTypes.h as inline function
 // using cumulative floor height calculation
 
@@ -96,8 +136,8 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
 {
     json blueprint;
     blueprint["schema_version"] = 1;
-    blueprint["name"]           = "generated_building_v8";
-    blueprint["description"]    = "Auto-generated from Building System V8";
+    blueprint["name"]           = "generated_building";
+    blueprint["description"]    = "Auto-generated from the Moon semantic building system";
     blueprint["version"]        = 1;
 
     json children = json::array();
@@ -176,6 +216,7 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
         json wallCube;
         wallCube["type"] = "reference";
         wallCube["ref"]  = "wall_panel_v1";
+        wallCube["size"] = json::array({length, wall.height, wall.thickness});
         wallCube["overrides"] = {
             {"w", m2cm(length)},         // Width along X (before rotation)
             {"h", m2cm(wall.height)},    // Height along Y
@@ -239,6 +280,7 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
 
         json wallNode = SubtractHoles(wallCube, holes);
         wallNode["name"] = "wall_" + std::to_string(wallIdx++);
+        wallNode["size"] = json::array({length, wall.height, wall.thickness});
         children.push_back(wallNode);
     }
 
@@ -289,7 +331,60 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
     }
 
     // -----------------------------------------------------------------------
-    // 5. Root group
+    // 5. Stair geometry (steps + landings)
+    // -----------------------------------------------------------------------
+    int stairIdx = 0;
+    for (const auto& stair : building.stairs) {
+        json stairGroup;
+        stairGroup["name"] = "stair_" + std::to_string(stairIdx);
+        stairGroup["type"] = "group";
+        stairGroup["children"] = json::array();
+
+        const float stepHeight = std::max(0.05f, stair.stepHeight);
+        const float treadDepth = std::max(0.1f, stair.stepDepth);
+        const float stairWidth = std::max(0.8f, stair.stairWidth);
+        const float baseHeight = GetFloorBaseHeight(building.definition, stair.fromLevel);
+
+        for (size_t stepIndex = 0; stepIndex < stair.steps.size(); ++stepIndex) {
+            const auto& step = stair.steps[stepIndex];
+            const bool quarterTurn = IsQuarterTurn(step.rotation);
+            const float sizeX = quarterTurn ? treadDepth : stairWidth;
+            const float sizeZ = quarterTurn ? stairWidth : treadDepth;
+
+            stairGroup["children"].push_back(CreateCubeNode(
+                "stair_" + std::to_string(stairIdx) + "_step_" + std::to_string(stepIndex),
+                step.position[0],
+                baseHeight + step.height + stepHeight * 0.5f,
+                step.position[1],
+                sizeX,
+                stepHeight,
+                sizeZ,
+                "concrete_floor"));
+        }
+
+        for (size_t landingIndex = 0; landingIndex < stair.landings.size(); ++landingIndex) {
+            const auto& landing = stair.landings[landingIndex];
+            const bool quarterTurn = IsQuarterTurn(landing.rotation);
+            const float sizeX = quarterTurn ? landing.depth : landing.width;
+            const float sizeZ = quarterTurn ? landing.width : landing.depth;
+
+            stairGroup["children"].push_back(CreateCubeNode(
+                "stair_" + std::to_string(stairIdx) + "_landing_" + std::to_string(landingIndex),
+                landing.position[0],
+                baseHeight + landing.height + stepHeight * 0.5f,
+                landing.position[1],
+                sizeX,
+                stepHeight,
+                sizeZ,
+                "concrete_floor"));
+        }
+
+        children.push_back(stairGroup);
+        ++stairIdx;
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. Root group
     // -----------------------------------------------------------------------
     blueprint["root"] = {
         {"type",     "group"},

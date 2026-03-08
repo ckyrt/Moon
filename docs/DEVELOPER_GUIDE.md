@@ -27,6 +27,13 @@
 
 **必须使用 Visual Studio 的 MSBuild，而不是 Mono 的 MSBuild！**
 
+**另外：优先编译 `Moon.sln`，不要直接编译单个 `.vcxproj`。**
+
+原因：
+- 某些项目依赖 `$(SolutionDir)` 解析第三方头文件和属性表
+- 直接编译单个 `.vcxproj` 时，这些路径可能不完整
+- 现象通常是第三方依赖、`Microsoft.Cpp.*.props` 或包含目录解析异常
+
 ### ❌ 错误的方式（会报错）
 
 ```powershell
@@ -34,11 +41,28 @@ msbuild Moon.sln  # ❌ 可能调用 Mono 的 MSBuild
 # 错误：找不到导入的项目"E:\Microsoft.Cpp.Default.props"
 ```
 
+```powershell
+msbuild .\engine\building\EngineBuildingTests.vcxproj  # ❌ 可能缺少 SolutionDir 上下文
+```
+
 ### ✅ 正确的方式
 
 ```powershell
-# 使用完整路径（推荐）
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Moon.sln /p:Configuration=Debug /p:Platform=x64 /m /v:minimal
+# 推荐：先用 vswhere 定位当前机器上的 Visual Studio MSBuild
+$msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+    -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe | Select-Object -First 1
+
+& $msbuild .\Moon.sln /p:Configuration=Debug /p:Platform=x64 /m /v:minimal
+```
+
+如果你明确知道本机 Visual Studio 安装版本，也可以直接写完整路径，但不要把 `Community`、`Professional`、`Enterprise` 或 `BuildTools` 路径写死到团队文档里。
+
+### ✅ 推荐的项目级构建方式
+
+如果只想编某个项目，仍然应该从解决方案入口构建：
+
+```powershell
+& $msbuild .\Moon.sln /t:EngineBuildingTests /p:Configuration=Debug /p:Platform=x64 /m /v:minimal
 ```
 
 ---
@@ -61,14 +85,40 @@ msbuild Moon.sln  # ❌ 可能调用 Mono 的 MSBuild
 ### 编译所有项目
 
 ```powershell
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Moon.sln /p:Configuration=Debug /p:Platform=x64 /m
+& $msbuild .\Moon.sln /p:Configuration=Debug /p:Platform=x64 /m
+```
+
+### 编译指定目标项目
+
+```powershell
+& $msbuild .\Moon.sln /t:EngineBuildingTests /p:Configuration=Debug /p:Platform=x64 /m /v:minimal
 ```
 
 ### 清理构建
 
 ```powershell
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Moon.sln /t:Clean /p:Configuration=Debug /p:Platform=x64
+& $msbuild .\Moon.sln /t:Clean /p:Configuration=Debug /p:Platform=x64
 ```
+
+### 一次性命令写法
+
+如果不想先定义 `$msbuild` 变量，可以直接一行执行：
+
+```powershell
+& (& "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe | Select-Object -First 1) .\Moon.sln /t:EngineBuildingTests /p:Configuration=Debug /p:Platform=x64 /m /v:minimal
+```
+
+### 什么时候会看到“命令行编不过，VS 里能编过”
+
+常见原因：
+- 命令行调用到了错误的 `msbuild`
+- 直接编了 `.vcxproj`，没有经过 `.sln`
+- Visual Studio 自己注入了开发环境变量，而当前终端没有
+
+排查顺序：
+1. 先确认使用的是 Visual Studio 自带 `MSBuild.exe`
+2. 再确认命令入口是 `Moon.sln` 而不是单独的 `.vcxproj`
+3. 最后再看具体报错是否来自缺失 SDK、第三方 include 或属性表
 
 ---
 

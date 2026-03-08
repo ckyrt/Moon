@@ -1,6 +1,6 @@
 # Moon Engine AI Procedural Building System
 
-### Unified Architecture & Semantic Layout Specification (V12)
+### Unified Architecture & Semantic Layout Specification
 
 This document merges and updates the previous system documents into a
 **single specification** for the Moon Engine AI‑driven procedural
@@ -230,7 +230,7 @@ This improves layout realism.
 
 ``` json
 {
- "schema": "moon_building_v12",
+ "schema": "moon_building",
  "grid": 0.5,
  "building_type": "apartment | villa | office | mall",
  "style": {},
@@ -365,31 +365,88 @@ This order matches real architectural planning.
 
 # 13. Supported Building Types
 
-This architecture supports:
+Current validator / resolver support is centered on these types:
 
 Residential
 
--   villas
--   apartments
--   townhouses
+-   villa
+-   apartment
+-   cbd_residential
 
 Commercial
 
--   shopping malls
--   supermarkets
--   retail centers
+-   mall
+-   shopping_center
+-   retail_center
 
 Office
 
--   office towers
--   CBD buildings
--   co‑working spaces
+-   office
+-   office_tower
 
-Public
+Types not listed above should be treated as future extensions, not stable inputs.
 
--   schools
--   hospitals
--   hotels
+------------------------------------------------------------------------
+
+# 13.1 Finer Typology Rules
+
+These are not just style suggestions. They describe the structure the
+current validator and resolver are designed to accept well.
+
+## Office Tower: podium + tower
+
+Typical pattern:
+
+-   lower floors = podium
+-   upper floors = tower
+
+Recommended program split:
+
+-   ground floor: `lobby`, `core`, `meeting_room`, optional small `shop`
+-   lower podium floor(s): shared office, conference, support, amenity
+-   upper tower floors: repeated `office` floors around one strong `core`
+
+Current system expectations:
+
+-   ground floor should contain `lobby` or `entrance`
+-   every floor should contain a `core`
+-   retail should stay on lower podium floors, not upper tower floors
+
+## Mall / Shopping Center: ring corridor
+
+Typical pattern:
+
+-   central `void` = atrium
+-   one or more `corridor` spaces around the void
+-   `shop` spaces connected to the concourse / ring circulation
+
+Current system expectations:
+
+-   each retail floor should include a `void`
+-   circulation around that void should use adjacency with `relationship: around`
+-   each `shop` should connect to a circulation space such as `corridor` or `lobby`
+
+## CBD Residential: amenity floor
+
+Typical pattern:
+
+-   ground floor: `lobby` + `core`
+-   typical residential floors: `core` + `corridor` + multiple apartment `unit_id` groups
+-   one special upper floor: shared amenity floor
+
+Examples of amenity spaces:
+
+-   resident lounge
+-   gym
+-   coworking
+-   kids room
+-   sky lounge
+
+Current system expectations:
+
+-   residential floors should include shared `core` and `corridor`
+-   multiple residential `unit_id` groups are expected
+-   taller `cbd_residential` towers should reserve one non-ground amenity floor instead of making every upper floor a repeated apartment floor
 
 ------------------------------------------------------------------------
 
@@ -397,7 +454,7 @@ Public
 
 ``` json
 {
- "schema":"moon_building_v12",
+ "schema":"moon_building",
  "grid":0.5,
  "building_type":"apartment",
 
@@ -433,7 +490,7 @@ Public
 
 ``` json
 {
- "schema":"moon_building_v12",
+ "schema":"moon_building",
  "grid":0.5,
  "building_type":"mall",
 
@@ -447,13 +504,144 @@ Public
    "level":0,
    "spaces":[
     {"space_id":"atrium","type":"void","area_preferred":600},
-    {"space_id":"ring_corridor","type":"corridor","area_preferred":300},
+    {
+     "space_id":"ring_corridor",
+     "type":"corridor",
+     "zone":"circulation",
+     "area_preferred":300,
+     "adjacency":[
+      {"to":"atrium","relationship":"around","importance":"required"}
+     ]
+    },
 
-    {"space_id":"shop1","unit_id":"shop1","type":"shop"},
-    {"space_id":"shop2","unit_id":"shop2","type":"shop"},
-    {"space_id":"shop3","unit_id":"shop3","type":"shop"}
+    {
+     "space_id":"shop1",
+     "unit_id":"shop1",
+     "type":"shop",
+     "adjacency":[
+      {"to":"ring_corridor","relationship":"connected","importance":"required"}
+     ]
+    },
+    {
+     "space_id":"shop2",
+     "unit_id":"shop2",
+     "type":"shop",
+     "adjacency":[
+      {"to":"ring_corridor","relationship":"connected","importance":"required"}
+     ]
+    },
+    {
+     "space_id":"shop3",
+     "unit_id":"shop3",
+     "type":"shop",
+     "adjacency":[
+      {"to":"ring_corridor","relationship":"connected","importance":"required"}
+     ]
+    }
    ]
   }]
+ }
+}
+```
+
+------------------------------------------------------------------------
+
+# 15.1 Example Office Tower Pattern
+
+``` json
+{
+ "schema":"moon_building",
+ "grid":0.5,
+ "building_type":"office_tower",
+
+ "mass":{
+  "footprint_area":1200,
+  "floors":4
+ },
+
+ "program":{
+  "floors":[
+   {
+    "level":0,
+    "spaces":[
+     {"space_id":"core_gf","type":"core","zone":"service"},
+     {"space_id":"main_lobby","type":"lobby","zone":"circulation"},
+     {"space_id":"meeting_hub","type":"meeting_room","zone":"public"},
+     {"space_id":"cafe","unit_id":"cafe","type":"shop","zone":"public"}
+    ]
+   },
+   {
+    "level":1,
+    "spaces":[
+     {"space_id":"core_l1","type":"core","zone":"service"},
+     {"space_id":"shared_office_l1","type":"office","zone":"public"},
+     {"space_id":"training_l1","type":"meeting_room","zone":"public"}
+    ]
+   },
+   {
+    "level":2,
+    "spaces":[
+     {"space_id":"core_l2","type":"core","zone":"service"},
+     {"space_id":"open_office_l2","type":"office","zone":"public"}
+    ]
+   },
+   {
+    "level":3,
+    "spaces":[
+     {"space_id":"core_l3","type":"core","zone":"service"},
+     {"space_id":"open_office_l3","type":"office","zone":"public"}
+    ]
+   }
+  ]
+ }
+}
+```
+
+------------------------------------------------------------------------
+
+# 15.2 Example CBD Residential Amenity Pattern
+
+``` json
+{
+ "schema":"moon_building",
+ "grid":0.5,
+ "building_type":"cbd_residential",
+
+ "mass":{
+  "footprint_area":900,
+  "floors":4
+ },
+
+ "program":{
+  "floors":[
+   {
+    "level":0,
+    "spaces":[
+     {"space_id":"core_gf","type":"core","zone":"service"},
+     {"space_id":"lobby_gf","type":"lobby","zone":"circulation"}
+    ]
+   },
+   {
+    "level":1,
+    "spaces":[
+     {"space_id":"core_l1","type":"core","zone":"service"},
+     {"space_id":"corridor_l1","type":"corridor","zone":"circulation"},
+     {"space_id":"sky_lounge","type":"living","zone":"public"},
+     {"space_id":"cowork","type":"office","zone":"public"}
+    ]
+   },
+   {
+    "level":2,
+    "spaces":[
+     {"space_id":"core_l2","type":"core","zone":"service"},
+     {"space_id":"corridor_l2","type":"corridor","zone":"circulation"},
+     {"space_id":"living_a","unit_id":"apt_a","type":"living","zone":"public"},
+     {"space_id":"bedroom_a","unit_id":"apt_a","type":"bedroom","zone":"private"},
+     {"space_id":"living_b","unit_id":"apt_b","type":"living","zone":"public"},
+     {"space_id":"bedroom_b","unit_id":"apt_b","type":"bedroom","zone":"private"}
+    ]
+   }
+  ]
  }
 }
 ```
@@ -494,3 +682,83 @@ Mesh Builder\
 Renderer
 
 The JSON blueprint remains editable by both **AI and users**.
+
+------------------------------------------------------------------------
+
+# 18. Engine Implementation Notes
+
+This section is the engine-side implementation supplement for the same
+system. The repository should treat this file as the single maintained
+building document.
+
+## 18.1 Runtime Pipeline
+
+Actual runtime flow in the current engine:
+
+Semantic JSON (`moon_building`)\
+↓\
+`SchemaValidator`\
+↓\
+`LayoutResolver`\
+↓\
+post-resolution semantic consistency check\
+↓\
+`LayoutValidator`\
+↓\
+`SpaceGraphBuilder`\
+↓\
+`WallGenerator` / `DoorGenerator` / `StairGenerator` / `FacadeGenerator`\
+↓\
+`BuildingToCSGConverter`
+
+## 18.2 Internal Geometry Boundary
+
+`BuildingDefinition` is the engine's internal resolved geometry model.
+
+It is used to carry:
+
+- masses
+- floors
+- spaces
+- rects
+
+It is **not** an external semantic schema and must not be repackaged as
+`moon_building` input.
+
+## 18.3 Module Responsibilities
+
+`SchemaValidator`
+
+- validates input fields and typology constraints
+- invokes `LayoutResolver`
+- verifies that required semantic relations still hold after resolve
+
+`LayoutResolver`
+
+- computes footprint from typology and mass intent
+- places semantic spaces into concrete rectangles
+- preserves reserved geometry such as mall ring circulation
+- outputs resolved geometry for later generators
+
+`LayoutValidator`
+
+- checks bounds, overlaps, grid alignment, minimum size, stair links
+
+`SpaceGraphBuilder`
+
+- derives topology from resolved rectangles
+- supports door placement and semantic post-checks
+
+`BuildingToCSGConverter`
+
+- converts floor, wall, door, window, and stair output into CSG blueprint JSON
+- output can be consumed directly by `BlueprintLoader::ParseFromString()`
+
+## 18.4 Maintenance Rules
+
+When extending the system:
+
+1. Add typology rules in `SchemaValidator` before adding placement logic in `LayoutResolver`.
+2. Re-check required adjacency semantics after every layout-resolution change.
+3. Keep sample and debug paths on semantic input or resolved geometry APIs only; do not mix them into fake semantic round-trips.
+

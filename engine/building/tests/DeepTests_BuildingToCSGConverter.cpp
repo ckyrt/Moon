@@ -194,7 +194,9 @@ TEST_F(BuildingToCSGConverterDeepTest, Wall_HasCorrectDimensions) {
         return false;
     };
     
-    bool hasValidDimensions = checkDimensions(csg);
+    bool hasValidDimensions = csg.contains("root")
+        ? checkDimensions(csg["root"])
+        : checkDimensions(csg);
     EXPECT_TRUE(hasValidDimensions) 
         << "CSG 几何必须有合理的尺寸";
 }

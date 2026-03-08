@@ -166,6 +166,7 @@ enum class SpaceUsage {
  * @brief Convert string to SpaceUsage enum
  */
 inline SpaceUsage StringToSpaceUsage(const std::string& str) {
+    if (str == "core") return SpaceUsage::Stairwell;
     if (str == "living") return SpaceUsage::Living;
     if (str == "dining") return SpaceUsage::Dining;
     if (str == "kitchen") return SpaceUsage::Kitchen;
@@ -173,9 +174,14 @@ inline SpaceUsage StringToSpaceUsage(const std::string& str) {
     if (str == "bathroom") return SpaceUsage::Bathroom;
     if (str == "corridor") return SpaceUsage::Corridor;
     if (str == "entrance") return SpaceUsage::Entrance;
+    if (str == "lobby") return SpaceUsage::Entrance;
     if (str == "closet") return SpaceUsage::Closet;
     if (str == "storage") return SpaceUsage::Storage;
     if (str == "office") return SpaceUsage::Office;
+    if (str == "meeting_room") return SpaceUsage::Office;
+    if (str == "shop") return SpaceUsage::Office;
+    if (str == "mechanical") return SpaceUsage::Storage;
+    if (str == "elevator") return SpaceUsage::Stairwell;
     if (str == "balcony") return SpaceUsage::Balcony;
     if (str == "terrace") return SpaceUsage::Terrace;
     if (str == "garage") return SpaceUsage::Garage;
@@ -252,11 +258,11 @@ struct Floor {
 };
 
 /**
- * @brief Complete building definition (V8 schema)
- * This is the root structure representing the entire building
+ * @brief Complete resolved geometric building definition
+ * Internal representation generated from semantic building input
  */
 struct BuildingDefinition {
-    std::string schema;         // Should be "moon_building_v8"
+    std::string schema;         // Internal resolved schema identifier
     float grid;                 // Grid size (typically 0.5)
     BuildingStyle style;        // Architectural style
     std::vector<Mass> masses;   // Building volumes
@@ -352,6 +358,27 @@ struct ValidationResult {
     bool valid;
     std::vector<std::string> errors;
     std::vector<std::string> warnings;
+};
+
+struct BestEffortSkippedSpace {
+    int floorLevel = -1;
+    std::string spaceId;
+    std::string spaceType;
+    std::string reason;
+};
+
+struct BestEffortAdjustedSpace {
+    int floorLevel = -1;
+    std::string spaceId;
+    std::string spaceType;
+    std::string reason;
+};
+
+struct BestEffortGenerationReport {
+    bool usedBestEffort = false;
+    std::vector<BestEffortSkippedSpace> skippedSpaces;
+    std::vector<BestEffortAdjustedSpace> adjustedSpaces;
+    std::vector<std::string> repairNotes;
 };
 
 /**

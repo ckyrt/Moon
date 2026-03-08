@@ -10,7 +10,7 @@ namespace Moon {
 namespace Building {
 
 // ============================================================================
-// Semantic Building Definition (Schema V11)
+// Semantic Building Definition
 // ============================================================================
 
 enum class RelationshipType {
@@ -44,7 +44,9 @@ struct SpaceConstraints {
 
 struct SemanticSpace {
     std::string spaceId;
+    std::string unitId;
     std::string type;
+    std::string zone;
     float areaMin = 0.0f;
     float areaMax = 0.0f;
     float areaPreferred = 0.0f;
@@ -67,10 +69,10 @@ struct MassConstraints {
 
 struct SemanticBuilding {
     std::string schema;
+    float grid = 0.5f;
     std::string buildingType;
     BuildingStyle style;  // 使用 BuildingTypes.h 中定义的
     MassConstraints mass;
-    SemanticFloor program;  // Will contain all floors
     std::vector<SemanticFloor> floors;  // Parsed floors
 };
 
@@ -83,18 +85,39 @@ public:
     LayoutResolver();
     ~LayoutResolver();
     
-    // Main entry point: convert V11 (semantic) to V10 (geometric)
+    // Main entry point: resolve semantic input to geometric building data.
     bool Resolve(
         const SemanticBuilding& input,
         BuildingDefinition& output,
+        std::string& error);
+
+    bool ResolveBestEffort(
+        const SemanticBuilding& input,
+        BuildingDefinition& output,
+        BestEffortGenerationReport& report,
         std::string& error);
     
     void SetGridSize(float gridSize) { m_gridSize = gridSize; }
     void SetVerbose(bool verbose) { m_verbose = verbose; }
     
 private:
+    bool ResolveInternal(
+        const SemanticBuilding& input,
+        BuildingDefinition& output,
+        BestEffortGenerationReport* report,
+        bool bestEffort,
+        std::string& error);
+
+    enum class LayoutStrategy {
+        Villa,
+        Apartment,
+        Tower,
+        Mall
+    };
+
     struct AllocatedSpace {
         std::string spaceId;
+        std::string unitId;
         std::string type;
         float area;
         GridPos2D position;
@@ -109,13 +132,21 @@ private:
     void BuildOutput(BuildingDefinition& output, const SemanticBuilding& input);
     
     // Helper functions
+    LayoutStrategy GetLayoutStrategy(const SemanticBuilding& input) const;
+    float ComputeMallRingBand(float corridorArea, const AllocatedSpace& voidSpace) const;
     float CalculateTotalArea(const std::vector<SemanticSpace>& spaces) const;
     float GetDefaultAreaForSpaceType(const std::string& spaceType) const;
+    float GetDefaultFloorHeight(const SemanticBuilding& input, int floorLevel) const;
     int GetPriorityWeight(const std::string& priority) const;
     float GetTargetAspectRatio(const SemanticSpace& space) const;
     bool IsCirculationSpace(const SemanticSpace& space) const;
+    bool IsCoreSpace(const SemanticSpace& space) const;
+    bool IsVoidSpace(const SemanticSpace& space) const;
+    bool IsServiceSpace(const SemanticSpace& space) const;
     bool RequiresExteriorWall(const SemanticSpace& space) const;
-    std::vector<const SemanticSpace*> BuildPlacementOrder(const SemanticFloor& floor) const;
+    int GetZoneWeight(const SemanticSpace& space) const;
+    std::vector<const SemanticSpace*> BuildPlacementOrder(const SemanticBuilding& input,
+                                                          const SemanticFloor& floor) const;
     GridSize2D CalculateOptimalDimensions(float area, float aspectRatio) const;
     GridPos2D SnapToGrid(const GridPos2D& v) const;
     Rect CreateRect(const std::string& rectId, const GridPos2D& origin, const GridSize2D& size) const;
@@ -131,28 +162,49 @@ private:
                                     const GridSize2D& size,
                                     const std::vector<AllocatedSpace>& placedSpaces,
                                     GridPos2D& outPosition) const;
+    bool TryPlaceNearCoreOrCirculation(const SemanticBuilding& input,
+                                       const SemanticSpace& space,
+                                       const GridSize2D& size,
+                                       const std::vector<AllocatedSpace>& placedSpaces,
+                                       GridPos2D& outPosition) const;
     bool TryPlaceUsingStairAlignment(const SemanticSpace& space,
                                      const GridSize2D& size,
                                      const std::vector<AllocatedSpace>& placedSpaces,
                                      GridPos2D& outPosition) const;
-    bool TryPlaceInCirculationBand(const SemanticSpace& space,
+    bool TryPlaceInCirculationBand(const SemanticBuilding& input,
+                                   const SemanticSpace& space,
                                    const GridSize2D& size,
                                    const std::vector<AllocatedSpace>& placedSpaces,
                                    GridPos2D& outPosition) const;
+    bool TryPlaceInsideUnitCluster(const SemanticSpace& space,
+                                   const GridSize2D& size,
+                                   const std::vector<AllocatedSpace>& placedSpaces,
+                                   GridPos2D& outPosition) const;
+    bool TryPlaceInMallRetailBand(const SemanticBuilding& input,
+                                  const SemanticSpace& space,
+                                  const GridSize2D& size,
+                                  const std::vector<AllocatedSpace>& placedSpaces,
+                                  GridPos2D& outPosition) const;
     bool TryPlaceOnExteriorWall(const SemanticSpace& space,
                                 const GridSize2D& size,
                                 const std::vector<AllocatedSpace>& placedSpaces,
                                 GridPos2D& outPosition) const;
+    void RecordBestEffortSkip(int floorLevel,
+                              const SemanticSpace& space,
+                              const std::string& reason);
     
     float m_gridSize = 0.5f;
     bool m_verbose = false;
+    bool m_bestEffortMode = false;
     
     GridSize2D m_footprint;
     std::vector<AllocatedSpace> m_allocatedSpaces;
+    std::vector<Rect> m_reservedRects;
+    BestEffortGenerationReport* m_bestEffortReport = nullptr;
 };
 
 // ============================================================================
-// V11 JSON Parser
+// Semantic JSON Parser
 // ============================================================================
 
 class SemanticBuildingParser {
@@ -166,15 +218,6 @@ public:
         const std::string& jsonString,
         SemanticBuilding& building,
         std::string& error);
-};
-
-// ============================================================================
-// BuildingDefinition Serializer (V10 JSON output)
-// ============================================================================
-
-class BuildingDefinitionSerializer {
-public:
-    static std::string Serialize(const BuildingDefinition& building);
 };
 
 } // namespace Building

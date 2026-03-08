@@ -3,13 +3,16 @@
 #include "BuildingTypes.h"
 #include "../../external/nlohmann/json.hpp"
 #include <string>
+#include <unordered_set>
 
 namespace Moon {
 namespace Building {
 
+struct SemanticBuilding;
+
 /**
  * @brief Schema Validator
- * Validates and parses moon_building_v8 JSON format
+ * Validates semantic building JSON and resolves it to internal geometry
  */
 class SchemaValidator {
 public:
@@ -38,24 +41,35 @@ public:
                          BuildingDefinition& outDefinition,
                          std::string& outError);
 
+    bool ValidateAndParseBestEffort(const std::string& jsonStr,
+                                    BuildingDefinition& outDefinition,
+                                    BestEffortGenerationReport& outReport,
+                                    std::string& outError);
+
+    bool ValidateAndParseBestEffort(const nlohmann::json& json,
+                                    BuildingDefinition& outDefinition,
+                                    BestEffortGenerationReport& outReport,
+                                    std::string& outError);
+
 private:
+    bool ValidateSemanticJson(const nlohmann::json& json, std::string& outError);
     bool ValidateSchema(const nlohmann::json& json, std::string& outError);
     bool ValidateGrid(const nlohmann::json& json, std::string& outError);
+    bool ValidateBuildingType(const nlohmann::json& json, std::string& outError);
     bool ValidateStyle(const nlohmann::json& json, std::string& outError);
-    bool ValidateMasses(const nlohmann::json& json, std::string& outError);
-    bool ValidateFloors(const nlohmann::json& json, std::string& outError);
-    
-    bool ParseStyle(const nlohmann::json& json, BuildingStyle& style, std::string& outError);
-    bool ParseMass(const nlohmann::json& json, Mass& mass, std::string& outError);
-    bool ParseFloor(const nlohmann::json& json, Floor& floor, std::string& outError);
-    bool ParseSpace(const nlohmann::json& json, Space& space, std::string& outError);
-    bool ParseRect(const nlohmann::json& json, Rect& rect, std::string& outError);
-    bool ParseAnchor(const nlohmann::json& json, Anchor& anchor, std::string& outError);
-    bool ParseStairs(const nlohmann::json& json, StairConfig& stairs, std::string& outError);
-    
-    bool ValidateGridAlignment(float value, std::string& outError);
-    bool ValidateGridPos2D(const GridPos2D& pos, std::string& outError);
-    bool ValidateGridSize2D(const GridSize2D& size, std::string& outError);
+    bool ValidateMass(const nlohmann::json& json, std::string& outError);
+    bool ValidateProgram(const nlohmann::json& json, std::string& outError);
+    bool ValidateFloors(const nlohmann::json& floorsJson, int massFloors, std::string& outError);
+    bool ValidateFloor(const nlohmann::json& floorJson, std::string& outError);
+    bool ValidateSpace(const nlohmann::json& spaceJson,
+                       std::unordered_set<std::string>& knownSpaceIds,
+                       std::string& outError);
+    bool ValidateAdjacency(const nlohmann::json& adjacencyJson, std::string& outError);
+    bool ValidateConstraints(const nlohmann::json& constraintsJson, std::string& outError);
+    bool ValidateTypology(const nlohmann::json& json, std::string& outError);
+    bool ValidateResolvedSemanticConsistency(const SemanticBuilding& semanticBuilding,
+                                            const BuildingDefinition& resolvedBuilding,
+                                            std::string& outError);
 };
 
 } // namespace Building

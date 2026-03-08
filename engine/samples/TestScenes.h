@@ -8,7 +8,7 @@ namespace TestScenes {
     void TestMaterial(EngineCore* engine);
     void TestCSG(EngineCore* engine);
     void TestCSGBlueprint(EngineCore* engine);  // 新增：测试 JSON Blueprint 系统
-    void TestBuildingV8(EngineCore* engine);    // 新增：测试 Building System V8
+    void TestBuildingSample(EngineCore* engine);
     void TestZipLoad(EngineCore* engine);
     // void RunBuildingTest(...);
     // void RunUGCTest(...);

@@ -9,7 +9,8 @@
  *   - Wall cube generation
  *   - Window hole cutting (CSG subtract chain per wall)
  *   - Window frame reference placement (window_v1)
- *   - Door reference placement (complete_door_v1)
+ *   - Door reference placement (door_v1)
+ *   - Stair step and landing primitive generation
  *   - Floor slab generation (material by room usage)
  *
  * Produced JSON is suitable for Moon::CSG::BlueprintLoader::ParseFromString().
@@ -27,7 +28,7 @@ public:
     /**
      * @brief Convert a GeneratedBuilding to a CSG Blueprint JSON string.
      *
-     * @param building   Output of BuildingPipeline::ProcessBuilding()
+    * @param building   Output of BuildingPipeline::ProcessBuilding()
      * @return           JSON string ready for BlueprintLoader::ParseFromString()
      */
     static std::string Convert(const GeneratedBuilding& building);

@@ -18,6 +18,9 @@
     <ClCompile Include="TestZipLoad.cpp">
       <Filter>TestScenes</Filter>
     </ClCompile>
+    <ClCompile Include="TestBuildingSample.cpp">
+      <Filter>TestScenes</Filter>
+    </ClCompile>
     <ClCompile Include="HelloEngineImGui.cpp" />
     <ClCompile Include="DebugGridRenderer.cpp" />
   </ItemGroup>

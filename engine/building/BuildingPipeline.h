@@ -39,7 +39,7 @@ public:
 
     /**
      * @brief Process JSON and generate building
-     * @param jsonStr Input JSON string (moon_building_v8 format)
+        * @param jsonStr Input semantic JSON string (moon_building format)
      * @param outBuilding Output generated building data
      * @param outError Error message if processing fails
      * @return true if successful, false otherwise
@@ -47,6 +47,11 @@ public:
     bool ProcessBuilding(const std::string& jsonStr,
                         GeneratedBuilding& outBuilding,
                         std::string& outError);
+
+    bool ProcessBuildingBestEffort(const std::string& jsonStr,
+                                   GeneratedBuilding& outBuilding,
+                                   BestEffortGenerationReport& outReport,
+                                   std::string& outError);
 
     /**
      * @brief Process building definition
@@ -79,6 +84,14 @@ public:
     LayoutValidator& GetLayoutValidator() { return m_layoutValidator; }
 
 private:
+    bool ProcessBuildingInternal(const BuildingDefinition& definition,
+                                 GeneratedBuilding& outBuilding,
+                                 BestEffortGenerationReport* outReport,
+                                 bool bestEffort,
+                                 std::string& outError);
+    bool RepairDefinitionForBestEffort(BuildingDefinition& definition,
+                                       BestEffortGenerationReport& outReport,
+                                       std::string& outError);
     bool ProcessMassAndFloors(const BuildingDefinition& definition);
     bool BuildSpaceGraph(const BuildingDefinition& definition,
                         GeneratedBuilding& outBuilding);

@@ -2,7 +2,7 @@
 
 /**
  * @file Building.h
- * @brief Moon Engine Building System V8
+ * @brief Moon Engine Building System
  * 
  * AI Procedural Building System
  * Main include file for the building module
@@ -27,7 +27,7 @@
  * }
  * ```
  * 
- * JSON Schema: moon_building_v8
+ * Input JSON Schema: moon_building
  * Grid Size: 0.5 meters
  * 
  * Pipeline Stages:
@@ -41,7 +41,7 @@
  * 8. Stair Generator - Generate stairs
  * 9. Facade Generator - Generate exterior elements
  * 
- * See docs/moon_ai_building_system_v8.md for full specification
+ * See assets/building/README.md for the current building specification
  */
 
 // Core types

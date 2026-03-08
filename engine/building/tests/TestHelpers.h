@@ -54,6 +54,21 @@ public:
     static std::string CreateLuxuryVilla();
 
     /**
+     * @brief Create a mixed-use office tower with lobby/core office floors
+     */
+    static std::string CreateOfficeTower();
+
+    /**
+     * @brief Create a shopping mall with atrium, circulation ring, and shops
+     */
+    static std::string CreateShoppingMall();
+
+    /**
+     * @brief Create a CBD residential tower with shared core and multiple units
+     */
+    static std::string CreateCBDResidential();
+
+    /**
      * @brief Create invalid JSON (missing required fields)
      */
     static std::string CreateInvalidJSON_MissingGrid();
