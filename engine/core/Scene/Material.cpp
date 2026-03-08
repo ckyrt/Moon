@@ -238,11 +238,11 @@ void Material::SetPresetConcreteFloor()
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     m_opacity = 1.0f;
     
-    SetAlbedoMap("materials/ConcreteFloor_2K-PNG/ConcreteFloor_2K-PNG_Color.png");
-    SetNormalMap("materials/ConcreteFloor_2K-PNG/ConcreteFloor_2K-PNG_NormalDX.png");
-    SetAOMap("materials/ConcreteFloor_2K-PNG/ConcreteFloor_2K-PNG_AmbientOcclusion.png");
-    SetRoughnessMap("materials/ConcreteFloor_2K-PNG/ConcreteFloor_2K-PNG_Roughness.png");
-    SetMetalnessMap("materials/ConcreteFloor_2K-PNG/ConcreteFloor_2K-PNG_Metalness.png");
+    SetAlbedoMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_Color.png");
+    SetNormalMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_NormalDX.png");
+    SetAOMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_AmbientOcclusion.png");
+    SetRoughnessMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_Roughness.png");
+    SetMetalnessMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_Metalness.png");
 }
 
 void Material::SetPresetConcretePolished()
@@ -253,11 +253,11 @@ void Material::SetPresetConcretePolished()
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     m_opacity = 1.0f;
     
-    SetAlbedoMap("materials/ConcretePolished_2K-PNG/ConcretePolished_2K-PNG_Color.png");
-    SetNormalMap("materials/ConcretePolished_2K-PNG/ConcretePolished_2K-PNG_NormalDX.png");
-    SetAOMap("materials/ConcretePolished_2K-PNG/ConcretePolished_2K-PNG_AmbientOcclusion.png");
-    SetRoughnessMap("materials/ConcretePolished_2K-PNG/ConcretePolished_2K-PNG_Roughness.png");
-    SetMetalnessMap("materials/ConcretePolished_2K-PNG/ConcretePolished_2K-PNG_Metalness.png");
+    SetAlbedoMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_Color.png");
+    SetNormalMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_NormalDX.png");
+    SetAOMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_AmbientOcclusion.png");
+    SetRoughnessMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_Roughness.png");
+    SetMetalnessMap("materials/Concrete044D_2K-PNG/Concrete044D_2K-PNG_Metalness.png");
 }
 
 // ============================================================================
@@ -287,10 +287,10 @@ void Material::SetPresetStone()
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     m_opacity = 1.0f;
     
-    SetAlbedoMap("materials/Stone_2K-PNG/Stone_2K-PNG_Color.png");
-    SetNormalMap("materials/Stone_2K-PNG/Stone_2K-PNG_NormalDX.png");
-    SetAOMap("materials/Stone_2K-PNG/Stone_2K-PNG_AmbientOcclusion.png");
-    SetRoughnessMap("materials/Stone_2K-PNG/Stone_2K-PNG_Roughness.png");
+    SetAlbedoMap("materials/Rock030_2K-PNG/Rock030_2K-PNG_Color.png");
+    SetNormalMap("materials/Rock030_2K-PNG/Rock030_2K-PNG_NormalDX.png");
+    SetAOMap("materials/Rock030_2K-PNG/Rock030_2K-PNG_AmbientOcclusion.png");
+    SetRoughnessMap("materials/Rock030_2K-PNG/Rock030_2K-PNG_Roughness.png");
     SetMetalnessMap("");
 }
 
@@ -351,10 +351,10 @@ void Material::SetPresetWoodPolished()
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     m_opacity = 1.0f;
     
-    SetAlbedoMap("materials/WoodPolished_2K-PNG/WoodPolished_2K-PNG_Color.png");
-    SetNormalMap("materials/WoodPolished_2K-PNG/WoodPolished_2K-PNG_NormalDX.png");
-    SetAOMap("materials/WoodPolished_2K-PNG/WoodPolished_2K-PNG_AmbientOcclusion.png");
-    SetRoughnessMap("materials/WoodPolished_2K-PNG/WoodPolished_2K-PNG_Roughness.png");
+    SetAlbedoMap("materials/Wood049_2K-PNG/Wood049_2K-PNG_Color.png");
+    SetNormalMap("materials/Wood049_2K-PNG/Wood049_2K-PNG_NormalDX.png");
+    SetAOMap("");
+    SetRoughnessMap("materials/Wood049_2K-PNG/Wood049_2K-PNG_Roughness.png");
     SetMetalnessMap("");
 }
 
@@ -366,10 +366,10 @@ void Material::SetPresetWoodPainted()
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     m_opacity = 1.0f;
     
-    SetAlbedoMap("materials/WoodPainted_2K-PNG/WoodPainted_2K-PNG_Color.png");
-    SetNormalMap("materials/WoodPainted_2K-PNG/WoodPainted_2K-PNG_NormalDX.png");
-    SetAOMap("materials/WoodPainted_2K-PNG/WoodPainted_2K-PNG_AmbientOcclusion.png");
-    SetRoughnessMap("materials/WoodPainted_2K-PNG/WoodPainted_2K-PNG_Roughness.png");
+    SetAlbedoMap("materials/Wood049_2K-PNG/Wood049_2K-PNG_Color.png");
+    SetNormalMap("materials/Wood049_2K-PNG/Wood049_2K-PNG_NormalDX.png");
+    SetAOMap("");
+    SetRoughnessMap("materials/Wood049_2K-PNG/Wood049_2K-PNG_Roughness.png");
     SetMetalnessMap("");
 }
 
@@ -385,11 +385,11 @@ void Material::SetPresetSteel()
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     m_opacity = 1.0f;
     
-    SetAlbedoMap("materials/Steel_2K-PNG/Steel_2K-PNG_Color.png");
-    SetNormalMap("materials/Steel_2K-PNG/Steel_2K-PNG_NormalDX.png");
+    SetAlbedoMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Color.png");
+    SetNormalMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_NormalDX.png");
     SetAOMap("");
-    SetRoughnessMap("materials/Steel_2K-PNG/Steel_2K-PNG_Roughness.png");
-    SetMetalnessMap("materials/Steel_2K-PNG/Steel_2K-PNG_Metalness.png");
+    SetRoughnessMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Roughness.png");
+    SetMetalnessMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Metalness.png");
 }
 
 void Material::SetPresetAluminum()
@@ -400,11 +400,11 @@ void Material::SetPresetAluminum()
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     m_opacity = 1.0f;
     
-    SetAlbedoMap("materials/Aluminum_2K-PNG/Aluminum_2K-PNG_Color.png");
-    SetNormalMap("materials/Aluminum_2K-PNG/Aluminum_2K-PNG_NormalDX.png");
+    SetAlbedoMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Color.png");
+    SetNormalMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_NormalDX.png");
     SetAOMap("");
-    SetRoughnessMap("materials/Aluminum_2K-PNG/Aluminum_2K-PNG_Roughness.png");
-    SetMetalnessMap("materials/Aluminum_2K-PNG/Aluminum_2K-PNG_Metalness.png");
+    SetRoughnessMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Roughness.png");
+    SetMetalnessMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Metalness.png");
 }
 
 void Material::SetPresetChrome()
@@ -415,11 +415,11 @@ void Material::SetPresetChrome()
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     m_opacity = 1.0f;
     
-    SetAlbedoMap("materials/Chrome_2K-PNG/Chrome_2K-PNG_Color.png");
-    SetNormalMap("materials/Chrome_2K-PNG/Chrome_2K-PNG_NormalDX.png");
+    SetAlbedoMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Color.png");
+    SetNormalMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_NormalDX.png");
     SetAOMap("");
-    SetRoughnessMap("materials/Chrome_2K-PNG/Chrome_2K-PNG_Roughness.png");
-    SetMetalnessMap("materials/Chrome_2K-PNG/Chrome_2K-PNG_Metalness.png");
+    SetRoughnessMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Roughness.png");
+    SetMetalnessMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Metalness.png");
 }
 
 void Material::SetPresetCopper()
@@ -430,11 +430,11 @@ void Material::SetPresetCopper()
     m_baseColor = Vector3(1.0f, 1.0f, 1.0f);
     m_opacity = 1.0f;
     
-    SetAlbedoMap("materials/Copper_2K-PNG/Copper_2K-PNG_Color.png");
-    SetNormalMap("materials/Copper_2K-PNG/Copper_2K-PNG_NormalDX.png");
+    SetAlbedoMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Color.png");
+    SetNormalMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_NormalDX.png");
     SetAOMap("");
-    SetRoughnessMap("materials/Copper_2K-PNG/Copper_2K-PNG_Roughness.png");
-    SetMetalnessMap("materials/Copper_2K-PNG/Copper_2K-PNG_Metalness.png");
+    SetRoughnessMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Roughness.png");
+    SetMetalnessMap("materials/Metal061B_2K-PNG/Metal061B_2K-PNG_Metalness.png");
 }
 
 // ============================================================================

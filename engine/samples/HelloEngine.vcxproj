@@ -70,9 +70,6 @@
       <AdditionalDependencies>EngineCore.lib;EngineRender.lib;EngineBuilding.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
-    <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)assets" "$(TargetDir)assets" /E /XO /NFL /NDL /NJH /NJS /NC /NS /NP || exit 0</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -94,9 +91,6 @@
       <AdditionalDependencies>EngineCore.lib;EngineRender.lib;EngineBuilding.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
-    <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)assets" "$(TargetDir)assets" /E /XO /NFL /NDL /NJH /NJS /NC /NS /NP || exit 0</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\external\zip\src\zip.c">
