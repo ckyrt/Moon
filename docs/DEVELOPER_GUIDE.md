@@ -108,24 +108,18 @@ temp/                       # 中间文件目录
 
 ## 资源文件部署
 
-**⚠️ 重要：修改 CSG JSON 配置文件后必须复制到运行目录！**
+当前运行时改为直接读取源码目录下的资源，不再依赖将 `assets` 拷贝到 `bin` 目录。
 
-运行时程序从可执行文件所在目录读取资源文件，因此修改 `assets/csg/*.json` 后需要同步：
+当前固定资源根路径：
 
-```powershell
-# Debug 配置
-Copy-Item -Path "assets" -Destination "bin\x64\Debug" -Recurse -Force
-
-# Release 配置
-Copy-Item -Path "assets" -Destination "bin\x64\Release" -Recurse -Force
+```text
+E:\game_engine\Moon\assets
 ```
 
-**何时需要执行：**
-- 修改了 `assets/csg/index.json` 或任何蓝图 JSON 文件
-- 添加/删除了 CSG 组件
-- 更新了材质、着色器等资源文件
-
-**注意：** AI 助手修改 JSON 文件后应自动执行此命令（针对当前编译配置）。
+影响：
+- 修改 `assets/building/*.json`、`assets/csg/*.json`、`assets/shaders/*`、`assets/textures/*` 后，无需再手动复制到 `bin`
+- 重新编译可执行文件后，运行时会直接读取源目录资源
+- 如果未来切到本地缓存目录，只需要统一修改资源路径工具
 
 ---
 
