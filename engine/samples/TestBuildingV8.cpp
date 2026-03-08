@@ -8,6 +8,7 @@
 #include <Scene/Light.h>
 #include <Mesh/Mesh.h>
 #include <Building.h>
+#include <LayoutResolver.h>
 #include <CSG/Blueprint.h>
 #include <CSG/BlueprintLoader.h>
 #include <CSG/CSGBuilder.h>
@@ -31,14 +32,73 @@ void TestBuildingV8(EngineCore* engine)
 {
     MOON_LOG_INFO("BuildingV8", "=== Testing Building System V8 with CSG ===");
     
-    // Read Building System V8 JSON input
-    std::string jsonContent = ReadFileToString("assets/building/residential/luxury_villa.json");
-    if (jsonContent.empty()) {
-        MOON_LOG_ERROR("BuildingV8", "Failed to read luxury_villa.json");
-        return;
+    // ============================================================================
+    // Try V11 format first (semantic → geometric via Layout Resolver)
+    // ============================================================================
+    std::string v11FilePath = "assets/building/test_house_v11.json";
+    std::ifstream v11Check(v11FilePath);
+    bool useV11 = v11Check.good();
+    v11Check.close();
+    
+    std::string jsonContent;
+    
+    if (useV11) {
+        MOON_LOG_INFO("BuildingV8", "Found V11 semantic building definition, using Layout Resolver");
+        
+        // Parse V11 semantic building
+        Moon::Building::SemanticBuilding semanticBuilding;
+        std::string parseError;
+        
+        if (!Moon::Building::SemanticBuildingParser::ParseFromFile(v11FilePath, semanticBuilding, parseError)) {
+            MOON_LOG_ERROR("BuildingV8", "Failed to parse V11 JSON: %s", parseError.c_str());
+            MOON_LOG_WARN("BuildingV8", "Falling back to V8 format");
+            useV11 = false;
+        } else {
+            MOON_LOG_INFO("BuildingV8", "V11 parsed - Building: %s, Floors: %d, Target area: %.1f m²",
+                          semanticBuilding.buildingType.c_str(),
+                          semanticBuilding.mass.floors,
+                          semanticBuilding.mass.footprintArea);
+            
+            // Resolve layout (V11 → V10 geometric)
+            Moon::Building::LayoutResolver resolver;
+            resolver.SetGridSize(0.5f);
+            resolver.SetVerbose(true);
+            
+            Moon::Building::BuildingDefinition geometricBuilding;
+            std::string resolveError;
+            
+            if (!resolver.Resolve(semanticBuilding, geometricBuilding, resolveError)) {
+                MOON_LOG_ERROR("BuildingV8", "Layout resolution failed: %s", resolveError.c_str());
+                MOON_LOG_WARN("BuildingV8", "Falling back to V8 format");
+                useV11 = false;
+            } else {
+                MOON_LOG_INFO("BuildingV8", "✓ Layout resolved: %zu masses, %zu floors",
+                              geometricBuilding.masses.size(),
+                              geometricBuilding.floors.size());
+                
+                // Serialize BuildingDefinition back to JSON string
+                MOON_LOG_INFO("BuildingV8", "Serializing geometric building to JSON...");
+                jsonContent = Moon::Building::BuildingDefinitionSerializer::Serialize(geometricBuilding);
+                
+                MOON_LOG_INFO("BuildingV8", "✓ Serialized V10 JSON: %zu bytes", jsonContent.size());
+                MOON_LOG_INFO("BuildingV8", "V11 → V10 conversion complete, continuing with BuildingPipeline...");
+                // Continue with V10 JSON
+            }
+        }
     }
     
-    MOON_LOG_INFO("BuildingV8", "Loaded Building V8 JSON: %zu bytes", jsonContent.size());
+    // ============================================================================
+    // Load V8 JSON (or fallback if V11 processing failed)
+    // ============================================================================
+    if (!useV11) {
+        MOON_LOG_INFO("BuildingV8", "Using V8 geometric building definition");
+        jsonContent = ReadFileToString("assets/building/residential/luxury_villa.json");
+        if (jsonContent.empty()) {
+            MOON_LOG_ERROR("BuildingV8", "Failed to read luxury_villa.json");
+            return;
+        }
+        MOON_LOG_INFO("BuildingV8", "Loaded Building V8 JSON: %zu bytes", jsonContent.size());
+    }
     
     // Process building through Building System V8 pipeline
     Moon::Building::BuildingPipeline pipeline;
