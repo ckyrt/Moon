@@ -110,6 +110,12 @@ export interface Scene {
   allNodes: Record<number, SceneNode>;
 }
 
+export interface MassingPreviewResult {
+  rootNodeId: number;
+  meshCount: number;
+  warnings: string[];
+}
+
 // ============ 编辑器状态 ============
 
 export interface EditorState {
@@ -160,6 +166,10 @@ export interface MoonEngineAPI {
   
   // Primitive Creation
   createPrimitive(type: string): Promise<void>;
+
+  // Massing Preview
+  previewMassing(ruleJson: string): Promise<MassingPreviewResult>;
+  clearMassingPreview(): Promise<void>;
 
   // ========================================================================
   // 🎯 Component Properties API

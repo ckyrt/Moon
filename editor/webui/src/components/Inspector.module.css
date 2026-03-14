@@ -155,3 +155,45 @@
   font-size: var(--font-size-xs);
   font-weight: 600;
 }
+
+.massingHint {
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.massingEditor {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: var(--font-size-xs);
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.massingActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.massingActions button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.massingStatus {
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--accent-green);
+}
+
+.massingError {
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: #d65c5c;
+}

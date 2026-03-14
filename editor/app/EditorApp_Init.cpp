@@ -11,6 +11,8 @@
 #include "../engine/core/Scene/Scene.h"
 #include "../engine/core/Scene/SceneNode.h"
 #include "../engine/core/Scene/MeshRenderer.h"
+#include "../engine/core/Scene/Light.h"
+#include "../engine/core/Scene/Skybox.h"
 #include "../../engine/core/Assets/MeshManager.h"
 #include "../engine/core/Logging/Logger.h"
 #include "../engine/render/diligent/DiligentRenderer.h"
@@ -239,8 +241,27 @@ void InitSceneObjects(EngineCore* engine)
     physicsSystem.Init();
     g_PhysicsSystem = &physicsSystem;
 
-    //Moon::Scene* scene = engine->GetScene();
+    Moon::Scene* scene = engine->GetScene();
     //Moon::MeshManager* meshMgr = engine->GetMeshManager();
+
+    if (scene && !scene->FindNodeByName("Editor Sun")) {
+        Moon::SceneNode* sunNode = scene->CreateNode("Editor Sun");
+        Moon::Light* sunLight = sunNode->AddComponent<Moon::Light>();
+        sunLight->SetType(Moon::Light::Type::Directional);
+        sunLight->SetIntensity(3.0f);
+        sunLight->SetColor(Moon::Vector3(1.0f, 0.98f, 0.92f));
+        sunLight->SetCastShadows(true);
+        sunNode->GetTransform()->SetLocalPosition({ 12.0f, 18.0f, -12.0f });
+        sunNode->GetTransform()->LookAt(Moon::Vector3(0.0f, 0.0f, 0.0f));
+    }
+
+    if (scene && !scene->FindNodeByName("Editor Sky")) {
+        Moon::SceneNode* skyNode = scene->CreateNode("Editor Sky");
+        Moon::Skybox* skybox = skyNode->AddComponent<Moon::Skybox>();
+        skybox->LoadEnvironmentMap("textures/environment.hdr");
+        skybox->SetIntensity(0.75f);
+        skybox->SetEnableIBL(true);
+    }
 
     // 创建 Ground Plane
     //{

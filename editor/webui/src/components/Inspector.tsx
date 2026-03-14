@@ -32,6 +32,25 @@ import {
 import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent, MaterialComponent } from '@/types/engine';
 import styles from './Inspector.module.css';
 
+const DEFAULT_MASSING_RULE_JSON = `{
+  "version": 1,
+  "root": {
+    "type": "extrude",
+    "name": "TowerMass",
+    "material": "concrete",
+    "profile": {
+      "points": [
+        { "x": -8, "y": -8 },
+        { "x": 8, "y": -8 },
+        { "x": 8, "y": 8 },
+        { "x": -8, "y": 8 }
+      ],
+      "closed": true
+    },
+    "height": 36
+  }
+}`;
+
 export const Inspector: React.FC = () => {
   const { scene, selectedNodeId } = useEditorStore();
   const selectedNode = selectedNodeId ? scene.allNodes[selectedNodeId] : null;
@@ -104,7 +123,10 @@ export const Inspector: React.FC = () => {
     return (
       <div className={styles.inspector}>
         <div className={styles.header}>Inspector</div>
-        <div className={styles.empty}>No object selected</div>
+        <div className={styles.content}>
+          <div className={styles.empty}>No object selected</div>
+          <MassingPreviewSection />
+        </div>
       </div>
     );
   }
@@ -181,12 +203,89 @@ export const Inspector: React.FC = () => {
             ))}
           </div>
         )}
+
+        <MassingPreviewSection />
       </div>
     </div>
   );
 };
 
 // ========== 组件显示组件 ==========
+
+const MassingPreviewSection: React.FC = () => {
+  const [ruleJson, setRuleJson] = useState(DEFAULT_MASSING_RULE_JSON);
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
+
+  const refreshScene = async () => {
+    const scene = await engine.getScene();
+    useEditorStore.getState().updateScene(scene);
+  };
+
+  const handlePreview = async () => {
+    setIsBusy(true);
+    setError('');
+
+    try {
+      const result = await engine.previewMassing(ruleJson);
+      await refreshScene();
+
+      const warningText = result.warnings.length > 0 ? `, ${result.warnings.length} warnings` : '';
+      setStatus(`Preview built: ${result.meshCount} meshes${warningText}`);
+    } catch (previewError) {
+      const message = previewError instanceof Error ? previewError.message : 'Failed to preview massing';
+      logger.error('Inspector', `Massing preview failed: ${message}`);
+      setError(message);
+      setStatus('');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleClear = async () => {
+    setIsBusy(true);
+    setError('');
+
+    try {
+      await engine.clearMassingPreview();
+      await refreshScene();
+      setStatus('Preview cleared');
+    } catch (clearError) {
+      const message = clearError instanceof Error ? clearError.message : 'Failed to clear massing preview';
+      logger.error('Inspector', `Clear massing preview failed: ${message}`);
+      setError(message);
+      setStatus('');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  return (
+    <div className={styles.section}>
+      <div className={styles.sectionTitle}>Massing Preview</div>
+      <div className={styles.massingHint}>
+        Paste a massing rule JSON here to generate a live preview node tree in the scene.
+      </div>
+      <textarea
+        className={styles.massingEditor}
+        value={ruleJson}
+        onChange={(e) => setRuleJson(e.target.value)}
+        spellCheck={false}
+      />
+      <div className={styles.massingActions}>
+        <button type="button" onClick={handlePreview} disabled={isBusy}>
+          {isBusy ? 'Working...' : 'Preview'}
+        </button>
+        <button type="button" onClick={handleClear} disabled={isBusy}>
+          Clear
+        </button>
+      </div>
+      {status && <div className={styles.massingStatus}>{status}</div>}
+      {error && <div className={styles.massingError}>{error}</div>}
+    </div>
+  );
+};
 
 const ComponentView: React.FC<{ component: Component }> = ({ component }) => {
   const renderComponentDetails = () => {

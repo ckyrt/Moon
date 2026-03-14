@@ -9,7 +9,7 @@
  * - C++ → JS: window.onXXXChanged 回调 (通过 ExecuteJavaScript 调用)
  */
 
-import type { MoonEngineAPI, SceneNode, Transform, Vector3, Quaternion } from '@/types/engine';
+import type { MassingPreviewResult, MoonEngineAPI, SceneNode, Transform, Vector3, Quaternion } from '@/types/engine';
 import { quaternionToEuler, eulerToQuaternion } from './math';
 
 // ============================================================================
@@ -317,6 +317,58 @@ const createRealAPI = (): MoonEngineAPI => {
           },
           onFailure: (errorCode: number, errorMessage: string) => {
             console.error(`[createPrimitive] Failed: ${errorCode} - ${errorMessage}`);
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    previewMassing: wrapAsyncEngineCall('previewMassing', async (ruleJson: string): Promise<MassingPreviewResult> => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<MassingPreviewResult>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'previewMassing',
+          ruleJson
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const parsed = JSON.parse(response) as MassingPreviewResult & { success?: boolean; error?: string };
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+              return;
+            }
+            resolve({
+              rootNodeId: parsed.rootNodeId,
+              meshCount: parsed.meshCount,
+              warnings: parsed.warnings ?? []
+            });
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    clearMassingPreview: wrapAsyncEngineCall('clearMassingPreview', async () => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'clearMassingPreview'
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => resolve(),
+          onFailure: (_errorCode: number, errorMessage: string) => {
             reject(new Error(errorMessage));
           }
         });

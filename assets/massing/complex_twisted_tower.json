@@ -1,0 +1,152 @@
+﻿{
+  "schema_version": 1,
+  "version": 1,
+  "name": "complex_twisted_tower",
+  "description": "Example node tree: podium + lofted tower + void subtraction + fin array + twist deform",
+  "unit": "meter",
+  "ai": {
+    "source": "sample",
+    "strategy": "multi_step_node_tree"
+  },
+  "editor": {
+    "exposed_params": ["podium_height", "tower_height", "twist_angle"]
+  },
+  "root": {
+    "id": "root",
+    "name": "root",
+    "type": "group",
+    "children": [
+      {
+        "id": "podium",
+        "name": "podium",
+        "type": "extrude",
+        "material": "concrete",
+        "params": {
+          "height": 12.0
+        },
+        "profiles": [
+          {
+            "id": "podium_footprint",
+            "closed": true,
+            "points": [[-18,-14],[18,-14],[18,14],[-18,14]]
+          }
+        ]
+      },
+      {
+        "id": "tower_shell",
+        "name": "tower_shell",
+        "type": "deform",
+        "params": {
+          "mode": "twist",
+          "angle": 24.0
+        },
+        "children": [
+          {
+            "id": "tower_loft",
+            "name": "tower_loft",
+            "type": "loft",
+            "material": "glass",
+            "params": {
+              "levels": [12.0, 42.0, 84.0]
+            },
+            "profiles": [
+              {
+                "id": "tower_base",
+                "closed": true,
+                "points": [[-10,-10],[10,-10],[10,10],[-10,10]]
+              },
+              {
+                "id": "tower_mid",
+                "closed": true,
+                "points": [[-8,-9],[9,-8],[8,9],[-9,8]]
+              },
+              {
+                "id": "tower_top",
+                "closed": true,
+                "points": [[-6,-7],[7,-6],[6,7],[-7,6]]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "atrium_cut",
+        "name": "atrium_cut",
+        "type": "csg",
+        "operation": "subtract",
+        "children": [
+          {
+            "id": "atrium_base",
+            "name": "atrium_base",
+            "type": "primitive",
+            "primitive": "cube",
+            "material": "concrete",
+            "params": {
+              "size_x": 12.0,
+              "size_y": 30.0,
+              "size_z": 8.0
+            },
+            "transform": {
+              "position": [0.0, 15.0, 0.0],
+              "rotation": [0.0, 0.0, 0.0],
+              "scale": [1.0, 1.0, 1.0]
+            }
+          },
+          {
+            "id": "atrium_void",
+            "name": "atrium_void",
+            "type": "primitive",
+            "primitive": "cylinder",
+            "material": "glass",
+            "params": {
+              "radius": 3.0,
+              "height": 36.0,
+              "segments": 32
+            },
+            "transform": {
+              "position": [0.0, 18.0, 0.0],
+              "rotation": [0.0, 0.0, 0.0],
+              "scale": [1.0, 1.0, 1.0]
+            }
+          }
+        ]
+      },
+      {
+        "id": "fins",
+        "name": "fins",
+        "type": "array",
+        "params": {
+          "count_x": 6,
+          "count_y": 1,
+          "count_z": 1,
+          "spacing_x": 4.0,
+          "rotate_step_y": 4.0
+        },
+        "transform": {
+          "position": [-10.0, 20.0, 11.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "children": [
+          {
+            "id": "fin",
+            "name": "fin",
+            "type": "primitive",
+            "primitive": "cube",
+            "material": "metal",
+            "params": {
+              "size_x": 0.5,
+              "size_y": 18.0,
+              "size_z": 1.0
+            },
+            "transform": {
+              "position": [0.0, 0.0, 0.0],
+              "rotation": [0.0, 0.0, 0.0],
+              "scale": [1.0, 1.0, 1.0]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
