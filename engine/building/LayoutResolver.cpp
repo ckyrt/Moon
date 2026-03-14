@@ -299,7 +299,10 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
         
         float totalPreferredArea = CalculateTotalArea(floor.spaces);
         float availableArea = m_footprint[0] * m_footprint[1];
-        float scaleFactor = availableArea / totalPreferredArea;
+        float scaleFactor = 1.0f;
+        if (totalPreferredArea > availableArea + 0.001f) {
+            scaleFactor = availableArea / totalPreferredArea;
+        }
         const auto orderedSpaces = BuildPlacementOrder(input, floor);
         const LayoutStrategy strategy = GetLayoutStrategy(input);
         
@@ -523,9 +526,14 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
                 }
 
                 const bool hasRequiredPlacedAdjacency = hasPlacedRequiredAdjacencyConstraint(space, outSpaces);
+                const bool prioritizeMallRetailBand = strategy == LayoutStrategy::Mall && space.type == "shop";
 
                 GridPos2D position = {0.0f, 0.0f};
                 bool placed = TryPlaceUsingStairAlignment(space, dims, outSpaces, position);
+
+                if (!placed && prioritizeMallRetailBand) {
+                    placed = TryPlaceInMallRetailBand(input, space, dims, outSpaces, position);
+                }
 
                 if (!placed && hasRequiredPlacedAdjacency) {
                     placed = TryPlaceNearConnectedSpace(space, dims, outSpaces, position);
@@ -539,7 +547,7 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
                     placed = TryPlaceInsideUnitCluster(space, dims, outSpaces, position);
                 }
 
-                if (!placed) {
+                if (!placed && !prioritizeMallRetailBand) {
                     placed = TryPlaceInMallRetailBand(input, space, dims, outSpaces, position);
                 }
 
@@ -630,9 +638,14 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
                 }
 
                 const bool hasRequiredPlacedAdjacency = hasPlacedRequiredAdjacencyConstraint(space, outSpaces);
+                const bool prioritizeMallRetailBand = strategy == LayoutStrategy::Mall && space.type == "shop";
 
                 GridPos2D position = {0.0f, 0.0f};
                 bool placed = TryPlaceUsingStairAlignment(space, dims, outSpaces, position);
+
+                if (!placed && prioritizeMallRetailBand) {
+                    placed = TryPlaceInMallRetailBand(input, space, dims, outSpaces, position);
+                }
 
                 if (!placed && hasRequiredPlacedAdjacency) {
                     placed = TryPlaceNearConnectedSpace(space, dims, outSpaces, position);
@@ -646,7 +659,7 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
                     placed = TryPlaceInsideUnitCluster(space, dims, outSpaces, position);
                 }
 
-                if (!placed) {
+                if (!placed && !prioritizeMallRetailBand) {
                     placed = TryPlaceInMallRetailBand(input, space, dims, outSpaces, position);
                 }
 
@@ -1378,13 +1391,30 @@ bool LayoutResolver::TryPlaceInCirculationBand(const SemanticBuilding& input,
             }
         }
     } else if (space.type == "stairs" || space.type == "elevator") {
-        auto corridorIt = std::find_if(placedSpaces.begin(), placedSpaces.end(),
-                                       [](const AllocatedSpace& placed) {
-                                           return placed.type == "corridor" || placed.type == "lobby" || placed.type == "core";
-                                       });
-        if (corridorIt != placedSpaces.end()) {
-            candidates.push_back(SnapToGrid({corridorIt->position[0] + corridorIt->size[0], corridorIt->position[1]}));
-            candidates.push_back(SnapToGrid({std::max(0.0f, corridorIt->position[0] - size[0]), corridorIt->position[1]}));
+        std::vector<const AllocatedSpace*> anchors;
+        for (const auto& placed : placedSpaces) {
+            if (placed.type == "core" || placed.type == "corridor" || placed.type == "lobby") {
+                anchors.push_back(&placed);
+            }
+        }
+
+        std::sort(anchors.begin(), anchors.end(),
+                  [](const AllocatedSpace* lhs, const AllocatedSpace* rhs) {
+                      auto weight = [](const AllocatedSpace* anchor) {
+                          if (anchor->type == "core") return 3;
+                          if (anchor->type == "lobby") return 2;
+                          return 1;
+                      };
+                      return weight(lhs) > weight(rhs);
+                  });
+
+        for (const auto* anchor : anchors) {
+            candidates.push_back(SnapToGrid({anchor->position[0] + anchor->size[0], anchor->position[1]}));
+            candidates.push_back(SnapToGrid({std::max(0.0f, anchor->position[0] - size[0]), anchor->position[1]}));
+            candidates.push_back(SnapToGrid({anchor->position[0], anchor->position[1] + anchor->size[1]}));
+            candidates.push_back(SnapToGrid({anchor->position[0], std::max(0.0f, anchor->position[1] - size[1])}));
+            candidates.push_back(SnapToGrid({anchor->position[0] + anchor->size[0], std::max(0.0f, anchor->position[1] + anchor->size[1] - size[1])}));
+            candidates.push_back(SnapToGrid({std::max(0.0f, anchor->position[0] - size[0]), std::max(0.0f, anchor->position[1] + anchor->size[1] - size[1])}));
         }
 
         const float centerX = std::max(0.0f, std::round(((m_footprint[0] - size[0]) * 0.5f) / m_gridSize) * m_gridSize);

@@ -2,6 +2,7 @@
 #include "../../external/nlohmann/json.hpp"
 #include <cmath>
 #include <sstream>
+#include <unordered_set>
 
 using json = nlohmann::json;
 
@@ -174,6 +175,53 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
                 else                                    node["material"] = "concrete_floor";
 
                 children.push_back(node);
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 1b. Support columns for elevated floors
+    // -----------------------------------------------------------------------
+    std::unordered_set<std::string> emittedSupportColumns;
+    for (const auto& floor : building.definition.floors) {
+        const float floorBaseY = GetFloorBaseHeight(building.definition, floor.level);
+        if (floor.level <= 0 || floorBaseY <= 0.01f) {
+            continue;
+        }
+
+        for (const auto& space : floor.spaces) {
+            for (const auto& rect : space.rects) {
+                const float insetX = std::min(0.35f, rect.size[0] * 0.25f);
+                const float insetZ = std::min(0.35f, rect.size[1] * 0.25f);
+                const float columnSize = 0.3f;
+
+                const std::vector<GridPos2D> columnCenters = {
+                    {rect.origin[0] + insetX, rect.origin[1] + insetZ},
+                    {rect.origin[0] + rect.size[0] - insetX, rect.origin[1] + insetZ},
+                    {rect.origin[0] + insetX, rect.origin[1] + rect.size[1] - insetZ},
+                    {rect.origin[0] + rect.size[0] - insetX, rect.origin[1] + rect.size[1] - insetZ}
+                };
+
+                for (size_t columnIndex = 0; columnIndex < columnCenters.size(); ++columnIndex) {
+                    const auto& center = columnCenters[columnIndex];
+                    const int keyX = static_cast<int>(std::round(center[0] * 100.0f));
+                    const int keyZ = static_cast<int>(std::round(center[1] * 100.0f));
+                    const int keyH = static_cast<int>(std::round(floorBaseY * 100.0f));
+                    const std::string key = std::to_string(keyX) + "_" + std::to_string(keyZ) + "_" + std::to_string(keyH);
+                    if (!emittedSupportColumns.insert(key).second) {
+                        continue;
+                    }
+
+                    children.push_back(CreateCubeNode(
+                        "support_column_" + std::to_string(floor.level) + "_" + std::to_string(emittedSupportColumns.size()),
+                        center[0],
+                        floorBaseY * 0.5f,
+                        center[1],
+                        columnSize,
+                        floorBaseY,
+                        columnSize,
+                        "concrete_floor"));
+                }
             }
         }
     }

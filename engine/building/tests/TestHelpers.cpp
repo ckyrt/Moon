@@ -1,11 +1,51 @@
 #include "TestHelpers.h"
 
+#include <fstream>
+#include <sstream>
+#include <vector>
+
 namespace Moon {
 namespace Building {
 namespace Test {
 
-std::string TestHelpers::LoadFromFile(const std::string&) {
-  return std::string();
+std::string TestHelpers::LoadFromFile(const std::string& filename) {
+  auto readTextFile = [](const std::string& path) -> std::string {
+    std::ifstream file(path, std::ios::in | std::ios::binary);
+    if (!file.is_open()) {
+      return {};
+    }
+
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+  };
+
+  const std::vector<std::string> prefixes = {
+    "",
+    "./",
+    "../",
+    "../../",
+    "../../../",
+    "../../../../",
+    "../../../../../",
+    "../../../../../../"
+  };
+
+  for (const auto& prefix : prefixes) {
+    const std::vector<std::string> candidates = {
+      prefix + "assets/building/" + filename,
+      prefix + filename
+    };
+
+    for (const auto& candidate : candidates) {
+      const std::string content = readTextFile(candidate);
+      if (!content.empty()) {
+        return content;
+      }
+    }
+  }
+
+  return {};
 }
 
 // ========================================

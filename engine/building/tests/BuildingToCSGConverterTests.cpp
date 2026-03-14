@@ -225,6 +225,34 @@ TEST_F(BuildingToCSGConverterTest, MultiFloorBuilding_ValidOutput) {
     EXPECT_TRUE(IsValidJSON(csgJson));
 }
 
+TEST_F(BuildingToCSGConverterTest, MultiFloorBuilding_EmitsSupportColumns) {
+    std::string inputJson = TestHelpers::CreateMultiFloorBuilding();
+    GeneratedBuilding building;
+    std::string errorMsg;
+
+    bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
+    ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
+
+    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    ASSERT_TRUE(j.contains("root"));
+    ASSERT_TRUE(j["root"].contains("children"));
+
+    bool foundSupportColumn = false;
+    for (const auto& child : j["root"]["children"]) {
+        if (child.contains("name") && child["name"].is_string()) {
+            const std::string name = child["name"].get<std::string>();
+            if (name.rfind("support_column_", 0) == 0) {
+                foundSupportColumn = true;
+                break;
+            }
+        }
+    }
+
+    EXPECT_TRUE(foundSupportColumn) << "Expected support columns for elevated floors";
+}
+
 // ========================================
 // Integration Tests
 // ========================================

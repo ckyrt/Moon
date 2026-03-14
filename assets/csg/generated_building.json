@@ -7,16 +7,16 @@
         "material": "concrete_floor",
         "name": "floor_1_ring_corridor_gf_top",
         "params": {
-          "size_x": 3000.0,
+          "size_x": 2200.0,
           "size_y": 5.0,
-          "size_z": 300.0
+          "size_z": 200.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            4300.0,
+            4050.0,
             2.5,
-            150.0
+            350.0
           ]
         },
         "type": "primitive"
@@ -25,16 +25,16 @@
         "material": "concrete_floor",
         "name": "floor_1_ring_corridor_gf_bottom",
         "params": {
-          "size_x": 3000.0,
+          "size_x": 2200.0,
           "size_y": 5.0,
-          "size_z": 300.0
+          "size_z": 200.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            4300.0,
+            4050.0,
             2.5,
-            2550.0
+            2350.0
           ]
         },
         "type": "primitive"
@@ -43,16 +43,16 @@
         "material": "concrete_floor",
         "name": "floor_1_ring_corridor_gf_left",
         "params": {
-          "size_x": 300.0,
+          "size_x": 200.0,
           "size_y": 5.0,
-          "size_z": 2400.0
+          "size_z": 1800.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            2950.0,
+            3050.0,
             2.5,
-            1200.0
+            1350.0
           ]
         },
         "type": "primitive"
@@ -61,16 +61,16 @@
         "material": "concrete_floor",
         "name": "floor_1_ring_corridor_gf_right",
         "params": {
-          "size_x": 300.0,
+          "size_x": 200.0,
           "size_y": 5.0,
-          "size_z": 2400.0
+          "size_z": 1800.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            5650.0,
+            5050.0,
             2.5,
-            1200.0
+            1350.0
           ]
         },
         "type": "primitive"
@@ -79,16 +79,16 @@
         "material": "concrete_floor",
         "name": "floor_2_main_lobby_gf",
         "params": {
-          "size_x": 1500.0,
+          "size_x": 1100.0,
           "size_y": 5.0,
-          "size_z": 850.0
+          "size_z": 600.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            750.0,
+            550.0,
             2.5,
-            1475.0
+            1050.0
           ]
         },
         "type": "primitive"
@@ -97,16 +97,16 @@
         "material": "concrete_floor",
         "name": "floor_3_entry_gf",
         "params": {
-          "size_x": 900.0,
+          "size_x": 700.0,
           "size_y": 5.0,
-          "size_z": 700.0
+          "size_z": 550.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            450.0,
+            350.0,
             2.5,
-            2250.0
+            1625.0
           ]
         },
         "type": "primitive"
@@ -115,16 +115,88 @@
         "material": "concrete_floor",
         "name": "floor_4_core_gf",
         "params": {
-          "size_x": 1300.0,
+          "size_x": 1000.0,
           "size_y": 5.0,
-          "size_z": 900.0
+          "size_z": 650.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            7450.0,
+            7600.0,
             2.5,
-            450.0
+            325.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "floor_5_ring_corridor_l1_top",
+        "params": {
+          "size_x": 2200.0,
+          "size_y": 5.0,
+          "size_z": 200.0
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            4050.0,
+            602.5,
+            350.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "floor_5_ring_corridor_l1_bottom",
+        "params": {
+          "size_x": 2200.0,
+          "size_y": 5.0,
+          "size_z": 200.0
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            4050.0,
+            602.5,
+            2350.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "floor_5_ring_corridor_l1_left",
+        "params": {
+          "size_x": 200.0,
+          "size_y": 5.0,
+          "size_z": 1800.0
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            3050.0,
+            602.5,
+            1350.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "floor_5_ring_corridor_l1_right",
+        "params": {
+          "size_x": 200.0,
+          "size_y": 5.0,
+          "size_z": 1800.0
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5050.0,
+            602.5,
+            1350.0
           ]
         },
         "type": "primitive"
@@ -133,34 +205,34 @@
         "material": "concrete_floor",
         "name": "floor_6_sky_lobby_l1",
         "params": {
-          "size_x": 1400.0,
+          "size_x": 1000.0,
           "size_y": 5.0,
-          "size_z": 800.0
+          "size_z": 550.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            700.0,
+            2450.0,
             602.5,
-            400.0
+            275.0
           ]
         },
         "type": "primitive"
       },
       {
         "material": "concrete_floor",
-        "name": "floor_7_stairs_l1",
+        "name": "floor_7_core_l1",
         "params": {
-          "size_x": 700.0,
+          "size_x": 1000.0,
           "size_y": 5.0,
-          "size_z": 500.0
+          "size_z": 650.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            1750.0,
+            500.0,
             602.5,
-            250.0
+            325.0
           ]
         },
         "type": "primitive"
@@ -169,239 +241,862 @@
         "material": "concrete_floor",
         "name": "floor_8_bookstore_l1",
         "params": {
-          "size_x": 1700.0,
+          "size_x": 1200.0,
           "size_y": 5.0,
-          "size_z": 1200.0
+          "size_z": 850.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            850.0,
+            2350.0,
             602.5,
-            1400.0
+            975.0
           ]
         },
         "type": "primitive"
       },
       {
         "material": "concrete_floor",
-        "name": "floor_9_kids_store_l1",
+        "name": "floor_9_design_store_l1",
         "params": {
-          "size_x": 1550.0,
+          "size_x": 1100.0,
           "size_y": 5.0,
-          "size_z": 1100.0
+          "size_z": 800.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            6125.0,
+            2400.0,
             602.5,
-            2150.0
+            1800.0
           ]
         },
         "type": "primitive"
       },
       {
         "material": "concrete_floor",
-        "name": "floor_10_food_hall_l1",
+        "name": "floor_10_kids_store_l1",
         "params": {
-          "size_x": 2100.0,
+          "size_x": 1100.0,
           "size_y": 5.0,
-          "size_z": 1500.0
+          "size_z": 800.0
         },
         "primitive": "cube",
         "transform": {
           "position": [
-            6550.0,
+            5700.0,
             602.5,
-            850.0
+            2300.0
           ]
         },
         "type": "primitive"
       },
       {
-        "left": {
-          "left": {
-            "left": {
-              "material": "brick",
-              "overrides": {
-                "h": 300.0,
-                "rotation_y": 0.0,
-                "t": 20.0,
-                "w": 1300.0
-              },
-              "ref": "wall_panel_v1",
-              "size": [
-                13.0,
-                3.0,
-                0.20000000298023224
-              ],
-              "transform": {
-                "position": [
-                  7450.0,
-                  0.0,
-                  0.0
-                ]
-              },
-              "type": "reference"
-            },
-            "operation": "subtract",
-            "right": {
-              "overrides": {
-                "h": 152.0,
-                "rotation_y": 0.0,
-                "t": 22.0,
-                "w": 122.00000762939453
-              },
-              "ref": "opening_v1",
-              "transform": {
-                "position": [
-                  7110.0,
-                  90.0,
-                  0.0
-                ]
-              },
-              "type": "reference"
-            },
-            "type": "csg"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 0.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                7450.0,
-                90.0,
-                0.0
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
+        "material": "concrete_floor",
+        "name": "floor_11_food_hall_l1",
+        "params": {
+          "size_x": 1450.0,
+          "size_y": 5.0,
+          "size_z": 1050.0
         },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5875.0,
+            602.5,
+            975.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_1",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2985.0,
+            300.0,
+            285.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_2",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5115.0,
+            300.0,
+            285.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_3",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2985.0,
+            300.0,
+            415.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_4",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5115.0,
+            300.0,
+            415.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_5",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2985.0,
+            300.0,
+            2285.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_6",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5115.0,
+            300.0,
+            2285.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_7",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2985.0,
+            300.0,
+            2415.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_8",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5115.0,
+            300.0,
+            2415.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_9",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2985.0,
+            300.0,
+            485.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_10",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            3115.0,
+            300.0,
+            485.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_11",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2985.0,
+            300.0,
+            2215.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_12",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            3115.0,
+            300.0,
+            2215.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_13",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            4985.0,
+            300.0,
+            485.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_14",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5115.0,
+            300.0,
+            485.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_15",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            4985.0,
+            300.0,
+            2215.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_16",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5115.0,
+            300.0,
+            2215.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_17",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            1985.0,
+            300.0,
+            35.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_18",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2915.0,
+            300.0,
+            35.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_19",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            1985.0,
+            300.0,
+            515.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_20",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2915.0,
+            300.0,
+            515.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_21",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            35.0,
+            300.0,
+            35.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_22",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            964.9999389648438,
+            300.0,
+            35.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_23",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            35.0,
+            300.0,
+            615.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_24",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            964.9999389648438,
+            300.0,
+            615.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_25",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            1785.0,
+            300.0,
+            585.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_26",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2915.0,
+            300.0,
+            585.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_27",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            1785.0,
+            300.0,
+            1365.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_28",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2915.0,
+            300.0,
+            1365.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_29",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            1885.0,
+            300.0,
+            1435.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_30",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2915.0,
+            300.0,
+            1435.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_31",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            1885.0,
+            300.0,
+            2165.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_32",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            2915.0,
+            300.0,
+            2165.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_33",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5185.0,
+            300.0,
+            1935.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_34",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            6215.0,
+            300.0,
+            1935.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_35",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5185.0,
+            300.0,
+            2665.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_36",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            6215.0,
+            300.0,
+            2665.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_37",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5185.0,
+            300.0,
+            485.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_38",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            6565.0,
+            300.0,
+            485.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_39",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            5185.0,
+            300.0,
+            1465.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "concrete_floor",
+        "name": "support_column_1_40",
+        "params": {
+          "size_x": 30.000001907348633,
+          "size_y": 600.0,
+          "size_z": 30.000001907348633
+        },
+        "primitive": "cube",
+        "transform": {
+          "position": [
+            6565.0,
+            300.0,
+            1465.0
+          ]
+        },
+        "type": "primitive"
+      },
+      {
+        "material": "brick",
         "name": "wall_0",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 0.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              7790.0,
-              90.0,
-              0.0
-            ]
-          },
-          "type": "reference"
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 1800.0
         },
+        "ref": "wall_panel_v1",
         "size": [
-          13.0,
+          18.0,
           3.0,
           0.20000000298023224
         ],
-        "type": "csg"
+        "transform": {
+          "position": [
+            4950.0,
+            0.0,
+            1350.0
+          ]
+        },
+        "type": "reference"
       },
       {
-        "left": {
-          "left": {
-            "material": "brick",
-            "overrides": {
-              "h": 450.0,
-              "rotation_y": 0.0,
-              "t": 20.0,
-              "w": 900.0
-            },
-            "ref": "wall_panel_v1",
-            "size": [
-              9.0,
-              4.5,
-              0.20000000298023224
-            ],
-            "transform": {
-              "position": [
-                450.0,
-                0.0,
-                2600.0
-              ]
-            },
-            "type": "reference"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 0.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                290.0,
-                90.0,
-                2600.0
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
+        "material": "brick",
         "name": "wall_1",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 0.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              610.0000610351563,
-              90.0,
-              2600.0
-            ]
-          },
-          "type": "reference"
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 2200.0
         },
+        "ref": "wall_panel_v1",
         "size": [
-          9.0,
-          4.5,
+          22.0,
+          3.0,
           0.20000000298023224
         ],
-        "type": "csg"
+        "transform": {
+          "position": [
+            2950.0,
+            0.0,
+            1350.0
+          ]
+        },
+        "type": "reference"
       },
       {
         "material": "brick",
         "name": "wall_2",
         "overrides": {
           "h": 300.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
-          "w": 2400.0
+          "w": 2200.0
         },
         "ref": "wall_panel_v1",
         "size": [
-          24.0,
+          22.0,
           3.0,
           0.20000000298023224
         ],
         "transform": {
           "position": [
-            5800.0,
+            4050.0,
             0.0,
-            1500.0
+            250.0
           ]
         },
         "type": "reference"
@@ -413,19 +1108,19 @@
           "h": 300.0,
           "rotation_y": 0.0,
           "t": 20.0,
-          "w": 2400.0
+          "w": 1800.0
         },
         "ref": "wall_panel_v1",
         "size": [
-          24.0,
+          18.0,
           3.0,
           0.20000000298023224
         ],
         "transform": {
           "position": [
-            4300.0,
+            4050.0,
             0.0,
-            2400.0
+            2250.0
           ]
         },
         "type": "reference"
@@ -437,370 +1132,19 @@
           "h": 300.0,
           "rotation_y": 90.0,
           "t": 20.0,
-          "w": 2400.0
+          "w": 2000.0
         },
         "ref": "wall_panel_v1",
         "size": [
-          24.0,
+          20.0,
           3.0,
           0.20000000298023224
         ],
         "transform": {
           "position": [
-            3100.0,
+            5150.0,
             0.0,
-            1200.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "material": "brick",
-        "name": "wall_5",
-        "overrides": {
-          "h": 300.0,
-          "rotation_y": 0.0,
-          "t": 20.0,
-          "w": 2400.0
-        },
-        "ref": "wall_panel_v1",
-        "size": [
-          24.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "transform": {
-          "position": [
-            4300.0,
-            0.0,
-            0.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "left": {
-          "left": {
-            "left": {
-              "material": "brick",
-              "overrides": {
-                "h": 300.0,
-                "rotation_y": 0.0,
-                "t": 20.0,
-                "w": 1300.0
-              },
-              "ref": "wall_panel_v1",
-              "size": [
-                13.0,
-                3.0,
-                0.20000000298023224
-              ],
-              "transform": {
-                "position": [
-                  7450.0,
-                  0.0,
-                  900.0
-                ]
-              },
-              "type": "reference"
-            },
-            "operation": "subtract",
-            "right": {
-              "overrides": {
-                "h": 152.0,
-                "rotation_y": 0.0,
-                "t": 22.0,
-                "w": 122.00000762939453
-              },
-              "ref": "opening_v1",
-              "transform": {
-                "position": [
-                  7110.0,
-                  90.0,
-                  900.0
-                ]
-              },
-              "type": "reference"
-            },
-            "type": "csg"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 0.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                7450.0,
-                90.0,
-                900.0
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_6",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 0.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              7790.0,
-              90.0,
-              900.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          13.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "material": "plaster",
-          "overrides": {
-            "h": 450.0,
-            "rotation_y": 0.0,
-            "t": 20.0,
-            "w": 900.0
-          },
-          "ref": "wall_panel_v1",
-          "size": [
-            9.0,
-            4.5,
-            0.20000000298023224
-          ],
-          "transform": {
-            "position": [
-              450.0,
-              0.0,
-              1900.0
-            ]
-          },
-          "type": "reference"
-        },
-        "name": "wall_7",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 211.99998474121094,
-            "rotation_y": 0.0,
-            "t": 22.0,
-            "w": 92.0
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              450.0,
-              0.0,
-              1900.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          9.0,
-          4.5,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "material": "brick",
-        "name": "wall_8",
-        "overrides": {
-          "h": 300.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 2400.0
-        },
-        "ref": "wall_panel_v1",
-        "size": [
-          24.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "transform": {
-          "position": [
-            2800.0,
-            0.0,
-            1500.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "material": "brick",
-        "name": "wall_9",
-        "overrides": {
-          "h": 300.0,
-          "rotation_y": 0.0,
-          "t": 20.0,
-          "w": 3000.0
-        },
-        "ref": "wall_panel_v1",
-        "size": [
-          30.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "transform": {
-          "position": [
-            4300.0,
-            0.0,
-            300.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "left": {
-          "left": {
-            "left": {
-              "left": {
-                "material": "brick",
-                "overrides": {
-                  "h": 300.0,
-                  "rotation_y": 0.0,
-                  "t": 20.0,
-                  "w": 1550.0
-                },
-                "ref": "wall_panel_v1",
-                "size": [
-                  15.5,
-                  3.0,
-                  0.20000000298023224
-                ],
-                "transform": {
-                  "position": [
-                    6125.0,
-                    600.0,
-                    2700.0
-                  ]
-                },
-                "type": "reference"
-              },
-              "operation": "subtract",
-              "right": {
-                "overrides": {
-                  "h": 152.0,
-                  "rotation_y": 0.0,
-                  "t": 22.0,
-                  "w": 122.00000762939453
-                },
-                "ref": "opening_v1",
-                "transform": {
-                  "position": [
-                    5642.0,
-                    690.0,
-                    2700.0
-                  ]
-                },
-                "type": "reference"
-              },
-              "type": "csg"
-            },
-            "operation": "subtract",
-            "right": {
-              "overrides": {
-                "h": 152.0,
-                "rotation_y": 0.0,
-                "t": 22.0,
-                "w": 122.00000762939453
-              },
-              "ref": "opening_v1",
-              "transform": {
-                "position": [
-                  5964.0,
-                  690.0,
-                  2700.0
-                ]
-              },
-              "type": "reference"
-            },
-            "type": "csg"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 0.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                6286.0,
-                690.0,
-                2700.0
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_10",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 0.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              6608.0,
-              690.0,
-              2700.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          15.5,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "material": "brick",
-        "name": "wall_11",
-        "overrides": {
-          "h": 300.0,
-          "rotation_y": 0.0,
-          "t": 20.0,
-          "w": 3000.0
-        },
-        "ref": "wall_panel_v1",
-        "size": [
-          30.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "transform": {
-          "position": [
-            4300.0,
-            0.0,
-            2700.0
+            1450.0
           ]
         },
         "type": "reference"
@@ -809,8 +1153,468 @@
         "left": {
           "material": "brick",
           "overrides": {
-            "h": 450.0,
+            "h": 300.0,
             "rotation_y": 90.0,
+            "t": 20.0,
+            "w": 650.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            6.5,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              0.0,
+              600.0,
+              325.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_5",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              0.0,
+              690.0,
+              325.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          6.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "material": "brick",
+        "name": "wall_6",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 0.0,
+          "t": 20.0,
+          "w": 1800.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          18.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            4050.0,
+            0.0,
+            450.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "material": "brick",
+        "name": "wall_7",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 1800.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          18.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            3150.0,
+            0.0,
+            1350.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "left": {
+          "material": "brick",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": 90.0,
+            "t": 20.0,
+            "w": 650.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            6.5,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              1000.0,
+              600.0,
+              325.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_8",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              1000.0,
+              690.0,
+              325.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          6.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "material": "brick",
+        "name": "wall_9",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 0.0,
+          "t": 20.0,
+          "w": 2200.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          22.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            4050.0,
+            0.0,
+            2450.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "material": "brick",
+        "name": "wall_10",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 250.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          2.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            2950.0,
+            600.0,
+            125.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "left": {
+          "left": {
+            "material": "brick",
+            "overrides": {
+              "h": 300.0,
+              "rotation_y": 0.0,
+              "t": 20.0,
+              "w": 1100.0
+            },
+            "ref": "wall_panel_v1",
+            "size": [
+              11.0,
+              3.0,
+              0.20000000298023224
+            ],
+            "transform": {
+              "position": [
+                550.0,
+                0.0,
+                750.0
+              ]
+            },
+            "type": "reference"
+          },
+          "operation": "subtract",
+          "right": {
+            "overrides": {
+              "h": 152.0,
+              "rotation_y": 0.0,
+              "t": 22.0,
+              "w": 122.00000762939453
+            },
+            "ref": "opening_v1",
+            "transform": {
+              "position": [
+                356.6666564941406,
+                90.0,
+                750.0
+              ]
+            },
+            "type": "reference"
+          },
+          "type": "csg"
+        },
+        "name": "wall_11",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 0.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              743.3333129882813,
+              90.0,
+              750.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          11.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "material": "brick",
+        "name": "wall_12",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 250.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          2.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            5150.0,
+            600.0,
+            2575.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "left": {
+          "left": {
+            "material": "brick",
+            "overrides": {
+              "h": 300.0,
+              "rotation_y": 90.0,
+              "t": 20.0,
+              "w": 800.0
+            },
+            "ref": "wall_panel_v1",
+            "size": [
+              8.0,
+              3.0,
+              0.20000000298023224
+            ],
+            "transform": {
+              "position": [
+                1850.0,
+                600.0,
+                1800.0
+              ]
+            },
+            "type": "reference"
+          },
+          "operation": "subtract",
+          "right": {
+            "overrides": {
+              "h": 152.0,
+              "rotation_y": 90.0,
+              "t": 22.0,
+              "w": 122.00000762939453
+            },
+            "ref": "opening_v1",
+            "transform": {
+              "position": [
+                1850.0,
+                690.0,
+                1656.66650390625
+              ]
+            },
+            "type": "reference"
+          },
+          "type": "csg"
+        },
+        "name": "wall_13",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              1850.0,
+              690.0,
+              1943.33349609375
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          8.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "material": "plaster",
+        "name": "wall_14",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": -90.0,
+          "t": 20.0,
+          "w": 350.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          3.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            5150.0,
+            600.0,
+            2075.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "left": {
+          "material": "brick",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": 90.0,
+            "t": 20.0,
+            "w": 600.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            6.0,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              1100.0,
+              0.0,
+              1050.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_15",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              1100.0,
+              90.0,
+              1050.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          6.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "material": "brick",
+        "name": "wall_16",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 0.0,
+          "t": 20.0,
+          "w": 1800.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          18.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            4050.0,
+            600.0,
+            450.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "left": {
+          "material": "plaster",
+          "overrides": {
+            "h": 450.0,
+            "rotation_y": 0.0,
             "t": 20.0,
             "w": 700.0
           },
@@ -822,28 +1626,28 @@
           ],
           "transform": {
             "position": [
-              900.0,
+              350.0,
               0.0,
-              2250.0
+              1350.0
             ]
           },
           "type": "reference"
         },
-        "name": "wall_12",
+        "name": "wall_17",
         "operation": "subtract",
         "right": {
           "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
+            "h": 211.99998474121094,
+            "rotation_y": 0.0,
             "t": 22.0,
-            "w": 122.00000762939453
+            "w": 92.0
           },
           "ref": "opening_v1",
           "transform": {
             "position": [
-              900.0,
-              90.0,
-              2250.0
+              350.0,
+              0.0,
+              1350.0
             ]
           },
           "type": "reference"
@@ -857,94 +1661,97 @@
       },
       {
         "material": "brick",
-        "name": "wall_13",
+        "name": "wall_18",
         "overrides": {
           "h": 300.0,
           "rotation_y": 90.0,
           "t": 20.0,
-          "w": 2400.0
+          "w": 200.0
         },
         "ref": "wall_panel_v1",
         "size": [
-          24.0,
+          2.0,
           3.0,
           0.20000000298023224
         ],
         "transform": {
           "position": [
-            5500.0,
-            0.0,
-            1200.0
+            5150.0,
+            600.0,
+            350.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "material": "brick",
+        "name": "wall_19",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 1800.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          18.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            3150.0,
+            600.0,
+            1350.0
           ]
         },
         "type": "reference"
       },
       {
         "left": {
-          "left": {
-            "material": "brick",
-            "overrides": {
-              "h": 300.0,
-              "rotation_y": 90.0,
-              "t": 20.0,
-              "w": 900.0
-            },
-            "ref": "wall_panel_v1",
-            "size": [
-              9.0,
-              3.0,
-              0.20000000298023224
-            ],
-            "transform": {
-              "position": [
-                8100.0,
-                0.0,
-                450.0
-              ]
-            },
-            "type": "reference"
+          "material": "brick",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": 0.0,
+            "t": 20.0,
+            "w": 400.0
           },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 90.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                8100.0,
-                90.0,
-                290.0
-              ]
-            },
-            "type": "reference"
+          "ref": "wall_panel_v1",
+          "size": [
+            4.0,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              900.0,
+              0.0,
+              1350.0
+            ]
           },
-          "type": "csg"
+          "type": "reference"
         },
-        "name": "wall_14",
+        "name": "wall_20",
         "operation": "subtract",
         "right": {
           "overrides": {
             "h": 152.0,
-            "rotation_y": 90.0,
+            "rotation_y": 0.0,
             "t": 22.0,
             "w": 122.00000762939453
           },
           "ref": "opening_v1",
           "transform": {
             "position": [
-              8100.0,
+              900.0,
               90.0,
-              610.0000610351563
+              1350.0
             ]
           },
           "type": "reference"
         },
         "size": [
-          9.0,
+          4.0,
           3.0,
           0.20000000298023224
         ],
@@ -953,48 +1760,27 @@
       {
         "left": {
           "left": {
-            "left": {
-              "material": "brick",
-              "overrides": {
-                "h": 300.0,
-                "rotation_y": 0.0,
-                "t": 20.0,
-                "w": 1500.0
-              },
-              "ref": "wall_panel_v1",
-              "size": [
-                15.0,
-                3.0,
-                0.20000000298023224
-              ],
-              "transform": {
-                "position": [
-                  750.0,
-                  0.0,
-                  1050.0
-                ]
-              },
-              "type": "reference"
+            "material": "brick",
+            "overrides": {
+              "h": 300.0,
+              "rotation_y": 0.0,
+              "t": 20.0,
+              "w": 1000.0
             },
-            "operation": "subtract",
-            "right": {
-              "overrides": {
-                "h": 152.0,
-                "rotation_y": 0.0,
-                "t": 22.0,
-                "w": 122.00000762939453
-              },
-              "ref": "opening_v1",
-              "transform": {
-                "position": [
-                  360.0,
-                  90.0,
-                  1050.0
-                ]
-              },
-              "type": "reference"
+            "ref": "wall_panel_v1",
+            "size": [
+              10.0,
+              3.0,
+              0.20000000298023224
+            ],
+            "transform": {
+              "position": [
+                7600.0,
+                0.0,
+                0.0
+              ]
             },
-            "type": "csg"
+            "type": "reference"
           },
           "operation": "subtract",
           "right": {
@@ -1007,16 +1793,16 @@
             "ref": "opening_v1",
             "transform": {
               "position": [
-                750.0,
+                7423.3330078125,
                 90.0,
-                1050.0
+                0.0
               ]
             },
             "type": "reference"
           },
           "type": "csg"
         },
-        "name": "wall_15",
+        "name": "wall_21",
         "operation": "subtract",
         "right": {
           "overrides": {
@@ -1028,178 +1814,15 @@
           "ref": "opening_v1",
           "transform": {
             "position": [
-              1140.0,
+              7776.666015625,
               90.0,
-              1050.0
+              0.0
             ]
           },
           "type": "reference"
         },
         "size": [
-          15.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "left": {
-            "material": "brick",
-            "overrides": {
-              "h": 300.0,
-              "rotation_y": 90.0,
-              "t": 20.0,
-              "w": 850.0
-            },
-            "ref": "wall_panel_v1",
-            "size": [
-              8.5,
-              3.0,
-              0.20000000298023224
-            ],
-            "transform": {
-              "position": [
-                1500.0,
-                0.0,
-                1475.0
-              ]
-            },
-            "type": "reference"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 90.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                1500.0,
-                90.0,
-                1323.3333740234375
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_16",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              1500.0,
-              90.0,
-              1626.6666259765625
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          8.5,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "left": {
-            "left": {
-              "material": "brick",
-              "overrides": {
-                "h": 300.0,
-                "rotation_y": 90.0,
-                "t": 20.0,
-                "w": 1100.0
-              },
-              "ref": "wall_panel_v1",
-              "size": [
-                11.0,
-                3.0,
-                0.20000000298023224
-              ],
-              "transform": {
-                "position": [
-                  5350.0,
-                  600.0,
-                  2150.0
-                ]
-              },
-              "type": "reference"
-            },
-            "operation": "subtract",
-            "right": {
-              "overrides": {
-                "h": 152.0,
-                "rotation_y": 90.0,
-                "t": 22.0,
-                "w": 122.00000762939453
-              },
-              "ref": "opening_v1",
-              "transform": {
-                "position": [
-                  5350.0,
-                  690.0,
-                  1860.0
-                ]
-              },
-              "type": "reference"
-            },
-            "type": "csg"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 90.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                5350.0,
-                690.0,
-                2150.0
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_17",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              5350.0,
-              690.0,
-              2440.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          11.0,
+          10.0,
           3.0,
           0.20000000298023224
         ],
@@ -1209,8 +1832,58 @@
         "left": {
           "material": "brick",
           "overrides": {
+            "h": 450.0,
+            "rotation_y": 90.0,
+            "t": 20.0,
+            "w": 550.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            5.5,
+            4.5,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              1625.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_22",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              0.0,
+              90.0,
+              1625.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          5.5,
+          4.5,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "material": "brick",
+          "overrides": {
             "h": 300.0,
-            "rotation_y": 0.0,
+            "rotation_y": 90.0,
             "t": 20.0,
             "w": 600.0
           },
@@ -1222,28 +1895,28 @@
           ],
           "transform": {
             "position": [
-              1200.0,
               0.0,
-              1900.0
+              0.0,
+              1050.0
             ]
           },
           "type": "reference"
         },
-        "name": "wall_18",
+        "name": "wall_23",
         "operation": "subtract",
         "right": {
           "overrides": {
             "h": 152.0,
-            "rotation_y": 0.0,
+            "rotation_y": 90.0,
             "t": 22.0,
             "w": 122.00000762939453
           },
           "ref": "opening_v1",
           "transform": {
             "position": [
-              1200.0,
+              0.0,
               90.0,
-              1900.0
+              1050.0
             ]
           },
           "type": "reference"
@@ -1258,217 +1931,25 @@
       {
         "left": {
           "left": {
-            "material": "brick",
-            "overrides": {
-              "h": 300.0,
-              "rotation_y": 90.0,
-              "t": 20.0,
-              "w": 850.0
-            },
-            "ref": "wall_panel_v1",
-            "size": [
-              8.5,
-              3.0,
-              0.20000000298023224
-            ],
-            "transform": {
-              "position": [
-                0.0,
-                0.0,
-                1475.0
-              ]
-            },
-            "type": "reference"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 90.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                0.0,
-                90.0,
-                1323.3333740234375
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_19",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              0.0,
-              90.0,
-              1626.6666259765625
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          8.5,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "material": "brick",
-          "overrides": {
-            "h": 450.0,
-            "rotation_y": 90.0,
-            "t": 20.0,
-            "w": 700.0
-          },
-          "ref": "wall_panel_v1",
-          "size": [
-            7.0,
-            4.5,
-            0.20000000298023224
-          ],
-          "transform": {
-            "position": [
-              0.0,
-              0.0,
-              2250.0
-            ]
-          },
-          "type": "reference"
-        },
-        "name": "wall_20",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              0.0,
-              90.0,
-              2250.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          7.0,
-          4.5,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "left": {
-            "material": "brick",
-            "overrides": {
-              "h": 300.0,
-              "rotation_y": 90.0,
-              "t": 20.0,
-              "w": 900.0
-            },
-            "ref": "wall_panel_v1",
-            "size": [
-              9.0,
-              3.0,
-              0.20000000298023224
-            ],
-            "transform": {
-              "position": [
-                6800.0,
-                0.0,
-                450.0
-              ]
-            },
-            "type": "reference"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 90.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                6800.0,
-                90.0,
-                290.0
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_21",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              6800.0,
-              90.0,
-              610.0000610351563
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          9.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "left": {
             "left": {
               "material": "brick",
               "overrides": {
                 "h": 300.0,
                 "rotation_y": 0.0,
                 "t": 20.0,
-                "w": 1400.0
+                "w": 1100.0
               },
               "ref": "wall_panel_v1",
               "size": [
-                14.0,
+                11.0,
                 3.0,
                 0.20000000298023224
               ],
               "transform": {
                 "position": [
-                  700.0,
+                  2400.0,
                   600.0,
-                  0.0
+                  2200.0
                 ]
               },
               "type": "reference"
@@ -1484,9 +1965,9 @@
               "ref": "opening_v1",
               "transform": {
                 "position": [
-                  335.0,
+                  2110.0,
                   690.0,
-                  0.0
+                  2200.0
                 ]
               },
               "type": "reference"
@@ -1504,295 +1985,19 @@
             "ref": "opening_v1",
             "transform": {
               "position": [
-                700.0,
+                2400.0,
                 690.0,
-                0.0
+                2200.0
               ]
             },
             "type": "reference"
           },
           "type": "csg"
-        },
-        "name": "wall_22",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 0.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              1065.0,
-              690.0,
-              0.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          14.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "left": {
-            "left": {
-              "left": {
-                "material": "brick",
-                "overrides": {
-                  "h": 300.0,
-                  "rotation_y": 90.0,
-                  "t": 20.0,
-                  "w": 1500.0
-                },
-                "ref": "wall_panel_v1",
-                "size": [
-                  15.0,
-                  3.0,
-                  0.20000000298023224
-                ],
-                "transform": {
-                  "position": [
-                    7600.0,
-                    600.0,
-                    850.0
-                  ]
-                },
-                "type": "reference"
-              },
-              "operation": "subtract",
-              "right": {
-                "overrides": {
-                  "h": 152.0,
-                  "rotation_y": 90.0,
-                  "t": 22.0,
-                  "w": 122.00000762939453
-                },
-                "ref": "opening_v1",
-                "transform": {
-                  "position": [
-                    7600.0,
-                    690.0,
-                    381.9999694824219
-                  ]
-                },
-                "type": "reference"
-              },
-              "type": "csg"
-            },
-            "operation": "subtract",
-            "right": {
-              "overrides": {
-                "h": 152.0,
-                "rotation_y": 90.0,
-                "t": 22.0,
-                "w": 122.00000762939453
-              },
-              "ref": "opening_v1",
-              "transform": {
-                "position": [
-                  7600.0,
-                  690.0,
-                  693.9999389648438
-                ]
-              },
-              "type": "reference"
-            },
-            "type": "csg"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 90.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                7600.0,
-                690.0,
-                1005.9999389648438
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_23",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              7600.0,
-              690.0,
-              1317.9998779296875
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          15.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "material": "plaster",
-          "overrides": {
-            "h": 300.0,
-            "rotation_y": 90.0,
-            "t": 20.0,
-            "w": 500.0
-          },
-          "ref": "wall_panel_v1",
-          "size": [
-            5.0,
-            3.0,
-            0.20000000298023224
-          ],
-          "transform": {
-            "position": [
-              1400.0,
-              600.0,
-              250.0
-            ]
-          },
-          "type": "reference"
         },
         "name": "wall_24",
         "operation": "subtract",
         "right": {
           "overrides": {
-            "h": 211.99998474121094,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 92.0
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              1400.0,
-              600.0,
-              250.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          5.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "left": {
-            "left": {
-              "left": {
-                "material": "brick",
-                "overrides": {
-                  "h": 300.0,
-                  "rotation_y": 0.0,
-                  "t": 20.0,
-                  "w": 1700.0
-                },
-                "ref": "wall_panel_v1",
-                "size": [
-                  17.0,
-                  3.0,
-                  0.20000000298023224
-                ],
-                "transform": {
-                  "position": [
-                    850.0,
-                    600.0,
-                    2000.0
-                  ]
-                },
-                "type": "reference"
-              },
-              "operation": "subtract",
-              "right": {
-                "overrides": {
-                  "h": 152.0,
-                  "rotation_y": 0.0,
-                  "t": 22.0,
-                  "w": 122.00000762939453
-                },
-                "ref": "opening_v1",
-                "transform": {
-                  "position": [
-                    321.9999694824219,
-                    690.0,
-                    2000.0
-                  ]
-                },
-                "type": "reference"
-              },
-              "type": "csg"
-            },
-            "operation": "subtract",
-            "right": {
-              "overrides": {
-                "h": 152.0,
-                "rotation_y": 0.0,
-                "t": 22.0,
-                "w": 122.00000762939453
-              },
-              "ref": "opening_v1",
-              "transform": {
-                "position": [
-                  674.0,
-                  690.0,
-                  2000.0
-                ]
-              },
-              "type": "reference"
-            },
-            "type": "csg"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 0.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                1026.0,
-                690.0,
-                2000.0
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_25",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
             "h": 152.0,
             "rotation_y": 0.0,
             "t": 22.0,
@@ -1801,15 +2006,15 @@
           "ref": "opening_v1",
           "transform": {
             "position": [
-              1378.0001220703125,
+              2690.0,
               690.0,
-              2000.0
+              2200.0
             ]
           },
           "type": "reference"
         },
         "size": [
-          17.0,
+          11.0,
           3.0,
           0.20000000298023224
         ],
@@ -1817,24 +2022,24 @@
       },
       {
         "material": "brick",
-        "name": "wall_26",
+        "name": "wall_25",
         "overrides": {
           "h": 300.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
-          "w": 300.0
+          "w": 200.0
         },
         "ref": "wall_panel_v1",
         "size": [
-          3.0,
+          2.0,
           3.0,
           0.20000000298023224
         ],
         "transform": {
           "position": [
-            1400.0,
+            1850.0,
             600.0,
-            650.0
+            550.0
           ]
         },
         "type": "reference"
@@ -1843,51 +2048,75 @@
         "left": {
           "material": "brick",
           "overrides": {
-            "h": 300.0,
-            "rotation_y": 0.0,
+            "h": 450.0,
+            "rotation_y": 90.0,
             "t": 20.0,
-            "w": 700.0
+            "w": 550.0
           },
           "ref": "wall_panel_v1",
           "size": [
-            7.0,
-            3.0,
+            5.5,
+            4.5,
             0.20000000298023224
           ],
           "transform": {
             "position": [
-              1750.0,
-              600.0,
-              500.0
+              700.0,
+              0.0,
+              1625.0
             ]
           },
           "type": "reference"
         },
-        "name": "wall_27",
+        "name": "wall_26",
         "operation": "subtract",
         "right": {
           "overrides": {
             "h": 152.0,
-            "rotation_y": 0.0,
+            "rotation_y": 90.0,
             "t": 22.0,
             "w": 122.00000762939453
           },
           "ref": "opening_v1",
           "transform": {
             "position": [
-              1750.0,
-              690.0,
-              500.0
+              700.0,
+              90.0,
+              1625.0
             ]
           },
           "type": "reference"
         },
         "size": [
-          7.0,
-          3.0,
+          5.5,
+          4.5,
           0.20000000298023224
         ],
         "type": "csg"
+      },
+      {
+        "material": "brick",
+        "name": "wall_27",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 200.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          2.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            2950.0,
+            600.0,
+            2350.0
+          ]
+        },
+        "type": "reference"
       },
       {
         "left": {
@@ -1896,19 +2125,19 @@
             "h": 300.0,
             "rotation_y": 0.0,
             "t": 20.0,
-            "w": 1400.0
+            "w": 1000.0
           },
           "ref": "wall_panel_v1",
           "size": [
-            14.0,
+            10.0,
             3.0,
             0.20000000298023224
           ],
           "transform": {
             "position": [
-              700.0,
+              2450.0,
               600.0,
-              800.0
+              550.0
             ]
           },
           "type": "reference"
@@ -1925,15 +2154,1056 @@
           "ref": "opening_v1",
           "transform": {
             "position": [
-              700.0,
+              2450.0,
               600.0,
-              800.0
+              550.0
             ]
           },
           "type": "reference"
         },
         "size": [
-          14.0,
+          10.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "material": "brick",
+        "name": "wall_29",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 0.0,
+          "t": 20.0,
+          "w": 2200.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          22.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            4050.0,
+            600.0,
+            250.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "left": {
+          "material": "brick",
+          "overrides": {
+            "h": 450.0,
+            "rotation_y": 0.0,
+            "t": 20.0,
+            "w": 700.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            7.0,
+            4.5,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              350.0,
+              0.0,
+              1900.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_30",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 0.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              350.0,
+              90.0,
+              1900.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          7.0,
+          4.5,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "material": "brick",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": 90.0,
+            "t": 20.0,
+            "w": 650.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            6.5,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              8100.0,
+              0.0,
+              325.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_31",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              8100.0,
+              90.0,
+              325.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          6.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "left": {
+            "material": "brick",
+            "overrides": {
+              "h": 300.0,
+              "rotation_y": 0.0,
+              "t": 20.0,
+              "w": 1000.0
+            },
+            "ref": "wall_panel_v1",
+            "size": [
+              10.0,
+              3.0,
+              0.20000000298023224
+            ],
+            "transform": {
+              "position": [
+                7600.0,
+                0.0,
+                650.0
+              ]
+            },
+            "type": "reference"
+          },
+          "operation": "subtract",
+          "right": {
+            "overrides": {
+              "h": 152.0,
+              "rotation_y": 0.0,
+              "t": 22.0,
+              "w": 122.00000762939453
+            },
+            "ref": "opening_v1",
+            "transform": {
+              "position": [
+                7423.3330078125,
+                90.0,
+                650.0
+              ]
+            },
+            "type": "reference"
+          },
+          "type": "csg"
+        },
+        "name": "wall_32",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 0.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              7776.666015625,
+              90.0,
+              650.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          10.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "material": "brick",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": 90.0,
+            "t": 20.0,
+            "w": 650.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            6.5,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              7100.0,
+              0.0,
+              325.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_33",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              7100.0,
+              90.0,
+              325.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          6.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "material": "plaster",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": -90.0,
+            "t": 20.0,
+            "w": 200.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            2.0,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              2950.0,
+              600.0,
+              350.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_34",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 211.99998474121094,
+            "rotation_y": -90.0,
+            "t": 22.0,
+            "w": 92.0
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              2950.0,
+              600.0,
+              350.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          2.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "material": "brick",
+        "name": "wall_35",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 1800.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          18.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            4950.0,
+            600.0,
+            1350.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "material": "brick",
+        "name": "wall_36",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 0.0,
+          "t": 20.0,
+          "w": 1800.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          18.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            4050.0,
+            600.0,
+            2250.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "material": "brick",
+        "name": "wall_37",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 0.0,
+          "t": 20.0,
+          "w": 2200.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          22.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            4050.0,
+            600.0,
+            2450.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "left": {
+          "material": "plaster",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": 90.0,
+            "t": 20.0,
+            "w": 850.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            8.5,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              2950.0,
+              600.0,
+              975.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_38",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 211.99998474121094,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 92.0
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              2950.0,
+              600.0,
+              975.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          8.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "material": "plaster",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": 90.0,
+            "t": 20.0,
+            "w": 800.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            8.0,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              2950.0,
+              600.0,
+              1800.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_39",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 211.99998474121094,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 92.0
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              2950.0,
+              600.0,
+              1800.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          8.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "left": {
+            "material": "brick",
+            "overrides": {
+              "h": 300.0,
+              "rotation_y": 90.0,
+              "t": 20.0,
+              "w": 850.0
+            },
+            "ref": "wall_panel_v1",
+            "size": [
+              8.5,
+              3.0,
+              0.20000000298023224
+            ],
+            "transform": {
+              "position": [
+                1750.0,
+                600.0,
+                975.0
+              ]
+            },
+            "type": "reference"
+          },
+          "operation": "subtract",
+          "right": {
+            "overrides": {
+              "h": 152.0,
+              "rotation_y": 90.0,
+              "t": 22.0,
+              "w": 122.00000762939453
+            },
+            "ref": "opening_v1",
+            "transform": {
+              "position": [
+                1750.0,
+                690.0,
+                823.3333740234375
+              ]
+            },
+            "type": "reference"
+          },
+          "type": "csg"
+        },
+        "name": "wall_40",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              1750.0,
+              690.0,
+              1126.6666259765625
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          8.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "material": "plaster",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": 90.0,
+            "t": 20.0,
+            "w": 1050.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            10.5,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              5150.0,
+              600.0,
+              975.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_41",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 211.99998474121094,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 92.0
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              5150.0,
+              600.0,
+              975.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          10.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "material": "brick",
+        "name": "wall_42",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 400.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          4.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            5150.0,
+            600.0,
+            1700.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "left": {
+          "left": {
+            "material": "brick",
+            "overrides": {
+              "h": 300.0,
+              "rotation_y": 0.0,
+              "t": 20.0,
+              "w": 1000.0
+            },
+            "ref": "wall_panel_v1",
+            "size": [
+              10.0,
+              3.0,
+              0.20000000298023224
+            ],
+            "transform": {
+              "position": [
+                2450.0,
+                600.0,
+                0.0
+              ]
+            },
+            "type": "reference"
+          },
+          "operation": "subtract",
+          "right": {
+            "overrides": {
+              "h": 152.0,
+              "rotation_y": 0.0,
+              "t": 22.0,
+              "w": 122.00000762939453
+            },
+            "ref": "opening_v1",
+            "transform": {
+              "position": [
+                2273.333251953125,
+                690.0,
+                0.0
+              ]
+            },
+            "type": "reference"
+          },
+          "type": "csg"
+        },
+        "name": "wall_43",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 0.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              2626.666748046875,
+              690.0,
+              0.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          10.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "material": "brick",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": 90.0,
+            "t": 20.0,
+            "w": 550.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            5.5,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              1950.0,
+              600.0,
+              275.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_44",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              1950.0,
+              690.0,
+              275.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          5.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "left": {
+            "material": "brick",
+            "overrides": {
+              "h": 300.0,
+              "rotation_y": 0.0,
+              "t": 20.0,
+              "w": 1000.0
+            },
+            "ref": "wall_panel_v1",
+            "size": [
+              10.0,
+              3.0,
+              0.20000000298023224
+            ],
+            "transform": {
+              "position": [
+                500.0,
+                600.0,
+                0.0
+              ]
+            },
+            "type": "reference"
+          },
+          "operation": "subtract",
+          "right": {
+            "overrides": {
+              "h": 152.0,
+              "rotation_y": 0.0,
+              "t": 22.0,
+              "w": 122.00000762939453
+            },
+            "ref": "opening_v1",
+            "transform": {
+              "position": [
+                323.33331298828125,
+                690.0,
+                0.0
+              ]
+            },
+            "type": "reference"
+          },
+          "type": "csg"
+        },
+        "name": "wall_45",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 0.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              676.6666259765625,
+              690.0,
+              0.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          10.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "left": {
+            "material": "brick",
+            "overrides": {
+              "h": 300.0,
+              "rotation_y": 0.0,
+              "t": 20.0,
+              "w": 1000.0
+            },
+            "ref": "wall_panel_v1",
+            "size": [
+              10.0,
+              3.0,
+              0.20000000298023224
+            ],
+            "transform": {
+              "position": [
+                500.0,
+                600.0,
+                650.0
+              ]
+            },
+            "type": "reference"
+          },
+          "operation": "subtract",
+          "right": {
+            "overrides": {
+              "h": 152.0,
+              "rotation_y": 0.0,
+              "t": 22.0,
+              "w": 122.00000762939453
+            },
+            "ref": "opening_v1",
+            "transform": {
+              "position": [
+                323.33331298828125,
+                690.0,
+                650.0
+              ]
+            },
+            "type": "reference"
+          },
+          "type": "csg"
+        },
+        "name": "wall_46",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 0.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              676.6666259765625,
+              690.0,
+              650.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          10.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "left": {
+            "left": {
+              "material": "brick",
+              "overrides": {
+                "h": 300.0,
+                "rotation_y": 0.0,
+                "t": 20.0,
+                "w": 1100.0
+              },
+              "ref": "wall_panel_v1",
+              "size": [
+                11.0,
+                3.0,
+                0.20000000298023224
+              ],
+              "transform": {
+                "position": [
+                  5700.0,
+                  600.0,
+                  1900.0
+                ]
+              },
+              "type": "reference"
+            },
+            "operation": "subtract",
+            "right": {
+              "overrides": {
+                "h": 152.0,
+                "rotation_y": 0.0,
+                "t": 22.0,
+                "w": 122.00000762939453
+              },
+              "ref": "opening_v1",
+              "transform": {
+                "position": [
+                  5410.0,
+                  690.0,
+                  1900.0
+                ]
+              },
+              "type": "reference"
+            },
+            "type": "csg"
+          },
+          "operation": "subtract",
+          "right": {
+            "overrides": {
+              "h": 152.0,
+              "rotation_y": 0.0,
+              "t": 22.0,
+              "w": 122.00000762939453
+            },
+            "ref": "opening_v1",
+            "transform": {
+              "position": [
+                5700.0,
+                690.0,
+                1900.0
+              ]
+            },
+            "type": "reference"
+          },
+          "type": "csg"
+        },
+        "name": "wall_47",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 0.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              5990.0,
+              690.0,
+              1900.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          11.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "material": "brick",
+        "name": "wall_48",
+        "overrides": {
+          "h": 300.0,
+          "rotation_y": 0.0,
+          "t": 20.0,
+          "w": 100.0
+        },
+        "ref": "wall_panel_v1",
+        "size": [
+          1.0,
+          3.0,
+          0.20000000298023224
+        ],
+        "transform": {
+          "position": [
+            1800.0,
+            600.0,
+            1400.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "left": {
+          "material": "plaster",
+          "overrides": {
+            "h": 300.0,
+            "rotation_y": 0.0,
+            "t": 20.0,
+            "w": 1100.0
+          },
+          "ref": "wall_panel_v1",
+          "size": [
+            11.0,
+            3.0,
+            0.20000000298023224
+          ],
+          "transform": {
+            "position": [
+              2400.0,
+              600.0,
+              1400.0
+            ]
+          },
+          "type": "reference"
+        },
+        "name": "wall_49",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 211.99998474121094,
+            "rotation_y": 0.0,
+            "t": 22.0,
+            "w": 92.0
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              2400.0,
+              600.0,
+              1400.0
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          11.0,
           3.0,
           0.20000000298023224
         ],
@@ -1957,9 +3227,9 @@
             ],
             "transform": {
               "position": [
-                0.0,
+                6250.0,
                 600.0,
-                400.0
+                2300.0
               ]
             },
             "type": "reference"
@@ -1975,16 +3245,16 @@
             "ref": "opening_v1",
             "transform": {
               "position": [
-                0.0,
+                6250.0,
                 690.0,
-                256.6666564941406
+                2156.66650390625
               ]
             },
             "type": "reference"
           },
           "type": "csg"
         },
-        "name": "wall_29",
+        "name": "wall_50",
         "operation": "subtract",
         "right": {
           "overrides": {
@@ -1996,9 +3266,9 @@
           "ref": "opening_v1",
           "transform": {
             "position": [
-              0.0,
+              6250.0,
               690.0,
-              543.3333129882813
+              2443.33349609375
             ]
           },
           "type": "reference"
@@ -2011,200 +3281,13 @@
         "type": "csg"
       },
       {
-        "material": "brick",
-        "name": "wall_30",
-        "overrides": {
-          "h": 300.0,
-          "rotation_y": 0.0,
-          "t": 20.0,
-          "w": 300.0
-        },
-        "ref": "wall_panel_v1",
-        "size": [
-          3.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "transform": {
-          "position": [
-            1550.0,
-            600.0,
-            800.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "left": {
-          "material": "brick",
-          "overrides": {
-            "h": 300.0,
-            "rotation_y": 0.0,
-            "t": 20.0,
-            "w": 700.0
-          },
-          "ref": "wall_panel_v1",
-          "size": [
-            7.0,
-            3.0,
-            0.20000000298023224
-          ],
-          "transform": {
-            "position": [
-              1750.0,
-              600.0,
-              0.0
-            ]
-          },
-          "type": "reference"
-        },
-        "name": "wall_31",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 0.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              1750.0,
-              690.0,
-              0.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          7.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "left": {
-            "left": {
-              "left": {
-                "material": "brick",
-                "overrides": {
-                  "h": 300.0,
-                  "rotation_y": 90.0,
-                  "t": 20.0,
-                  "w": 1500.0
-                },
-                "ref": "wall_panel_v1",
-                "size": [
-                  15.0,
-                  3.0,
-                  0.20000000298023224
-                ],
-                "transform": {
-                  "position": [
-                    5500.0,
-                    600.0,
-                    850.0
-                  ]
-                },
-                "type": "reference"
-              },
-              "operation": "subtract",
-              "right": {
-                "overrides": {
-                  "h": 152.0,
-                  "rotation_y": 90.0,
-                  "t": 22.0,
-                  "w": 122.00000762939453
-                },
-                "ref": "opening_v1",
-                "transform": {
-                  "position": [
-                    5500.0,
-                    690.0,
-                    381.9999694824219
-                  ]
-                },
-                "type": "reference"
-              },
-              "type": "csg"
-            },
-            "operation": "subtract",
-            "right": {
-              "overrides": {
-                "h": 152.0,
-                "rotation_y": 90.0,
-                "t": 22.0,
-                "w": 122.00000762939453
-              },
-              "ref": "opening_v1",
-              "transform": {
-                "position": [
-                  5500.0,
-                  690.0,
-                  693.9999389648438
-                ]
-              },
-              "type": "reference"
-            },
-            "type": "csg"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 90.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                5500.0,
-                690.0,
-                1005.9999389648438
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_32",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              5500.0,
-              690.0,
-              1317.9998779296875
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          15.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
         "left": {
           "left": {
             "left": {
               "material": "brick",
               "overrides": {
                 "h": 300.0,
-                "rotation_y": 90.0,
+                "rotation_y": 0.0,
                 "t": 20.0,
                 "w": 1100.0
               },
@@ -2216,9 +3299,9 @@
               ],
               "transform": {
                 "position": [
-                  6900.0,
+                  5700.0,
                   600.0,
-                  2150.0
+                  2700.0
                 ]
               },
               "type": "reference"
@@ -2227,16 +3310,16 @@
             "right": {
               "overrides": {
                 "h": 152.0,
-                "rotation_y": 90.0,
+                "rotation_y": 0.0,
                 "t": 22.0,
                 "w": 122.00000762939453
               },
               "ref": "opening_v1",
               "transform": {
                 "position": [
-                  6900.0,
+                  5410.0,
                   690.0,
-                  1860.0
+                  2700.0
                 ]
               },
               "type": "reference"
@@ -2247,37 +3330,37 @@
           "right": {
             "overrides": {
               "h": 152.0,
-              "rotation_y": 90.0,
+              "rotation_y": 0.0,
               "t": 22.0,
               "w": 122.00000762939453
             },
             "ref": "opening_v1",
             "transform": {
               "position": [
-                6900.0,
+                5700.0,
                 690.0,
-                2150.0
+                2700.0
               ]
             },
             "type": "reference"
           },
           "type": "csg"
         },
-        "name": "wall_33",
+        "name": "wall_51",
         "operation": "subtract",
         "right": {
           "overrides": {
             "h": 152.0,
-            "rotation_y": 90.0,
+            "rotation_y": 0.0,
             "t": 22.0,
             "w": 122.00000762939453
           },
           "ref": "opening_v1",
           "transform": {
             "position": [
-              6900.0,
+              5990.0,
               690.0,
-              2440.0
+              2700.0
             ]
           },
           "type": "reference"
@@ -2291,314 +3374,6 @@
       },
       {
         "left": {
-          "material": "brick",
-          "overrides": {
-            "h": 300.0,
-            "rotation_y": 90.0,
-            "t": 20.0,
-            "w": 500.0
-          },
-          "ref": "wall_panel_v1",
-          "size": [
-            5.0,
-            3.0,
-            0.20000000298023224
-          ],
-          "transform": {
-            "position": [
-              2100.0,
-              600.0,
-              250.0
-            ]
-          },
-          "type": "reference"
-        },
-        "name": "wall_34",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              2100.0,
-              690.0,
-              250.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          5.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "left": {
-            "left": {
-              "material": "brick",
-              "overrides": {
-                "h": 300.0,
-                "rotation_y": 90.0,
-                "t": 20.0,
-                "w": 1200.0
-              },
-              "ref": "wall_panel_v1",
-              "size": [
-                12.0,
-                3.0,
-                0.20000000298023224
-              ],
-              "transform": {
-                "position": [
-                  1700.0,
-                  600.0,
-                  1400.0
-                ]
-              },
-              "type": "reference"
-            },
-            "operation": "subtract",
-            "right": {
-              "overrides": {
-                "h": 152.0,
-                "rotation_y": 90.0,
-                "t": 22.0,
-                "w": 122.00000762939453
-              },
-              "ref": "opening_v1",
-              "transform": {
-                "position": [
-                  1700.0,
-                  690.0,
-                  1085.0
-                ]
-              },
-              "type": "reference"
-            },
-            "type": "csg"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 90.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                1700.0,
-                690.0,
-                1400.0
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_35",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              1700.0,
-              690.0,
-              1715.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          12.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
-          "left": {
-            "left": {
-              "material": "brick",
-              "overrides": {
-                "h": 300.0,
-                "rotation_y": 90.0,
-                "t": 20.0,
-                "w": 1200.0
-              },
-              "ref": "wall_panel_v1",
-              "size": [
-                12.0,
-                3.0,
-                0.20000000298023224
-              ],
-              "transform": {
-                "position": [
-                  0.0,
-                  600.0,
-                  1400.0
-                ]
-              },
-              "type": "reference"
-            },
-            "operation": "subtract",
-            "right": {
-              "overrides": {
-                "h": 152.0,
-                "rotation_y": 90.0,
-                "t": 22.0,
-                "w": 122.00000762939453
-              },
-              "ref": "opening_v1",
-              "transform": {
-                "position": [
-                  0.0,
-                  690.0,
-                  1085.0
-                ]
-              },
-              "type": "reference"
-            },
-            "type": "csg"
-          },
-          "operation": "subtract",
-          "right": {
-            "overrides": {
-              "h": 152.0,
-              "rotation_y": 90.0,
-              "t": 22.0,
-              "w": 122.00000762939453
-            },
-            "ref": "opening_v1",
-            "transform": {
-              "position": [
-                0.0,
-                690.0,
-                1400.0
-              ]
-            },
-            "type": "reference"
-          },
-          "type": "csg"
-        },
-        "name": "wall_36",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 152.0,
-            "rotation_y": 90.0,
-            "t": 22.0,
-            "w": 122.00000762939453
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              0.0,
-              690.0,
-              1715.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          12.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "material": "brick",
-        "name": "wall_37",
-        "overrides": {
-          "h": 300.0,
-          "rotation_y": 0.0,
-          "t": 20.0,
-          "w": 150.0
-        },
-        "ref": "wall_panel_v1",
-        "size": [
-          1.5,
-          3.0,
-          0.20000000298023224
-        ],
-        "transform": {
-          "position": [
-            5425.0,
-            600.0,
-            1600.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "left": {
-          "material": "plaster",
-          "overrides": {
-            "h": 300.0,
-            "rotation_y": 0.0,
-            "t": 20.0,
-            "w": 1400.0
-          },
-          "ref": "wall_panel_v1",
-          "size": [
-            14.0,
-            3.0,
-            0.20000000298023224
-          ],
-          "transform": {
-            "position": [
-              6200.0,
-              600.0,
-              1600.0
-            ]
-          },
-          "type": "reference"
-        },
-        "name": "wall_38",
-        "operation": "subtract",
-        "right": {
-          "overrides": {
-            "h": 211.99998474121094,
-            "rotation_y": 0.0,
-            "t": 22.0,
-            "w": 92.0
-          },
-          "ref": "opening_v1",
-          "transform": {
-            "position": [
-              6200.0,
-              600.0,
-              1600.0
-            ]
-          },
-          "type": "reference"
-        },
-        "size": [
-          14.0,
-          3.0,
-          0.20000000298023224
-        ],
-        "type": "csg"
-      },
-      {
-        "left": {
           "left": {
             "left": {
               "left": {
@@ -2607,19 +3382,19 @@
                   "h": 300.0,
                   "rotation_y": 0.0,
                   "t": 20.0,
-                  "w": 2100.0
+                  "w": 1450.0
                 },
                 "ref": "wall_panel_v1",
                 "size": [
-                  21.0,
+                  14.5,
                   3.0,
                   0.20000000298023224
                 ],
                 "transform": {
                   "position": [
-                    6550.0,
+                    5875.0,
                     600.0,
-                    100.0
+                    450.0
                   ]
                 },
                 "type": "reference"
@@ -2635,9 +3410,9 @@
                 "ref": "opening_v1",
                 "transform": {
                   "position": [
-                    5902.0,
+                    5422.0,
                     690.0,
-                    100.0
+                    450.0
                   ]
                 },
                 "type": "reference"
@@ -2655,9 +3430,9 @@
               "ref": "opening_v1",
               "transform": {
                 "position": [
-                  6334.0,
+                  5724.0,
                   690.0,
-                  100.0
+                  450.0
                 ]
               },
               "type": "reference"
@@ -2675,16 +3450,16 @@
             "ref": "opening_v1",
             "transform": {
               "position": [
-                6766.00048828125,
+                6026.0,
                 690.0,
-                100.0
+                450.0
               ]
             },
             "type": "reference"
           },
           "type": "csg"
         },
-        "name": "wall_39",
+        "name": "wall_52",
         "operation": "subtract",
         "right": {
           "overrides": {
@@ -2696,15 +3471,15 @@
           "ref": "opening_v1",
           "transform": {
             "position": [
-              7197.99951171875,
+              6328.0,
               690.0,
-              100.0
+              450.0
             ]
           },
           "type": "reference"
         },
         "size": [
-          21.0,
+          14.5,
           3.0,
           0.20000000298023224
         ],
@@ -2713,27 +3488,161 @@
       {
         "left": {
           "left": {
-            "material": "brick",
-            "overrides": {
-              "h": 300.0,
-              "rotation_y": 0.0,
-              "t": 20.0,
-              "w": 700.0
+            "left": {
+              "material": "brick",
+              "overrides": {
+                "h": 300.0,
+                "rotation_y": 90.0,
+                "t": 20.0,
+                "w": 1050.0
+              },
+              "ref": "wall_panel_v1",
+              "size": [
+                10.5,
+                3.0,
+                0.20000000298023224
+              ],
+              "transform": {
+                "position": [
+                  6600.0,
+                  600.0,
+                  975.0
+                ]
+              },
+              "type": "reference"
             },
-            "ref": "wall_panel_v1",
-            "size": [
-              7.0,
-              3.0,
-              0.20000000298023224
-            ],
+            "operation": "subtract",
+            "right": {
+              "overrides": {
+                "h": 152.0,
+                "rotation_y": 90.0,
+                "t": 22.0,
+                "w": 122.00000762939453
+              },
+              "ref": "opening_v1",
+              "transform": {
+                "position": [
+                  6600.0,
+                  690.0,
+                  697.5
+                ]
+              },
+              "type": "reference"
+            },
+            "type": "csg"
+          },
+          "operation": "subtract",
+          "right": {
+            "overrides": {
+              "h": 152.0,
+              "rotation_y": 90.0,
+              "t": 22.0,
+              "w": 122.00000762939453
+            },
+            "ref": "opening_v1",
             "transform": {
               "position": [
-                7250.0,
-                600.0,
-                1600.0
+                6600.0,
+                690.0,
+                975.0
               ]
             },
             "type": "reference"
+          },
+          "type": "csg"
+        },
+        "name": "wall_53",
+        "operation": "subtract",
+        "right": {
+          "overrides": {
+            "h": 152.0,
+            "rotation_y": 90.0,
+            "t": 22.0,
+            "w": 122.00000762939453
+          },
+          "ref": "opening_v1",
+          "transform": {
+            "position": [
+              6600.0,
+              690.0,
+              1252.5
+            ]
+          },
+          "type": "reference"
+        },
+        "size": [
+          10.5,
+          3.0,
+          0.20000000298023224
+        ],
+        "type": "csg"
+      },
+      {
+        "left": {
+          "left": {
+            "left": {
+              "left": {
+                "material": "brick",
+                "overrides": {
+                  "h": 300.0,
+                  "rotation_y": 0.0,
+                  "t": 20.0,
+                  "w": 1450.0
+                },
+                "ref": "wall_panel_v1",
+                "size": [
+                  14.5,
+                  3.0,
+                  0.20000000298023224
+                ],
+                "transform": {
+                  "position": [
+                    5875.0,
+                    600.0,
+                    1500.0
+                  ]
+                },
+                "type": "reference"
+              },
+              "operation": "subtract",
+              "right": {
+                "overrides": {
+                  "h": 152.0,
+                  "rotation_y": 0.0,
+                  "t": 22.0,
+                  "w": 122.00000762939453
+                },
+                "ref": "opening_v1",
+                "transform": {
+                  "position": [
+                    5422.0,
+                    690.0,
+                    1500.0
+                  ]
+                },
+                "type": "reference"
+              },
+              "type": "csg"
+            },
+            "operation": "subtract",
+            "right": {
+              "overrides": {
+                "h": 152.0,
+                "rotation_y": 0.0,
+                "t": 22.0,
+                "w": 122.00000762939453
+              },
+              "ref": "opening_v1",
+              "transform": {
+                "position": [
+                  5724.0,
+                  690.0,
+                  1500.0
+                ]
+              },
+              "type": "reference"
+            },
+            "type": "csg"
           },
           "operation": "subtract",
           "right": {
@@ -2746,16 +3655,16 @@
             "ref": "opening_v1",
             "transform": {
               "position": [
-                7123.333984375,
+                6026.0,
                 690.0,
-                1600.0
+                1500.0
               ]
             },
             "type": "reference"
           },
           "type": "csg"
         },
-        "name": "wall_40",
+        "name": "wall_54",
         "operation": "subtract",
         "right": {
           "overrides": {
@@ -2767,15 +3676,15 @@
           "ref": "opening_v1",
           "transform": {
             "position": [
-              7376.6669921875,
+              6328.0,
               690.0,
-              1600.0
+              1500.0
             ]
           },
           "type": "reference"
         },
         "size": [
-          7.0,
+          14.5,
           3.0,
           0.20000000298023224
         ],
@@ -2792,9 +3701,9 @@
         "ref": "door_v1",
         "transform": {
           "position": [
-            450.0,
+            350.0,
             0.0,
-            1900.0
+            1350.0
           ]
         },
         "type": "reference"
@@ -2810,9 +3719,9 @@
         "ref": "door_v1",
         "transform": {
           "position": [
-            1400.0,
+            2950.0,
             600.0,
-            250.0
+            350.0
           ]
         },
         "type": "reference"
@@ -2823,14 +3732,14 @@
           "door_height": 209.99998474121094,
           "door_thickness": 4.0,
           "door_width": 90.0,
-          "rotation_y": 0.0
+          "rotation_y": 90.0
         },
         "ref": "door_v1",
         "transform": {
           "position": [
-            700.0,
+            5150.0,
             600.0,
-            800.0
+            2350.0
           ]
         },
         "type": "reference"
@@ -2841,14 +3750,86 @@
           "door_height": 209.99998474121094,
           "door_thickness": 4.0,
           "door_width": 90.0,
+          "rotation_y": 90.0
+        },
+        "ref": "door_v1",
+        "transform": {
+          "position": [
+            2950.0,
+            600.0,
+            975.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "name": "door_4",
+        "overrides": {
+          "door_height": 209.99998474121094,
+          "door_thickness": 4.0,
+          "door_width": 90.0,
+          "rotation_y": 90.0
+        },
+        "ref": "door_v1",
+        "transform": {
+          "position": [
+            2950.0,
+            600.0,
+            1800.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "name": "door_5",
+        "overrides": {
+          "door_height": 209.99998474121094,
+          "door_thickness": 4.0,
+          "door_width": 90.0,
+          "rotation_y": 90.0
+        },
+        "ref": "door_v1",
+        "transform": {
+          "position": [
+            5150.0,
+            600.0,
+            975.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "name": "door_6",
+        "overrides": {
+          "door_height": 209.99998474121094,
+          "door_thickness": 4.0,
+          "door_width": 90.0,
           "rotation_y": 0.0
         },
         "ref": "door_v1",
         "transform": {
           "position": [
-            6200.0,
+            2450.0,
             600.0,
-            1600.0
+            550.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "name": "door_7",
+        "overrides": {
+          "door_height": 209.99998474121094,
+          "door_thickness": 4.0,
+          "door_width": 90.0,
+          "rotation_y": 0.0
+        },
+        "ref": "door_v1",
+        "transform": {
+          "position": [
+            2400.0,
+            600.0,
+            1400.0
           ]
         },
         "type": "reference"
@@ -2857,16 +3838,16 @@
         "name": "window_0",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 0.0,
+          "rotation_y": 90.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            7110.0,
-            90.0,
-            0.0
+            0.0,
+            690.0,
+            325.0
           ]
         },
         "type": "reference"
@@ -2875,16 +3856,16 @@
         "name": "window_1",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 0.0,
+          "rotation_y": 90.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            7450.0,
-            90.0,
-            0.0
+            1000.0,
+            690.0,
+            325.0
           ]
         },
         "type": "reference"
@@ -2900,9 +3881,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            7790.0,
+            356.6666564941406,
             90.0,
-            0.0
+            750.0
           ]
         },
         "type": "reference"
@@ -2918,9 +3899,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            290.0,
+            743.3333129882813,
             90.0,
-            2600.0
+            750.0
           ]
         },
         "type": "reference"
@@ -2929,16 +3910,16 @@
         "name": "window_4",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 0.0,
+          "rotation_y": 90.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            610.0000610351563,
-            90.0,
-            2600.0
+            1850.0,
+            690.0,
+            1656.66650390625
           ]
         },
         "type": "reference"
@@ -2947,16 +3928,16 @@
         "name": "window_5",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 0.0,
+          "rotation_y": 90.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            7110.0,
-            90.0,
-            900.0
+            1850.0,
+            690.0,
+            1943.33349609375
           ]
         },
         "type": "reference"
@@ -2965,16 +3946,16 @@
         "name": "window_6",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 0.0,
+          "rotation_y": 90.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            7450.0,
+            1100.0,
             90.0,
-            900.0
+            1050.0
           ]
         },
         "type": "reference"
@@ -2990,9 +3971,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            7790.0,
+            900.0,
             90.0,
-            900.0
+            1350.0
           ]
         },
         "type": "reference"
@@ -3008,9 +3989,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            5642.0,
-            690.0,
-            2700.0
+            7423.3330078125,
+            90.0,
+            0.0
           ]
         },
         "type": "reference"
@@ -3026,9 +4007,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            5964.0,
-            690.0,
-            2700.0
+            7776.666015625,
+            90.0,
+            0.0
           ]
         },
         "type": "reference"
@@ -3037,16 +4018,16 @@
         "name": "window_10",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 0.0,
+          "rotation_y": 90.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            6286.0,
-            690.0,
-            2700.0
+            0.0,
+            90.0,
+            1625.0
           ]
         },
         "type": "reference"
@@ -3055,16 +4036,16 @@
         "name": "window_11",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 0.0,
+          "rotation_y": 90.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            6608.0,
-            690.0,
-            2700.0
+            0.0,
+            90.0,
+            1050.0
           ]
         },
         "type": "reference"
@@ -3073,58 +4054,22 @@
         "name": "window_12",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            900.0,
-            90.0,
-            2250.0
+            2110.0,
+            690.0,
+            2200.0
           ]
         },
         "type": "reference"
       },
       {
         "name": "window_13",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            8100.0,
-            90.0,
-            290.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_14",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            8100.0,
-            90.0,
-            610.0000610351563
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_15",
         "overrides": {
           "h": 150.0,
           "rotation_y": 0.0,
@@ -3134,9 +4079,45 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            360.0,
+            2400.0,
+            690.0,
+            2200.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "name": "window_14",
+        "overrides": {
+          "h": 150.0,
+          "rotation_y": 0.0,
+          "t": 20.0,
+          "w": 120.00000762939453
+        },
+        "ref": "window_v1",
+        "transform": {
+          "position": [
+            2690.0,
+            690.0,
+            2200.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "name": "window_15",
+        "overrides": {
+          "h": 150.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 120.00000762939453
+        },
+        "ref": "window_v1",
+        "transform": {
+          "position": [
+            700.0,
             90.0,
-            1050.0
+            1625.0
           ]
         },
         "type": "reference"
@@ -3152,15 +4133,33 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            750.0,
+            350.0,
             90.0,
-            1050.0
+            1900.0
           ]
         },
         "type": "reference"
       },
       {
         "name": "window_17",
+        "overrides": {
+          "h": 150.0,
+          "rotation_y": 90.0,
+          "t": 20.0,
+          "w": 120.00000762939453
+        },
+        "ref": "window_v1",
+        "transform": {
+          "position": [
+            8100.0,
+            90.0,
+            325.0
+          ]
+        },
+        "type": "reference"
+      },
+      {
+        "name": "window_18",
         "overrides": {
           "h": 150.0,
           "rotation_y": 0.0,
@@ -3170,27 +4169,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            1140.0,
+            7423.3330078125,
             90.0,
-            1050.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_18",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            1500.0,
-            90.0,
-            1323.3333740234375
+            650.0
           ]
         },
         "type": "reference"
@@ -3199,16 +4180,16 @@
         "name": "window_19",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            1500.0,
+            7776.666015625,
             90.0,
-            1626.6666259765625
+            650.0
           ]
         },
         "type": "reference"
@@ -3224,9 +4205,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            5350.0,
-            690.0,
-            1860.0
+            7100.0,
+            90.0,
+            325.0
           ]
         },
         "type": "reference"
@@ -3242,9 +4223,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            5350.0,
+            1750.0,
             690.0,
-            2150.0
+            823.3333740234375
           ]
         },
         "type": "reference"
@@ -3260,9 +4241,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            5350.0,
+            1750.0,
             690.0,
-            2440.0
+            1126.6666259765625
           ]
         },
         "type": "reference"
@@ -3278,9 +4259,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            1200.0,
-            90.0,
-            1900.0
+            2273.333251953125,
+            690.0,
+            0.0
           ]
         },
         "type": "reference"
@@ -3289,16 +4270,16 @@
         "name": "window_24",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            0.0,
-            90.0,
-            1323.3333740234375
+            2626.666748046875,
+            690.0,
+            0.0
           ]
         },
         "type": "reference"
@@ -3314,9 +4295,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            0.0,
-            90.0,
-            1626.6666259765625
+            1950.0,
+            690.0,
+            275.0
           ]
         },
         "type": "reference"
@@ -3325,16 +4306,16 @@
         "name": "window_26",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            0.0,
-            90.0,
-            2250.0
+            323.33331298828125,
+            690.0,
+            0.0
           ]
         },
         "type": "reference"
@@ -3343,16 +4324,16 @@
         "name": "window_27",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            6800.0,
-            90.0,
-            290.0
+            676.6666259765625,
+            690.0,
+            0.0
           ]
         },
         "type": "reference"
@@ -3361,16 +4342,16 @@
         "name": "window_28",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            6800.0,
-            90.0,
-            610.0000610351563
+            323.33331298828125,
+            690.0,
+            650.0
           ]
         },
         "type": "reference"
@@ -3386,9 +4367,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            335.0,
+            676.6666259765625,
             690.0,
-            0.0
+            650.0
           ]
         },
         "type": "reference"
@@ -3404,9 +4385,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            700.0,
+            5410.0,
             690.0,
-            0.0
+            1900.0
           ]
         },
         "type": "reference"
@@ -3422,9 +4403,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            1065.0,
+            5700.0,
             690.0,
-            0.0
+            1900.0
           ]
         },
         "type": "reference"
@@ -3433,16 +4414,16 @@
         "name": "window_32",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            7600.0,
+            5990.0,
             690.0,
-            381.9999694824219
+            1900.0
           ]
         },
         "type": "reference"
@@ -3458,9 +4439,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            7600.0,
+            6250.0,
             690.0,
-            693.9999389648438
+            2156.66650390625
           ]
         },
         "type": "reference"
@@ -3476,9 +4457,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            7600.0,
+            6250.0,
             690.0,
-            1005.9999389648438
+            2443.33349609375
           ]
         },
         "type": "reference"
@@ -3487,16 +4468,16 @@
         "name": "window_35",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            7600.0,
+            5410.0,
             690.0,
-            1317.9998779296875
+            2700.0
           ]
         },
         "type": "reference"
@@ -3512,9 +4493,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            321.9999694824219,
+            5700.0,
             690.0,
-            2000.0
+            2700.0
           ]
         },
         "type": "reference"
@@ -3530,9 +4511,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            674.0,
+            5990.0,
             690.0,
-            2000.0
+            2700.0
           ]
         },
         "type": "reference"
@@ -3548,9 +4529,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            1026.0,
+            5422.0,
             690.0,
-            2000.0
+            450.0
           ]
         },
         "type": "reference"
@@ -3566,9 +4547,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            1378.0001220703125,
+            5724.0,
             690.0,
-            2000.0
+            450.0
           ]
         },
         "type": "reference"
@@ -3584,9 +4565,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            1750.0,
+            6026.0,
             690.0,
-            500.0
+            450.0
           ]
         },
         "type": "reference"
@@ -3595,16 +4576,16 @@
         "name": "window_41",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            0.0,
+            6328.0,
             690.0,
-            256.6666564941406
+            450.0
           ]
         },
         "type": "reference"
@@ -3620,9 +4601,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            0.0,
+            6600.0,
             690.0,
-            543.3333129882813
+            697.5
           ]
         },
         "type": "reference"
@@ -3631,16 +4612,16 @@
         "name": "window_43",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 0.0,
+          "rotation_y": 90.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            1750.0,
+            6600.0,
             690.0,
-            0.0
+            975.0
           ]
         },
         "type": "reference"
@@ -3656,9 +4637,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            5500.0,
+            6600.0,
             690.0,
-            381.9999694824219
+            1252.5
           ]
         },
         "type": "reference"
@@ -3667,16 +4648,16 @@
         "name": "window_45",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            5500.0,
+            5422.0,
             690.0,
-            693.9999389648438
+            1500.0
           ]
         },
         "type": "reference"
@@ -3685,16 +4666,16 @@
         "name": "window_46",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            5500.0,
+            5724.0,
             690.0,
-            1005.9999389648438
+            1500.0
           ]
         },
         "type": "reference"
@@ -3703,16 +4684,16 @@
         "name": "window_47",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
+          "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
         },
         "ref": "window_v1",
         "transform": {
           "position": [
-            5500.0,
+            6026.0,
             690.0,
-            1317.9998779296875
+            1500.0
           ]
         },
         "type": "reference"
@@ -3721,186 +4702,6 @@
         "name": "window_48",
         "overrides": {
           "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            6900.0,
-            690.0,
-            1860.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_49",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            6900.0,
-            690.0,
-            2150.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_50",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            6900.0,
-            690.0,
-            2440.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_51",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            2100.0,
-            690.0,
-            250.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_52",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            1700.0,
-            690.0,
-            1085.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_53",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            1700.0,
-            690.0,
-            1400.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_54",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            1700.0,
-            690.0,
-            1715.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_55",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            0.0,
-            690.0,
-            1085.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_56",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            0.0,
-            690.0,
-            1400.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_57",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 90.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            0.0,
-            690.0,
-            1715.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_58",
-        "overrides": {
-          "h": 150.0,
           "rotation_y": 0.0,
           "t": 20.0,
           "w": 120.00000762939453
@@ -3908,99 +4709,9 @@
         "ref": "window_v1",
         "transform": {
           "position": [
-            5902.0,
+            6328.0,
             690.0,
-            100.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_59",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 0.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            6334.0,
-            690.0,
-            100.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_60",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 0.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            6766.00048828125,
-            690.0,
-            100.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_61",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 0.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            7197.99951171875,
-            690.0,
-            100.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_62",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 0.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            7123.333984375,
-            690.0,
-            1600.0
-          ]
-        },
-        "type": "reference"
-      },
-      {
-        "name": "window_63",
-        "overrides": {
-          "h": 150.0,
-          "rotation_y": 0.0,
-          "t": 20.0,
-          "w": 120.00000762939453
-        },
-        "ref": "window_v1",
-        "transform": {
-          "position": [
-            7376.6669921875,
-            690.0,
-            1600.0
+            1500.0
           ]
         },
         "type": "reference"
@@ -4011,16 +4722,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_0",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 8.823529243469238,
-                450.0
+                325.0
               ]
             },
             "type": "primitive"
@@ -4029,16 +4740,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_1",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 26.47058868408203,
-                478.0000305175781
+                353.0
               ]
             },
             "type": "primitive"
@@ -4047,16 +4758,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_2",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 44.11764907836914,
-                506.0
+                381.0
               ]
             },
             "type": "primitive"
@@ -4065,16 +4776,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_3",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 61.76470947265625,
-                534.0
+                409.0
               ]
             },
             "type": "primitive"
@@ -4083,16 +4794,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_4",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 79.4117660522461,
-                562.0
+                437.0
               ]
             },
             "type": "primitive"
@@ -4101,16 +4812,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_5",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 97.05883026123047,
-                590.0
+                465.0
               ]
             },
             "type": "primitive"
@@ -4119,16 +4830,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_6",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 114.70588684082031,
-                618.0
+                493.0000305175781
               ]
             },
             "type": "primitive"
@@ -4137,16 +4848,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_7",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 132.35293579101563,
-                646.0
+                521.0
               ]
             },
             "type": "primitive"
@@ -4155,16 +4866,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_8",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 150.0,
-                674.0
+                549.0
               ]
             },
             "type": "primitive"
@@ -4173,16 +4884,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_9",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 167.64706420898438,
-                702.0
+                577.0
               ]
             },
             "type": "primitive"
@@ -4191,16 +4902,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_10",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 185.2941131591797,
-                730.0
+                605.0
               ]
             },
             "type": "primitive"
@@ -4209,16 +4920,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_11",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 202.94117736816406,
-                758.0
+                633.0
               ]
             },
             "type": "primitive"
@@ -4227,16 +4938,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_12",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 220.5882568359375,
-                786.0
+                661.0
               ]
             },
             "type": "primitive"
@@ -4245,16 +4956,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_13",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 238.2353057861328,
-                814.0000610351563
+                689.0000610351563
               ]
             },
             "type": "primitive"
@@ -4263,16 +4974,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_14",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 255.88235473632813,
-                842.0
+                717.0
               ]
             },
             "type": "primitive"
@@ -4281,16 +4992,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_15",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 273.5294189453125,
-                870.0
+                745.0
               ]
             },
             "type": "primitive"
@@ -4299,16 +5010,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_16",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 291.1764831542969,
-                897.9999389648438
+                773.0
               ]
             },
             "type": "primitive"
@@ -4317,16 +5028,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_17",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 308.82354736328125,
-                926.0
+                801.0
               ]
             },
             "type": "primitive"
@@ -4335,16 +5046,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_18",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 326.4706115722656,
-                954.0
+                829.0
               ]
             },
             "type": "primitive"
@@ -4353,16 +5064,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_19",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 344.11767578125,
-                982.0
+                857.0
               ]
             },
             "type": "primitive"
@@ -4371,16 +5082,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_20",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 361.76470947265625,
-                1010.0000610351563
+                885.0000610351563
               ]
             },
             "type": "primitive"
@@ -4389,16 +5100,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_21",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 379.41180419921875,
-                1038.0
+                913.0
               ]
             },
             "type": "primitive"
@@ -4407,16 +5118,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_22",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 397.058837890625,
-                1066.0
+                941.0
               ]
             },
             "type": "primitive"
@@ -4425,16 +5136,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_23",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 414.7059020996094,
-                1094.0
+                969.0000610351563
               ]
             },
             "type": "primitive"
@@ -4443,16 +5154,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_24",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 432.35296630859375,
-                1122.0
+                997.0
               ]
             },
             "type": "primitive"
@@ -4461,16 +5172,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_25",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 450.0,
-                1150.0
+                1025.0
               ]
             },
             "type": "primitive"
@@ -4479,16 +5190,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_26",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 467.6470642089844,
-                1178.0001220703125
+                1053.0001220703125
               ]
             },
             "type": "primitive"
@@ -4497,16 +5208,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_27",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 485.2941589355469,
-                1206.0
+                1081.0
               ]
             },
             "type": "primitive"
@@ -4515,16 +5226,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_28",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 502.9411926269531,
-                1234.0
+                1109.0
               ]
             },
             "type": "primitive"
@@ -4533,16 +5244,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_29",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 520.5882568359375,
-                1262.0
+                1137.0
               ]
             },
             "type": "primitive"
@@ -4551,16 +5262,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_30",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 538.2353515625,
-                1290.0
+                1165.0
               ]
             },
             "type": "primitive"
@@ -4569,16 +5280,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_31",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 555.8823852539063,
-                1318.0
+                1193.0
               ]
             },
             "type": "primitive"
@@ -4587,16 +5298,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_32",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 573.5294189453125,
-                1346.0
+                1221.0
               ]
             },
             "type": "primitive"
@@ -4605,16 +5316,16 @@
             "material": "concrete_floor",
             "name": "stair_0_step_33",
             "params": {
-              "size_x": 900.0,
+              "size_x": 650.0,
               "size_y": 17.647058486938477,
               "size_z": 28.0
             },
             "primitive": "cube",
             "transform": {
               "position": [
-                7450.0,
+                7600.0,
                 591.176513671875,
-                1374.0
+                1249.0
               ]
             },
             "type": "primitive"
