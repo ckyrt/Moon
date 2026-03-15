@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "courtyard_block_midrise",
+  "description": "Curated midrise courtyard block with a carved internal garden and corner pavilion accents",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "courtyard",
+    "building_type": "mixed_use_block",
+    "style": "urban_stone"
+  },
+  "root": {
+    "id": "courtyard_root",
+    "name": "courtyard_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "courtyard_mass",
+        "name": "courtyard_mass",
+        "type": "csg",
+        "operation": "subtract",
+        "material": "stone",
+        "children": [
+          {
+            "id": "outer_shell",
+            "name": "outer_shell",
+            "type": "extrude",
+            "material": "stone",
+            "params": {
+              "height": 34.0
+            },
+            "profiles": [
+              {
+                "id": "outer_profile",
+                "closed": true,
+                "points": [[-26, -18], [26, -18], [29, -13], [29, 13], [26, 18], [-26, 18], [-29, 13], [-29, -13]]
+              }
+            ]
+          },
+          {
+            "id": "garden_void",
+            "name": "garden_void",
+            "type": "extrude",
+            "material": "stone",
+            "transform": {
+              "position": [0.0, 0.0, 0.0],
+              "rotation": [0.0, 0.0, 0.0],
+              "scale": [1.0, 1.0, 1.0]
+            },
+            "params": {
+              "height": 35.0
+            },
+            "profiles": [
+              {
+                "id": "garden_profile",
+                "closed": true,
+                "points": [[-10, -7], [10, -7], [12, -4], [12, 4], [10, 7], [-10, 7], [-12, 4], [-12, -4]]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "corner_pavilions",
+        "name": "corner_pavilions",
+        "type": "array",
+        "params": {
+          "count_x": 2,
+          "count_y": 1,
+          "count_z": 2,
+          "spacing_x": 44.0,
+          "spacing_z": 24.0
+        },
+        "transform": {
+          "position": [-22.0, 34.0, -12.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "children": [
+          {
+            "id": "pavilion",
+            "name": "pavilion",
+            "type": "primitive",
+            "primitive": "cube",
+            "material": "metal",
+            "params": {
+              "size_x": 4.0,
+              "size_y": 2.5,
+              "size_z": 4.0
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

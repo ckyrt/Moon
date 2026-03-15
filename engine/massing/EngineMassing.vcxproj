@@ -78,6 +78,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="BuildingMassingPlanner.h" />
     <ClInclude Include="MassRules.h" />
     <ClInclude Include="MassRuleParser.h" />
     <ClInclude Include="MassRuleCompiler.h" />
@@ -87,6 +88,7 @@
     <ClInclude Include="Backends\Blueprint\MassBlueprintBackend.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BuildingMassingPlanner.cpp" />
     <ClCompile Include="MassRules.cpp" />
     <ClCompile Include="MassRuleParser.cpp" />
     <ClCompile Include="MassRuleCompiler.cpp" />

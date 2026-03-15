@@ -8,6 +8,7 @@
 #include "../../../engine/core/Scene/Light.h"
 #include "../../../engine/core/Scene/Skybox.h"
 #include "../../../engine/core/CSG/CSGComponent.h"
+#include "../../../engine/massing/BuildingMassingPlanner.h"
 #include "../../../engine/massing/MassRuleParser.h"
 #include "../../../engine/massing/MassMeshBuilder.h"
 #include "../../../external/nlohmann/json.hpp"
@@ -1232,6 +1233,35 @@ namespace CommandHandlers {
         return response.dump();
     }
 
+    std::string HandlePlanBuildingMassing(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)scene;
+
+        if (!req.contains("intentJson")) {
+            return CreateErrorResponse("Missing 'intentJson' field");
+        }
+
+        Moon::Massing::BuildingMassingIntent intent;
+        std::string parseError;
+        if (!Moon::Massing::BuildingMassingPlanner::ParseIntentFromString(
+                req["intentJson"].get<std::string>(), intent, parseError)) {
+            return CreateErrorResponse("Failed to parse building massing intent: " + parseError);
+        }
+
+        std::string ruleJson;
+        std::string planError;
+        if (!Moon::Massing::BuildingMassingPlanner::PlanToJsonString(intent, ruleJson, planError)) {
+            return CreateErrorResponse("Failed to plan building massing: " + planError);
+        }
+
+        json response;
+        response["success"] = true;
+        response["ruleJson"] = ruleJson;
+        response["archetype"] = intent.archetype;
+        response["buildingType"] = intent.buildingType;
+        return response.dump();
+    }
+
     std::string HandleClearMassingPreview(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         ClearMassingPreviewNodes(scene);
         return CreateSuccessResponse();
@@ -1249,8 +1279,11 @@ namespace CommandHandlers {
 
         std::vector<std::filesystem::path> presetPaths;
         for (const auto& entry : std::filesystem::directory_iterator(presetDirectory)) {
-            if (entry.is_regular_file() && entry.path().extension() == ".json") {
-                presetPaths.push_back(entry.path());
+            const std::filesystem::path path = entry.path();
+            const std::string stem = path.stem().string();
+            if (entry.is_regular_file() && path.extension() == ".json" &&
+                stem.rfind("planned_", 0) == 0) {
+                presetPaths.push_back(path);
             }
         }
 
@@ -1361,6 +1394,7 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"deserializeNode",          CommandHandlers::HandleDeserializeNode},
     {"setNodeTransform",         CommandHandlers::HandleSetNodeTransform},
     {"createNodeWithId",         CommandHandlers::HandleCreateNodeWithId},
+    {"planBuildingMassing",      CommandHandlers::HandlePlanBuildingMassing},
     {"previewMassing",           CommandHandlers::HandlePreviewMassing},
     {"clearMassingPreview",      CommandHandlers::HandleClearMassingPreview},
     {"listMassingPresets",       CommandHandlers::HandleListMassingPresets},

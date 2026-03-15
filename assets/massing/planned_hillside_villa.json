@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "hillside_villa_compound",
+  "description": "Curated hillside villa with a long main bar, private wing, and arrival pavilion",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "villa",
+    "building_type": "villa",
+    "style": "minimal_warm"
+  },
+  "root": {
+    "id": "villa_root",
+    "name": "villa_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "main_bar",
+        "name": "main_bar",
+        "type": "extrude",
+        "material": "plaster",
+        "params": {
+          "height": 8.4
+        },
+        "profiles": [
+          {
+            "id": "main_bar_profile",
+            "closed": true,
+            "points": [[-18, -7], [18, -7], [20, -5], [20, 5], [18, 7], [-18, 7], [-20, 5], [-20, -5]]
+          }
+        ]
+      },
+      {
+        "id": "private_wing",
+        "name": "private_wing",
+        "type": "extrude",
+        "material": "plaster",
+        "transform": {
+          "position": [12.0, 0.0, 10.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "height": 6.0
+        },
+        "profiles": [
+          {
+            "id": "private_wing_profile",
+            "closed": true,
+            "points": [[-8, -4], [8, -4], [9, -3], [9, 3], [8, 4], [-8, 4], [-9, 3], [-9, -3]]
+          }
+        ]
+      },
+      {
+        "id": "arrival_pavilion",
+        "name": "arrival_pavilion",
+        "type": "primitive",
+        "primitive": "cube",
+        "material": "stone",
+        "params": {
+          "size_x": 8.0,
+          "size_y": 3.0,
+          "size_z": 6.0
+        },
+        "transform": {
+          "position": [-16.0, 1.5, -10.5],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "roof_blade",
+        "name": "roof_blade",
+        "type": "primitive",
+        "primitive": "cube",
+        "material": "metal",
+        "params": {
+          "size_x": 28.0,
+          "size_y": 0.6,
+          "size_z": 2.2
+        },
+        "transform": {
+          "position": [3.0, 8.7, -6.2],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      }
+    ]
+  }
+}

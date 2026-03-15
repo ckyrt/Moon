@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "../BuildingMassingPlanner.h"
 #include "../MassMeshBuilder.h"
 #include "../MassRuleParser.h"
 #include "../../core/Assets/AssetPaths.h"
@@ -347,6 +348,59 @@ TEST(MassMeshBuilderTests, ExtrudeSplitsNormalsAcrossHardEdges) {
 
     EXPECT_GT(mesh->GetVertexCount(), 8u);
     EXPECT_TRUE(HasSplitNormalsAtSharedPosition(*mesh));
+}
+
+TEST(BuildingMassingPlannerTests, PlansPodiumTowerIntoBuildableRuleSet) {
+    BuildingMassingIntent intent;
+    intent.archetype = "podium_tower";
+    intent.buildingType = "office_tower";
+    intent.style = "highrise_modern";
+    intent.width = 42.0f;
+    intent.depth = 34.0f;
+    intent.floors = 38;
+    intent.floorHeight = 4.2f;
+    intent.podiumFloors = 6;
+    intent.taper = 0.14f;
+    intent.twistDegrees = 10.0f;
+    intent.fins = true;
+    intent.crown = true;
+
+    RuleSet planned;
+    std::string error;
+    ASSERT_TRUE(BuildingMassingPlanner::Plan(intent, planned, error)) << error;
+    EXPECT_EQ(planned.root.type, RuleNodeType::Group);
+    ASSERT_GE(planned.root.children.size(), 3u);
+    EXPECT_EQ(planned.ai.value("source", std::string()), "building_massing_planner");
+
+    MassBuildResult result = BuildRuleSetOrFail(planned);
+    EXPECT_GE(result.items.size(), 3u);
+}
+
+TEST(BuildingMassingPlannerTests, IntentJsonRoundTripsToValidRuleJson) {
+    const char* intentJson = R"({
+      "archetype": "courtyard",
+      "building_type": "residential_block",
+      "style": "stone_modern",
+      "width": 48.0,
+      "depth": 36.0,
+      "floors": 9,
+      "floor_height": 3.6,
+      "corner_cut": 3.0
+    })";
+
+    BuildingMassingIntent intent;
+    std::string error;
+    ASSERT_TRUE(BuildingMassingPlanner::ParseIntentFromString(intentJson, intent, error)) << error;
+
+    std::string ruleJson;
+    ASSERT_TRUE(BuildingMassingPlanner::PlanToJsonString(intent, ruleJson, error)) << error;
+
+    RuleSet planned = ParseRuleSetOrFail(ruleJson);
+    EXPECT_EQ(planned.root.type, RuleNodeType::Csg);
+
+    MassBuildResult result = BuildRuleSetOrFail(planned);
+    ASSERT_EQ(result.items.size(), 1u);
+    ExpectMeshLooksValid(result.items.front().mesh);
 }
 
 TEST(MassMeshBuilderTests, LoftAddsIntermediateRingsByDefault) {

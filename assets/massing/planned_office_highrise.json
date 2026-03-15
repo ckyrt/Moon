@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "office_tower_podium_tower",
+  "description": "Curated office highrise with a crisp podium, faceted taper tower, crown, and front facade fins",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "podium_tower",
+    "building_type": "office_tower",
+    "style": "highrise_modern"
+  },
+  "editor": {
+    "exposed_params": ["width", "depth", "floors", "podium_floors", "twist_degrees", "taper"]
+  },
+  "root": {
+    "id": "root",
+    "name": "root",
+    "type": "group",
+    "children": [
+      {
+        "id": "podium",
+        "name": "podium",
+        "type": "extrude",
+        "material": "stone",
+        "params": {
+          "height": 25.2
+        },
+        "transform": {
+          "position": [0.0, 0.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "profiles": [
+          {
+            "id": "podium_profile",
+            "closed": true,
+            "points": [[-18, -16], [18, -16], [21, -11], [21, 11], [18, 16], [-18, 16], [-21, 11], [-21, -11]]
+          }
+        ]
+      },
+      {
+        "id": "tower_shell",
+        "name": "tower_shell",
+        "type": "deform",
+        "material": "glass",
+        "params": {
+          "mode": "twist",
+          "angle": 5.5,
+          "subdivide": 1
+        },
+        "children": [
+          {
+            "id": "tower_loft",
+            "name": "tower_loft",
+            "type": "loft",
+            "material": "glass",
+            "params": {
+              "levels": [0.0, 53.2, 106.4, 140.8],
+              "segments_per_span": 6
+            },
+            "transform": {
+              "position": [0.0, 25.2, 0.0],
+              "rotation": [0.0, 0.0, 0.0],
+              "scale": [1.0, 1.0, 1.0]
+            },
+            "profiles": [
+              {
+                "id": "tower_base",
+                "closed": true,
+                "points": [[-8.6, -9.0], [6.8, -9.0], [9.4, -6.6], [10.2, -1.8], [10.2, 5.8], [7.6, 9.0], [-7.0, 9.0], [-9.6, 6.2], [-10.4, 1.4], [-10.0, -5.4]]
+              },
+              {
+                "id": "tower_mid",
+                "closed": true,
+                "points": [[-8.0, -8.3], [6.2, -8.5], [8.6, -6.0], [9.4, -1.4], [9.3, 5.0], [7.0, 8.1], [-6.5, 8.3], [-8.8, 5.6], [-9.5, 1.1], [-9.1, -4.8]]
+              },
+              {
+                "id": "tower_top",
+                "closed": true,
+                "points": [[-7.2, -7.4], [5.4, -7.5], [7.5, -5.5], [8.2, -1.1], [8.1, 4.4], [6.1, 7.0], [-5.8, 7.2], [-7.9, 4.9], [-8.5, 0.8], [-8.0, -4.3]]
+              },
+              {
+                "id": "tower_crown_base",
+                "closed": true,
+                "points": [[-6.8, -6.9], [5.0, -7.0], [7.0, -5.2], [7.6, -0.9], [7.4, 4.0], [5.7, 6.4], [-5.4, 6.6], [-7.3, 4.4], [-7.9, 0.7], [-7.3, -4.0]]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "roof_cap",
+        "name": "roof_cap",
+        "type": "extrude",
+        "material": "metal",
+        "params": {
+          "height": 0.85
+        },
+        "transform": {
+          "position": [0.0, 166.0, 0.0],
+          "rotation": [0.0, 5.5, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "profiles": [
+          {
+            "id": "roof_cap_profile",
+            "closed": true,
+            "points": [[-6.95, -7.05], [5.12, -7.14], [7.16, -5.3], [7.78, -0.95], [7.56, 4.08], [5.82, 6.53], [-5.5, 6.72], [-7.44, 4.49], [-8.05, 0.72], [-7.44, -4.08]]
+          }
+        ]
+      },
+      {
+        "id": "fins",
+        "name": "fins",
+        "type": "array",
+        "params": {
+          "count_x": 6,
+          "count_y": 1,
+          "count_z": 1,
+          "spacing_x": 3.15,
+          "rotate_step_y": 0.0
+        },
+        "transform": {
+          "position": [-7.9, 58.0, 9.6],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "children": [
+          {
+            "id": "fin",
+            "name": "fin",
+            "type": "primitive",
+            "primitive": "cube",
+            "material": "metal",
+            "params": {
+              "size_x": 0.32,
+              "size_y": 34.0,
+              "size_z": 0.5
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

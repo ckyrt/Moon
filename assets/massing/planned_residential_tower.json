@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "residential_tower_tapered",
+  "description": "Curated residential tower with a garden podium, softer tower shoulders, and rooftop canopy crown",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "tower",
+    "building_type": "residential_tower",
+    "style": "warm_modern"
+  },
+  "editor": {
+    "exposed_params": ["width", "depth", "floors", "twist_degrees", "taper"]
+  },
+  "root": {
+    "id": "root",
+    "name": "root",
+    "type": "group",
+    "children": [
+      {
+        "id": "garden_podium",
+        "name": "garden_podium",
+        "type": "extrude",
+        "material": "stone",
+        "params": {
+          "height": 15.0
+        },
+        "profiles": [
+          {
+            "id": "garden_podium_profile",
+            "closed": true,
+            "points": [[-16, -14], [16, -14], [18, -10], [18, 10], [16, 14], [-16, 14], [-18, 10], [-18, -10]]
+          }
+        ]
+      },
+      {
+        "id": "residential_shell",
+        "name": "residential_shell",
+        "type": "deform",
+        "material": "plaster",
+        "params": {
+          "mode": "twist",
+          "angle": 3.0,
+          "subdivide": 1
+        },
+        "children": [
+          {
+            "id": "residential_loft",
+            "name": "residential_loft",
+            "type": "loft",
+            "material": "plaster",
+            "params": {
+              "levels": [0.0, 34.0, 72.0, 106.0],
+              "segments_per_span": 6
+            },
+            "transform": {
+              "position": [0.0, 15.0, 0.0],
+              "rotation": [0.0, 0.0, 0.0],
+              "scale": [1.0, 1.0, 1.0]
+            },
+            "profiles": [
+              {
+                "id": "res_base",
+                "closed": true,
+                "points": [[-9.5, -8.5], [8.0, -8.8], [10.8, -5.2], [11.3, 0.4], [10.0, 6.0], [6.5, 9.0], [-7.2, 8.8], [-10.2, 5.0], [-10.8, -1.0], [-10.0, -6.0]]
+              },
+              {
+                "id": "res_mid",
+                "closed": true,
+                "points": [[-8.8, -7.8], [7.5, -8.1], [10.0, -4.8], [10.5, 0.3], [9.4, 5.4], [6.1, 8.0], [-6.8, 7.9], [-9.5, 4.5], [-10.0, -0.8], [-9.3, -5.3]]
+              },
+              {
+                "id": "res_top",
+                "closed": true,
+                "points": [[-8.0, -7.1], [6.9, -7.3], [9.1, -4.2], [9.5, 0.2], [8.6, 4.8], [5.5, 7.1], [-6.0, 7.0], [-8.6, 4.0], [-9.0, -0.6], [-8.3, -4.9]]
+              },
+              {
+                "id": "res_crown_base",
+                "closed": true,
+                "points": [[-7.4, -6.4], [6.2, -6.6], [8.2, -3.8], [8.6, 0.2], [7.8, 4.3], [5.0, 6.3], [-5.4, 6.2], [-7.7, 3.6], [-8.1, -0.5], [-7.5, -4.4]]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "roof_cap",
+        "name": "roof_cap",
+        "type": "extrude",
+        "material": "metal",
+        "params": {
+          "height": 0.75
+        },
+        "transform": {
+          "position": [0.0, 121.0, 0.0],
+          "rotation": [0.0, 3.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "profiles": [
+          {
+            "id": "roof_cap_profile",
+            "closed": true,
+            "points": [[-7.55, -6.55], [6.32, -6.73], [8.36, -3.88], [8.77, 0.2], [7.95, 4.39], [5.1, 6.43], [-5.51, 6.32], [-7.85, 3.67], [-8.26, -0.51], [-7.65, -4.49]]
+          }
+        ]
+      }
+    ]
+  }
+}
