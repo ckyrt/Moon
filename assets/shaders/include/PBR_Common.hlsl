@@ -39,6 +39,10 @@ cbuffer SceneConstants {
     float g_PointLightIntensity;
     float3 g_PointLightAttenuation; // (constant, linear, quadratic)
     float g_PointLightPadding;
+    float3 g_FogColor;
+    float g_FogDensity;
+    float3 g_SkyColor;
+    float g_FogEnabled;
 };
 
 // 阴影（Shadow Map）参数

@@ -121,6 +121,14 @@
     <ClCompile Include="NullRenderer.cpp" />
     <ClCompile Include="SceneRenderer.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\core\EngineCore.vcxproj">
+      <Project>{C4E6F6F1-0A2B-4E3C-9D8E-1F2A3B4C5D6E}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\environment\EngineEnvironment.vcxproj">
+      <Project>{6A7B8C9D-0E1F-4234-A5B6-C7D8E9F01234}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

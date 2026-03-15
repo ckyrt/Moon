@@ -6,6 +6,7 @@ class DiligentRenderer;
 namespace Moon {
     class Scene;
     class Camera;
+    struct EnvironmentState;
 }
 
 /**
@@ -21,7 +22,7 @@ namespace SceneRendererUtils {
      * @param scene 场景
      * @param camera 相机
      */
-    void PrepareRender(DiligentRenderer* renderer, Scene* scene, Camera* camera);
+    void PrepareRender(DiligentRenderer* renderer, Scene* scene, Camera* camera, const EnvironmentState* environmentState = nullptr);
     
     /**
      * 渲染场景中的所有网格对象
@@ -36,7 +37,7 @@ namespace SceneRendererUtils {
      * @param scene 场景
      * @param camera 相机
      */
-    void RenderScene(DiligentRenderer* renderer, Scene* scene, Camera* camera);
+    void RenderScene(DiligentRenderer* renderer, Scene* scene, Camera* camera, const EnvironmentState* environmentState = nullptr);
     
 } // namespace SceneRendererUtils
 } // namespace Moon

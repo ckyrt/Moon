@@ -10,6 +10,7 @@
 #include "../../core/Scene/Material.h"
 #include "../../core/Scene/MeshRenderer.h"
 #include "../../core/Mesh/Mesh.h"
+#include "../../environment/EnvironmentTypes.h"
 
 #include <cmath>
 #include <cstring>
@@ -43,6 +44,7 @@ void DiligentRenderer::UpdateCB(IBuffer* buf, const T& data)
 template void DiligentRenderer::UpdateCB<DiligentRenderer::VSConstantsCPU>(IBuffer*, const VSConstantsCPU&);
 template void DiligentRenderer::UpdateCB<DiligentRenderer::PSMaterialCPU>(IBuffer*, const PSMaterialCPU&);
 template void DiligentRenderer::UpdateCB<DiligentRenderer::PSSceneCPU>(IBuffer*, const PSSceneCPU&);
+template void DiligentRenderer::UpdateCB<DiligentRenderer::SkyboxConstantsCPU>(IBuffer*, const SkyboxConstantsCPU&);
 template void DiligentRenderer::UpdateCB<DiligentRenderer::PointShadowConstantsCPU>(IBuffer*, const PointShadowConstantsCPU&);
 template void DiligentRenderer::UpdateCB<DiligentRenderer::PSConstantsCPU>(IBuffer*, const PSConstantsCPU&);
 template void DiligentRenderer::UpdateCB<Moon::Matrix4x4>(IBuffer*, const Moon::Matrix4x4&);
@@ -534,7 +536,12 @@ void DiligentRenderer::BeginFrame()
     ITextureView* rtvs[] = { m_pRTV };
     m_pImmediateContext->SetRenderTargets(1, rtvs, m_pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-    const float ClearColor[] = { 0.2f,0.4f,0.6f,1.0f };
+    const float ClearColor[] = {
+        m_SceneDataCache.skyColor.x,
+        m_SceneDataCache.skyColor.y,
+        m_SceneDataCache.skyColor.z,
+        1.0f
+    };
     m_pImmediateContext->ClearRenderTarget(m_pRTV, ClearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     m_pImmediateContext->ClearDepthStencil(m_pDSV, CLEAR_DEPTH_FLAG, 1.0f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
@@ -634,6 +641,33 @@ void DiligentRenderer::SetCameraPosition(const Moon::Vector3& position)
     UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
 }
 
+void DiligentRenderer::SetEnvironmentState(const Moon::EnvironmentState* environmentState)
+{
+    m_HasEnvironmentState = (environmentState != nullptr && environmentState->enabled);
+    m_RenderProceduralSky = false;
+
+    if (!m_HasEnvironmentState) {
+        m_SceneDataCache.fogColor = Moon::Vector3(0.65f, 0.75f, 0.90f);
+        m_SceneDataCache.fogDensity = 0.0f;
+        m_SceneDataCache.skyColor = Moon::Vector3(0.20f, 0.40f, 0.60f);
+        m_SceneDataCache.fogEnabled = 0.0f;
+        UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
+        return;
+    }
+
+    m_SceneDataCache.lightDirection = environmentState->atmosphere.sunDirection;
+    m_SceneDataCache.lightColor = environmentState->atmosphere.sunColor;
+    m_SceneDataCache.lightIntensity = environmentState->atmosphere.sunIntensity;
+    m_SceneDataCache.fogColor = environmentState->atmosphere.skyHorizonColor;
+    m_SceneDataCache.fogDensity = environmentState->atmosphere.fogDensity;
+    m_SceneDataCache.skyColor =
+        (environmentState->atmosphere.skyZenithColor + environmentState->atmosphere.skyHorizonColor) * 0.5f;
+    m_SceneDataCache.fogEnabled = environmentState->atmosphere.fogDensity > 0.0f ? 1.0f : 0.0f;
+    m_RenderProceduralSky = true;
+
+    UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
+}
+
 // ======= 更新场景光源 =======
 void DiligentRenderer::UpdateSceneLights(Moon::Scene* scene)
 {
@@ -706,6 +740,7 @@ void DiligentRenderer::UpdateSceneLights(Moon::Scene* scene)
 void DiligentRenderer::UpdateSceneSkybox(Moon::Scene* scene)
 {
     if (!scene) return;
+    m_RenderProceduralSky = m_HasEnvironmentState;
     
     // 查找第一个启用的 Skybox 组件
     Moon::Skybox* activeSkybox = nullptr;
@@ -736,27 +771,14 @@ void DiligentRenderer::UpdateSceneSkybox(Moon::Scene* scene)
     }
     UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
     
-    // 如果没有找到激活的 Skybox，清除所有 skybox 和 IBL 资源以停止渲染
     if (!activeSkybox) {
-        if (m_pSkyboxSRB || m_pEquirectHDR) {
-            // Skybox 渲染资源
-            m_pSkyboxSRB.Release();
-            
-            // HDR 环境贴图
-            m_pEquirectHDR_SRV.Release();
-            m_pEquirectHDR.Release();
-            
-            // Cubemap 环境贴图
-            m_pEnvironmentMapSRV.Release();
-            m_pEnvironmentMap.Release();
-            
-            // IBL 预计算贴图
-            m_pIrradianceMapSRV.Release();
-            m_pIrradianceMap.Release();
-            m_pPrefilteredEnvMapSRV.Release();
-            m_pPrefilteredEnvMap.Release();
-            
-            MOON_LOG_INFO("DiligentRenderer", "Cleared skybox and IBL resources (no active skybox in scene)");
+        if (m_pSkyboxPSO && m_pDefaultWhiteTextureSRV) {
+            m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")->Set(
+                m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+
+            if (!m_pSkyboxSRB) {
+                m_pSkyboxPSO->CreateShaderResourceBinding(&m_pSkyboxSRB, true);
+            }
         }
     }
 }

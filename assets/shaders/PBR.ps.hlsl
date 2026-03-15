@@ -350,6 +350,12 @@ float4 main(in PSInput i) : SV_Target {
     
     // 最终颜色 = 直接光 + 环境光
     float3 color = Lo + ambient;
+
+    if (g_FogEnabled > 0.5) {
+        float fogDistance = length(g_CameraPosition - i.WorldPos);
+        float fogFactor = saturate(1.0 - exp(-g_FogDensity * fogDistance));
+        color = lerp(color, g_FogColor, fogFactor);
+    }
     
     // Gamma 校正（简化）
     // color = pow(color, float3(1.0/2.2, 1.0/2.2, 1.0/2.2));

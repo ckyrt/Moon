@@ -93,13 +93,17 @@ void DiligentRenderer::CreateSkyboxPass()
     cbDesc.BindFlags = BIND_UNIFORM_BUFFER;
     cbDesc.Usage = USAGE_DYNAMIC;
     cbDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
-    cbDesc.Size = 64; // 4x4 matrix
+    cbDesc.Size = sizeof(SkyboxConstantsCPU);
     m_pDevice->CreateBuffer(cbDesc, nullptr, &m_pSkyboxVSConstants);
     
     // 4. 创建 Skybox 着色器
     const char* skyboxVS = R"(
 cbuffer SkyboxConstants {
     float4x4 g_ViewProj; // ViewProj with translation removed
+    float3 g_SkyZenithColor;
+    float g_UseProceduralSky;
+    float3 g_SkyHorizonColor;
+    float g_SkyIntensity;
 };
 
 struct VSInput {
@@ -143,6 +147,13 @@ float2 DirToEquirectUV(float3 dir) {
 }
 
 float4 main(in PSInput i) : SV_Target {
+    if (g_UseProceduralSky > 0.5) {
+        float3 dir = normalize(i.TexCoord);
+        float horizonFactor = saturate(dir.y * 0.5 + 0.5);
+        float3 gradient = lerp(g_SkyHorizonColor, g_SkyZenithColor, pow(horizonFactor, 0.6));
+        return float4(gradient * g_SkyIntensity, 1.0);
+    }
+
     // 从方向向量计算 equirectangular UV 坐标
     float3 dir = normalize(i.TexCoord);
     float2 uv = DirToEquirectUV(dir);
@@ -220,18 +231,30 @@ float4 main(in PSInput i) : SV_Target {
     
     // 注意：SRB 将在加载环境贴图后创建，因为需要绑定 cubemap 纹理
     
+    m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "SkyboxConstants")->Set(
+        m_pSkyboxVSConstants, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+    m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")->Set(
+        m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+    m_pSkyboxPSO->CreateShaderResourceBinding(&m_pSkyboxSRB, true);
+
     MOON_LOG_INFO("DiligentRenderer", "Skybox pass created successfully!");
 }
 
 void DiligentRenderer::RenderSkybox()
 {
     if (!m_pSkyboxPSO || !m_pSkyboxSRB) return;
+    if (!m_RenderProceduralSky && m_SceneDataCache.hasEnvironmentMap <= 0.5f) return;
     
     // 1. 使用当前的 ViewProj 矩阵（Skybox 足够大，不需要移除平移）
-    Moon::Matrix4x4 vpT = DiligentRendererUtils::Transpose(m_ViewProj);
+    SkyboxConstantsCPU constants{};
+    constants.ViewProjT = DiligentRendererUtils::Transpose(m_ViewProj);
+    constants.UseProceduralSky = (m_RenderProceduralSky && m_SceneDataCache.hasEnvironmentMap <= 0.5f) ? 1.0f : 0.0f;
+    constants.SkyHorizonColor = m_SceneDataCache.fogColor;
+    constants.SkyZenithColor = m_SceneDataCache.skyColor;
+    constants.SkyIntensity = 1.0f;
     
     // 更新常量缓冲
-    UpdateCB(m_pSkyboxVSConstants, vpT);
+    UpdateCB(m_pSkyboxVSConstants, constants);
     
     // 2. 设置 PSO 和 SRB
     m_pImmediateContext->SetPipelineState(m_pSkyboxPSO);
@@ -367,9 +390,6 @@ void DiligentRenderer::ConvertEquirectangularToCubemap(ITexture* pEquirectangula
         
         // 绑定静态变量（Equirectangular 环境贴图）- 允许覆盖以支持重新加载
         m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")->Set(m_pEquirectHDR_SRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
-        
-        // 创建 SRB
-        m_pSkyboxPSO->CreateShaderResourceBinding(&m_pSkyboxSRB, true);
         
         MOON_LOG_INFO("DiligentRenderer", "Skybox SRB created with equirectangular HDR map");
         MOON_LOG_INFO("DiligentRenderer", "Equirect HDR SRV pointer: {}", (void*)m_pEquirectHDR_SRV.RawPtr());

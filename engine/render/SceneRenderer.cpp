@@ -5,6 +5,7 @@
 #include "../core/Scene/Material.h"
 #include "../core/Camera/Camera.h"
 #include "../core/Logging/Logger.h"
+#include "../environment/EnvironmentComponent.h"
 #include "diligent/DiligentRenderer.h"
 
 // Forward declaration to avoid including DiligentRenderer.h in EngineCore project
@@ -17,7 +18,32 @@ namespace SceneRendererUtils {
 // 透明度阈值常量：大于等于此值认为是不透明物体
 constexpr float OPACITY_THRESHOLD = 0.99f;
 
-void PrepareRender(DiligentRenderer* renderer, Scene* scene, Camera* camera)
+namespace {
+
+const EnvironmentState* FindEnvironmentState(Scene* scene)
+{
+    if (!scene) {
+        return nullptr;
+    }
+
+    const EnvironmentState* environmentState = nullptr;
+    scene->Traverse([&](SceneNode* node) {
+        if (environmentState) {
+            return;
+        }
+
+        EnvironmentComponent* environment = node->GetComponent<EnvironmentComponent>();
+        if (environment && environment->IsEnabled()) {
+            environmentState = &environment->GetState();
+        }
+    });
+
+    return environmentState;
+}
+
+} // namespace
+
+void PrepareRender(DiligentRenderer* renderer, Scene* scene, Camera* camera, const EnvironmentState* environmentState)
 {
     if (!renderer || !scene || !camera) {
         MOON_LOG_ERROR("SceneRenderer", "Invalid parameters: renderer=%p, scene=%p, camera=%p", 
@@ -34,6 +60,7 @@ void PrepareRender(DiligentRenderer* renderer, Scene* scene, Camera* camera)
     
     // 3. 更新场景光源（从场景中查找 Light 组件）
     renderer->UpdateSceneLights(scene);
+    renderer->SetEnvironmentState(environmentState ? environmentState : FindEnvironmentState(scene));
     
     // 4. 更新天空盒（从场景中查找 Skybox 组件并加载环境贴图）
     renderer->UpdateSceneSkybox(scene);
@@ -195,14 +222,14 @@ void RenderTransparentMeshes(DiligentRenderer* renderer, Scene* scene)
     });
 }
 
-void RenderScene(DiligentRenderer* renderer, Scene* scene, Camera* camera)
+void RenderScene(DiligentRenderer* renderer, Scene* scene, Camera* camera, const EnvironmentState* environmentState)
 {
     if (!renderer || !scene || !camera) {
         return;
     }
     
     // 1. 准备渲染（相机、光源、天空盒）
-    PrepareRender(renderer, scene, camera);
+    PrepareRender(renderer, scene, camera, environmentState);
 
     // 1.5 渲染 Shadow Map（在主渲染之前）
     renderer->RenderShadowMap(scene, camera);
