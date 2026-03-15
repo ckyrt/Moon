@@ -13,6 +13,8 @@
 #include "../engine/core/Scene/MeshRenderer.h"
 #include "../engine/core/Scene/Light.h"
 #include "../engine/core/Scene/Skybox.h"
+#include "../../engine/environment/EnvironmentComponent.h"
+#include "../../engine/environment/EnvironmentTypes.h"
 #include "../../engine/core/Assets/MeshManager.h"
 #include "../engine/core/Logging/Logger.h"
 #include "../engine/render/diligent/DiligentRenderer.h"
@@ -245,6 +247,30 @@ void InitSceneObjects(EngineCore* engine)
     Moon::Scene* scene = engine->GetScene();
     //Moon::MeshManager* meshMgr = engine->GetMeshManager();
 
+    if (scene && !scene->FindNodeByName("Editor Environment")) {
+        Moon::SceneNode* environmentNode = scene->CreateNode("Editor Environment");
+        Moon::EnvironmentComponent* environment = environmentNode->AddComponent<Moon::EnvironmentComponent>();
+
+        Moon::EnvironmentProfile profile;
+        profile.name = "EditorEnvironment";
+        profile.enableDayNightCycle = false;
+        profile.enableWeather = false;
+        profile.enableWind = true;
+        profile.enableClouds = true;
+        profile.enableFog = true;
+        profile.syncPrimaryDirectionalLight = true;
+        profile.lockToFixedTime = true;
+        profile.fixedTimeHours = 10.5f;
+        profile.minSunIntensity = 0.08f;
+        profile.maxSunIntensity = 2.8f;
+        profile.clearFogDensity = 0.0008f;
+        profile.fogWeatherDensity = 0.012f;
+
+        environment->SetProfile(profile);
+        environment->SetTimeOfDay(10.5f);
+        environment->SetWeather(Moon::WeatherType::Clear, 0.0f);
+    }
+
     if (scene && !scene->FindNodeByName("Editor Sun")) {
         Moon::SceneNode* sunNode = scene->CreateNode("Editor Sun");
         Moon::Light* sunLight = sunNode->AddComponent<Moon::Light>();
@@ -254,14 +280,6 @@ void InitSceneObjects(EngineCore* engine)
         sunLight->SetCastShadows(true);
         sunNode->GetTransform()->SetLocalPosition({ 12.0f, 18.0f, -12.0f });
         sunNode->GetTransform()->LookAt(Moon::Vector3(0.0f, 0.0f, 0.0f));
-    }
-
-    if (scene && !scene->FindNodeByName("Editor Sky")) {
-        Moon::SceneNode* skyNode = scene->CreateNode("Editor Sky");
-        Moon::Skybox* skybox = skyNode->AddComponent<Moon::Skybox>();
-        skybox->LoadEnvironmentMap("textures/environment.hdr");
-        skybox->SetIntensity(0.75f);
-        skybox->SetEnableIBL(true);
     }
 
     // 创建 Ground Plane
