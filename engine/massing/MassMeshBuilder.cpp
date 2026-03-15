@@ -14,6 +14,8 @@ namespace {
 constexpr float kPi = 3.14159265358979323846f;
 constexpr float kTwoPi = 2.0f * kPi;
 constexpr float kEpsilon = 1e-4f;
+constexpr float kDefaultCreaseAngleDegrees = 75.0f;
+constexpr int kDefaultLoftSegmentsPerSpan = 4;
 
 struct Bounds {
     Vector3 min;
@@ -117,6 +119,96 @@ void RecomputeNormals(Mesh& mesh) {
     }
 
     mesh.SetVertices(std::move(vertices));
+}
+
+void SplitVerticesByCrease(Mesh& mesh, float creaseAngleDegrees = kDefaultCreaseAngleDegrees) {
+    const std::vector<Vertex>& sourceVertices = mesh.GetVertices();
+    const std::vector<uint32_t>& sourceIndices = mesh.GetIndices();
+    if (sourceVertices.empty() || sourceIndices.size() < 3) {
+        return;
+    }
+
+    struct CornerUse {
+        size_t faceIndex = 0;
+        int corner = 0;
+    };
+
+    const size_t faceCount = sourceIndices.size() / 3;
+    std::vector<Vector3> faceNormals(faceCount, Vector3(0.0f, 1.0f, 0.0f));
+    std::vector<std::vector<CornerUse>> cornersByVertex(sourceVertices.size());
+
+    for (size_t faceIndex = 0; faceIndex < faceCount; ++faceIndex) {
+        const uint32_t i0 = sourceIndices[faceIndex * 3 + 0];
+        const uint32_t i1 = sourceIndices[faceIndex * 3 + 1];
+        const uint32_t i2 = sourceIndices[faceIndex * 3 + 2];
+        if (i0 >= sourceVertices.size() || i1 >= sourceVertices.size() || i2 >= sourceVertices.size()) {
+            continue;
+        }
+
+        const Vector3 ab = sourceVertices[i1].position - sourceVertices[i0].position;
+        const Vector3 ac = sourceVertices[i2].position - sourceVertices[i0].position;
+        faceNormals[faceIndex] = SafeNormalize(Vector3::Cross(ab, ac), Vector3(0.0f, 1.0f, 0.0f));
+
+        cornersByVertex[i0].push_back({faceIndex, 0});
+        cornersByVertex[i1].push_back({faceIndex, 1});
+        cornersByVertex[i2].push_back({faceIndex, 2});
+    }
+
+    const float creaseDot = std::cos(ToRadians(creaseAngleDegrees));
+    std::vector<Vertex> splitVertices;
+    std::vector<uint32_t> splitIndices(sourceIndices.size(), 0);
+    splitVertices.reserve(sourceIndices.size());
+
+    for (size_t vertexIndex = 0; vertexIndex < cornersByVertex.size(); ++vertexIndex) {
+        const std::vector<CornerUse>& incidentCorners = cornersByVertex[vertexIndex];
+        if (incidentCorners.empty()) {
+            continue;
+        }
+
+        std::vector<bool> used(incidentCorners.size(), false);
+        for (size_t seed = 0; seed < incidentCorners.size(); ++seed) {
+            if (used[seed]) {
+                continue;
+            }
+
+            std::vector<size_t> cluster;
+            cluster.push_back(seed);
+            used[seed] = true;
+            Vector3 clusterNormal = faceNormals[incidentCorners[seed].faceIndex];
+
+            bool changed = true;
+            while (changed) {
+                changed = false;
+                const Vector3 referenceNormal = SafeNormalize(clusterNormal, faceNormals[incidentCorners[seed].faceIndex]);
+                for (size_t candidate = 0; candidate < incidentCorners.size(); ++candidate) {
+                    if (used[candidate]) {
+                        continue;
+                    }
+
+                    const Vector3& candidateNormal = faceNormals[incidentCorners[candidate].faceIndex];
+                    if (Vector3::Dot(referenceNormal, candidateNormal) >= creaseDot) {
+                        cluster.push_back(candidate);
+                        used[candidate] = true;
+                        clusterNormal = clusterNormal + candidateNormal;
+                        changed = true;
+                    }
+                }
+            }
+
+            Vertex splitVertex = sourceVertices[vertexIndex];
+            splitVertex.normal = SafeNormalize(clusterNormal, sourceVertices[vertexIndex].normal);
+            const uint32_t splitIndex = static_cast<uint32_t>(splitVertices.size());
+            splitVertices.push_back(splitVertex);
+
+            for (size_t clusterIndex : cluster) {
+                const CornerUse& use = incidentCorners[clusterIndex];
+                splitIndices[use.faceIndex * 3 + static_cast<size_t>(use.corner)] = splitIndex;
+            }
+        }
+    }
+
+    mesh.SetVertices(std::move(splitVertices));
+    mesh.SetIndices(std::move(splitIndices));
 }
 
 void ApplyTransformToMesh(Mesh& mesh, const RuleTransform& transform) {
@@ -594,6 +686,10 @@ std::vector<float> BuildLoftLevels(const RuleNode& node, size_t profileCount) {
     return levels;
 }
 
+int GetLoftSegmentsPerSpan(const RuleNode& node) {
+    return std::max(1, node.params.value("segments_per_span", kDefaultLoftSegmentsPerSpan));
+}
+
 std::shared_ptr<Mesh> CreateLoftMesh(const RuleNode& node) {
     if (node.profiles.size() < 2) {
         return nullptr;
@@ -614,46 +710,82 @@ std::shared_ptr<Mesh> CreateLoftMesh(const RuleNode& node) {
     }
 
     const std::vector<float> levels = BuildLoftLevels(node, node.profiles.size());
+    const int segmentsPerSpan = GetLoftSegmentsPerSpan(node);
+    std::vector<std::vector<Vec2>> loftProfiles;
+    std::vector<float> loftLevels;
+    loftProfiles.reserve((sampledProfiles.size() - 1) * static_cast<size_t>(segmentsPerSpan) + 1);
+    loftLevels.reserve(loftProfiles.capacity());
+
+    for (size_t profileIndex = 0; profileIndex + 1 < sampledProfiles.size(); ++profileIndex) {
+        const std::vector<Vec2>& current = sampledProfiles[profileIndex];
+        const std::vector<Vec2>& next = sampledProfiles[profileIndex + 1];
+        const float currentLevel = levels[profileIndex];
+        const float nextLevel = levels[profileIndex + 1];
+
+        for (int segment = 0; segment < segmentsPerSpan; ++segment) {
+            if (profileIndex > 0 && segment == 0) {
+                continue;
+            }
+
+            const float t = static_cast<float>(segment) / static_cast<float>(segmentsPerSpan);
+            std::vector<Vec2> interpolated;
+            interpolated.reserve(sampleCount);
+            for (size_t pointIndex = 0; pointIndex < sampleCount; ++pointIndex) {
+                const Vec2& a = current[pointIndex];
+                const Vec2& b = next[pointIndex];
+                interpolated.push_back({
+                    a[0] + (b[0] - a[0]) * t,
+                    a[1] + (b[1] - a[1]) * t
+                });
+            }
+            loftProfiles.push_back(std::move(interpolated));
+            loftLevels.push_back(currentLevel + (nextLevel - currentLevel) * t);
+        }
+    }
+    loftProfiles.push_back(sampledProfiles.back());
+    loftLevels.push_back(levels.back());
+
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    vertices.reserve(sampleCount * sampledProfiles.size());
+    vertices.reserve(sampleCount * loftProfiles.size());
 
-    for (size_t profileIndex = 0; profileIndex < sampledProfiles.size(); ++profileIndex) {
-        for (const Vec2& point : sampledProfiles[profileIndex]) {
-            vertices.emplace_back(Vector3(point[0], levels[profileIndex], point[1]), Vector3(0,1,0), Vector3(1,1,1), 1.0f, Vector2(point[0], point[1]));
+    for (size_t profileIndex = 0; profileIndex < loftProfiles.size(); ++profileIndex) {
+        for (const Vec2& point : loftProfiles[profileIndex]) {
+            vertices.emplace_back(Vector3(point[0], loftLevels[profileIndex], point[1]), Vector3(0,1,0), Vector3(1,1,1), 1.0f, Vector2(point[0], point[1]));
         }
     }
 
-    for (size_t ring = 0; ring + 1 < sampledProfiles.size(); ++ring) {
+    for (size_t ring = 0; ring + 1 < loftProfiles.size(); ++ring) {
         const uint32_t currentOffset = static_cast<uint32_t>(ring * sampleCount);
         const uint32_t nextOffset = static_cast<uint32_t>((ring + 1) * sampleCount);
         for (size_t i = 0; i < sampleCount; ++i) {
             const uint32_t next = static_cast<uint32_t>((i + 1) % sampleCount);
-            AddQuad(indices, currentOffset + static_cast<uint32_t>(i), currentOffset + next, nextOffset + next, nextOffset + static_cast<uint32_t>(i));
+            AddQuad(indices,
+                currentOffset + static_cast<uint32_t>(i),
+                nextOffset + static_cast<uint32_t>(i),
+                nextOffset + next,
+                currentOffset + next);
         }
     }
 
-    const bool bottomClockwise = SignedArea(sampledProfiles.front()) < 0.0f;
-    const bool topClockwise = SignedArea(sampledProfiles.back()) < 0.0f;
-
-    Vector3 bottomCenter(0.0f, levels.front(), 0.0f);
-    for (const Vec2& point : sampledProfiles.front()) {
+    Vector3 bottomCenter(0.0f, loftLevels.front(), 0.0f);
+    for (const Vec2& point : loftProfiles.front()) {
         bottomCenter.x += point[0];
         bottomCenter.z += point[1];
     }
     bottomCenter.x /= static_cast<float>(sampleCount);
     bottomCenter.z /= static_cast<float>(sampleCount);
 
-    Vector3 topCenter(0.0f, levels.back(), 0.0f);
-    for (const Vec2& point : sampledProfiles.back()) {
+    Vector3 topCenter(0.0f, loftLevels.back(), 0.0f);
+    for (const Vec2& point : loftProfiles.back()) {
         topCenter.x += point[0];
         topCenter.z += point[1];
     }
     topCenter.x /= static_cast<float>(sampleCount);
     topCenter.z /= static_cast<float>(sampleCount);
 
-    AddCapFan(vertices, indices, sampledProfiles.front(), 0u, bottomCenter, Vector3(0.0f, -1.0f, 0.0f), !bottomClockwise);
-    AddCapFan(vertices, indices, sampledProfiles.back(), static_cast<uint32_t>((sampledProfiles.size() - 1) * sampleCount), topCenter, Vector3(0.0f, 1.0f, 0.0f), topClockwise);
+    AddCapFan(vertices, indices, loftProfiles.front(), 0u, bottomCenter, Vector3(0.0f, -1.0f, 0.0f), false);
+    AddCapFan(vertices, indices, loftProfiles.back(), static_cast<uint32_t>((loftProfiles.size() - 1) * sampleCount), topCenter, Vector3(0.0f, 1.0f, 0.0f), true);
 
     return MakeMesh(std::move(vertices), std::move(indices));
 }
@@ -668,6 +800,86 @@ void ApplyTaper(Mesh& mesh, float bottomScale, float topScale) {
         vertex.position.z *= scale;
     }
     mesh.SetVertices(std::move(vertices));
+    RecomputeNormals(mesh);
+}
+
+void SubdivideMesh(Mesh& mesh, int iterations) {
+    if (iterations <= 0) {
+        return;
+    }
+
+    std::vector<Vertex> vertices = mesh.GetVertices();
+    std::vector<uint32_t> indices = mesh.GetIndices();
+
+    for (int iteration = 0; iteration < iterations; ++iteration) {
+        std::vector<Vertex> nextVertices = vertices;
+        std::vector<uint32_t> nextIndices;
+        nextIndices.reserve(indices.size() * 4);
+
+        struct EdgeKey {
+            uint32_t a;
+            uint32_t b;
+
+            bool operator==(const EdgeKey& other) const {
+                return a == other.a && b == other.b;
+            }
+        };
+
+        struct EdgeKeyHasher {
+            size_t operator()(const EdgeKey& key) const {
+                return (static_cast<size_t>(key.a) << 32) ^ static_cast<size_t>(key.b);
+            }
+        };
+
+        std::unordered_map<EdgeKey, uint32_t, EdgeKeyHasher> midpointCache;
+
+        auto getMidpointIndex = [&](uint32_t ia, uint32_t ib) -> uint32_t {
+            const EdgeKey key{std::min(ia, ib), std::max(ia, ib)};
+            const auto found = midpointCache.find(key);
+            if (found != midpointCache.end()) {
+                return found->second;
+            }
+
+            const Vertex& a = nextVertices[ia];
+            const Vertex& b = nextVertices[ib];
+            Vertex midpoint;
+            midpoint.position = (a.position + b.position) * 0.5f;
+            midpoint.normal = SafeNormalize(a.normal + b.normal, Vector3(0.0f, 1.0f, 0.0f));
+            midpoint.colorR = 0.5f * (a.colorR + b.colorR);
+            midpoint.colorG = 0.5f * (a.colorG + b.colorG);
+            midpoint.colorB = 0.5f * (a.colorB + b.colorB);
+            midpoint.colorA = 0.5f * (a.colorA + b.colorA);
+            midpoint.uv = Vector2(
+                0.5f * (a.uv.x + b.uv.x),
+                0.5f * (a.uv.y + b.uv.y)
+            );
+
+            const uint32_t midpointIndex = static_cast<uint32_t>(nextVertices.size());
+            nextVertices.push_back(midpoint);
+            midpointCache.emplace(key, midpointIndex);
+            return midpointIndex;
+        };
+
+        for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+            const uint32_t i0 = indices[i + 0];
+            const uint32_t i1 = indices[i + 1];
+            const uint32_t i2 = indices[i + 2];
+            const uint32_t m01 = getMidpointIndex(i0, i1);
+            const uint32_t m12 = getMidpointIndex(i1, i2);
+            const uint32_t m20 = getMidpointIndex(i2, i0);
+
+            AddTriangle(nextIndices, i0, m01, m20);
+            AddTriangle(nextIndices, m01, i1, m12);
+            AddTriangle(nextIndices, m20, m12, i2);
+            AddTriangle(nextIndices, m01, m12, m20);
+        }
+
+        vertices = std::move(nextVertices);
+        indices = std::move(nextIndices);
+    }
+
+    mesh.SetVertices(std::move(vertices));
+    mesh.SetIndices(std::move(indices));
     RecomputeNormals(mesh);
 }
 
@@ -950,9 +1162,13 @@ bool BuildDeform(const RuleNode& node, std::vector<MassBuildItem>& outItems, std
     }
 
     const std::string mode = node.params.value("mode", std::string("twist"));
+    const int subdivideIterations = std::max(0, node.params.value("subdivide", mode == "twist" ? 2 : 1));
     for (MassBuildItem& item : localItems) {
         if (!item.mesh) {
             continue;
+        }
+        if (subdivideIterations > 0) {
+            SubdivideMesh(*item.mesh, subdivideIterations);
         }
         if (mode == "taper") {
             ApplyTaper(*item.mesh, node.params.value("bottom_scale", 1.0f), node.params.value("top_scale", 0.6f));
@@ -1000,8 +1216,24 @@ bool BuildNode(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::
 bool MassMeshBuilder::Build(const RuleSet& ruleSet, MassBuildResult& outResult, std::string& outError) {
     outResult.items.clear();
     outResult.warnings.clear();
-    return BuildNode(ruleSet.root, outResult.items, outResult.warnings, outError);
+    if (!BuildNode(ruleSet.root, outResult.items, outResult.warnings, outError)) {
+        return false;
+    }
+
+    for (MassBuildItem& item : outResult.items) {
+        if (!item.mesh || !item.mesh->IsValid()) {
+            continue;
+        }
+        SplitVerticesByCrease(*item.mesh);
+    }
+
+    return true;
 }
 
 } // namespace Massing
 } // namespace Moon
+
+
+
+
+

@@ -47,16 +47,16 @@
             "name": "SkyCut",
             "material": "glass",
             "transform": {
-              "position": [0, 10, 0],
-              "rotation": [0, 18, 0]
+              "position": [0, 9, 0],
+              "rotation": [0, 12, 0]
             },
             "params": {
-              "height": 12
+              "height": 10
             },
             "profiles": [
               {
                 "closed": true,
-                "points": [[-7, -1.5], [7, -1.5], [7, 1.5], [-7, 1.5]]
+                "points": [[-5.5, -1.3], [5.5, -1.3], [5.5, 1.3], [-5.5, 1.3]]
               }
             ]
           }

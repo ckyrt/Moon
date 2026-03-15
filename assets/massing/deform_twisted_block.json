@@ -7,7 +7,8 @@
     "material": "metal",
     "params": {
       "mode": "twist",
-      "angle": 42
+      "angle": 42,
+      "subdivide": 2
     },
     "children": [
       {

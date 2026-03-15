@@ -114,17 +114,74 @@ uint64_t HashMesh(const Moon::Mesh& mesh) {
     return hash;
 }
 
+uint64_t QuantizePosition(const Moon::Vector3& position) {
+    const auto quantize = [](float value) -> uint32_t {
+        return static_cast<uint32_t>(std::lround((value + 2048.0f) * 1000.0f));
+    };
+    return (static_cast<uint64_t>(quantize(position.x)) << 42) ^
+           (static_cast<uint64_t>(quantize(position.y)) << 21) ^
+           static_cast<uint64_t>(quantize(position.z));
+}
+
+bool HasSplitNormalsAtSharedPosition(const Moon::Mesh& mesh, float maxDot = 0.8f) {
+    std::unordered_map<uint64_t, std::vector<Moon::Vector3>> normalsByPosition;
+    for (const Moon::Vertex& vertex : mesh.GetVertices()) {
+        normalsByPosition[QuantizePosition(vertex.position)].push_back(vertex.normal);
+    }
+
+    for (const auto& pair : normalsByPosition) {
+        const std::vector<Moon::Vector3>& normals = pair.second;
+        for (size_t i = 0; i < normals.size(); ++i) {
+            for (size_t j = i + 1; j < normals.size(); ++j) {
+                if (Moon::Vector3::Dot(normals[i], normals[j]) < maxDot) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+float AverageOutwardDot(const Moon::Mesh& mesh) {
+    const Bounds3 bounds = ComputeBounds(mesh);
+    const Moon::Vector3 center(
+        0.5f * (bounds.min.x + bounds.max.x),
+        0.5f * (bounds.min.y + bounds.max.y),
+        0.5f * (bounds.min.z + bounds.max.z)
+    );
+
+    float dotSum = 0.0f;
+    size_t dotCount = 0;
+    for (const Moon::Vertex& vertex : mesh.GetVertices()) {
+        Moon::Vector3 outward = vertex.position - center;
+        const float outwardLength = outward.Length();
+        if (outwardLength <= 0.001f) {
+            continue;
+        }
+        outward = outward * (1.0f / outwardLength);
+        dotSum += Moon::Vector3::Dot(vertex.normal, outward);
+        ++dotCount;
+    }
+
+    return dotCount > 0 ? dotSum / static_cast<float>(dotCount) : 0.0f;
+}
+
 uint32_t CountBoundaryEdges(const Moon::Mesh& mesh) {
     std::unordered_map<uint64_t, uint32_t> edgeUseCount;
+    const std::vector<Moon::Vertex>& vertices = mesh.GetVertices();
     const std::vector<uint32_t>& indices = mesh.GetIndices();
     for (size_t i = 0; i + 2 < indices.size(); i += 3) {
-        const uint32_t tri[3] = { indices[i + 0], indices[i + 1], indices[i + 2] };
+        const uint64_t tri[3] = {
+            QuantizePosition(vertices[indices[i + 0]].position),
+            QuantizePosition(vertices[indices[i + 1]].position),
+            QuantizePosition(vertices[indices[i + 2]].position)
+        };
         for (int edge = 0; edge < 3; ++edge) {
-            const uint32_t a = tri[edge];
-            const uint32_t b = tri[(edge + 1) % 3];
-            const uint32_t lo = std::min(a, b);
-            const uint32_t hi = std::max(a, b);
-            const uint64_t key = (static_cast<uint64_t>(lo) << 32) | static_cast<uint64_t>(hi);
+            const uint64_t a = tri[edge];
+            const uint64_t b = tri[(edge + 1) % 3];
+            const uint64_t lo = std::min(a, b);
+            const uint64_t hi = std::max(a, b);
+            const uint64_t key = lo ^ (hi << 1);
             edgeUseCount[key] += 1;
         }
     }
@@ -271,6 +328,101 @@ TEST(MassMeshBuilderTests, LoftUsesLevelHeights) {
     EXPECT_EQ(CountBoundaryEdges(*result.items.front().mesh), 0u);
 }
 
+TEST(MassMeshBuilderTests, ExtrudeSplitsNormalsAcrossHardEdges) {
+    const RuleSet ruleSet = ParseRuleSetOrFail(R"({
+      "version": 1,
+      "root": {
+        "type": "extrude",
+        "params": { "height": 12 },
+        "profiles": [
+          { "closed": true, "points": [[-4, -4], [4, -4], [4, 4], [-4, 4]] }
+        ]
+      }
+    })");
+
+    MassBuildResult result = BuildRuleSetOrFail(ruleSet);
+    ASSERT_EQ(result.items.size(), 1u);
+    const std::shared_ptr<Moon::Mesh>& mesh = result.items.front().mesh;
+    ExpectMeshLooksValid(mesh);
+
+    EXPECT_GT(mesh->GetVertexCount(), 8u);
+    EXPECT_TRUE(HasSplitNormalsAtSharedPosition(*mesh));
+}
+
+TEST(MassMeshBuilderTests, LoftAddsIntermediateRingsByDefault) {
+    const RuleSet ruleSet = ParseRuleSetOrFail(R"({
+      "version": 1,
+      "root": {
+        "type": "loft",
+        "params": { "levels": [0, 18, 36] },
+        "profiles": [
+          { "closed": true, "points": [[-8, -8], [8, -8], [8, 8], [-8, 8]] },
+          { "closed": true, "points": [[-6, -9], [9, -6], [6, 9], [-9, 6]] },
+          { "closed": true, "points": [[-4, -7], [7, -4], [4, 7], [-7, 4]] }
+        ]
+      }
+    })");
+
+    MassBuildResult result = BuildRuleSetOrFail(ruleSet);
+    ASSERT_EQ(result.items.size(), 1u);
+    const std::shared_ptr<Moon::Mesh>& mesh = result.items.front().mesh;
+    ExpectMeshLooksValid(mesh);
+
+    EXPECT_GT(mesh->GetVertexCount(), 40u);
+    EXPECT_EQ(CountBoundaryEdges(*mesh), 0u);
+}
+
+TEST(MassMeshBuilderTests, LoftNormalsPointOutwardOnAverage) {
+    const RuleSet ruleSet = ParseRuleSetOrFail(R"({
+      "version": 1,
+      "root": {
+        "type": "loft",
+        "params": {
+          "levels": [0, 18, 36],
+          "segments_per_span": 6
+        },
+        "profiles": [
+          { "closed": true, "points": [[-8, -6], [-6, -8], [6, -8], [8, -6], [8, 6], [6, 8], [-6, 8], [-8, 6]] },
+          { "closed": true, "points": [[-7.2, -5.6], [-5.2, -8.7], [7.0, -9.0], [9.0, -6.1], [7.0, 7.4], [5.0, 9.0], [-7.0, 8.5], [-9.1, 5.8]] },
+          { "closed": true, "points": [[-5.8, -4.4], [-4.0, -6.7], [5.4, -7.0], [7.0, -4.8], [5.8, 5.8], [3.8, 7.1], [-5.2, 6.8], [-7.1, 4.7]] }
+        ]
+      }
+    })");
+
+    MassBuildResult result = BuildRuleSetOrFail(ruleSet);
+    ASSERT_EQ(result.items.size(), 1u);
+    const std::shared_ptr<Moon::Mesh>& mesh = result.items.front().mesh;
+    ExpectMeshLooksValid(mesh);
+
+    EXPECT_GT(AverageOutwardDot(*mesh), 0.2f);
+}
+
+TEST(MassMeshBuilderTests, DeformTwistSubdividesBeforeWarping) {
+    const RuleSet ruleSet = ParseRuleSetOrFail(R"({
+      "version": 1,
+      "root": {
+        "type": "deform",
+        "params": { "mode": "twist", "angle": 42, "subdivide": 2 },
+        "children": [
+          {
+            "type": "extrude",
+            "params": { "height": 28 },
+            "profiles": [
+              { "closed": true, "points": [[-5, -5], [5, -5], [5, 5], [-5, 5]] }
+            ]
+          }
+        ]
+      }
+    })");
+
+    MassBuildResult result = BuildRuleSetOrFail(ruleSet);
+    ASSERT_EQ(result.items.size(), 1u);
+    const std::shared_ptr<Moon::Mesh>& mesh = result.items.front().mesh;
+    ExpectMeshLooksValid(mesh);
+
+    EXPECT_GT(mesh->GetVertexCount(), 24u);
+}
+
 TEST(MassMeshBuilderTests, AllSamplePresetsParseAndBuild) {
     const char* presetFiles[] = {
         "complex_twisted_tower.json",
@@ -312,3 +464,6 @@ TEST(MassMeshBuilderTests, RepeatedBuildOfSameRuleSetIsDeterministic) {
         EXPECT_EQ(HashMesh(*first.items[i].mesh), HashMesh(*second.items[i].mesh));
     }
 }
+
+
+
