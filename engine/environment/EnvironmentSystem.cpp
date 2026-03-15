@@ -310,7 +310,13 @@ float EnvironmentSystem::WrapHours(float hours) {
 }
 
 float EnvironmentSystem::Clamp01(float value) {
-    return std::clamp(value, 0.0f, 1.0f);
+    if (value <= 0.0f) {
+        return 0.0f;
+    }
+    if (value >= 1.0f) {
+        return 1.0f;
+    }
+    return value;
 }
 
 Vector3 EnvironmentSystem::Lerp(const Vector3& a, const Vector3& b, float t) {

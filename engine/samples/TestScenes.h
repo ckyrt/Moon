@@ -5,6 +5,7 @@ class EngineCore;
 // 你所有“临时效果测试”都从这里进
 namespace TestScenes {
 
+    void TestEnvironment(EngineCore* engine);
     void TestMaterial(EngineCore* engine);
     void TestCSG(EngineCore* engine);
     void TestCSGBlueprint(EngineCore* engine);  // 新增：测试 JSON Blueprint 系统

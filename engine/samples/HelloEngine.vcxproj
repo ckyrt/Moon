@@ -104,6 +104,7 @@
     <ClCompile Include="TestCSG.cpp" />
     <ClCompile Include="TestCSGBlueprint.cpp" />
     <ClCompile Include="TestBuildingSample.cpp" />
+    <ClCompile Include="TestEnvironment.cpp" />
     <ClCompile Include="TestMaterial.cpp" />
     <ClCompile Include="TestZipLoad.cpp" />
   </ItemGroup>
@@ -120,6 +121,9 @@
     </ProjectReference>
     <ProjectReference Include="..\render\EngineRender.vcxproj">
       <Project>{256A3289-BE13-44ED-B3AE-BFDCAA130227}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\environment\EngineEnvironment.vcxproj">
+      <Project>{6A7B8C9D-0E1F-4234-A5B6-C7D8E9F01234}</Project>
     </ProjectReference>
     <ProjectReference Include="..\building\EngineBuilding.vcxproj">
       <Project>{7B8C9D0E-1F2A-3B4C-5D6E-7F8A9B0C1D2E}</Project>

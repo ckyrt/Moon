@@ -127,9 +127,17 @@ void main(in VSInput i, out PSInput o) {
 }
 )";
     
-    const char* skyboxPS = R"(
+const char* skyboxPS = R"(
 Texture2D g_EquirectMap;
 SamplerState g_EquirectMap_sampler;
+
+cbuffer SkyboxConstants {
+    float4x4 g_ViewProj;
+    float3 g_SkyZenithColor;
+    float g_UseProceduralSky;
+    float3 g_SkyHorizonColor;
+    float g_SkyIntensity;
+};
 
 struct PSInput {
     float4 Pos : SV_POSITION;
@@ -189,6 +197,10 @@ float4 main(in PSInput i) : SV_Target {
     
     RefCntAutoPtr<IShader> pSkyboxPS;
     m_pDevice->CreateShader(psInfo, &pSkyboxPS);
+    if (!pSkyboxVS || !pSkyboxPS) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create skybox shaders");
+        return;
+    }
     
     // 5. 创建 Skybox PSO
     GraphicsPipelineStateCreateInfo psoInfo;
@@ -228,13 +240,28 @@ float4 main(in PSInput i) : SV_Target {
     psoInfo.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
     
     m_pDevice->CreateGraphicsPipelineState(psoInfo, &m_pSkyboxPSO);
+    if (!m_pSkyboxPSO) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create skybox PSO");
+        return;
+    }
     
     // 注意：SRB 将在加载环境贴图后创建，因为需要绑定 cubemap 纹理
     
-    m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "SkyboxConstants")->Set(
-        m_pSkyboxVSConstants, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
-    m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")->Set(
-        m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+    if (auto* vsConstants = m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "SkyboxConstants")) {
+        vsConstants->Set(m_pSkyboxVSConstants, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+    } else {
+        MOON_LOG_ERROR("DiligentRenderer", "Skybox VS constant buffer binding not found");
+    }
+    if (auto* psConstants = m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "SkyboxConstants")) {
+        psConstants->Set(m_pSkyboxVSConstants, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+    } else {
+        MOON_LOG_ERROR("DiligentRenderer", "Skybox PS constant buffer binding not found");
+    }
+    if (auto* equirectMap = m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")) {
+        equirectMap->Set(m_pDefaultWhiteTextureSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+    } else {
+        MOON_LOG_ERROR("DiligentRenderer", "Skybox environment texture binding not found");
+    }
     m_pSkyboxPSO->CreateShaderResourceBinding(&m_pSkyboxSRB, true);
 
     MOON_LOG_INFO("DiligentRenderer", "Skybox pass created successfully!");
@@ -389,7 +416,11 @@ void DiligentRenderer::ConvertEquirectangularToCubemap(ITexture* pEquirectangula
         m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "SkyboxConstants")->Set(m_pSkyboxVSConstants, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
         
         // 绑定静态变量（Equirectangular 环境贴图）- 允许覆盖以支持重新加载
-        m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")->Set(m_pEquirectHDR_SRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+        if (auto* equirectMap = m_pSkyboxPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap")) {
+            equirectMap->Set(m_pEquirectHDR_SRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+        } else {
+            MOON_LOG_ERROR("DiligentRenderer", "Skybox environment texture binding not found during map load");
+        }
         
         MOON_LOG_INFO("DiligentRenderer", "Skybox SRB created with equirectangular HDR map");
         MOON_LOG_INFO("DiligentRenderer", "Equirect HDR SRV pointer: {}", (void*)m_pEquirectHDR_SRV.RawPtr());
