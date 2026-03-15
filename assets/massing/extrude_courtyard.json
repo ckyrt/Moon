@@ -1,0 +1,41 @@
+﻿{
+  "schema_version": 1,
+  "version": 1,
+  "root": {
+    "type": "csg",
+    "name": "CourtyardBlock",
+    "operation": "subtract",
+    "material": "concrete",
+    "children": [
+      {
+        "type": "extrude",
+        "name": "OuterBlock",
+        "material": "concrete",
+        "params": {
+          "height": 22
+        },
+        "profiles": [
+          {
+            "closed": true,
+            "points": [[-14, -14], [14, -14], [14, 14], [-14, 14]]
+          }
+        ]
+      },
+      {
+        "type": "extrude",
+        "name": "InnerVoid",
+        "material": "concrete",
+        "params": {
+          "height": 24
+        },
+        "profiles": [
+          {
+            "closed": true,
+            "points": [[-6, -6], [6, -6], [6, 6], [-6, 6]]
+          }
+        ]
+      }
+    ]
+  }
+}
+

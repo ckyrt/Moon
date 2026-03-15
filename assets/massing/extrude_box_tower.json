@@ -1,0 +1,19 @@
+﻿{
+  "schema_version": 1,
+  "version": 1,
+  "root": {
+    "type": "extrude",
+    "name": "ExtrudeBoxTower",
+    "material": "concrete",
+    "params": {
+      "height": 36
+    },
+    "profiles": [
+      {
+        "closed": true,
+        "points": [[-8, -8], [8, -8], [8, 8], [-8, 8]]
+      }
+    ]
+  }
+}
+

@@ -48,6 +48,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EngineBuildingTests", "engi
 		{4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E} = {4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EngineMassingTests", "engine\massing\tests\EngineMassingTests.vcxproj", "{91A2B3C4-D5E6-47F8-90A1-B2C3D4E5F607}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B6D7E8F9-1A2B-4C3D-8E9F-1029384756AB} = {B6D7E8F9-1A2B-4C3D-8E9F-1029384756AB}
+		{3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D} = {3A2B1C9D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}
+		{4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E} = {4B5C6D7E-8F9A-0B1C-2D3E-4F5A6B7C8D9E}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -106,6 +113,10 @@ Global
 		{E7F8A9B0-1C2D-3E4F-5A6B-7C8D9E0F1A2B}.Debug|x64.Build.0 = Debug|x64
 		{E7F8A9B0-1C2D-3E4F-5A6B-7C8D9E0F1A2B}.Release|x64.ActiveCfg = Release|x64
 		{E7F8A9B0-1C2D-3E4F-5A6B-7C8D9E0F1A2B}.Release|x64.Build.0 = Release|x64
+		{91A2B3C4-D5E6-47F8-90A1-B2C3D4E5F607}.Debug|x64.ActiveCfg = Debug|x64
+		{91A2B3C4-D5E6-47F8-90A1-B2C3D4E5F607}.Debug|x64.Build.0 = Debug|x64
+		{91A2B3C4-D5E6-47F8-90A1-B2C3D4E5F607}.Release|x64.ActiveCfg = Release|x64
+		{91A2B3C4-D5E6-47F8-90A1-B2C3D4E5F607}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

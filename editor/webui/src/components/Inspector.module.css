@@ -176,6 +176,72 @@
   font-family: 'Consolas', 'Monaco', monospace;
 }
 
+.massingPresetRow {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.massingPresetDropdown {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.massingPresetButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.massingPresetLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.massingPresetCaret {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.massingPresetMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+}
+
+.massingPresetItem {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  text-align: left;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.massingPresetItem:hover {
+  background: var(--bg-hover);
+}
+
 .massingActions {
   display: flex;
   gap: var(--spacing-sm);

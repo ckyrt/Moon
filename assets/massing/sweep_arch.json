@@ -1,0 +1,22 @@
+﻿{
+  "schema_version": 1,
+  "version": 1,
+  "root": {
+    "type": "sweep",
+    "name": "SweepArch",
+    "material": "rock",
+    "profiles": [
+      {
+        "closed": true,
+        "points": [[-1.2, -0.6], [1.2, -0.6], [1.2, 0.6], [-1.2, 0.6]]
+      }
+    ],
+    "paths": [
+      {
+        "closed": false,
+        "points": [[-10, 0, 0], [-6, 4, 0], [0, 8, 0], [6, 4, 0], [10, 0, 0]]
+      }
+    ]
+  }
+}
+

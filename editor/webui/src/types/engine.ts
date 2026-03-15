@@ -116,6 +116,12 @@ export interface MassingPreviewResult {
   warnings: string[];
 }
 
+export interface MassingPreset {
+  id: string;
+  name: string;
+  file: string;
+}
+
 // ============ 编辑器状态 ============
 
 export interface EditorState {
@@ -168,7 +174,9 @@ export interface MoonEngineAPI {
   createPrimitive(type: string): Promise<void>;
 
   // Massing Preview
-  previewMassing(ruleJson: string): Promise<MassingPreviewResult>;
+  listMassingPresets(): Promise<MassingPreset[]>;
+  loadMassingPreset(presetFile: string): Promise<string>;
+  previewMassing(ruleJson: string, options?: { focusCamera?: boolean }): Promise<MassingPreviewResult>;
   clearMassingPreview(): Promise<void>;
 
   // ========================================================================

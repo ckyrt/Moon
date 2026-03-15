@@ -9,7 +9,7 @@
  * - C++ → JS: window.onXXXChanged 回调 (通过 ExecuteJavaScript 调用)
  */
 
-import type { MassingPreviewResult, MoonEngineAPI, SceneNode, Transform, Vector3, Quaternion } from '@/types/engine';
+import type { MassingPreset, MassingPreviewResult, MoonEngineAPI, SceneNode, Transform, Vector3, Quaternion } from '@/types/engine';
 import { quaternionToEuler, eulerToQuaternion } from './math';
 
 // ============================================================================
@@ -323,7 +323,10 @@ const createRealAPI = (): MoonEngineAPI => {
       });
     }),
 
-    previewMassing: wrapAsyncEngineCall('previewMassing', async (ruleJson: string): Promise<MassingPreviewResult> => {
+    previewMassing: wrapAsyncEngineCall('previewMassing', async (
+      ruleJson: string,
+      options?: { focusCamera?: boolean }
+    ): Promise<MassingPreviewResult> => {
       if (!window.cefQuery) {
         throw new Error('cefQuery not available');
       }
@@ -331,7 +334,8 @@ const createRealAPI = (): MoonEngineAPI => {
       return new Promise<MassingPreviewResult>((resolve, reject) => {
         const request = JSON.stringify({
           command: 'previewMassing',
-          ruleJson
+          ruleJson,
+          focusCamera: options?.focusCamera ?? false
         });
 
         window.cefQuery!({
@@ -347,6 +351,61 @@ const createRealAPI = (): MoonEngineAPI => {
               meshCount: parsed.meshCount,
               warnings: parsed.warnings ?? []
             });
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    listMassingPresets: wrapAsyncEngineCall('listMassingPresets', async (): Promise<MassingPreset[]> => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<MassingPreset[]>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'listMassingPresets'
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const parsed = JSON.parse(response) as { presets?: MassingPreset[]; error?: string };
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+              return;
+            }
+            resolve(parsed.presets ?? []);
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    loadMassingPreset: wrapAsyncEngineCall('loadMassingPreset', async (presetFile: string): Promise<string> => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<string>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'loadMassingPreset',
+          presetFile
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const parsed = JSON.parse(response) as { ruleJson?: string; error?: string };
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+              return;
+            }
+            resolve(parsed.ruleJson ?? '');
           },
           onFailure: (_errorCode: number, errorMessage: string) => {
             reject(new Error(errorMessage));

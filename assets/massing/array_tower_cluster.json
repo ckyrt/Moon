@@ -1,0 +1,45 @@
+﻿{
+  "schema_version": 1,
+  "version": 1,
+  "root": {
+    "type": "array",
+    "name": "TowerCluster",
+    "material": "concrete",
+    "params": {
+      "count_x": 3,
+      "count_z": 2,
+      "spacing_x": 18,
+      "spacing_z": 18,
+      "rotate_step_y": 8
+    },
+    "children": [
+      {
+        "type": "deform",
+        "name": "ClusterTower",
+        "material": "concrete",
+        "params": {
+          "mode": "taper",
+          "bottom_scale": 1.0,
+          "top_scale": 0.65
+        },
+        "children": [
+          {
+            "type": "extrude",
+            "name": "ClusterTowerBase",
+            "material": "concrete",
+            "params": {
+              "height": 22
+            },
+            "profiles": [
+              {
+                "closed": true,
+                "points": [[-4, -4], [4, -4], [4, 4], [-4, 4]]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+

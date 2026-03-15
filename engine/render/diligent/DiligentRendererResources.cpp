@@ -14,7 +14,8 @@ using namespace Diligent;
 // ======= Mesh 缓存 =======
 DiligentRenderer::MeshGPUResources* DiligentRenderer::GetOrCreateMeshResources(Moon::Mesh* mesh)
 {
-    auto it = m_MeshCache.find(mesh);
+    const uint64_t meshRuntimeId = mesh ? mesh->GetRuntimeId() : 0;
+    auto it = m_MeshCache.find(meshRuntimeId);
     if (it != m_MeshCache.end()) return &it->second;
 
     MeshGPUResources gpu{};
@@ -42,7 +43,7 @@ DiligentRenderer::MeshGPUResources* DiligentRenderer::GetOrCreateMeshResources(M
     gpu.VertexCount = vertices.size();
     gpu.IndexCount = indices.size();
 
-    auto [insIt, ok] = m_MeshCache.emplace(mesh, std::move(gpu));
+    auto [insIt, ok] = m_MeshCache.emplace(meshRuntimeId, std::move(gpu));
     MOON_LOG_INFO("DiligentRenderer", "Mesh uploaded: %zu verts, %zu indices", insIt->second.VertexCount, insIt->second.IndexCount);
     return &insIt->second;
 }

@@ -1,0 +1,68 @@
+﻿{
+  "schema_version": 1,
+  "version": 1,
+  "root": {
+    "type": "group",
+    "name": "PodiumTower",
+    "children": [
+      {
+        "type": "extrude",
+        "name": "Podium",
+        "material": "rock",
+        "params": {
+          "height": 8
+        },
+        "profiles": [
+          {
+            "closed": true,
+            "points": [[-14, -10], [14, -10], [14, 10], [-14, 10]]
+          }
+        ]
+      },
+      {
+        "type": "csg",
+        "name": "Tower",
+        "operation": "subtract",
+        "material": "glass",
+        "transform": {
+          "position": [0, 8, 0]
+        },
+        "children": [
+          {
+            "type": "extrude",
+            "name": "TowerSolid",
+            "material": "glass",
+            "params": {
+              "height": 30
+            },
+            "profiles": [
+              {
+                "closed": true,
+                "points": [[-6, -6], [6, -6], [6, 6], [-6, 6]]
+              }
+            ]
+          },
+          {
+            "type": "extrude",
+            "name": "SkyCut",
+            "material": "glass",
+            "transform": {
+              "position": [0, 10, 0],
+              "rotation": [0, 18, 0]
+            },
+            "params": {
+              "height": 12
+            },
+            "profiles": [
+              {
+                "closed": true,
+                "points": [[-7, -1.5], [7, -1.5], [7, 1.5], [-7, 1.5]]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+

@@ -1,0 +1,30 @@
+﻿{
+  "schema_version": 1,
+  "version": 1,
+  "root": {
+    "type": "deform",
+    "name": "TwistedBlock",
+    "material": "metal",
+    "params": {
+      "mode": "twist",
+      "angle": 42
+    },
+    "children": [
+      {
+        "type": "extrude",
+        "name": "BaseBlock",
+        "material": "metal",
+        "params": {
+          "height": 28
+        },
+        "profiles": [
+          {
+            "closed": true,
+            "points": [[-5, -5], [5, -5], [5, 5], [-5, 5]]
+          }
+        ]
+      }
+    ]
+  }
+}
+

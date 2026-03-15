@@ -239,7 +239,7 @@ private:
     Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pPickingSRB;
 
     // ======== Mesh 缓存 ========
-    std::unordered_map<Moon::Mesh*, MeshGPUResources> m_MeshCache;
+    std::unordered_map<uint64_t, MeshGPUResources> m_MeshCache;
 
     // ======== 纹理缓存 ========
     struct TextureGPUResources {

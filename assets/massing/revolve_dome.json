@@ -1,0 +1,19 @@
+﻿{
+  "schema_version": 1,
+  "version": 1,
+  "root": {
+    "type": "revolve",
+    "name": "RevolveDome",
+    "material": "metal",
+    "params": {
+      "segments": 48
+    },
+    "profiles": [
+      {
+        "closed": false,
+        "points": [[0, 0], [6, 0], [5.5, 1.5], [4.5, 3.5], [3, 5.25], [1.2, 6]]
+      }
+    ]
+  }
+}
+

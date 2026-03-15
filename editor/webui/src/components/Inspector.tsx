@@ -3,7 +3,7 @@
  * 显示选中节点的属性并支持编辑
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { logger } from '@/utils/logger';
 import { useEditorStore } from '@/store/editorStore';
 import { eulerToQuaternion } from '@/utils/math';
@@ -29,7 +29,7 @@ import {
   SetMaterialBaseColorCommand,
   SetMaterialPresetCommand
 } from '@/undo';
-import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent, MaterialComponent } from '@/types/engine';
+import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent, MaterialComponent, MassingPreset } from '@/types/engine';
 import styles from './Inspector.module.css';
 
 const DEFAULT_MASSING_RULE_JSON = `{
@@ -214,13 +214,89 @@ export const Inspector: React.FC = () => {
 
 const MassingPreviewSection: React.FC = () => {
   const [ruleJson, setRuleJson] = useState(DEFAULT_MASSING_RULE_JSON);
+  const [presets, setPresets] = useState<MassingPreset[]>([]);
+  const [selectedPresetFile, setSelectedPresetFile] = useState('');
+  const [presetDropdownOpen, setPresetDropdownOpen] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [isBusy, setIsBusy] = useState(false);
 
+  useEffect(() => {
+    let disposed = false;
+
+    const loadPresets = async () => {
+      try {
+        const availablePresets = await engine.listMassingPresets();
+        if (disposed) {
+          return;
+        }
+
+        setPresets(availablePresets);
+        if (availablePresets.length > 0) {
+          setSelectedPresetFile((current) => current || availablePresets[0].file);
+        }
+      } catch (presetError) {
+        if (disposed) {
+          return;
+        }
+
+        const message = presetError instanceof Error ? presetError.message : 'Failed to load massing presets';
+        logger.error('Inspector', `Massing preset load failed: ${message}`);
+        setError(message);
+      }
+    };
+
+    void loadPresets();
+
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadSelectedPreset = async () => {
+      if (!selectedPresetFile) {
+        return;
+      }
+
+      try {
+        const presetRuleJson = await engine.loadMassingPreset(selectedPresetFile);
+        if (disposed) {
+          return;
+        }
+
+        setRuleJson(presetRuleJson);
+        setStatus(`Loaded preset: ${selectedPresetFile}`);
+      } catch (loadError) {
+        if (disposed) {
+          return;
+        }
+
+        const message = loadError instanceof Error ? loadError.message : 'Failed to load massing preset';
+        logger.error('Inspector', `Auto load massing preset failed: ${message}`);
+        setError(message);
+        setStatus('');
+      }
+    };
+
+    void loadSelectedPreset();
+
+    return () => {
+      disposed = true;
+    };
+  }, [selectedPresetFile]);
+
   const refreshScene = async () => {
     const scene = await engine.getScene();
     useEditorStore.getState().updateScene(scene);
+  };
+
+  const waitForNextFrame = async () => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
   };
 
   const handlePreview = async () => {
@@ -228,7 +304,10 @@ const MassingPreviewSection: React.FC = () => {
     setError('');
 
     try {
-      const result = await engine.previewMassing(ruleJson);
+      await engine.clearMassingPreview();
+      await refreshScene();
+      await waitForNextFrame();
+      const result = await engine.previewMassing(ruleJson, { focusCamera: false });
       await refreshScene();
 
       const warningText = result.warnings.length > 0 ? `, ${result.warnings.length} warnings` : '';
@@ -253,7 +332,7 @@ const MassingPreviewSection: React.FC = () => {
       setStatus('Preview cleared');
     } catch (clearError) {
       const message = clearError instanceof Error ? clearError.message : 'Failed to clear massing preview';
-      logger.error('Inspector', `Clear massing preview failed: ${message}`);
+      logger.error('Inspector', `Massing clear failed: ${message}`);
       setError(message);
       setStatus('');
     } finally {
@@ -261,11 +340,49 @@ const MassingPreviewSection: React.FC = () => {
     }
   };
 
+  const selectedPresetName =
+    presets.find((preset) => preset.file === selectedPresetFile)?.name ??
+    (presets.length > 0 ? presets[0].name : 'No presets found');
+
   return (
     <div className={styles.section}>
       <div className={styles.sectionTitle}>Massing Preview</div>
       <div className={styles.massingHint}>
-        Paste a massing rule JSON here to generate a live preview node tree in the scene.
+        Pick a preset from assets or paste a rule JSON here to generate a live preview node tree in the scene.
+      </div>
+      <div className={styles.massingPresetRow}>
+        <div className={styles.massingPresetDropdown}>
+          <button
+            type="button"
+            className={styles.massingPresetButton}
+            onClick={() => {
+              if (!isBusy && presets.length > 0) {
+                setPresetDropdownOpen((open) => !open);
+              }
+            }}
+            disabled={isBusy || presets.length === 0}
+          >
+            <span className={styles.massingPresetLabel}>{selectedPresetName}</span>
+            <span className={styles.massingPresetCaret}>▼</span>
+          </button>
+          {presetDropdownOpen && presets.length > 0 && (
+            <div className={styles.massingPresetMenu}>
+              {presets.map((preset) => (
+                <button
+                  key={preset.file}
+                  type="button"
+                  className={styles.massingPresetItem}
+                  onClick={() => {
+                    setSelectedPresetFile(preset.file);
+                    setPresetDropdownOpen(false);
+                  }}
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <textarea
         className={styles.massingEditor}

@@ -1,6 +1,19 @@
 #include "Mesh.h"
+#include <atomic>
 
 namespace Moon {
+
+namespace {
+std::atomic<uint64_t> g_nextMeshRuntimeId{1};
+}
+
+Mesh::Mesh()
+    : m_runtimeId(AllocateRuntimeId()) {
+}
+
+uint64_t Mesh::AllocateRuntimeId() {
+    return g_nextMeshRuntimeId.fetch_add(1, std::memory_order_relaxed);
+}
 
 Mesh* CreateCubeMesh(float size) {
     Mesh* mesh = new Mesh();

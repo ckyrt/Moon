@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <vector>
 #include "../Camera/Camera.h"  // For Vector3
 #include "../Math/Vector2.h"
@@ -89,7 +90,7 @@ static_assert(offsetof(Vertex, uv) == 40, "UV must be at offset 40");
  */
 class Mesh {
 public:
-    Mesh() = default;
+    Mesh();
     ~Mesh() = default;
     
     // 禁止拷贝，允许移动
@@ -144,6 +145,11 @@ public:
      * @brief 获取三角形数量
      */
     size_t GetTriangleCount() const { return m_indices.size() / 3; }
+
+    /**
+     * @brief 获取 Mesh 的运行时唯一 ID
+     */
+    uint64_t GetRuntimeId() const { return m_runtimeId; }
     
     /**
      * @brief 检查 Mesh 是否有效
@@ -163,8 +169,11 @@ public:
     }
 
 private:
+    static uint64_t AllocateRuntimeId();
+
     std::vector<Vertex> m_vertices;    ///< 顶点数组
     std::vector<uint32_t> m_indices;   ///< 索引数组（三角形列表）
+    uint64_t m_runtimeId = 0;          ///< 运行时唯一 ID，用于渲染缓存键
 };
 
 /**

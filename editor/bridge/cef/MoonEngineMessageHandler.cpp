@@ -1,7 +1,8 @@
-#include "MoonEngineMessageHandler.h"
+﻿#include "MoonEngineMessageHandler.h"
 #include "../../app/SceneSerializer.h"
 #include "../../../engine/core/EngineCore.h"
 #include "../../../engine/core/Logging/Logger.h"
+#include "../../../engine/core/Assets/AssetPaths.h"
 #include "../../../engine/core/Scene/MeshRenderer.h"
 #include "../../../engine/core/Scene/Material.h"
 #include "../../../engine/core/Scene/Light.h"
@@ -13,37 +14,38 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <filesystem>
 #include <functional>
 #include <unordered_map>
 #include <fstream>
 
 using json = nlohmann::json;
 
-// 澶栭儴鍑芥暟澹版槑锛堝畾涔夊湪 EditorApp.cpp 涓級
+// 婢舵牠鍎撮崙鑺ユ殶婢圭増妲戦敍鍫濈暰娑斿婀?EditorApp.cpp 娑擃叏绱?
 extern void SetSelectedObject(Moon::SceneNode* node);
 extern Moon::SceneNode* GetSelectedObject();
 extern void SetGizmoOperation(const std::string& mode);
-extern void SetGizmoMode(const std::string& mode);  // 馃幆 World/Local 鍒囨崲
+extern void SetGizmoMode(const std::string& mode);  // 棣冨箚 World/Local 閸掑洦宕?
 
 // ============================================================================
-// JSON 鍝嶅簲杈呭姪鍑芥暟
+// JSON 閸濆秴绨叉潏鍛И閸戣姤鏆?
 // ============================================================================
 namespace {
-    // 鍒涘缓鎴愬姛鍝嶅簲
+    // 閸掓稑缂撻幋鎰閸濆秴绨?
     std::string CreateSuccessResponse() {
         json result;
         result["success"] = true;
         return result.dump();
     }
 
-    // 鍒涘缓閿欒鍝嶅簲
+    // 閸掓稑缂撻柨娆掝嚖閸濆秴绨?
     std::string CreateErrorResponse(const std::string& errorMessage) {
         json error;
         error["error"] = errorMessage;
         return error.dump();
     }
 
-    // 瑙ｆ瀽 Vector3 鍙傛暟
+    // 鐟欙絾鐎?Vector3 閸欏倹鏆?
     Moon::Vector3 ParseVector3(const json& obj) {
         return {
             obj["x"].get<float>(),
@@ -61,26 +63,26 @@ namespace {
         };
     }
 
-    // 涓鸿妭鐐规坊鍔犻粯璁?PBR 鏉愯川锛堟櫘閫氬嚑浣曚綋浣跨敤锛?
+    // 娑撻缚濡悙瑙勫潑閸旂娀绮拋?PBR 閺夋劘宸濋敍鍫熸珮闁艾鍤戞担鏇氱秼娴ｈ法鏁ら敍?
     void AddDefaultMaterial(Moon::SceneNode* node, const Moon::Vector3& baseColor = Moon::Vector3(1.0f, 1.0f, 1.0f)) {
         Moon::Material* material = node->AddComponent<Moon::Material>();
         material->SetMetallic(0.0f);
         material->SetRoughness(0.5f);
         material->SetBaseColor(baseColor);
-        // 鉁?鏅€歮esh浣跨敤UV鏄犲皠锛堥粯璁ゅ€硷紝鏄惧紡璁剧疆鏇存竻鏅帮級
+        // 閴?閺咁噣鈧esh娴ｈ法鏁V閺勭姴鐨犻敍鍫ョ帛鐠併倕鈧》绱濋弰鎯х础鐠佸墽鐤嗛弴瀛樼閺呭府绱?
         material->SetMappingMode(Moon::MappingMode::UV);
     }
 
-    // 涓?CSG 鑺傜偣娣诲姞榛樿鐏拌壊鏉愯川锛堚渽 CSG蹇呴』鐢═riplanar鏄犲皠锛?
+    // 娑?CSG 閼哄倻鍋ｅǎ璇插姒涙顓婚悘鎷屽閺夋劘宸濋敍鍫氭附 CSG韫囧懘銆忛悽鈺恟iplanar閺勭姴鐨犻敍?
     void AddCSGMaterial(Moon::SceneNode* node) {
         Moon::Material* material = node->AddComponent<Moon::Material>();
         material->SetMetallic(0.0f);
         material->SetRoughness(0.5f);
         material->SetBaseColor(Moon::Vector3(0.8f, 0.8f, 0.8f));
-        // 鉁?CSG鍑犱綍浣撳繀椤讳娇鐢═riplanar鏄犲皠锛圲V鍧愭爣涓?,0锛?
+        // 閴?CSG閸戠姳缍嶆担鎾崇箑妞よ濞囬悽鈺恟iplanar閺勭姴鐨犻敍鍦睼閸ф劖鐖ｆ稉?,0閿?
         material->SetMappingMode(Moon::MappingMode::Triplanar);
-        material->SetTriplanarTiling(0.5f);  // 姣?绫抽噸澶?
-        material->SetTriplanarBlend(4.0f);   // 榛樿閿愬害
+        material->SetTriplanarTiling(0.5f);  // 濮?缁娊鍣告径?
+        material->SetTriplanarBlend(4.0f);   // 姒涙顓婚柨鎰
     }
     Moon::MaterialPreset ParseMaterialPreset(const std::string& materialName) {
         std::string lowerName = materialName;
@@ -115,23 +117,55 @@ namespace {
         return Moon::MaterialPreset::None;
     }
 
-    Moon::SceneNode* FindMassingPreviewRoot(Moon::Scene* scene) {
-        return scene ? scene->FindNodeByName("__MassingPreview") : nullptr;
+    std::vector<Moon::SceneNode*> FindMassingPreviewRoots(Moon::Scene* scene) {
+        std::vector<Moon::SceneNode*> previewRoots;
+        if (!scene) {
+            return previewRoots;
+        }
+
+        scene->Traverse([&previewRoots](Moon::SceneNode* node) {
+            if (node && node->GetName() == "__MassingPreview") {
+                previewRoots.push_back(node);
+            }
+        });
+        return previewRoots;
     }
 
     void ClearMassingPreviewNodes(Moon::Scene* scene) {
-        Moon::SceneNode* previewRoot = FindMassingPreviewRoot(scene);
-        if (previewRoot) {
+        const std::vector<Moon::SceneNode*> previewRoots = FindMassingPreviewRoots(scene);
+        for (Moon::SceneNode* previewRoot : previewRoots) {
             scene->DestroyNodeImmediate(previewRoot);
         }
     }
 
     void AddMassingMaterial(Moon::SceneNode* node, const std::string& materialName) {
         Moon::Material* material = node->AddComponent<Moon::Material>();
-        material->SetMaterialPreset(ParseMaterialPreset(materialName));
-        material->SetMappingMode(Moon::MappingMode::Triplanar);
-        material->SetTriplanarTiling(0.5f);
-        material->SetTriplanarBlend(4.0f);
+        (void)materialName;
+        // Clay preview keeps validation focused on shape instead of noisy PBR presets.
+        material->SetBaseColor(Moon::Vector3(0.72f, 0.74f, 0.78f));
+        material->SetMetallic(0.0f);
+        material->SetRoughness(0.92f);
+        material->SetOpacity(1.0f);
+        material->SetMappingMode(Moon::MappingMode::UV);
+    }
+
+    std::filesystem::path GetMassingPresetDirectory() {
+        return std::filesystem::path(Moon::Assets::BuildAssetPath("massing"));
+    }
+
+    std::string ReadTextFile(const std::filesystem::path& path) {
+        std::ifstream input(path, std::ios::in | std::ios::binary);
+        if (!input.is_open()) {
+            return std::string();
+        }
+        std::string contents((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        if (contents.size() >= 3 &&
+            static_cast<unsigned char>(contents[0]) == 0xEF &&
+            static_cast<unsigned char>(contents[1]) == 0xBB &&
+            static_cast<unsigned char>(contents[2]) == 0xBF) {
+            contents.erase(0, 3);
+        }
+        return contents;
     }
 
     struct Bounds3 {
@@ -202,29 +236,35 @@ namespace {
         camera->SetPosition(center + offset);
         camera->SetTarget(center);
     }
+
+    std::string MakePresetId(const std::filesystem::path& path) {
+        std::string id = path.stem().string();
+        std::replace(id.begin(), id.end(), ' ', '_');
+        return id;
+    }
 }
 
 // ============================================================================
-// 鍛戒护澶勭悊鍑芥暟绫诲瀷瀹氫箟
+// 閸涙垝鎶ゆ径鍕倞閸戣姤鏆熺猾璇茬€风€规矮绠?
 // ============================================================================
 using CommandHandler = std::function<std::string(MoonEngineMessageHandler*, const json&, Moon::Scene*)>;
 
 // ============================================================================
-// 鍚勪釜鍛戒护鐨勫鐞嗗嚱鏁?
+// 閸氬嫪閲滈崨鎴掓姢閻ㄥ嫬顦╅悶鍡楀毐閺?
 // ============================================================================
 namespace CommandHandlers {
-    // 鑾峰彇鍦烘櫙灞傜骇
+    // 閼惧嘲褰囬崷鐑樻珯鐏炲倻楠?
     std::string HandleGetScene(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         return Moon::SceneSerializer::GetSceneHierarchy(scene);
     }
 
-    // 鑾峰彇鑺傜偣璇︽儏
+    // 閼惧嘲褰囬懞鍌滃仯鐠囷附鍎?
     std::string HandleGetNodeDetails(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         return Moon::SceneSerializer::GetNodeDetails(scene, nodeId);
     }
 
-    // 閫変腑鑺傜偣
+    // 闁鑵戦懞鍌滃仯
     std::string HandleSelectNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         Moon::SceneNode* node = scene->FindNodeByID(nodeId);
@@ -236,13 +276,13 @@ namespace CommandHandlers {
         MOON_LOG_INFO("MoonEngineMessage", "Selected node: %s (ID=%u)", 
                      node->GetName().c_str(), nodeId);
         
-        // 鏇存柊鍏ㄥ眬閫変腑鐘舵€侊紙杩欐牱 Gizmo 浼氭樉绀哄湪杩欎釜鐗╀綋涓婏級
+        // 閺囧瓨鏌婇崗銊ョ湰闁鑵戦悩鑸碘偓渚婄礄鏉╂瑦鐗?Gizmo 娴兼碍妯夌粈鍝勬躬鏉╂瑤閲滈悧鈺€缍嬫稉濠忕礆
         SetSelectedObject(node);
         
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆浣嶇疆
+    // 鐠佸墽鐤嗘担宥囩枂
     std::string HandleSetPosition(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         Moon::Vector3 position = ParseVector3(req["position"]);
@@ -259,7 +299,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆鏃嬭浆
+    // 鐠佸墽鐤嗛弮瀣祮
     std::string HandleSetRotation(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         Moon::Quaternion rotation = ParseQuaternion(req["rotation"]);
@@ -276,7 +316,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆缂╂斁
+    // 鐠佸墽鐤嗙紓鈺傛杹
     std::string HandleSetScale(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         Moon::Vector3 scale = ParseVector3(req["scale"]);
@@ -293,7 +333,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Gizmo 鎿嶄綔妯″紡锛坱ranslate/rotate/scale锛?
+    // 鐠佸墽鐤?Gizmo 閹垮秳缍斿Ο鈥崇础閿涘澅ranslate/rotate/scale閿?
     std::string HandleSetGizmoMode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         std::string mode = req["mode"];
         
@@ -304,10 +344,10 @@ namespace CommandHandlers {
     }
 
     // ========================================================================
-    // Light 缁勪欢灞炴€ц缃?
+    // Light 缂佸嫪娆㈢仦鐐粹偓褑顔曠純?
     // ========================================================================
 
-    // 璁剧疆 Light 棰滆壊
+    // 鐠佸墽鐤?Light 妫版粏澹?
     std::string HandleSetLightColor(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         Moon::Vector3 color = ParseVector3(req["color"]);
@@ -329,7 +369,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Light 寮哄害
+    // 鐠佸墽鐤?Light 瀵搫瀹?
     std::string HandleSetLightIntensity(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         float intensity = req["intensity"];
@@ -350,7 +390,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Light 鑼冨洿锛圥oint/Spot锛?
+    // 鐠佸墽鐤?Light 閼煎啫娲块敍鍦int/Spot閿?
     std::string HandleSetLightRange(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         float range = req["range"];
@@ -371,7 +411,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Light 绫诲瀷
+    // 鐠佸墽鐤?Light 缁鐎?
     std::string HandleSetLightType(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         std::string lightType = req["lightType"];
@@ -404,10 +444,10 @@ namespace CommandHandlers {
     }
 
     // ========================================================================
-    // Skybox 缁勪欢灞炴€ц缃?
+    // Skybox 缂佸嫪娆㈢仦鐐粹偓褑顔曠純?
     // ========================================================================
 
-    // 璁剧疆 Skybox 寮哄害
+    // 鐠佸墽鐤?Skybox 瀵搫瀹?
     std::string HandleSetSkyboxIntensity(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         float intensity = req["intensity"];
@@ -428,7 +468,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Skybox 鏃嬭浆
+    // 鐠佸墽鐤?Skybox 閺冨娴?
     std::string HandleSetSkyboxRotation(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         float rotation = req["rotation"];
@@ -449,7 +489,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Skybox 鑹茶皟
+    // 鐠佸墽鐤?Skybox 閼硅尪鐨?
     std::string HandleSetSkyboxTint(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         Moon::Vector3 tint = ParseVector3(req["tint"]);
@@ -471,7 +511,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Skybox IBL
+    // 鐠佸墽鐤?Skybox IBL
     std::string HandleSetSkyboxIBL(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         bool enableIBL = req["enableIBL"];
@@ -493,7 +533,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Skybox 鐜璐村浘璺緞
+    // 鐠佸墽鐤?Skybox 閻滎垰顣ㄧ拹鏉戞禈鐠侯垰绶?
     std::string HandleSetSkyboxEnvironmentMap(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         std::string path = req["path"];
@@ -521,10 +561,10 @@ namespace CommandHandlers {
     }
 
     // ========================================================================
-    // Material 缁勪欢鍛戒护澶勭悊鍣?
+    // Material 缂佸嫪娆㈤崨鎴掓姢婢跺嫮鎮婇崳?
     // ========================================================================
 
-    // 璁剧疆 Material 閲戝睘搴?
+    // 鐠佸墽鐤?Material 闁叉垵鐫樻惔?
     std::string HandleSetMaterialMetallic(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         float metallic = req["metallic"];
@@ -545,7 +585,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Material 绮楃硻搴?
+    // 鐠佸墽鐤?Material 缁纭绘惔?
     std::string HandleSetMaterialRoughness(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         float roughness = req["roughness"];
@@ -566,7 +606,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Material 鍩虹棰滆壊
+    // 鐠佸墽鐤?Material 閸╄櫣顢呮０婊嗗
     std::string HandleSetMaterialBaseColor(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         Moon::Vector3 baseColor = ParseVector3(req["baseColor"]);
@@ -588,7 +628,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Material 璐村浘
+    // 鐠佸墽鐤?Material 鐠愭潙娴?
     std::string HandleSetMaterialTexture(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         std::string textureType = req["textureType"];  // "albedo", "normal", "ao", "roughness", "metalness"
@@ -624,7 +664,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆 Material 棰勮
+    // 鐠佸墽鐤?Material 妫板嫯顔?
     std::string HandleSetMaterialPreset(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         std::string presetName = req["preset"];
@@ -639,7 +679,7 @@ namespace CommandHandlers {
             return CreateErrorResponse("Node does not have Material component");
         }
 
-        // 灏嗗瓧绗︿覆杞崲涓烘灇涓?
+        // 鐏忓棗鐡х粭锔胯鏉烆剚宕叉稉鐑樼亣娑?
         Moon::MaterialPreset preset = Moon::MaterialPreset::None;
         if (presetName == "Concrete") {
             preset = Moon::MaterialPreset::Concrete;
@@ -669,7 +709,7 @@ namespace CommandHandlers {
 
     // ========================================================================
 
-    // 馃幆 璁剧疆 Gizmo 鍧愭爣绯绘ā寮忥紙world/local锛?
+    // 棣冨箚 鐠佸墽鐤?Gizmo 閸ф劖鐖ｇ化缁樐佸蹇ョ礄world/local閿?
     std::string HandleSetGizmoCoordinateMode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         std::string mode = req["mode"];
         
@@ -679,25 +719,25 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 鍒涘缓鑺傜偣
+    // 閸掓稑缂撻懞鍌滃仯
     std::string HandleCreateNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         std::string type = req["type"];
         
         MOON_LOG_INFO("MoonEngineMessage", "Creating node of type: %s", type.c_str());
         
-        // 鑾峰彇寮曟搸鏍稿績
+        // 閼惧嘲褰囧鏇熸惛閺嶇绺?
         EngineCore* engine = handler->GetEngineCore();
         if (!engine) {
             return CreateErrorResponse("Engine core not available");
         }
         
-        // 鍒涘缓鍦烘櫙鑺傜偣
+        // 閸掓稑缂撻崷鐑樻珯閼哄倻鍋?
         Moon::SceneNode* newNode = nullptr;
         
         if (type == "empty") {
             newNode = scene->CreateNode("Empty Node");
         }
-        // === 鏅€氬嚑浣曚綋锛堥€氳繃 MeshGenerator 鍒涘缓锛屾敮鎸乁V鍜屾潗璐級 ===
+        // === 閺咁噣鈧艾鍤戞担鏇氱秼閿涘牓鈧俺绻?MeshGenerator 閸掓稑缂撻敍灞炬暜閹镐箒V閸滃本娼楃拹顭掔礆 ===
         else if (type == "cube") {
             newNode = scene->CreateNode("Cube");
             Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
@@ -730,7 +770,7 @@ namespace CommandHandlers {
             ));
             AddDefaultMaterial(newNode);
         }
-        // === CSG鍑犱綍浣擄紙鍩轰簬Manifold搴擄紝鏀寔甯冨皵杩愮畻锛屾殏鏃燯V鍧愭爣锛?===
+        // === CSG閸戠姳缍嶆担鎿勭礄閸╄桨绨琈anifold鎼存搫绱濋弨顖涘瘮鐢啫鐨垫潻鎰暬閿涘本娈忛弮鐕疺閸ф劖鐖ｉ敍?===
         else if (type == "box" || type == "csg_box") {
             newNode = scene->CreateNode("CSG_Box");
             Moon::CSGComponent* csgComp = newNode->AddComponent<Moon::CSGComponent>();
@@ -790,15 +830,15 @@ namespace CommandHandlers {
         else if (type == "light") {
             newNode = scene->CreateNode("Directional Light");
             
-            // 璁剧疆鍏夋簮榛樿鏂瑰悜锛氫粠鍙充笂鍓嶆柟鐓у皠锛堢被浼兼鍗堝お闃筹級
-            // Rotation: (45掳, -30掳, 0掳) 琛ㄧず鍚戜笅 45掳 骞跺悜宸﹁浆 30掳
+            // 鐠佸墽鐤嗛崗澶嬬爱姒涙顓婚弬鐟版倻閿涙矮绮犻崣鍏呯瑐閸撳秵鏌熼悡褍鐨犻敍鍫㈣娴煎吋顒滈崡鍫濄亰闂冪绱?
+            // Rotation: (45鎺? -30鎺? 0鎺? 鐞涖劎銇氶崥鎴滅瑓 45鎺?楠炶泛鎮滃锕佹祮 30鎺?
             newNode->GetTransform()->SetLocalRotation(Moon::Vector3(45.0f, -30.0f, 0.0f));
             
-            // 娣诲姞 Light 缁勪欢
+            // 濞ｈ濮?Light 缂佸嫪娆?
             Moon::Light* light = newNode->AddComponent<Moon::Light>();
             light->SetType(Moon::Light::Type::Directional);
-            light->SetColor(Moon::Vector3(1.0f, 0.95f, 0.9f));  // 鏆栫櫧鑹诧紙澶槼鍏夛級
-            light->SetIntensity(1.5f);  // 寮哄害
+            light->SetColor(Moon::Vector3(1.0f, 0.95f, 0.9f));  // 閺嗘牜娅ч懝璇х礄婢额亪妲奸崗澶涚礆
+            light->SetIntensity(1.5f);  // 瀵搫瀹?
             
             MOON_LOG_INFO("MoonEngineMessage", "Created directional light (Intensity: %.1f)", 
                          light->GetIntensity());
@@ -806,7 +846,7 @@ namespace CommandHandlers {
         else if (type == "skybox") {
             newNode = scene->CreateNode("Skybox");
 
-            // 娣诲姞 Skybox 缁勪欢
+            // 濞ｈ濮?Skybox 缂佸嫪娆?
             Moon::Skybox* skybox = newNode->AddComponent<Moon::Skybox>();
             skybox->SetType(Moon::Skybox::Type::EquirectangularHDR);
             skybox->LoadEnvironmentMap("assets/textures/environment.hdr");
@@ -826,7 +866,7 @@ namespace CommandHandlers {
             return CreateErrorResponse("Failed to create node");
         }
         
-        // 馃幆 鏀寔鐖惰妭鐐硅缃?
+        // 棣冨箚 閺€顖涘瘮閻栨儼濡悙纭咁啎缂?
         if (req.contains("parentId") && !req["parentId"].is_null()) {
             uint32_t parentId = req["parentId"];
             Moon::SceneNode* parent = scene->FindNodeByID(parentId);
@@ -845,7 +885,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 鍒犻櫎鑺傜偣
+    // 閸掔娀娅庨懞鍌滃仯
     std::string HandleDeleteNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         
@@ -857,18 +897,18 @@ namespace CommandHandlers {
         MOON_LOG_INFO("MoonEngineMessage", "Deleting node: %s (ID=%u)", 
                      node->GetName().c_str(), nodeId);
         
-        // 濡傛灉褰撳墠鍒犻櫎鐨勮妭鐐规槸閫変腑鐨勮妭鐐癸紝娓呴櫎閫夋嫨
+        // 婵″倹鐏夎ぐ鎾冲閸掔娀娅庨惃鍕Ν閻愯妲搁柅澶夎厬閻ㄥ嫯濡悙鐧哥礉濞撳懘娅庨柅澶嬪
         if (GetSelectedObject() == node) {
             SetSelectedObject(nullptr);
         }
         
-        // 閿€姣佽妭鐐癸紙寤惰繜鍒犻櫎锛屽湪甯х粨鏉熸椂鍒犻櫎锛?
+        // 闁库偓濮ｄ浇濡悙鐧哥礄瀵ゆ儼绻滈崚鐘绘珟閿涘苯婀敮褏绮ㄩ弶鐔告閸掔娀娅庨敍?
         scene->DestroyNode(node);
         
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆鑺傜偣鐖剁骇
+    // 鐠佸墽鐤嗛懞鍌滃仯閻栧墎楠?
     std::string HandleSetNodeParent(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         
@@ -885,7 +925,7 @@ namespace CommandHandlers {
                 return CreateErrorResponse("Parent node not found");
             }
             
-            // 妫€鏌ュ惊鐜緷璧栵細涓嶈兘灏嗙埗鑺傜偣璁句负鑷繁鐨勫瓙瀛欒妭鐐?
+            // 濡偓閺屻儱鎯婇悳顖欑贩鐠ф牭绱版稉宥堝厴鐏忓棛鍩楅懞鍌滃仯鐠佸彞璐熼懛顏勭箒閻ㄥ嫬鐡欑€涙瑨濡悙?
             Moon::SceneNode* checkNode = newParent;
             while (checkNode) {
                 if (checkNode == node) {
@@ -903,7 +943,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 閲嶅懡鍚嶈妭鐐?
+    // 闁插秴鎳￠崥宥堝Ν閻?
     std::string HandleRenameNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         std::string newName = req["newName"];
@@ -920,7 +960,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 璁剧疆鑺傜偣婵€娲荤姸鎬?
+    // 鐠佸墽鐤嗛懞鍌滃仯濠碘偓濞茶崵濮搁幀?
     std::string HandleSetNodeActive(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
         bool active = req["active"];
@@ -938,25 +978,25 @@ namespace CommandHandlers {
     }
 
     // ========================================================================
-    // 馃幆 Undo/Redo 涓撶敤 API锛堝唴閮ㄤ娇鐢級
+    // 棣冨箚 Undo/Redo 娑撴挾鏁?API閿涘牆鍞撮柈銊ゅ▏閻㈩煉绱?
     // ========================================================================
     
     /**
-     * 鑾峰彇鑺傜偣鐨勫畬鏁村簭鍒楀寲鏁版嵁锛堢敤浜?Delete Undo锛?
+     * 閼惧嘲褰囬懞鍌滃仯閻ㄥ嫬鐣弫鏉戠碍閸掓瀵查弫鐗堝祦閿涘牏鏁ゆ禍?Delete Undo閿?
      * 
-     * 璇锋眰鏍煎紡锛?
+     * 鐠囬攱鐪伴弽鐓庣础閿?
      * {
      *   "command": "serializeNode",
      *   "nodeId": 123
      * }
      * 
-     * 鍝嶅簲鏍煎紡锛?
+     * 閸濆秴绨查弽鐓庣础閿?
      * {
      *   "success": true,
-     *   "data": "{ ... 瀹屾暣鐨勮妭鐐?JSON 鏁版嵁 ... }"
+     *   "data": "{ ... 鐎瑰本鏆ｉ惃鍕Ν閻?JSON 閺佺増宓?... }"
      * }
      * 
-     * 鈿狅笍 鍐呴儴 API锛氫粎渚?WebUI Undo/Redo 绯荤粺浣跨敤
+     * 閳跨媴绗?閸愬懘鍎?API閿涙矮绮庢笟?WebUI Undo/Redo 缁崵绮烘担璺ㄦ暏
      */
     std::string HandleSerializeNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
@@ -971,15 +1011,15 @@ namespace CommandHandlers {
     }
 
     /**
-     * 浠庡簭鍒楀寲鏁版嵁閲嶅缓鑺傜偣锛堢敤浜?Delete Undo锛?
+     * 娴犲骸绨崚妤€瀵查弫鐗堝祦闁插秴缂撻懞鍌滃仯閿涘牏鏁ゆ禍?Delete Undo閿?
      * 
-     * 璇锋眰鏍煎紡锛?
+     * 鐠囬攱鐪伴弽鐓庣础閿?
      * {
      *   "command": "deserializeNode",
-     *   "data": "{ ... 瀹屾暣鐨勮妭鐐?JSON 鏁版嵁 ... }"
+     *   "data": "{ ... 鐎瑰本鏆ｉ惃鍕Ν閻?JSON 閺佺増宓?... }"
      * }
      * 
-     * 鈿狅笍 鍐呴儴 API锛氫粎渚?WebUI Undo/Redo 绯荤粺浣跨敤
+     * 閳跨媴绗?閸愬懘鍎?API閿涙矮绮庢笟?WebUI Undo/Redo 缁崵绮烘担璺ㄦ暏
      */
     std::string HandleDeserializeNode(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         std::string serializedData = req["data"];
@@ -1001,10 +1041,10 @@ namespace CommandHandlers {
     }
 
     /**
-     * 鎵归噺璁剧疆 Transform锛坧osition + rotation + scale锛?
-     * 鐢ㄤ簬 Undo/Redo 蹇€熸仮澶嶈妭鐐圭姸鎬?
+     * 閹靛綊鍣虹拋鍓х枂 Transform閿涘潷osition + rotation + scale閿?
+     * 閻劋绨?Undo/Redo 韫囶偊鈧喐浠径宥堝Ν閻愬湱濮搁幀?
      * 
-     * 璇锋眰鏍煎紡锛?
+     * 鐠囬攱鐪伴弽鐓庣础閿?
      * {
      *   "command": "setNodeTransform",
      *   "nodeId": 123,
@@ -1015,7 +1055,7 @@ namespace CommandHandlers {
      *   }
      * }
      * 
-     * 鈿狅笍 鍐呴儴 API锛氫粎渚?WebUI Undo/Redo 绯荤粺浣跨敤
+     * 閳跨媴绗?閸愬懘鍎?API閿涙矮绮庢笟?WebUI Undo/Redo 缁崵绮烘担璺ㄦ暏
      */
     std::string HandleSetNodeTransform(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t nodeId = req["nodeId"];
@@ -1027,7 +1067,7 @@ namespace CommandHandlers {
         
         const json& transform = req["transform"];
         
-        // 鎵归噺璁剧疆 Transform锛堥伩鍏嶅娆?API 璋冪敤锛?
+        // 閹靛綊鍣虹拋鍓х枂 Transform閿涘牓浼╅崗宥咁樋濞?API 鐠嬪啰鏁ら敍?
         if (transform.contains("position")) {
             node->GetTransform()->SetLocalPosition(ParseVector3(transform["position"]));
         }
@@ -1044,31 +1084,31 @@ namespace CommandHandlers {
     }
 
     /**
-     * 鍒涘缓鑺傜偣骞舵寚瀹?ID锛堢敤浜?Undo 鎭㈠琚垹闄ょ殑鑺傜偣锛?
+     * 閸掓稑缂撻懞鍌滃仯楠炶埖瀵氱€?ID閿涘牏鏁ゆ禍?Undo 閹垹顦茬悮顐㈠灩闂勩倗娈戦懞鍌滃仯閿?
      * 
-     * 璇锋眰鏍煎紡锛?
+     * 鐠囬攱鐪伴弽鐓庣础閿?
      * {
      *   "command": "createNodeWithId",
-     *   "nodeId": 123,  // 鍘熷鑺傜偣 ID
+     *   "nodeId": 123,  // 閸樼喎顫愰懞鍌滃仯 ID
      *   "name": "MyNode",
      *   "type": "empty",  // "empty", "cube", "sphere", etc.
-     *   "parentId": 456,  // 鍙€?
-     *   "transform": {    // 鍙€?
+     *   "parentId": 456,  // 閸欘垶鈧?
+     *   "transform": {    // 閸欘垶鈧?
      *     "position": {...},
      *     "rotation": {...},
      *     "scale": {...}
      *   }
      * }
      * 
-     * 鈿狅笍 鍐呴儴 API锛氫粎渚?WebUI Undo/Redo 绯荤粺浣跨敤
-     * 鈿狅笍 娉ㄦ剰锛氬鏋滄寚瀹氱殑 ID 宸插瓨鍦紝浼氳繑鍥為敊璇?
+     * 閳跨媴绗?閸愬懘鍎?API閿涙矮绮庢笟?WebUI Undo/Redo 缁崵绮烘担璺ㄦ暏
+     * 閳跨媴绗?濞夈劍鍓伴敍姘洤閺嬫粍瀵氱€规氨娈?ID 瀹告彃鐡ㄩ崷顭掔礉娴兼俺绻戦崶鐐烘晩鐠?
      */
     std::string HandleCreateNodeWithId(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         uint32_t targetId = req["nodeId"];
         std::string name = req["name"];
         std::string type = req.contains("type") ? req["type"].get<std::string>() : "empty";
         
-        // 馃毃 妫€鏌?ID 鏄惁宸插瓨鍦?
+        // 棣冩瘍 濡偓閺?ID 閺勵垰鎯佸鎻掔摠閸?
         if (scene->FindNodeByID(targetId)) {
             return CreateErrorResponse("Node with ID already exists: " + std::to_string(targetId));
         }
@@ -1076,20 +1116,20 @@ namespace CommandHandlers {
         MOON_LOG_INFO("MoonEngineMessage", "[Undo] Creating node with ID=%u, name=%s, type=%s", 
                      targetId, name.c_str(), type.c_str());
         
-        // 鑾峰彇寮曟搸鏍稿績
+        // 閼惧嘲褰囧鏇熸惛閺嶇绺?
         EngineCore* engine = handler->GetEngineCore();
         if (!engine) {
             return CreateErrorResponse("Engine core not available");
         }
         
-        // 鍒涘缓鍦烘櫙鑺傜偣锛堜娇鐢ㄦ寚瀹?ID锛?
+        // 閸掓稑缂撻崷鐑樻珯閼哄倻鍋ｉ敍鍫滃▏閻劍瀵氱€?ID閿?
         Moon::SceneNode* newNode = scene->CreateNodeWithID(targetId, name);
         
         if (!newNode) {
             return CreateErrorResponse("Failed to create node with specified ID");
         }
         
-        // 鏍规嵁绫诲瀷娣诲姞缁勪欢
+        // 閺嶈宓佺猾璇茬€峰ǎ璇插缂佸嫪娆?
         if (type == "cube") {
             Moon::MeshRenderer* renderer = newNode->AddComponent<Moon::MeshRenderer>();
             renderer->SetMesh(engine->GetMeshManager()->CreateCube(
@@ -1115,7 +1155,7 @@ namespace CommandHandlers {
             ));
         }
         
-        // 璁剧疆鐖惰妭鐐?
+        // 鐠佸墽鐤嗛悥鎯板Ν閻?
         if (req.contains("parentId") && !req["parentId"].is_null()) {
             uint32_t parentId = req["parentId"];
             Moon::SceneNode* parent = scene->FindNodeByID(parentId);
@@ -1126,7 +1166,7 @@ namespace CommandHandlers {
             }
         }
         
-        // 璁剧疆 Transform
+        // 鐠佸墽鐤?Transform
         if (req.contains("transform")) {
             const json& transform = req["transform"];
             if (transform.contains("position")) {
@@ -1145,7 +1185,7 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
-    // 鍐欐棩蹇楀埌鏂囦欢
+    // 閸愭瑦妫╄箛妤€鍩岄弬鍥︽
     std::string HandlePreviewMassing(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         if (!req.contains("ruleJson")) {
             return CreateErrorResponse("Missing 'ruleJson' field");
@@ -1179,7 +1219,10 @@ namespace CommandHandlers {
             AddMassingMaterial(childNode, item.material);
         }
 
-        FrameCameraToBounds(handler, ComputePreviewBounds(buildResult));
+        const bool focusCamera = req.value("focusCamera", false);
+        if (focusCamera) {
+            FrameCameraToBounds(handler, ComputePreviewBounds(buildResult));
+        }
 
         json response;
         response["success"] = true;
@@ -1194,6 +1237,65 @@ namespace CommandHandlers {
         return CreateSuccessResponse();
     }
 
+    std::string HandleListMassingPresets(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)req;
+        (void)scene;
+
+        const std::filesystem::path presetDirectory = GetMassingPresetDirectory();
+        if (!std::filesystem::exists(presetDirectory)) {
+            return CreateErrorResponse("Massing preset directory not found: " + presetDirectory.string());
+        }
+
+        std::vector<std::filesystem::path> presetPaths;
+        for (const auto& entry : std::filesystem::directory_iterator(presetDirectory)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".json") {
+                presetPaths.push_back(entry.path());
+            }
+        }
+
+        std::sort(presetPaths.begin(), presetPaths.end());
+
+        json response;
+        response["success"] = true;
+        response["presets"] = json::array();
+
+        for (const std::filesystem::path& path : presetPaths) {
+            json preset;
+            preset["id"] = MakePresetId(path);
+            preset["name"] = path.stem().string();
+            preset["file"] = path.filename().string();
+            response["presets"].push_back(preset);
+        }
+
+        return response.dump();
+    }
+
+    std::string HandleLoadMassingPreset(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)scene;
+
+        if (!req.contains("presetFile")) {
+            return CreateErrorResponse("Missing 'presetFile' field");
+        }
+
+        const std::filesystem::path presetPath = GetMassingPresetDirectory() / req["presetFile"].get<std::string>();
+        if (!std::filesystem::exists(presetPath) || presetPath.extension() != ".json") {
+            return CreateErrorResponse("Massing preset not found: " + presetPath.string());
+        }
+
+        const std::string ruleJson = ReadTextFile(presetPath);
+        if (ruleJson.empty()) {
+            return CreateErrorResponse("Failed to read massing preset: " + presetPath.string());
+        }
+
+        json response;
+        response["success"] = true;
+        response["presetFile"] = presetPath.filename().string();
+        response["ruleJson"] = ruleJson;
+        return response.dump();
+    }
+
     std::string HandleWriteLog(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         if (!req.contains("logContent")) {
             return CreateErrorResponse("Missing 'logContent' field");
@@ -1201,18 +1303,18 @@ namespace CommandHandlers {
 
         std::string logContent = req["logContent"];
         
-        // 鑾峰彇鏃ュ織鐩綍璺緞
+        // 閼惧嘲褰囬弮銉ョ箶閻╊喖缍嶇捄顖氱窞
         std::string logDir = "E:\\game_engine\\Moon\\bin\\x64\\Debug\\logs";
         std::string logFilePath = logDir + "\\frontend.log";
         
         try {
-            // 鎵撳紑鏂囦欢锛堣拷鍔犳ā寮忥級
+            // 閹垫挸绱戦弬鍥︽閿涘牐鎷烽崝鐘衬佸蹇ョ礆
             std::ofstream logFile(logFilePath, std::ios::app);
             if (!logFile.is_open()) {
                 return CreateErrorResponse("Failed to open log file: " + logFilePath);
             }
             
-            // 鍐欏叆鏃ュ織鍐呭
+            // 閸愭瑥鍙嗛弮銉ョ箶閸愬懎顔?
             logFile << logContent;
             logFile.close();
             
@@ -1225,7 +1327,7 @@ namespace CommandHandlers {
 }
 
 // ============================================================================
-// 鍛戒护鏄犲皠琛紙闈欐€佸垵濮嬪寲锛?
+// 閸涙垝鎶ら弰鐘茬殸鐞涱煉绱欓棃娆愨偓浣稿灥婵瀵查敍?
 // ============================================================================
 static const std::unordered_map<std::string, CommandHandler> s_commandHandlers = {
     {"getScene",                 CommandHandlers::HandleGetScene},
@@ -1261,6 +1363,8 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"createNodeWithId",         CommandHandlers::HandleCreateNodeWithId},
     {"previewMassing",           CommandHandlers::HandlePreviewMassing},
     {"clearMassingPreview",      CommandHandlers::HandleClearMassingPreview},
+    {"listMassingPresets",       CommandHandlers::HandleListMassingPresets},
+    {"loadMassingPreset",        CommandHandlers::HandleLoadMassingPreset},
     {"writeLog",                 CommandHandlers::HandleWriteLog}
 };
 
@@ -1273,7 +1377,7 @@ void MoonEngineMessageHandler::SetEngineCore(EngineCore* engine) {
 }
 
 // ============================================================================
-// 澶勭悊鏉ヨ嚜 JavaScript 鐨勬煡璇?
+// 婢跺嫮鎮婇弶銉ㄥ殰 JavaScript 閻ㄥ嫭鐓＄拠?
 // ============================================================================
 bool MoonEngineMessageHandler::OnQuery(CefRefPtr<CefBrowser> browser,
                                         CefRefPtr<CefFrame> frame,
@@ -1286,12 +1390,12 @@ bool MoonEngineMessageHandler::OnQuery(CefRefPtr<CefBrowser> browser,
     
     MOON_LOG_INFO("MoonEngineMessage", "OnQuery called with request: %s", requestStr.c_str());
     
-    // 澶勭悊璇锋眰骞惰幏鍙栧搷搴?
+    // 婢跺嫮鎮婄拠閿嬬湴楠炴儼骞忛崣鏍ф惙鎼?
     std::string response = ProcessRequest(requestStr);
     
     MOON_LOG_INFO("MoonEngineMessage", "Response: %s", response.c_str());
     
-    // 杩斿洖鍝嶅簲缁?JavaScript
+    // 鏉╂柨娲栭崫宥呯安缂?JavaScript
     callback->Success(response);
     
     return true;
@@ -1300,11 +1404,11 @@ bool MoonEngineMessageHandler::OnQuery(CefRefPtr<CefBrowser> browser,
 void MoonEngineMessageHandler::OnQueryCanceled(CefRefPtr<CefBrowser> browser,
                                                 CefRefPtr<CefFrame> frame,
                                                 int64_t query_id) {
-    // 鏌ヨ琚彇娑堬紝鏃犻渶澶勭悊
+    // 閺屻儴顕楃悮顐㈠絿濞戝牞绱濋弮鐘绘付婢跺嫮鎮?
 }
 
 // ============================================================================
-// 澶勭悊鍏蜂綋璇锋眰锛堥噸鏋勫悗锛氫娇鐢ㄥ懡浠ゆ槧灏勮〃锛?
+// 婢跺嫮鎮婇崗铚傜秼鐠囬攱鐪伴敍鍫ュ櫢閺嬪嫬鎮楅敍姘▏閻劌鎳℃禒銈嗘Ё鐏忓嫯銆冮敍?
 // ============================================================================
 std::string MoonEngineMessageHandler::ProcessRequest(const std::string& request) {
     if (!m_engine) {
@@ -1312,7 +1416,7 @@ std::string MoonEngineMessageHandler::ProcessRequest(const std::string& request)
     }
 
     try {
-        // 瑙ｆ瀽 JSON 璇锋眰
+        // 鐟欙絾鐎?JSON 鐠囬攱鐪?
         json req = json::parse(request);
         
         if (!req.contains("command")) {
@@ -1322,14 +1426,14 @@ std::string MoonEngineMessageHandler::ProcessRequest(const std::string& request)
         std::string command = req["command"];
         Moon::Scene* scene = m_engine->GetScene();
 
-        // 鏌ユ壘鍛戒护澶勭悊鍣?
+        // 閺屻儲澹橀崨鎴掓姢婢跺嫮鎮婇崳?
         auto it = s_commandHandlers.find(command);
         if (it != s_commandHandlers.end()) {
-            // 璋冪敤瀵瑰簲鐨勫鐞嗗嚱鏁?
+            // 鐠嬪啰鏁ょ€电懓绨查惃鍕槱閻炲棗鍤遍弫?
             return it->second(this, req, scene);
         }
 
-        // 鏈煡鍛戒护
+        // 閺堫亞鐓￠崨鎴掓姢
         return CreateErrorResponse("Unknown command: " + command);
     }
     catch (const json::exception& e) {
@@ -1339,3 +1443,4 @@ std::string MoonEngineMessageHandler::ProcessRequest(const std::string& request)
         return CreateErrorResponse(std::string("Exception: ") + e.what());
     }
 }
+

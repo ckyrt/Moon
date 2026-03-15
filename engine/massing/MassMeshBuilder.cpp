@@ -56,6 +56,24 @@ Vector3 ApplyPointTransform(const Vector3& value, const RuleTransform& transform
     return Vector3(rotated.x + transform.position[0], rotated.y + transform.position[1], rotated.z + transform.position[2]);
 }
 
+Vector3 ApplyNormalTransform(const Vector3& value, const RuleTransform& transform) {
+    const float safeScaleX = std::abs(transform.scale[0]) <= kEpsilon ? 1.0f : transform.scale[0];
+    const float safeScaleY = std::abs(transform.scale[1]) <= kEpsilon ? 1.0f : transform.scale[1];
+    const float safeScaleZ = std::abs(transform.scale[2]) <= kEpsilon ? 1.0f : transform.scale[2];
+
+    Vector3 adjusted(
+        value.x / safeScaleX,
+        value.y / safeScaleY,
+        value.z / safeScaleZ
+    );
+    Vector3 rotated = ApplyRotation(adjusted, transform.rotation);
+    const float length = rotated.Length();
+    if (length <= kEpsilon) {
+        return value;
+    }
+    return rotated * (1.0f / length);
+}
+
 Vector3 SafeNormalize(const Vector3& value, const Vector3& fallback = Vector3(0.0f, 1.0f, 0.0f)) {
     const float length = value.Length();
     if (length <= kEpsilon) {
@@ -105,9 +123,9 @@ void ApplyTransformToMesh(Mesh& mesh, const RuleTransform& transform) {
     std::vector<Vertex> vertices = mesh.GetVertices();
     for (Vertex& vertex : vertices) {
         vertex.position = ApplyPointTransform(vertex.position, transform);
+        vertex.normal = ApplyNormalTransform(vertex.normal, transform);
     }
     mesh.SetVertices(std::move(vertices));
-    RecomputeNormals(mesh);
 }
 
 Bounds ComputeBounds(const Mesh& mesh) {
@@ -762,3 +780,5 @@ bool MassMeshBuilder::Build(const RuleSet& ruleSet, MassBuildResult& outResult, 
 
 } // namespace Massing
 } // namespace Moon
+
+
