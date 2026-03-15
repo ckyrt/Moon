@@ -232,8 +232,9 @@ void InitSceneObjects(EngineCore* engine)
     input->SetWindowHandle(g_CefWindow);
 
     static Moon::FPSCameraController controller(camera, input);
-    controller.SetMoveSpeed(10.0f);
-    controller.SetMouseSensitivity(30.0f);
+    controller.SetMoveSpeed(24.0f);
+    controller.SetSprintMultiplier(4.0f);
+    controller.SetMouseSensitivity(36.0f);
     g_CameraController = &controller;
 
     // 初始化物理系统

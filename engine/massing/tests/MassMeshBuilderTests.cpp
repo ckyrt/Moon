@@ -1,4 +1,4 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 
 #include "../MassMeshBuilder.h"
 #include "../MassRuleParser.h"
@@ -8,7 +8,9 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <cstring>
 #include <fstream>
+#include <unordered_map>
 
 using namespace Moon::Massing;
 
@@ -112,6 +114,30 @@ uint64_t HashMesh(const Moon::Mesh& mesh) {
     return hash;
 }
 
+uint32_t CountBoundaryEdges(const Moon::Mesh& mesh) {
+    std::unordered_map<uint64_t, uint32_t> edgeUseCount;
+    const std::vector<uint32_t>& indices = mesh.GetIndices();
+    for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+        const uint32_t tri[3] = { indices[i + 0], indices[i + 1], indices[i + 2] };
+        for (int edge = 0; edge < 3; ++edge) {
+            const uint32_t a = tri[edge];
+            const uint32_t b = tri[(edge + 1) % 3];
+            const uint32_t lo = std::min(a, b);
+            const uint32_t hi = std::max(a, b);
+            const uint64_t key = (static_cast<uint64_t>(lo) << 32) | static_cast<uint64_t>(hi);
+            edgeUseCount[key] += 1;
+        }
+    }
+
+    uint32_t boundaryEdges = 0;
+    for (const auto& pair : edgeUseCount) {
+        if (pair.second == 1) {
+            boundaryEdges += 1;
+        }
+    }
+    return boundaryEdges;
+}
+
 } // namespace
 
 TEST(MassRuleParserTests, SupportsInlineProfileAndHeight) {
@@ -161,6 +187,7 @@ TEST(MassMeshBuilderTests, ExtrudeBuildMatchesRequestedHeight) {
     EXPECT_NEAR(bounds.max.y, 36.0f, 0.001f);
     EXPECT_NEAR(bounds.max.x - bounds.min.x, 16.0f, 0.001f);
     EXPECT_NEAR(bounds.max.z - bounds.min.z, 16.0f, 0.001f);
+    EXPECT_EQ(CountBoundaryEdges(*result.items.front().mesh), 0u);
 }
 
 TEST(MassMeshBuilderTests, ArrayProducesExpectedInstanceCount) {
@@ -217,6 +244,7 @@ TEST(MassMeshBuilderTests, SweepProducesVolumeAlongPath) {
     EXPECT_GT(bounds.max.x - bounds.min.x, 18.0f);
     EXPECT_GT(bounds.max.y - bounds.min.y, 8.0f);
     EXPECT_GT(bounds.max.z - bounds.min.z, 1.5f);
+    EXPECT_EQ(CountBoundaryEdges(*result.items.front().mesh), 0u);
 }
 
 TEST(MassMeshBuilderTests, LoftUsesLevelHeights) {
@@ -240,6 +268,7 @@ TEST(MassMeshBuilderTests, LoftUsesLevelHeights) {
     const Bounds3 bounds = ComputeBounds(*result.items.front().mesh);
     EXPECT_NEAR(bounds.min.y, 0.0f, 0.001f);
     EXPECT_NEAR(bounds.max.y, 30.0f, 0.001f);
+    EXPECT_EQ(CountBoundaryEdges(*result.items.front().mesh), 0u);
 }
 
 TEST(MassMeshBuilderTests, AllSamplePresetsParseAndBuild) {
@@ -283,4 +312,3 @@ TEST(MassMeshBuilderTests, RepeatedBuildOfSameRuleSetIsDeterministic) {
         EXPECT_EQ(HashMesh(*first.items[i].mesh), HashMesh(*second.items[i].mesh));
     }
 }
-

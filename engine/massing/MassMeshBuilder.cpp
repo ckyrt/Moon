@@ -1,4 +1,4 @@
-﻿#include "MassMeshBuilder.h"
+#include "MassMeshBuilder.h"
 
 #include "../core/CSG/CSGOperations.h"
 #include "../core/Geometry/MeshGenerator.h"
@@ -216,6 +216,100 @@ std::vector<Vec2> ResampleClosedCurve(const Curve2D& curve, size_t sampleCount) 
     return result;
 }
 
+Vec2 ComputeCentroid(const std::vector<Vec2>& points) {
+    if (points.empty()) {
+        return {0.0f, 0.0f};
+    }
+
+    Vec2 centroid{0.0f, 0.0f};
+    for (const Vec2& point : points) {
+        centroid[0] += point[0];
+        centroid[1] += point[1];
+    }
+    centroid[0] /= static_cast<float>(points.size());
+    centroid[1] /= static_cast<float>(points.size());
+    return centroid;
+}
+
+size_t FindCanonicalStartIndex(const std::vector<Vec2>& points) {
+    if (points.empty()) {
+        return 0;
+    }
+
+    const Vec2 centroid = ComputeCentroid(points);
+    size_t bestIndex = 0;
+    float bestAngle = std::numeric_limits<float>::max();
+    float bestDistance = -std::numeric_limits<float>::max();
+
+    for (size_t i = 0; i < points.size(); ++i) {
+        const Vec2 offset{points[i][0] - centroid[0], points[i][1] - centroid[1]};
+        const float angle = std::atan2(offset[1], offset[0]);
+        const float distance = offset[0] * offset[0] + offset[1] * offset[1];
+        if (angle < bestAngle - kEpsilon || (std::abs(angle - bestAngle) <= kEpsilon && distance > bestDistance)) {
+            bestAngle = angle;
+            bestDistance = distance;
+            bestIndex = i;
+        }
+    }
+
+    return bestIndex;
+}
+
+std::vector<Vec2> RotateClosedPoints(const std::vector<Vec2>& points, size_t startIndex) {
+    if (points.empty()) {
+        return {};
+    }
+
+    std::vector<Vec2> rotated;
+    rotated.reserve(points.size());
+    for (size_t i = 0; i < points.size(); ++i) {
+        rotated.push_back(points[(startIndex + i) % points.size()]);
+    }
+    return rotated;
+}
+
+std::vector<Vec2> NormalizeClosedProfileOrientation(const std::vector<Vec2>& points) {
+    if (points.size() < 3) {
+        return points;
+    }
+
+    std::vector<Vec2> normalized = points;
+    if (SignedArea(normalized) < 0.0f) {
+        std::reverse(normalized.begin(), normalized.end());
+    }
+    return RotateClosedPoints(normalized, FindCanonicalStartIndex(normalized));
+}
+
+float ComputeProfileAlignmentCost(const std::vector<Vec2>& reference, const std::vector<Vec2>& candidate, size_t shift) {
+    float cost = 0.0f;
+    for (size_t i = 0; i < reference.size(); ++i) {
+        const Vec2& a = reference[i];
+        const Vec2& b = candidate[(i + shift) % candidate.size()];
+        const float dx = a[0] - b[0];
+        const float dy = a[1] - b[1];
+        cost += dx * dx + dy * dy;
+    }
+    return cost;
+}
+
+std::vector<Vec2> AlignProfileToReference(const std::vector<Vec2>& reference, const std::vector<Vec2>& candidate) {
+    if (reference.size() != candidate.size() || candidate.empty()) {
+        return candidate;
+    }
+
+    size_t bestShift = 0;
+    float bestCost = std::numeric_limits<float>::max();
+    for (size_t shift = 0; shift < candidate.size(); ++shift) {
+        const float cost = ComputeProfileAlignmentCost(reference, candidate, shift);
+        if (cost < bestCost) {
+            bestCost = cost;
+            bestShift = shift;
+        }
+    }
+
+    return RotateClosedPoints(candidate, bestShift);
+}
+
 void AddTriangle(std::vector<uint32_t>& indices, uint32_t a, uint32_t b, uint32_t c) {
     indices.push_back(a);
     indices.push_back(b);
@@ -225,6 +319,33 @@ void AddTriangle(std::vector<uint32_t>& indices, uint32_t a, uint32_t b, uint32_
 void AddQuad(std::vector<uint32_t>& indices, uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
     AddTriangle(indices, a, b, c);
     AddTriangle(indices, a, c, d);
+}
+
+void AddCapFan(
+    std::vector<Vertex>& vertices,
+    std::vector<uint32_t>& indices,
+    const std::vector<Vec2>& points,
+    uint32_t ringOffset,
+    const Vector3& centerPosition,
+    const Vector3& normal,
+    bool reverseWinding)
+{
+    if (points.size() < 3) {
+        return;
+    }
+
+    const uint32_t centerIndex = static_cast<uint32_t>(vertices.size());
+    vertices.emplace_back(centerPosition, normal, Vector3(1, 1, 1), 1.0f, Vector2(0.5f, 0.5f));
+
+    for (size_t i = 0; i < points.size(); ++i) {
+        const uint32_t current = ringOffset + static_cast<uint32_t>(i);
+        const uint32_t next = ringOffset + static_cast<uint32_t>((i + 1) % points.size());
+        if (reverseWinding) {
+            AddTriangle(indices, centerIndex, next, current);
+        } else {
+            AddTriangle(indices, centerIndex, current, next);
+        }
+    }
 }
 
 std::shared_ptr<Mesh> MakeMesh(std::vector<Vertex>&& vertices, std::vector<uint32_t>&& indices) {
@@ -343,6 +464,73 @@ void BuildSweepFrame(const std::vector<Vec3>& path, size_t index, Vector3& outRi
     outRight = SafeNormalize(Vector3::Cross(worldUp, outForward), Vector3(1.0f, 0.0f, 0.0f));
     outUp = SafeNormalize(Vector3::Cross(outForward, outRight), Vector3(0.0f, 1.0f, 0.0f));
 }
+std::vector<Vector3> BuildSweepTangents(const std::vector<Vec3>& path) {
+    std::vector<Vector3> tangents(path.size(), Vector3(0.0f, 0.0f, 1.0f));
+    if (path.size() < 2) {
+        return tangents;
+    }
+    for (size_t i = 0; i < path.size(); ++i) {
+        Vector3 tangent(0.0f, 0.0f, 0.0f);
+        if (i > 0) {
+            tangent = tangent + Vector3(
+                path[i][0] - path[i - 1][0],
+                path[i][1] - path[i - 1][1],
+                path[i][2] - path[i - 1][2]
+            );
+        }
+        if (i + 1 < path.size()) {
+            tangent = tangent + Vector3(
+                path[i + 1][0] - path[i][0],
+                path[i + 1][1] - path[i][1],
+                path[i + 1][2] - path[i][2]
+            );
+        }
+        tangents[i] = SafeNormalize(tangent, Vector3(0.0f, 0.0f, 1.0f));
+    }
+    return tangents;
+}
+void BuildParallelTransportFrames(
+    const std::vector<Vec3>& path,
+    std::vector<Vector3>& outRights,
+    std::vector<Vector3>& outUps,
+    std::vector<Vector3>& outForwards)
+{
+    outRights.clear();
+    outUps.clear();
+    outForwards = BuildSweepTangents(path);
+    if (path.empty()) {
+        return;
+    }
+    outRights.resize(path.size());
+    outUps.resize(path.size());
+    Vector3 seedUp(0.0f, 1.0f, 0.0f);
+    if (std::abs(Vector3::Dot(outForwards.front(), seedUp)) > 0.98f) {
+        seedUp = Vector3(1.0f, 0.0f, 0.0f);
+    }
+    outRights.front() = SafeNormalize(Vector3::Cross(seedUp, outForwards.front()), Vector3(1.0f, 0.0f, 0.0f));
+    outUps.front() = SafeNormalize(Vector3::Cross(outForwards.front(), outRights.front()), Vector3(0.0f, 1.0f, 0.0f));
+    for (size_t i = 1; i < path.size(); ++i) {
+        const Vector3 prevForward = outForwards[i - 1];
+        const Vector3 currForward = outForwards[i];
+        Vector3 right = outRights[i - 1] - currForward * Vector3::Dot(outRights[i - 1], currForward);
+        if (right.Length() <= kEpsilon) {
+            right = Vector3::Cross(outUps[i - 1], currForward);
+        }
+        if (right.Length() <= kEpsilon) {
+            Vector3 fallbackUp(0.0f, 1.0f, 0.0f);
+            if (std::abs(Vector3::Dot(currForward, fallbackUp)) > 0.98f) {
+                fallbackUp = Vector3(1.0f, 0.0f, 0.0f);
+            }
+            right = Vector3::Cross(fallbackUp, currForward);
+        }
+        outRights[i] = SafeNormalize(right, outRights[i - 1]);
+        outUps[i] = SafeNormalize(Vector3::Cross(currForward, outRights[i]), outUps[i - 1]);
+        if (Vector3::Dot(prevForward, currForward) < -0.999f) {
+            outRights[i] = outRights[i - 1] * -1.0f;
+            outUps[i] = outUps[i - 1] * -1.0f;
+        }
+    }
+}
 
 std::shared_ptr<Mesh> CreateSweepMesh(const Curve2D& profile, const Curve3D& path) {
     std::vector<Vec2> points = GetClosedProfilePoints(profile);
@@ -373,6 +561,18 @@ std::shared_ptr<Mesh> CreateSweepMesh(const Curve2D& profile, const Curve3D& pat
             AddQuad(indices, currentOffset + static_cast<uint32_t>(i), currentOffset + next, nextOffset + next, nextOffset + static_cast<uint32_t>(i));
         }
     }
+
+    Vector3 startRight, startUp, startForward;
+    BuildSweepFrame(path.points, 0, startRight, startUp, startForward);
+    Vector3 endRight, endUp, endForward;
+    BuildSweepFrame(path.points, path.points.size() - 1, endRight, endUp, endForward);
+
+    const Vector3 startCenter(path.points.front()[0], path.points.front()[1], path.points.front()[2]);
+    const Vector3 endCenter(path.points.back()[0], path.points.back()[1], path.points.back()[2]);
+    const bool clockwise = SignedArea(points) < 0.0f;
+
+    AddCapFan(vertices, indices, points, 0u, startCenter, startForward * -1.0f, !clockwise);
+    AddCapFan(vertices, indices, points, static_cast<uint32_t>((path.points.size() - 1) * ringSize), endCenter, endForward, clockwise);
 
     return MakeMesh(std::move(vertices), std::move(indices));
 }
@@ -407,7 +607,10 @@ std::shared_ptr<Mesh> CreateLoftMesh(const RuleNode& node) {
 
     std::vector<std::vector<Vec2>> sampledProfiles;
     for (const Curve2D& profile : node.profiles) {
-        sampledProfiles.push_back(ResampleClosedCurve(profile, sampleCount));
+        sampledProfiles.push_back(NormalizeClosedProfileOrientation(ResampleClosedCurve(profile, sampleCount)));
+    }
+    for (size_t i = 1; i < sampledProfiles.size(); ++i) {
+        sampledProfiles[i] = AlignProfileToReference(sampledProfiles[i - 1], sampledProfiles[i]);
     }
 
     const std::vector<float> levels = BuildLoftLevels(node, node.profiles.size());
@@ -429,6 +632,28 @@ std::shared_ptr<Mesh> CreateLoftMesh(const RuleNode& node) {
             AddQuad(indices, currentOffset + static_cast<uint32_t>(i), currentOffset + next, nextOffset + next, nextOffset + static_cast<uint32_t>(i));
         }
     }
+
+    const bool bottomClockwise = SignedArea(sampledProfiles.front()) < 0.0f;
+    const bool topClockwise = SignedArea(sampledProfiles.back()) < 0.0f;
+
+    Vector3 bottomCenter(0.0f, levels.front(), 0.0f);
+    for (const Vec2& point : sampledProfiles.front()) {
+        bottomCenter.x += point[0];
+        bottomCenter.z += point[1];
+    }
+    bottomCenter.x /= static_cast<float>(sampleCount);
+    bottomCenter.z /= static_cast<float>(sampleCount);
+
+    Vector3 topCenter(0.0f, levels.back(), 0.0f);
+    for (const Vec2& point : sampledProfiles.back()) {
+        topCenter.x += point[0];
+        topCenter.z += point[1];
+    }
+    topCenter.x /= static_cast<float>(sampleCount);
+    topCenter.z /= static_cast<float>(sampleCount);
+
+    AddCapFan(vertices, indices, sampledProfiles.front(), 0u, bottomCenter, Vector3(0.0f, -1.0f, 0.0f), !bottomClockwise);
+    AddCapFan(vertices, indices, sampledProfiles.back(), static_cast<uint32_t>((sampledProfiles.size() - 1) * sampleCount), topCenter, Vector3(0.0f, 1.0f, 0.0f), topClockwise);
 
     return MakeMesh(std::move(vertices), std::move(indices));
 }
@@ -780,5 +1005,3 @@ bool MassMeshBuilder::Build(const RuleSet& ruleSet, MassBuildResult& outResult, 
 
 } // namespace Massing
 } // namespace Moon
-
-
