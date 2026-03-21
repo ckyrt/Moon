@@ -133,6 +133,10 @@ private:
         float UseProceduralSky = 0.0f;
         Moon::Vector3 SkyHorizonColor = Moon::Vector3(0.85f, 0.65f, 0.45f);
         float SkyIntensity = 1.0f;
+        Moon::Vector3 SunDirection = Moon::Vector3(0.0f, 1.0f, 0.0f);
+        float StarIntensity = 0.0f;
+        Moon::Vector3 SunColor = Moon::Vector3(1.0f, 0.95f, 0.85f);
+        float SunDiscSize = 0.9992f;
     };
 
     struct ShadowConstantsCPU {

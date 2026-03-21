@@ -253,13 +253,13 @@ void InitSceneObjects(EngineCore* engine)
 
         Moon::EnvironmentProfile profile;
         profile.name = "EditorEnvironment";
-        profile.enableDayNightCycle = false;
+        profile.enableDayNightCycle = true;
         profile.enableWeather = false;
         profile.enableWind = true;
         profile.enableClouds = true;
         profile.enableFog = true;
         profile.syncPrimaryDirectionalLight = true;
-        profile.lockToFixedTime = true;
+        profile.lockToFixedTime = false;
         profile.fixedTimeHours = 10.5f;
         profile.minSunIntensity = 0.08f;
         profile.maxSunIntensity = 2.8f;
@@ -269,6 +269,12 @@ void InitSceneObjects(EngineCore* engine)
         environment->SetProfile(profile);
         environment->SetTimeOfDay(10.5f);
         environment->SetWeather(Moon::WeatherType::Clear, 0.0f);
+
+        Moon::EnvironmentState state = environment->GetState();
+        state.timeOfDay.dayLengthMinutes = 3.0f;
+        state.timeOfDay.timeScale = 1.0f;
+        state.timeOfDay.paused = false;
+        environment->GetSystem().SetState(state);
     }
 
     if (scene && !scene->FindNodeByName("Editor Sun")) {

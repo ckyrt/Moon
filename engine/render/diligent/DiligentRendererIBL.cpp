@@ -10,6 +10,8 @@
 #include "DiligentRendererUtils.h"
 #include "../../core/Assets/AssetPaths.h"
 
+#include <algorithm>
+
 // Diligent includes
 #include "Graphics/GraphicsEngine/interface/RenderDevice.h"
 #include "Graphics/GraphicsEngine/interface/DeviceContext.h"
@@ -104,6 +106,10 @@ cbuffer SkyboxConstants {
     float g_UseProceduralSky;
     float3 g_SkyHorizonColor;
     float g_SkyIntensity;
+    float3 g_SunDirection;
+    float g_StarIntensity;
+    float3 g_SunColor;
+    float g_SunDiscSize;
 };
 
 struct VSInput {
@@ -137,6 +143,10 @@ cbuffer SkyboxConstants {
     float g_UseProceduralSky;
     float3 g_SkyHorizonColor;
     float g_SkyIntensity;
+    float3 g_SunDirection;
+    float g_StarIntensity;
+    float3 g_SunColor;
+    float g_SunDiscSize;
 };
 
 struct PSInput {
@@ -154,12 +164,32 @@ float2 DirToEquirectUV(float3 dir) {
     return float2(u, v);
 }
 
+float Hash31(float3 p) {
+    p = frac(p * 0.1031);
+    p += dot(p, p.yzx + 19.19);
+    return frac((p.x + p.y) * p.z);
+}
+
 float4 main(in PSInput i) : SV_Target {
     if (g_UseProceduralSky > 0.5) {
         float3 dir = normalize(i.TexCoord);
         float horizonFactor = saturate(dir.y * 0.5 + 0.5);
         float3 gradient = lerp(g_SkyHorizonColor, g_SkyZenithColor, pow(horizonFactor, 0.6));
-        return float4(gradient * g_SkyIntensity, 1.0);
+
+        float sunAmount = saturate(dot(dir, normalize(g_SunDirection)));
+        float sunDisc = smoothstep(g_SunDiscSize, 1.0, sunAmount);
+        float sunGlow = pow(sunAmount, 96.0);
+
+        float3 starCell = floor(dir * 240.0);
+        float starNoise = Hash31(starCell);
+        float starMask = step(0.9975, starNoise);
+        float starTwinkle = 0.65 + 0.35 * Hash31(starCell + 13.37);
+        float stars = starMask * starTwinkle * g_StarIntensity;
+
+        float3 color = gradient * g_SkyIntensity;
+        color += g_SunColor * (sunDisc * 6.0 + sunGlow * 0.35);
+        color += float3(stars, stars, stars);
+        return float4(color, 1.0);
     }
 
     // 从方向向量计算 equirectangular UV 坐标
@@ -279,6 +309,10 @@ void DiligentRenderer::RenderSkybox()
     constants.SkyHorizonColor = m_SceneDataCache.fogColor;
     constants.SkyZenithColor = m_SceneDataCache.skyColor;
     constants.SkyIntensity = 1.0f;
+    constants.SunDirection = (m_SceneDataCache.lightDirection * -1.0f).Normalized();
+    constants.SunColor = m_SceneDataCache.lightColor;
+    constants.SunDiscSize = 0.9992f;
+    constants.StarIntensity = constants.SunDirection.y > 0.0f ? 0.0f : std::min(1.0f, -constants.SunDirection.y * 1.5f);
     
     // 更新常量缓冲
     UpdateCB(m_pSkyboxVSConstants, constants);
