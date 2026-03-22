@@ -24,6 +24,9 @@
     <ClCompile Include="TestEnvironment.cpp">
       <Filter>TestScenes</Filter>
     </ClCompile>
+    <ClCompile Include="TestTerrain.cpp">
+      <Filter>TestScenes</Filter>
+    </ClCompile>
     <ClCompile Include="HelloEngineImGui.cpp" />
     <ClCompile Include="DebugGridRenderer.cpp" />
   </ItemGroup>

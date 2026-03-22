@@ -5,6 +5,7 @@ class EngineCore;
 // 你所有“临时效果测试”都从这里进
 namespace TestScenes {
 
+    void TestTerrain(EngineCore* engine);
     void TestEnvironment(EngineCore* engine);
     void TestMaterial(EngineCore* engine);
     void TestCSG(EngineCore* engine);

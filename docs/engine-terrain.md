@@ -1,27 +1,58 @@
 # Terrain Module
 
-## 职责 (Responsibilities)
-- 高度图 (Heightmap) 地形生成
-- 道路系统 (Road Network)
-- 植被系统 (Vegetation)
-- 水体系统 (河流、湖泊、海洋)
-- 地形纹理和材质混合
+## Responsibilities
 
-## 接口文件 (Interface Files)
-- `ITerrain.h` - 地形系统接口
-- `Heightmap.h` - 高度图组件
-- `Road.h` - 道路组件
-- `Vegetation.h` - 植被组件
-- `Water.h` - 水体组件
+- store and manage large-world terrain surface data
+- provide a stable runtime module for terrain-specific systems
+- keep terrain generation independent from editor tooling and AI input flows
+- expose chunk-based dirty tracking for future mesh, material, collision, water, and vegetation rebuilds
 
-## 依赖 (Dependencies)
-- engine/geometry (地形网格生成)
-- engine/core (ECS系统)
-- engine/render (地形渲染)
+## Current Runtime Structure
 
-## AI 生成指导
-这个模块需要实现：
-1. 基于高度图的地形生成
-2. 程序化的道路网络
-3. 植被分布算法
-4. 水体模拟的基础结构
+Phase 1 is centered around these runtime types:
+
+- `Heightmap` - normalized terrain height storage
+- `TerrainData` - unified terrain payload shared by AI generation, editor tools, and file import
+- `TerrainProfile` - runtime configuration such as chunk size and height scale
+- `TerrainRuntimeState` - derived state for chunk counts and dirty status
+- `ITerrainSystem` / `TerrainSystem` - terrain runtime entry point
+- `TerrainComponent` - scene-facing wrapper
+
+## Data Flow Rule
+
+Different input methods must converge into the same terrain data model:
+
+- AI text generation -> `TerrainData`
+- editor sculpting and painting -> `TerrainData`
+- imported heightmaps -> `TerrainData`
+
+The runtime should only consume the unified data and build the world from it.
+
+## Dependencies
+
+- `engine/core` for scene and component integration
+- `engine/render` for future terrain rendering
+- `engine/environment` as a read-only input source for weather, wind, and lighting driven terrain effects
+
+## Current Phase
+
+Phase 1 currently includes:
+
+- dedicated `engine/terrain` static library
+- heightmap storage
+- terrain profile and runtime state
+- chunk layout and dirty tracking
+- scene-facing `TerrainComponent`
+
+## Planned Next Steps
+
+1. build terrain mesh generation from `Heightmap`
+2. rebuild only dirty chunks
+3. add terrain material layers and painting
+4. feed terrain data into future water and vegetation modules
+
+## Cave Strategy
+
+The primary world surface stays heightmap-based.
+
+Future cave support should be added as a separate module that connects to terrain entrances, instead of forcing the whole terrain runtime to become voxel-based on day one.

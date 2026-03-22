@@ -59,7 +59,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>PLATFORM_WIN32=1;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine\core;$(SolutionDir)engine\render;$(SolutionDir)engine\building;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine\core;$(SolutionDir)engine\render;$(SolutionDir)engine\building;$(SolutionDir)engine\environment;$(SolutionDir)engine\terrain;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -67,7 +67,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>EngineCore.lib;EngineRender.lib;EngineBuilding.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>EngineCore.lib;EngineRender.lib;EngineBuilding.lib;EngineEnvironment.lib;EngineTerrain.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -79,7 +79,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>PLATFORM_WIN32=1;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine\core;$(SolutionDir)engine\render;$(SolutionDir)engine\building;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine\core;$(SolutionDir)engine\render;$(SolutionDir)engine\building;$(SolutionDir)engine\environment;$(SolutionDir)engine\terrain;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -88,7 +88,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>EngineCore.lib;EngineRender.lib;EngineBuilding.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>EngineCore.lib;EngineRender.lib;EngineBuilding.lib;EngineEnvironment.lib;EngineTerrain.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -105,6 +105,7 @@
     <ClCompile Include="TestCSGBlueprint.cpp" />
     <ClCompile Include="TestBuildingSample.cpp" />
     <ClCompile Include="TestEnvironment.cpp" />
+    <ClCompile Include="TestTerrain.cpp" />
     <ClCompile Include="TestMaterial.cpp" />
     <ClCompile Include="TestZipLoad.cpp" />
   </ItemGroup>
@@ -124,6 +125,9 @@
     </ProjectReference>
     <ProjectReference Include="..\environment\EngineEnvironment.vcxproj">
       <Project>{6A7B8C9D-0E1F-4234-A5B6-C7D8E9F01234}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\terrain\EngineTerrain.vcxproj">
+      <Project>{1C2D3E4F-5061-4728-93A4-B5C6D7E8F901}</Project>
     </ProjectReference>
     <ProjectReference Include="..\building\EngineBuilding.vcxproj">
       <Project>{7B8C9D0E-1F2A-3B4C-5D6E-7F8A9B0C1D2E}</Project>

@@ -127,7 +127,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
 
     HelloEngineImGui::Initialize(hwnd, &renderer);
 
-    TestScenes::TestEnvironment(&engine);
+    TestScenes::TestTerrain(&engine);
 
     Moon::Scene* scene = engine.GetScene();
     Moon::SceneNode* mainLightNode = scene ? scene->FindNodeByName("Environment Sun") : nullptr;
