@@ -1,0 +1,397 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "mall",
+  "style": {
+    "category": "commercial",
+    "facade": "glass_stone",
+    "roof": "flat",
+    "window_style": "full_height",
+    "material": "stone_glass"
+  },
+  "mass": {
+    "footprint_area": 1225,
+    "floors": 3,
+    "total_height": 16.2
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "arrival_retail_floor",
+        "spaces": [
+          {
+            "space_id": "mall_core_gf",
+            "type": "core",
+            "zone": "service",
+            "area_preferred": 64,
+            "constraints": {
+              "connects_to_floor": 1,
+              "ceiling_height": 5.4,
+              "min_width": 4.5
+            }
+          },
+          {
+            "space_id": "mall_elevator_gf",
+            "type": "elevator",
+            "zone": "service",
+            "area_preferred": 12,
+            "constraints": {
+              "connects_to_floor": 1,
+              "ceiling_height": 5.4,
+              "min_width": 2.5
+            }
+          },
+          {
+            "space_id": "mall_stairs_gf",
+            "type": "stairs",
+            "zone": "circulation",
+            "area_preferred": 18,
+            "constraints": {
+              "connects_to_floor": 1,
+              "ceiling_height": 5.4,
+              "min_width": 2.5
+            }
+          },
+          {
+            "space_id": "main_atrium",
+            "type": "void",
+            "zone": "public",
+            "area_preferred": 220,
+            "constraints": {
+              "ceiling_height": 16.0,
+              "min_width": 11.0
+            }
+          },
+          {
+            "space_id": "main_concourse",
+            "type": "corridor",
+            "zone": "circulation",
+            "area_preferred": 180,
+            "adjacency": [
+              {
+                "to": "main_atrium",
+                "relationship": "around",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 5.4,
+              "min_width": 5.5
+            }
+          },
+          {
+            "space_id": "mall_lobby",
+            "type": "lobby",
+            "zone": "circulation",
+            "area_preferred": 84,
+            "constraints": {
+              "natural_light": "preferred",
+              "ceiling_height": 5.4,
+              "min_width": 6.0
+            }
+          },
+          {
+            "space_id": "anchor_store_gf",
+            "unit_id": "anchor_store",
+            "type": "shop",
+            "zone": "public",
+            "area_preferred": 120,
+            "adjacency": [
+              {
+                "to": "main_concourse",
+                "relationship": "connected",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 5.0,
+              "min_width": 7.0
+            }
+          },
+          {
+            "space_id": "shop_a_gf",
+            "unit_id": "shop_a",
+            "type": "shop",
+            "zone": "public",
+            "area_preferred": 68,
+            "adjacency": [
+              {
+                "to": "main_concourse",
+                "relationship": "connected",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 5.0
+            }
+          },
+          {
+            "space_id": "shop_b_gf",
+            "unit_id": "shop_b",
+            "type": "shop",
+            "zone": "public",
+            "area_preferred": 64,
+            "adjacency": [
+              {
+                "to": "main_concourse",
+                "relationship": "connected",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 5.0
+            }
+          },
+          {
+            "space_id": "mall_bathroom_gf",
+            "type": "bathroom",
+            "zone": "service",
+            "area_preferred": 22,
+            "constraints": {
+              "ceiling_height": 3.5,
+              "min_width": 3.0
+            }
+          }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "fashion_food_floor",
+        "spaces": [
+          {
+            "space_id": "mall_core_l1",
+            "type": "core",
+            "zone": "service",
+            "area_preferred": 60,
+            "constraints": {
+              "connects_from_floor": 0,
+              "connects_to_floor": 2,
+              "ceiling_height": 5.1,
+              "min_width": 4.5
+            }
+          },
+          {
+            "space_id": "mall_elevator_l1",
+            "type": "elevator",
+            "zone": "service",
+            "area_preferred": 12,
+            "constraints": {
+              "connects_from_floor": 0,
+              "connects_to_floor": 2,
+              "ceiling_height": 5.1,
+              "min_width": 2.5
+            }
+          },
+          {
+            "space_id": "mall_stairs_l1",
+            "type": "stairs",
+            "zone": "circulation",
+            "area_preferred": 18,
+            "constraints": {
+              "connects_from_floor": 0,
+              "connects_to_floor": 2,
+              "ceiling_height": 5.1,
+              "min_width": 2.5
+            }
+          },
+          {
+            "space_id": "upper_atrium",
+            "type": "void",
+            "zone": "public",
+            "area_preferred": 210,
+            "constraints": {
+              "ceiling_height": 10.6,
+              "min_width": 10.0
+            }
+          },
+          {
+            "space_id": "upper_concourse",
+            "type": "corridor",
+            "zone": "circulation",
+            "area_preferred": 180,
+            "adjacency": [
+              {
+                "to": "upper_atrium",
+                "relationship": "around",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 5.1,
+              "min_width": 5.5
+            }
+          },
+          {
+            "space_id": "food_hall",
+            "unit_id": "food_hall",
+            "type": "shop",
+            "zone": "public",
+            "area_preferred": 110,
+            "adjacency": [
+              {
+                "to": "upper_concourse",
+                "relationship": "connected",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 5.1,
+              "min_width": 6.5
+            }
+          },
+          {
+            "space_id": "shop_d_l1",
+            "unit_id": "shop_d",
+            "type": "shop",
+            "zone": "public",
+            "area_preferred": 66,
+            "adjacency": [
+              {
+                "to": "upper_concourse",
+                "relationship": "connected",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 5.0
+            }
+          },
+          {
+            "space_id": "shop_e_l1",
+            "unit_id": "shop_e",
+            "type": "shop",
+            "zone": "public",
+            "area_preferred": 64,
+            "adjacency": [
+              {
+                "to": "upper_concourse",
+                "relationship": "connected",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 5.0
+            }
+          },
+          {
+            "space_id": "mall_bathroom_l1",
+            "type": "bathroom",
+            "zone": "service",
+            "area_preferred": 22,
+            "constraints": {
+              "ceiling_height": 3.5,
+              "min_width": 3.0
+            }
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "entertainment_floor",
+        "spaces": [
+          {
+            "space_id": "mall_core_l2",
+            "type": "core",
+            "zone": "service",
+            "area_preferred": 60,
+            "constraints": {
+              "connects_from_floor": 1,
+              "ceiling_height": 4.8,
+              "min_width": 4.5
+            }
+          },
+          {
+            "space_id": "mall_elevator_l2",
+            "type": "elevator",
+            "zone": "service",
+            "area_preferred": 12,
+            "constraints": {
+              "connects_from_floor": 1,
+              "ceiling_height": 4.8,
+              "min_width": 2.5
+            }
+          },
+          {
+            "space_id": "mall_stairs_l2",
+            "type": "stairs",
+            "zone": "circulation",
+            "area_preferred": 18,
+            "constraints": {
+              "connects_from_floor": 1,
+              "ceiling_height": 4.8,
+              "min_width": 2.5
+            }
+          },
+          {
+            "space_id": "roof_atrium",
+            "type": "void",
+            "zone": "public",
+            "area_preferred": 180,
+            "constraints": {
+              "ceiling_height": 5.0,
+              "min_width": 9.0
+            }
+          },
+          {
+            "space_id": "roof_concourse",
+            "type": "corridor",
+            "zone": "circulation",
+            "area_preferred": 160,
+            "adjacency": [
+              {
+                "to": "roof_atrium",
+                "relationship": "around",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 5.0
+            }
+          },
+          {
+            "space_id": "cinema_box",
+            "unit_id": "cinema_box",
+            "type": "shop",
+            "zone": "public",
+            "area_preferred": 130,
+            "adjacency": [
+              {
+                "to": "roof_concourse",
+                "relationship": "connected",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 8.0
+            }
+          },
+          {
+            "space_id": "restaurant_row",
+            "unit_id": "restaurant_row",
+            "type": "shop",
+            "zone": "public",
+            "area_preferred": 96,
+            "adjacency": [
+              {
+                "to": "roof_concourse",
+                "relationship": "connected",
+                "importance": "required"
+              }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 6.0
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -61,6 +61,7 @@ bool SemanticBuildingParser::ParseFromString(
             building.mass.footprintArea = mass.value("footprint_area", 0.0f);
             building.mass.floors = mass.value("floors", 1);
             building.mass.totalHeight = mass.value("total_height", 0.0f);
+            building.mass.massingRuleAsset = mass.value("massing_rule", "");
         }
         
         // Parse program (floors)
@@ -803,6 +804,7 @@ void LayoutResolver::BuildOutput(BuildingDefinition& output, const SemanticBuild
     mass.origin = {0.0f, 0.0f};
     mass.size = m_footprint;
     mass.floors = input.mass.floors;
+    mass.massingRuleAsset = input.mass.massingRuleAsset;
     output.masses.push_back(mass);
     
     // Create floors and spaces

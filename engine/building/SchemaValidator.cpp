@@ -357,6 +357,11 @@ void RepairSemanticJsonForBestEffort(nlohmann::json& json,
         mass["total_height"] = std::max(3.0f, 3.0f * static_cast<float>(mass["floors"].get<int>()));
         AddRepairNote(report, "Estimated missing mass.total_height from floor count");
     }
+
+    if (mass.contains("massing_rule") && !mass["massing_rule"].is_string()) {
+        mass.erase("massing_rule");
+        AddRepairNote(report, "Removed invalid non-string mass.massing_rule");
+    }
 }
 
 bool IsResidentialType(const std::string& buildingType) {
@@ -641,6 +646,11 @@ bool SchemaValidator::ValidateMass(const nlohmann::json& json, std::string& outE
 
     if (mass["floors"].get<int>() < 1) {
         outError = "mass.floors must be >= 1";
+        return false;
+    }
+
+    if (mass.contains("massing_rule") && !mass["massing_rule"].is_string()) {
+        outError = "mass.massing_rule must be a string when provided";
         return false;
     }
 

@@ -21,6 +21,22 @@ static inline json pos3(float x, float y, float z)
     return json::array({x, y, z});
 }
 
+static inline float GetTopOfFloor(const BuildingDefinition& definition, int floorLevel)
+{
+    const float base = GetFloorBaseHeight(definition, floorLevel);
+    for (const auto& floor : definition.floors) {
+        if (floor.level == floorLevel) {
+            return base + floor.floorHeight;
+        }
+    }
+    return base;
+}
+
+static inline float GetPreviewSlabTopHeight(float baseY)
+{
+    return baseY + 0.18f;
+}
+
 static inline float NormalizeRotation(float rotationDegrees)
 {
     float normalized = std::fmod(rotationDegrees, 360.0f);
@@ -59,6 +75,57 @@ static json CreateCubeNode(const std::string& name,
     };
     node["material"] = material;
     return node;
+}
+
+static json SubtractHoles(json base, const std::vector<json>& holes);
+
+static json CreateFloorPlateNode(const std::string& name,
+                                 const FloorPlate& plate,
+                                 float baseY,
+                                 float slabThickness,
+                                 const char* material)
+{
+    json base = CreateCubeNode(
+        name + "_base",
+        plate.origin[0] + plate.size[0] * 0.5f,
+        baseY + slabThickness * 0.5f,
+        plate.origin[1] + plate.size[1] * 0.5f,
+        plate.size[0],
+        slabThickness,
+        plate.size[1],
+        material);
+
+    std::vector<json> holes;
+    for (const auto& voidRect : plate.voids) {
+        holes.push_back(CreateCubeNode(
+            name + "_void_" + voidRect.rectId,
+            voidRect.origin[0] + voidRect.size[0] * 0.5f,
+            baseY + slabThickness * 0.5f,
+            voidRect.origin[1] + voidRect.size[1] * 0.5f,
+            voidRect.size[0] + 0.02f,
+            slabThickness + 0.02f,
+            voidRect.size[1] + 0.02f,
+            "glass"));
+    }
+
+    json node = SubtractHoles(base, holes);
+    node["name"] = name;
+    return node;
+}
+
+static const char* GetProgramMaterial(SpaceUsage usage)
+{
+    switch (usage) {
+        case SpaceUsage::Corridor: return "glass";
+        case SpaceUsage::Entrance: return "metal";
+        case SpaceUsage::Office: return "wood";
+        case SpaceUsage::Living: return "wood";
+        case SpaceUsage::Dining: return "wood_floor";
+        case SpaceUsage::Kitchen: return "tile_ceramic";
+        case SpaceUsage::Bathroom: return "plaster";
+        case SpaceUsage::Storage: return "concrete_floor";
+        default: return "rock";
+    }
 }
 
 // Note: GetFloorBaseHeight is now in BuildingTypes.h as inline function
@@ -145,36 +212,120 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
     const float wallThickness = 0.2f; // 20 cm walls
 
     // -----------------------------------------------------------------------
-    // 1. Floor slabs
+    // 0. Structural floor plates and vertical cores
     // -----------------------------------------------------------------------
-    for (const auto& floor : building.definition.floors) {
-        const float floorBaseY = GetFloorBaseHeight(building.definition, floor.level);
-        for (const auto& space : floor.spaces) {
-            for (const auto& rect : space.rects) {
-                const float slabThickness = 0.05f; // 5 cm
+    if (!building.floorPlates.empty()) {
+        for (const auto& plate : building.floorPlates) {
+            if (plate.outline.size() >= 3) {
+                continue;
+            }
+            const float floorBaseY = GetFloorBaseHeight(building.definition, plate.floorLevel);
+            children.push_back(CreateFloorPlateNode(
+                "floor_plate_" + std::to_string(plate.floorLevel),
+                plate,
+                floorBaseY,
+                0.18f,
+                "concrete_floor"));
+        }
+    }
 
-                json node;
-                node["name"]      = "floor_" + std::to_string(space.spaceId) + "_" + rect.rectId;
-                node["type"]      = "primitive";
-                node["primitive"] = "cube";
-                node["params"]    = {
-                    {"size_x", m2cm(rect.size[0])},
-                    {"size_y", m2cm(slabThickness)},
-                    {"size_z", m2cm(rect.size[1])}
-                };
-                node["transform"] = {{"position", pos3(
-                    m2cm(rect.origin[0] + rect.size[0] * 0.5f),
-                    m2cm(floorBaseY + slabThickness * 0.5f),
-                    m2cm(rect.origin[1] + rect.size[1] * 0.5f)
-                )}};
+    for (const auto& core : building.verticalCores) {
+        const float baseHeight = GetFloorBaseHeight(building.definition, core.floorFrom);
+        const float topHeight = GetTopOfFloor(building.definition, core.floorTo);
+        const float height = std::max(0.1f, topHeight - baseHeight);
+        const char* material = "concrete_floor";
+        if (core.type == VerticalCoreType::Elevator) {
+            material = "metal";
+        } else if (core.type == VerticalCoreType::Stair) {
+            material = "plaster";
+        }
 
-                SpaceUsage usage = space.properties.usage;
-                if      (usage == SpaceUsage::Living)   node["material"] = "wood_floor";
-                else if (usage == SpaceUsage::Kitchen)  node["material"] = "tile_ceramic";
-                else if (usage == SpaceUsage::Bedroom)  node["material"] = "carpet";
-                else                                    node["material"] = "concrete_floor";
+        children.push_back(CreateCubeNode(
+            "vertical_core_" + core.coreId,
+            core.rect.origin[0] + core.rect.size[0] * 0.5f,
+            baseHeight + height * 0.5f,
+            core.rect.origin[1] + core.rect.size[1] * 0.5f,
+            core.rect.size[0],
+            height,
+            core.rect.size[1],
+            material));
+    }
 
-                children.push_back(node);
+    // -----------------------------------------------------------------------
+    // 1. Floor slabs (fallback when no explicit floor plates exist)
+    // -----------------------------------------------------------------------
+    if (building.floorPlates.empty()) {
+        for (const auto& floor : building.definition.floors) {
+            const float floorBaseY = GetFloorBaseHeight(building.definition, floor.level);
+            for (const auto& space : floor.spaces) {
+                for (const auto& rect : space.rects) {
+                    const float slabThickness = 0.05f; // 5 cm
+
+                    json node;
+                    node["name"]      = "floor_" + std::to_string(space.spaceId) + "_" + rect.rectId;
+                    node["type"]      = "primitive";
+                    node["primitive"] = "cube";
+                    node["params"]    = {
+                        {"size_x", m2cm(rect.size[0])},
+                        {"size_y", m2cm(slabThickness)},
+                        {"size_z", m2cm(rect.size[1])}
+                    };
+                    node["transform"] = {{"position", pos3(
+                        m2cm(rect.origin[0] + rect.size[0] * 0.5f),
+                        m2cm(floorBaseY + slabThickness * 0.5f),
+                        m2cm(rect.origin[1] + rect.size[1] * 0.5f)
+                    )}};
+
+                    SpaceUsage usage = space.properties.usage;
+                    if      (usage == SpaceUsage::Living)   node["material"] = "wood_floor";
+                    else if (usage == SpaceUsage::Kitchen)  node["material"] = "tile_ceramic";
+                    else if (usage == SpaceUsage::Bedroom)  node["material"] = "carpet";
+                    else                                    node["material"] = "concrete_floor";
+
+                    children.push_back(node);
+                }
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 1a. Program blocks (lightweight semantic preview without walls)
+    // -----------------------------------------------------------------------
+    if (!building.programBlocks.empty()) {
+        for (const auto& block : building.programBlocks) {
+            const float floorBaseY = GetFloorBaseHeight(building.definition, block.floorLevel);
+            const float previewClearance = 0.06f;
+            const float blockHeight = 0.28f;
+            children.push_back(CreateCubeNode(
+                "program_generated_" + block.blockId,
+                block.rect.origin[0] + block.rect.size[0] * 0.5f,
+                GetPreviewSlabTopHeight(floorBaseY) + previewClearance + blockHeight * 0.5f,
+                block.rect.origin[1] + block.rect.size[1] * 0.5f,
+                std::max(0.2f, block.rect.size[0] - 0.12f),
+                blockHeight,
+                std::max(0.2f, block.rect.size[1] - 0.12f),
+                GetProgramMaterial(block.usage)));
+        }
+    } else if (!building.floorPlates.empty()) {
+        for (const auto& floor : building.definition.floors) {
+            const float floorBaseY = GetFloorBaseHeight(building.definition, floor.level);
+            for (const auto& space : floor.spaces) {
+                if (space.properties.usage == SpaceUsage::Stairwell ||
+                    space.properties.usage == SpaceUsage::Storage) {
+                    continue;
+                }
+
+                for (const auto& rect : space.rects) {
+                    children.push_back(CreateCubeNode(
+                        "program_" + std::to_string(floor.level) + "_" + rect.rectId,
+                        rect.origin[0] + rect.size[0] * 0.5f,
+                        GetPreviewSlabTopHeight(floorBaseY) + 0.06f + 0.28f * 0.5f,
+                        rect.origin[1] + rect.size[1] * 0.5f,
+                        std::max(0.2f, rect.size[0] - 0.18f),
+                        0.28f,
+                        std::max(0.2f, rect.size[1] - 0.18f),
+                        GetProgramMaterial(space.properties.usage)));
+                }
             }
         }
     }
@@ -182,45 +333,62 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
     // -----------------------------------------------------------------------
     // 1b. Support columns for elevated floors
     // -----------------------------------------------------------------------
-    std::unordered_set<std::string> emittedSupportColumns;
-    for (const auto& floor : building.definition.floors) {
-        const float floorBaseY = GetFloorBaseHeight(building.definition, floor.level);
-        if (floor.level <= 0 || floorBaseY <= 0.01f) {
-            continue;
+    if (!building.supportColumns.empty()) {
+        for (const auto& column : building.supportColumns) {
+            const float baseHeight = GetFloorBaseHeight(building.definition, column.floorFrom);
+            const float topHeight = GetTopOfFloor(building.definition, column.floorTo);
+            const float height = std::max(0.1f, topHeight - baseHeight);
+            children.push_back(CreateCubeNode(
+                "support_" + column.columnId,
+                column.center[0],
+                baseHeight + height * 0.5f,
+                column.center[1],
+                column.width,
+                height,
+                column.depth,
+                "concrete_floor"));
         }
+    } else {
+        std::unordered_set<std::string> emittedSupportColumns;
+        for (const auto& floor : building.definition.floors) {
+            const float floorBaseY = GetFloorBaseHeight(building.definition, floor.level);
+            if (floor.level <= 0 || floorBaseY <= 0.01f) {
+                continue;
+            }
 
-        for (const auto& space : floor.spaces) {
-            for (const auto& rect : space.rects) {
-                const float insetX = std::min(0.35f, rect.size[0] * 0.25f);
-                const float insetZ = std::min(0.35f, rect.size[1] * 0.25f);
-                const float columnSize = 0.3f;
+            for (const auto& space : floor.spaces) {
+                for (const auto& rect : space.rects) {
+                    const float insetX = std::min(0.35f, rect.size[0] * 0.25f);
+                    const float insetZ = std::min(0.35f, rect.size[1] * 0.25f);
+                    const float columnSize = 0.3f;
 
-                const std::vector<GridPos2D> columnCenters = {
-                    {rect.origin[0] + insetX, rect.origin[1] + insetZ},
-                    {rect.origin[0] + rect.size[0] - insetX, rect.origin[1] + insetZ},
-                    {rect.origin[0] + insetX, rect.origin[1] + rect.size[1] - insetZ},
-                    {rect.origin[0] + rect.size[0] - insetX, rect.origin[1] + rect.size[1] - insetZ}
-                };
+                    const std::vector<GridPos2D> columnCenters = {
+                        {rect.origin[0] + insetX, rect.origin[1] + insetZ},
+                        {rect.origin[0] + rect.size[0] - insetX, rect.origin[1] + insetZ},
+                        {rect.origin[0] + insetX, rect.origin[1] + rect.size[1] - insetZ},
+                        {rect.origin[0] + rect.size[0] - insetX, rect.origin[1] + rect.size[1] - insetZ}
+                    };
 
-                for (size_t columnIndex = 0; columnIndex < columnCenters.size(); ++columnIndex) {
-                    const auto& center = columnCenters[columnIndex];
-                    const int keyX = static_cast<int>(std::round(center[0] * 100.0f));
-                    const int keyZ = static_cast<int>(std::round(center[1] * 100.0f));
-                    const int keyH = static_cast<int>(std::round(floorBaseY * 100.0f));
-                    const std::string key = std::to_string(keyX) + "_" + std::to_string(keyZ) + "_" + std::to_string(keyH);
-                    if (!emittedSupportColumns.insert(key).second) {
-                        continue;
+                    for (size_t columnIndex = 0; columnIndex < columnCenters.size(); ++columnIndex) {
+                        const auto& center = columnCenters[columnIndex];
+                        const int keyX = static_cast<int>(std::round(center[0] * 100.0f));
+                        const int keyZ = static_cast<int>(std::round(center[1] * 100.0f));
+                        const int keyH = static_cast<int>(std::round(floorBaseY * 100.0f));
+                        const std::string key = std::to_string(keyX) + "_" + std::to_string(keyZ) + "_" + std::to_string(keyH);
+                        if (!emittedSupportColumns.insert(key).second) {
+                            continue;
+                        }
+
+                        children.push_back(CreateCubeNode(
+                            "support_column_" + std::to_string(floor.level) + "_" + std::to_string(emittedSupportColumns.size()),
+                            center[0],
+                            floorBaseY * 0.5f,
+                            center[1],
+                            columnSize,
+                            floorBaseY,
+                            columnSize,
+                            "concrete_floor"));
                     }
-
-                    children.push_back(CreateCubeNode(
-                        "support_column_" + std::to_string(floor.level) + "_" + std::to_string(emittedSupportColumns.size()),
-                        center[0],
-                        floorBaseY * 0.5f,
-                        center[1],
-                        columnSize,
-                        floorBaseY,
-                        columnSize,
-                        "concrete_floor"));
                 }
             }
         }

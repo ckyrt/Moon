@@ -64,6 +64,11 @@ public:
     static std::string CreateShoppingMall();
 
     /**
+     * @brief Create a three-level shopping mall with elevator, stairs, columns, corridors, and shops
+     */
+    static std::string CreateComplexShoppingMall();
+
+    /**
      * @brief Create a CBD residential tower with shared core and multiple units
      */
     static std::string CreateCBDResidential();

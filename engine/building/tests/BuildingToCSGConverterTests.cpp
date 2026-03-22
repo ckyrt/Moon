@@ -253,6 +253,32 @@ TEST_F(BuildingToCSGConverterTest, MultiFloorBuilding_EmitsSupportColumns) {
     EXPECT_TRUE(foundSupportColumn) << "Expected support columns for elevated floors";
 }
 
+TEST_F(BuildingToCSGConverterTest, ComplexShoppingMall_EmitsPlannedColumns) {
+    std::string inputJson = TestHelpers::CreateComplexShoppingMall();
+    GeneratedBuilding building;
+    std::string errorMsg;
+
+    bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
+    ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
+    ASSERT_GT(building.supportColumns.size(), 0u);
+
+    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    bool foundSupportColumn = false;
+    for (const auto& child : j["root"]["children"]) {
+        if (child.contains("name") && child["name"].is_string()) {
+            const std::string name = child["name"].get<std::string>();
+            if (name.rfind("support_", 0) == 0) {
+                foundSupportColumn = true;
+                break;
+            }
+        }
+    }
+
+    EXPECT_TRUE(foundSupportColumn) << "Expected planned support columns for shopping mall";
+}
+
 // ========================================
 // Integration Tests
 // ========================================

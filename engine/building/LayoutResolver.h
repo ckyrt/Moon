@@ -65,6 +65,7 @@ struct MassConstraints {
     float footprintArea = 0.0f;
     int floors = 1;
     float totalHeight = 0.0f;
+    std::string massingRuleAsset;
 };
 
 struct SemanticBuilding {

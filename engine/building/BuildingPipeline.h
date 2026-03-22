@@ -8,6 +8,7 @@
 #include "DoorGenerator.h"
 #include "StairGenerator.h"
 #include "FacadeGenerator.h"
+#include "MassFloorPlateGenerator.h"
 #include <string>
 #include <memory>
 
@@ -93,6 +94,8 @@ private:
                                        BestEffortGenerationReport& outReport,
                                        std::string& outError);
     bool ProcessMassAndFloors(const BuildingDefinition& definition);
+    bool GenerateStructuralPlan(const BuildingDefinition& definition,
+                                GeneratedBuilding& outBuilding);
     bool BuildSpaceGraph(const BuildingDefinition& definition,
                         GeneratedBuilding& outBuilding);
     bool GenerateWalls(const BuildingDefinition& definition,
@@ -111,6 +114,7 @@ private:
     DoorGenerator m_doorGenerator;
     StairGenerator m_stairGenerator;
     FacadeGenerator m_facadeGenerator;
+    MassFloorPlateGenerator m_massFloorPlateGenerator;
 
     std::vector<StairGeometry> m_stairs;
     std::vector<FacadeElement> m_facadeElements;

@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "vase_tower_landmark",
+  "description": "Curated landmark tower with a vase-like silhouette, narrow waist, and grounded podium",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "vase_tower",
+    "building_type": "landmark_tower",
+    "style": "sculpted_glass"
+  },
+  "root": {
+    "id": "vase_root",
+    "name": "vase_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "podium",
+        "name": "podium",
+        "type": "extrude",
+        "material": "stone",
+        "params": {
+          "height": 16.0
+        },
+        "profiles": [
+          {
+            "id": "podium_profile",
+            "closed": true,
+            "points": [[-20, -16], [20, -16], [24, -11], [24, 11], [20, 16], [-20, 16], [-24, 11], [-24, -11]]
+          }
+        ]
+      },
+      {
+        "id": "tower_shell",
+        "name": "tower_shell",
+        "type": "loft",
+        "material": "glass",
+        "transform": {
+          "position": [0.0, 16.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "levels": [0.0, 26.0, 58.0, 94.0, 126.0],
+          "segments_per_span": 8
+        },
+        "profiles": [
+          {
+            "id": "base_bulge",
+            "closed": true,
+            "points": [[-14, -10], [-10, -13], [-3, -15], [5, -15], [11, -13], [15, -8], [16, 0], [15, 8], [11, 13], [5, 15], [-3, 15], [-10, 13], [-14, 10], [-16, 3], [-16, -3]]
+          },
+          {
+            "id": "waist",
+            "closed": true,
+            "points": [[-9, -7], [-6, -9], [-1, -10], [4, -10], [8, -9], [10, -6], [11, 0], [10, 6], [8, 9], [4, 10], [-1, 10], [-6, 9], [-9, 7], [-11, 2], [-11, -2]]
+          },
+          {
+            "id": "upper_bulge",
+            "closed": true,
+            "points": [[-13, -9], [-9, -12], [-2, -14], [5, -14], [10, -12], [14, -7], [15, 0], [14, 7], [10, 12], [5, 14], [-2, 14], [-9, 12], [-13, 9], [-15, 3], [-15, -3]]
+          },
+          {
+            "id": "neck",
+            "closed": true,
+            "points": [[-10, -7], [-7, -9], [-1, -10], [4, -10], [8, -9], [11, -6], [12, 0], [11, 6], [8, 9], [4, 10], [-1, 10], [-7, 9], [-10, 7], [-12, 2], [-12, -2]]
+          },
+          {
+            "id": "cap",
+            "closed": true,
+            "points": [[-11, -8], [-8, -10], [-2, -11], [4, -11], [9, -10], [12, -7], [13, 0], [12, 7], [9, 10], [4, 11], [-2, 11], [-8, 10], [-11, 8], [-13, 2], [-13, -2]]
+          }
+        ]
+      },
+      {
+        "id": "roof_cap",
+        "name": "roof_cap",
+        "type": "extrude",
+        "material": "metal",
+        "transform": {
+          "position": [0.0, 142.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "height": 0.8
+        },
+        "profiles": [
+          {
+            "id": "roof_cap_profile",
+            "closed": true,
+            "points": [[-10.5, -7.6], [-7.6, -9.4], [-1.9, -10.4], [3.8, -10.4], [8.5, -9.4], [11.2, -6.6], [12.0, 0], [11.2, 6.6], [8.5, 9.4], [3.8, 10.4], [-1.9, 10.4], [-7.6, 9.4], [-10.5, 7.6], [-12.0, 2.0], [-12.0, -2.0]]
+          }
+        ]
+      }
+    ]
+  }
+}

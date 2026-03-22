@@ -113,6 +113,7 @@
     <ClInclude Include="BuildingIndex.h" />
     <ClInclude Include="GridCoord.h" />
     <ClInclude Include="LayoutResolver.h" />
+    <ClInclude Include="MassFloorPlateGenerator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BuildingPipeline.cpp" />
@@ -127,10 +128,14 @@
     <ClCompile Include="FacadeGenerator.cpp" />
     <ClCompile Include="BuildingToCSGConverter.cpp" />
     <ClCompile Include="LayoutResolver.cpp" />
+    <ClCompile Include="MassFloorPlateGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\core\EngineCore.vcxproj">
       <Project>{C4E6F6F1-0A2B-4E3C-9D8E-1F2A3B4C5D6E}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\massing\EngineMassing.vcxproj">
+      <Project>{B6D7E8F9-1A2B-4C3D-8E9F-1029384756AB}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

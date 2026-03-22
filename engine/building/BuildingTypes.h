@@ -44,6 +44,7 @@ struct Mass {
     GridPos2D origin;           // Bottom-left corner [X, Y]
     GridSize2D size;            // [width, depth]
     int floors;                 // Number of floors in this mass
+    std::string massingRuleAsset; // Optional massing rule asset used to derive per-floor plates
 };
 
 /**
@@ -328,6 +329,45 @@ struct Window {
     int spaceId;
 };
 
+enum class VerticalCoreType {
+    Stair,
+    Elevator,
+    Service
+};
+
+struct FloorPlate {
+    int floorLevel = 0;
+    std::string massId;
+    GridPos2D origin = {0.0f, 0.0f};
+    GridSize2D size = {0.0f, 0.0f};
+    std::vector<GridPos2D> outline;
+    std::vector<Rect> voids;
+};
+
+struct VerticalCore {
+    std::string coreId;
+    VerticalCoreType type = VerticalCoreType::Service;
+    Rect rect;
+    int floorFrom = 0;
+    int floorTo = 0;
+};
+
+struct SupportColumn {
+    std::string columnId;
+    GridPos2D center = {0.0f, 0.0f};
+    float width = 0.0f;
+    float depth = 0.0f;
+    int floorFrom = 0;
+    int floorTo = 0;
+};
+
+struct ProgramBlock {
+    std::string blockId;
+    int floorLevel = 0;
+    SpaceUsage usage = SpaceUsage::Unknown;
+    Rect rect;
+};
+
 /**
  * @brief Space graph edge (connectivity)
  */
@@ -343,6 +383,10 @@ struct SpaceConnection {
  */
 struct GeneratedBuilding {
     BuildingDefinition definition;
+    std::vector<FloorPlate> floorPlates;
+    std::vector<VerticalCore> verticalCores;
+    std::vector<SupportColumn> supportColumns;
+    std::vector<ProgramBlock> programBlocks;
     std::vector<WallSegment> walls;
     std::vector<Door> doors;
     std::vector<Window> windows;
