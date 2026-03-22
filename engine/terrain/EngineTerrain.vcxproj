@@ -84,6 +84,7 @@
     <ClInclude Include="ITerrainSystem.h" />
     <ClInclude Include="ProceduralTerrainGenerator.h" />
     <ClInclude Include="TerrainComponent.h" />
+    <ClInclude Include="TerrainShowcaseScene.h" />
     <ClInclude Include="TerrainSystem.h" />
     <ClInclude Include="TerrainTypes.h" />
     <ClInclude Include="TerrainVisualBuilder.h" />
@@ -91,6 +92,7 @@
   <ItemGroup>
     <ClCompile Include="ProceduralTerrainGenerator.cpp" />
     <ClCompile Include="TerrainComponent.cpp" />
+    <ClCompile Include="TerrainShowcaseScene.cpp" />
     <ClCompile Include="TerrainSystem.cpp" />
     <ClCompile Include="TerrainVisualBuilder.cpp" />
   </ItemGroup>
