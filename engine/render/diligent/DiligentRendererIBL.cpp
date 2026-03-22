@@ -147,6 +147,12 @@ cbuffer SkyboxConstants {
     float g_StarIntensity;
     float3 g_SunColor;
     float g_SunDiscSize;
+    float3 g_MoonDirection;
+    float g_MoonIntensity;
+    float3 g_MoonColor;
+    float g_CloudCoverage;
+    float g_TimeSeconds;
+    float3 g_Padding0;
 };
 
 struct PSInput {
@@ -170,15 +176,89 @@ float Hash31(float3 p) {
     return frac((p.x + p.y) * p.z);
 }
 
+float Noise3(float3 p) {
+    float3 cell = floor(p);
+    float3 fracPart = frac(p);
+    fracPart = fracPart * fracPart * (3.0 - 2.0 * fracPart);
+
+    float n000 = Hash31(cell + float3(0.0, 0.0, 0.0));
+    float n100 = Hash31(cell + float3(1.0, 0.0, 0.0));
+    float n010 = Hash31(cell + float3(0.0, 1.0, 0.0));
+    float n110 = Hash31(cell + float3(1.0, 1.0, 0.0));
+    float n001 = Hash31(cell + float3(0.0, 0.0, 1.0));
+    float n101 = Hash31(cell + float3(1.0, 0.0, 1.0));
+    float n011 = Hash31(cell + float3(0.0, 1.0, 1.0));
+    float n111 = Hash31(cell + float3(1.0, 1.0, 1.0));
+
+    float nx00 = lerp(n000, n100, fracPart.x);
+    float nx10 = lerp(n010, n110, fracPart.x);
+    float nx01 = lerp(n001, n101, fracPart.x);
+    float nx11 = lerp(n011, n111, fracPart.x);
+    float nxy0 = lerp(nx00, nx10, fracPart.y);
+    float nxy1 = lerp(nx01, nx11, fracPart.y);
+    return lerp(nxy0, nxy1, fracPart.z);
+}
+
+float FBM(float3 p) {
+    float sum = 0.0;
+    float amp = 0.55;
+    sum += Noise3(p) * amp;
+    p *= 2.03;
+    amp *= 0.5;
+    sum += Noise3(p) * amp;
+    p *= 2.01;
+    amp *= 0.5;
+    sum += Noise3(p) * amp;
+    return sum;
+}
+
+float HenyeyGreenstein(float cosineTheta, float g) {
+    float g2 = g * g;
+    float denom = pow(max(1.0 + g2 - 2.0 * g * cosineTheta, 1e-3), 1.5);
+    return (1.0 - g2) / (4.0 * 3.14159265359 * denom);
+}
+
+float3 AcesApprox(float3 color) {
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return saturate((color * (a * color + b)) / (color * (c * color + d) + e));
+}
+
 float4 main(in PSInput i) : SV_Target {
     if (g_UseProceduralSky > 0.5) {
         float3 dir = normalize(i.TexCoord);
         float horizonFactor = saturate(dir.y * 0.5 + 0.5);
-        float3 gradient = lerp(g_SkyHorizonColor, g_SkyZenithColor, pow(horizonFactor, 0.6));
+        float zenithCurve = pow(horizonFactor, 0.55);
+        float3 gradient = lerp(g_SkyHorizonColor, g_SkyZenithColor, zenithCurve);
+        float horizonGlow = pow(1.0 - saturate(abs(dir.y - 0.05)), 6.0);
+        float horizonHaze = pow(1.0 - saturate(abs(dir.y) * 1.6), 3.2);
+        float sunAltitude = saturate(g_SunDirection.y * 0.5 + 0.5);
+        float sunsetWeight = 1.0 - sunAltitude;
+        float3 aerialHazeColor = lerp(float3(0.82, 0.90, 1.00), float3(1.00, 0.72, 0.46), sunsetWeight);
+        gradient = lerp(gradient, aerialHazeColor, horizonHaze * 0.18);
+        gradient += g_SunColor * horizonGlow * (0.08 + sunsetWeight * 0.06);
 
         float sunAmount = saturate(dot(dir, normalize(g_SunDirection)));
+        float forwardScatter = HenyeyGreenstein(sunAmount, 0.72) * (0.65 + sunAltitude * 0.35);
+        float backScatter = HenyeyGreenstein(sunAmount, -0.15) * 0.35;
+        float3 rayleighColor = float3(0.34, 0.55, 1.00);
+        float3 mieColor = lerp(float3(1.00, 0.92, 0.82), float3(1.00, 0.68, 0.48), sunsetWeight);
+        float aerialPerspective = pow(1.0 - horizonFactor, 1.7);
+        gradient += rayleighColor * backScatter * (0.10 + sunAltitude * 0.06);
+        gradient += mieColor * forwardScatter * (0.65 + sunsetWeight * 0.85) * (0.25 + aerialPerspective * 0.75);
+
         float sunDisc = smoothstep(g_SunDiscSize, 1.0, sunAmount);
         float sunGlow = pow(sunAmount, 96.0);
+        float sunHalo = pow(sunAmount, 18.0);
+        float sunBloom = pow(sunAmount, 8.0) * (0.10 + sunsetWeight * 0.16);
+
+        float moonAmount = saturate(dot(dir, normalize(g_MoonDirection)));
+        float moonDisc = smoothstep(0.99945, 1.0, moonAmount);
+        float moonGlow = pow(moonAmount, 72.0) * g_MoonIntensity;
+        float moonHalo = pow(moonAmount, 20.0) * g_MoonIntensity;
 
         float3 starCell = floor(dir * 240.0);
         float starNoise = Hash31(starCell);
@@ -186,9 +266,59 @@ float4 main(in PSInput i) : SV_Target {
         float starTwinkle = 0.65 + 0.35 * Hash31(starCell + 13.37);
         float stars = starMask * starTwinkle * g_StarIntensity;
 
+        float2 highWind = float2(0.0035, -0.0018) * g_TimeSeconds;
+        float2 lowWind = float2(0.0065, 0.0022) * g_TimeSeconds;
+        float2 streakWind = float2(0.0110, -0.0012) * g_TimeSeconds;
+        float highLayer = FBM(float3(dir.x * 1.6 + highWind.x + 3.0, dir.z * 1.6 + highWind.y - 6.0, dir.y * 0.9 + 8.0));
+        float upperLayer = FBM(float3(dir.x * 2.3 + lowWind.x, dir.z * 2.3 + lowWind.y, dir.y * 1.4 + 4.0));
+        float midLayer = FBM(float3(dir.x * 4.2 + lowWind.x * 1.7 + 11.0, dir.z * 4.2 + lowWind.y * 1.7 - 5.0, dir.y * 2.2));
+        float streakLayer = Noise3(float3(dir.x * 10.0 + streakWind.x, dir.z * 3.0 + streakWind.y, dir.y * 0.8 + 19.0));
+        float lowLayerShape = upperLayer * 0.50 + midLayer * 0.35 + streakLayer * 0.15;
+        float highLayerShape = highLayer * 0.78 + Noise3(float3(dir.x * 5.8 + highWind.x * 1.2 - 4.0, dir.z * 5.8 + highWind.y * 1.2 + 9.0, dir.y * 0.6 + 23.0)) * 0.22;
+        float sunCloudProbe = FBM(float3(
+            (dir.x + g_SunDirection.x * 0.08) * 5.8 + 7.0,
+            (dir.z + g_SunDirection.z * 0.08) * 5.8 - 9.0,
+            dir.y * 1.4 + g_SunDirection.y * 0.6));
+
+        float lowCloudHeightMask = smoothstep(-0.12, 0.28, dir.y) * (1.0 - smoothstep(0.58, 0.92, dir.y));
+        float highCloudHeightMask = smoothstep(0.10, 0.42, dir.y) * (1.0 - smoothstep(0.76, 0.98, dir.y));
+        float cloudThreshold = lerp(0.68, 0.34, saturate(g_CloudCoverage));
+        float lowCloudMask = smoothstep(cloudThreshold, cloudThreshold + 0.16, lowLayerShape) * lowCloudHeightMask;
+        float lowCloudSoftShadow = smoothstep(cloudThreshold - 0.10, cloudThreshold + 0.02, lowLayerShape) * lowCloudHeightMask;
+        float lowCloudCore = smoothstep(cloudThreshold + 0.02, cloudThreshold + 0.22, lowLayerShape) * lowCloudHeightMask;
+        float lowCloudRim = saturate(lowCloudMask - lowCloudCore) * (0.65 + 0.35 * horizonHaze);
+        float lowCloudDepth = saturate((lowLayerShape - sunCloudProbe) * 1.8 + 0.5) * lowCloudMask;
+        float highCoverage = saturate(g_CloudCoverage * 0.78 + 0.14);
+        float highThreshold = lerp(0.70, 0.46, highCoverage);
+        float highCloudMask = smoothstep(highThreshold, highThreshold + 0.16, highLayerShape) * highCloudHeightMask * 0.72;
+        float highCloudRim = saturate(highCloudMask - smoothstep(highThreshold + 0.03, highThreshold + 0.20, highLayerShape) * highCloudHeightMask) * 0.75;
+        float cloudMask = saturate(lowCloudMask + highCloudMask * (1.0 - lowCloudMask * 0.35));
+        float cloudSoftShadow = saturate(lowCloudSoftShadow + highCloudMask * 0.18);
+
+        float sunForward = saturate(dot(normalize(g_SunDirection), dir) * 0.5 + 0.5);
+        float warmScatter = pow(sunForward, 3.0);
+        float coolScatter = pow(1.0 - sunForward, 2.0);
+        float3 cloudLitColor = lerp(float3(0.92, 0.94, 0.98), float3(1.00, 0.76, 0.58), warmScatter);
+        float3 cloudShadowColor = lerp(g_SkyZenithColor, g_SkyHorizonColor, 0.35) * lerp(0.78, 0.68, sunsetWeight);
+        float3 lowCloudColor = lerp(cloudShadowColor, cloudLitColor, saturate(0.30 + warmScatter * 0.95 - coolScatter * 0.15));
+        lowCloudColor = lerp(lowCloudColor, float3(1.00, 0.70, 0.52), horizonHaze * sunsetWeight * 0.22);
+        float3 highCloudColor = lerp(float3(0.86, 0.90, 0.95), float3(1.00, 0.82, 0.70), warmScatter * 0.7 + sunsetWeight * 0.2);
+        float3 cloudRimColor = lerp(float3(1.00, 0.98, 0.94), float3(1.00, 0.74, 0.58), sunsetWeight);
+        lowCloudColor = lerp(lowCloudColor * 0.82, lowCloudColor, lowCloudDepth);
+        float3 cloudColor = lerp(lowCloudColor, highCloudColor, saturate(highCloudMask * 0.8));
+
         float3 color = gradient * g_SkyIntensity;
-        color += g_SunColor * (sunDisc * 6.0 + sunGlow * 0.35);
+        color += g_SunColor * (sunDisc * 7.0 + sunGlow * 0.45 + sunHalo * 0.14 + sunBloom * 0.22);
+        color += g_MoonColor * (moonDisc * 2.5 + moonGlow * 0.20 + moonHalo * 0.08);
         color += float3(stars, stars, stars);
+        color = lerp(color, color * 0.96, cloudMask * 0.12);
+        color = lerp(color, cloudColor, cloudMask);
+        color = lerp(color, color * 0.92, cloudSoftShadow * 0.22);
+        color += cloudRimColor * lowCloudRim * (0.05 + warmScatter * 0.12 + sunsetWeight * 0.08);
+        color += cloudRimColor * highCloudRim * (0.03 + warmScatter * 0.06 + sunsetWeight * 0.05);
+        color = lerp(color, aerialHazeColor, horizonHaze * (0.04 + sunsetWeight * 0.10));
+        float exposure = lerp(1.18, 0.92, sunAltitude);
+        color = AcesApprox(color * exposure);
         return float4(color, 1.0);
     }
 
@@ -313,6 +443,11 @@ void DiligentRenderer::RenderSkybox()
     constants.SunColor = m_SceneDataCache.lightColor;
     constants.SunDiscSize = 0.9992f;
     constants.StarIntensity = constants.SunDirection.y > 0.0f ? 0.0f : std::min(1.0f, -constants.SunDirection.y * 1.5f);
+    constants.MoonDirection = constants.SunDirection * -1.0f;
+    constants.MoonIntensity = constants.SunDirection.y > 0.0f ? 0.0f : std::min(1.0f, -constants.SunDirection.y * 1.2f);
+    constants.MoonColor = Moon::Vector3(0.70f, 0.78f, 0.92f);
+    constants.CloudCoverage = std::min(1.0f, std::max(0.0f, m_SceneDataCache.cloudCoverage));
+    constants.TimeSeconds = std::chrono::duration<float>(std::chrono::steady_clock::now() - m_SkyStartTime).count();
     
     // 更新常量缓冲
     UpdateCB(m_pSkyboxVSConstants, constants);

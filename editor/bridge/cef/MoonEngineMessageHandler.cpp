@@ -7,10 +7,17 @@
 #include "../../../engine/core/Scene/Material.h"
 #include "../../../engine/core/Scene/Light.h"
 #include "../../../engine/core/Scene/Skybox.h"
+#include "../../../engine/environment/EnvironmentComponent.h"
 #include "../../../engine/core/CSG/CSGComponent.h"
 #include "../../../engine/massing/BuildingMassingPlanner.h"
+#include "../../../engine/massing/MassingPromptGenerator.h"
 #include "../../../engine/massing/MassRuleParser.h"
 #include "../../../engine/massing/MassMeshBuilder.h"
+#include "../../../engine/building/BuildingPipeline.h"
+#include "../../../engine/building/BuildingToCSGConverter.h"
+#include "../../../engine/core/CSG/BlueprintLoader.h"
+#include "../../../engine/core/CSG/CSGBuilder.h"
+#include "../../../engine/core/CSG/Blueprint.h"
 #include "../../../external/nlohmann/json.hpp"
 #include <algorithm>
 #include <cctype>
@@ -62,6 +69,56 @@ namespace {
             obj["z"].get<float>(),
             obj["w"].get<float>()
         };
+    }
+
+    Moon::EnvironmentComponent* FindEditorEnvironmentComponent(Moon::Scene* scene) {
+        if (!scene) {
+            return nullptr;
+        }
+
+        Moon::SceneNode* environmentNode = scene->FindNodeByName("Editor Environment");
+        if (!environmentNode) {
+            return nullptr;
+        }
+
+        return environmentNode->GetComponent<Moon::EnvironmentComponent>();
+    }
+
+    std::string WeatherTypeToString(Moon::WeatherType weather) {
+        switch (weather) {
+        case Moon::WeatherType::Clear:  return "Clear";
+        case Moon::WeatherType::Cloudy: return "Cloudy";
+        case Moon::WeatherType::Rain:   return "Rain";
+        case Moon::WeatherType::Fog:    return "Fog";
+        case Moon::WeatherType::Storm:  return "Storm";
+        }
+
+        return "Clear";
+    }
+
+    bool TryParseWeatherType(const std::string& name, Moon::WeatherType& weather) {
+        if (name == "Clear") {
+            weather = Moon::WeatherType::Clear;
+            return true;
+        }
+        if (name == "Cloudy") {
+            weather = Moon::WeatherType::Cloudy;
+            return true;
+        }
+        if (name == "Rain") {
+            weather = Moon::WeatherType::Rain;
+            return true;
+        }
+        if (name == "Fog") {
+            weather = Moon::WeatherType::Fog;
+            return true;
+        }
+        if (name == "Storm") {
+            weather = Moon::WeatherType::Storm;
+            return true;
+        }
+
+        return false;
     }
 
     // 娑撻缚濡悙瑙勫潑閸旂娀绮拋?PBR 閺夋劘宸濋敍鍫熸珮闁艾鍤戞担鏇氱秼娴ｈ法鏁ら敍?
@@ -154,6 +211,10 @@ namespace {
         return std::filesystem::path(Moon::Assets::BuildAssetPath("massing"));
     }
 
+    std::filesystem::path GetBuildingPresetDirectory() {
+        return std::filesystem::path(Moon::Assets::BuildAssetPath("building"));
+    }
+
     std::string ReadTextFile(const std::filesystem::path& path) {
         std::ifstream input(path, std::ios::in | std::ios::binary);
         if (!input.is_open()) {
@@ -207,6 +268,23 @@ namespace {
         return bounds;
     }
 
+    Bounds3 ComputePreviewBounds(const Moon::CSG::BuildResult& buildResult) {
+        Bounds3 bounds;
+
+        for (const auto& item : buildResult.meshes) {
+            if (!item.mesh) {
+                continue;
+            }
+
+            for (const Moon::Vertex& vertex : item.mesh->GetVertices()) {
+                const Moon::Vector3 position = vertex.position + item.worldTransform.position;
+                ExpandBounds(bounds, position);
+            }
+        }
+
+        return bounds;
+    }
+
     void FrameCameraToBounds(MoonEngineMessageHandler* handler, const Bounds3& bounds) {
         if (!handler || !bounds.valid || !handler->GetEngineCore() || !handler->GetEngineCore()->GetCamera()) {
             return;
@@ -242,6 +320,20 @@ namespace {
         std::string id = path.stem().string();
         std::replace(id.begin(), id.end(), ' ', '_');
         return id;
+    }
+
+    void AddPreviewMaterial(Moon::SceneNode* node, const std::string& materialName) {
+        Moon::Material* material = node->AddComponent<Moon::Material>();
+        material->SetMetallic(0.0f);
+        material->SetRoughness(0.72f);
+        material->SetOpacity(1.0f);
+        material->SetMappingMode(Moon::MappingMode::Triplanar);
+
+        const Moon::MaterialPreset preset = ParseMaterialPreset(materialName);
+        material->SetMaterialPreset(preset);
+        if (preset == Moon::MaterialPreset::None) {
+            material->SetBaseColor(Moon::Vector3(0.76f, 0.76f, 0.76f));
+        }
     }
 }
 
@@ -558,6 +650,59 @@ namespace CommandHandlers {
         MOON_LOG_INFO("MoonEngineMessage", "Set skybox environment map of node %u to %s", 
                      nodeId, path.c_str());
         
+        return CreateSuccessResponse();
+    }
+
+    std::string HandleGetEnvironmentSettings(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)req;
+
+        Moon::EnvironmentComponent* environment = FindEditorEnvironmentComponent(scene);
+        if (!environment) {
+            return CreateErrorResponse("Editor environment component not found");
+        }
+
+        json result;
+        result["success"] = true;
+        result["timeOfDayHours"] = environment->GetState().timeOfDay.timeOfDayHours;
+        result["weatherType"] = WeatherTypeToString(environment->GetState().weather.target);
+        return result.dump();
+    }
+
+    std::string HandleSetEnvironmentTime(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+
+        Moon::EnvironmentComponent* environment = FindEditorEnvironmentComponent(scene);
+        if (!environment) {
+            return CreateErrorResponse("Editor environment component not found");
+        }
+
+        const float hours = req.value("hours", environment->GetState().timeOfDay.timeOfDayHours);
+        environment->SetTimeOfDay(hours);
+        Moon::EnvironmentState state = environment->GetState();
+        state.timeOfDay.paused = true;
+        environment->GetSystem().SetState(state);
+
+        MOON_LOG_INFO("MoonEngineMessage", "Set environment time to %.2f hours", hours);
+        return CreateSuccessResponse();
+    }
+
+    std::string HandleSetEnvironmentWeather(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+
+        Moon::EnvironmentComponent* environment = FindEditorEnvironmentComponent(scene);
+        if (!environment) {
+            return CreateErrorResponse("Editor environment component not found");
+        }
+
+        const std::string weatherTypeName = req.value("weatherType", std::string("Clear"));
+        Moon::WeatherType weather = Moon::WeatherType::Clear;
+        if (!TryParseWeatherType(weatherTypeName, weather)) {
+            return CreateErrorResponse("Unknown weather type: " + weatherTypeName);
+        }
+
+        environment->SetWeather(weather, 1.5f);
+        MOON_LOG_INFO("MoonEngineMessage", "Set environment weather to %s", weatherTypeName.c_str());
         return CreateSuccessResponse();
     }
 
@@ -1233,6 +1378,77 @@ namespace CommandHandlers {
         return response.dump();
     }
 
+    std::string HandlePreviewBuilding(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        if (!req.contains("buildingJson")) {
+            return CreateErrorResponse("Missing 'buildingJson' field");
+        }
+
+        Moon::Building::GeneratedBuilding building;
+        std::string pipelineError;
+        Moon::Building::BuildingPipeline pipeline;
+        if (!pipeline.ProcessBuilding(req["buildingJson"].get<std::string>(), building, pipelineError)) {
+            return CreateErrorResponse("Failed to process building preview: " + pipelineError);
+        }
+
+        for (auto& floor : building.definition.floors) {
+            floor.spaces.clear();
+        }
+        building.walls.clear();
+        building.doors.clear();
+        building.windows.clear();
+        building.stairs.clear();
+
+        std::string blueprintJson = Moon::Building::BuildingToCSGConverter::Convert(building);
+        std::string loadError;
+        Moon::CSG::BlueprintDatabase database;
+        const std::string csgIndexPath = Moon::Assets::BuildCsgPath("index.json");
+        if (!database.LoadIndex(csgIndexPath, loadError)) {
+            return CreateErrorResponse("Failed to load CSG index: " + loadError);
+        }
+
+        auto generatedBlueprint = Moon::CSG::BlueprintLoader::ParseFromString(blueprintJson, loadError);
+        if (!generatedBlueprint) {
+            return CreateErrorResponse("Failed to parse building blueprint: " + loadError);
+        }
+
+        Moon::CSG::CSGBuilder builder;
+        builder.SetBlueprintDatabase(&database);
+        std::unordered_map<std::string, float> params;
+        Moon::CSG::BuildResult buildResult = builder.Build(generatedBlueprint.get(), params, loadError);
+        if (buildResult.meshes.empty()) {
+            return CreateErrorResponse("Failed to build building preview: " + loadError);
+        }
+
+        ClearMassingPreviewNodes(scene);
+        Moon::SceneNode* previewRoot = scene->CreateNode("__MassingPreview");
+
+        for (size_t i = 0; i < buildResult.meshes.size(); ++i) {
+            const auto& item = buildResult.meshes[i];
+            const std::string childName = "BuildingPart_" + std::to_string(i);
+            Moon::SceneNode* childNode = scene->CreateNode(childName);
+            childNode->SetParent(previewRoot, false);
+            childNode->GetTransform()->SetLocalPosition(item.worldTransform.position);
+            childNode->GetTransform()->SetLocalRotation(item.worldTransform.rotation);
+            childNode->GetTransform()->SetLocalScale(item.worldTransform.scale);
+
+            Moon::MeshRenderer* renderer = childNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(item.mesh);
+            AddPreviewMaterial(childNode, item.material);
+        }
+
+        const bool focusCamera = req.value("focusCamera", false);
+        if (focusCamera) {
+            FrameCameraToBounds(handler, ComputePreviewBounds(buildResult));
+        }
+
+        json response;
+        response["success"] = true;
+        response["rootNodeId"] = previewRoot->GetID();
+        response["meshCount"] = buildResult.meshes.size();
+        response["warnings"] = json::array();
+        return response.dump();
+    }
+
     std::string HandlePlanBuildingMassing(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         (void)handler;
         (void)scene;
@@ -1262,6 +1478,33 @@ namespace CommandHandlers {
         return response.dump();
     }
 
+    std::string HandleGenerateMassingFromPrompt(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)scene;
+
+        if (!req.contains("prompt")) {
+            return CreateErrorResponse("Missing 'prompt' field");
+        }
+
+        Moon::Massing::MassingPromptGenerationResult result;
+        std::string generationError;
+        if (!Moon::Massing::MassingPromptGenerator::GenerateFromPrompt(
+                req["prompt"].get<std::string>(),
+                req.value("currentRuleJson", std::string()),
+                result,
+                generationError)) {
+            return CreateErrorResponse("Failed to generate massing from prompt: " + generationError);
+        }
+
+        json response;
+        response["success"] = true;
+        response["ruleJson"] = result.ruleJson;
+        response["strategy"] = result.strategy;
+        response["hiddenContextSummary"] = result.hiddenContextSummary;
+        response["notes"] = result.notes;
+        return response.dump();
+    }
+
     std::string HandleClearMassingPreview(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         ClearMassingPreviewNodes(scene);
         return CreateSuccessResponse();
@@ -1272,17 +1515,23 @@ namespace CommandHandlers {
         (void)req;
         (void)scene;
 
-        const std::filesystem::path presetDirectory = GetMassingPresetDirectory();
-        if (!std::filesystem::exists(presetDirectory)) {
-            return CreateErrorResponse("Massing preset directory not found: " + presetDirectory.string());
+        std::vector<std::filesystem::path> presetPaths;
+        const std::filesystem::path massingDirectory = GetMassingPresetDirectory();
+        if (std::filesystem::exists(massingDirectory)) {
+            for (const auto& entry : std::filesystem::directory_iterator(massingDirectory)) {
+                const std::filesystem::path path = entry.path();
+                const std::string stem = path.stem().string();
+                if (entry.is_regular_file() && path.extension() == ".json" &&
+                    stem.rfind("planned_", 0) == 0) {
+                    presetPaths.push_back(path);
+                }
+            }
         }
 
-        std::vector<std::filesystem::path> presetPaths;
-        for (const auto& entry : std::filesystem::directory_iterator(presetDirectory)) {
-            const std::filesystem::path path = entry.path();
-            const std::string stem = path.stem().string();
-            if (entry.is_regular_file() && path.extension() == ".json" &&
-                stem.rfind("planned_", 0) == 0) {
+        const std::filesystem::path buildingDirectory = GetBuildingPresetDirectory();
+        if (std::filesystem::exists(buildingDirectory)) {
+            const std::filesystem::path path = buildingDirectory / "complex_shopping_mall_demo.json";
+            if (std::filesystem::exists(path)) {
                 presetPaths.push_back(path);
             }
         }
@@ -1296,8 +1545,13 @@ namespace CommandHandlers {
         for (const std::filesystem::path& path : presetPaths) {
             json preset;
             preset["id"] = MakePresetId(path);
-            preset["name"] = path.stem().string();
-            preset["file"] = path.filename().string();
+            const bool isBuildingPreset = path.parent_path().filename() == "building";
+            preset["name"] = isBuildingPreset
+                ? "[Building] " + path.stem().string()
+                : path.stem().string();
+            preset["file"] = isBuildingPreset
+                ? std::string("building/") + path.filename().string()
+                : std::string("massing/") + path.filename().string();
             response["presets"].push_back(preset);
         }
 
@@ -1312,7 +1566,15 @@ namespace CommandHandlers {
             return CreateErrorResponse("Missing 'presetFile' field");
         }
 
-        const std::filesystem::path presetPath = GetMassingPresetDirectory() / req["presetFile"].get<std::string>();
+        const std::string presetFile = req["presetFile"].get<std::string>();
+        std::filesystem::path presetPath;
+        if (presetFile.rfind("building/", 0) == 0) {
+            presetPath = GetBuildingPresetDirectory() / presetFile.substr(9);
+        } else if (presetFile.rfind("massing/", 0) == 0) {
+            presetPath = GetMassingPresetDirectory() / presetFile.substr(8);
+        } else {
+            presetPath = GetMassingPresetDirectory() / presetFile;
+        }
         if (!std::filesystem::exists(presetPath) || presetPath.extension() != ".json") {
             return CreateErrorResponse("Massing preset not found: " + presetPath.string());
         }
@@ -1380,6 +1642,9 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"setSkyboxTint",            CommandHandlers::HandleSetSkyboxTint},
     {"setSkyboxIBL",             CommandHandlers::HandleSetSkyboxIBL},
     {"setSkyboxEnvironmentMap",  CommandHandlers::HandleSetSkyboxEnvironmentMap},
+    {"getEnvironmentSettings",   CommandHandlers::HandleGetEnvironmentSettings},
+    {"setEnvironmentTime",       CommandHandlers::HandleSetEnvironmentTime},
+    {"setEnvironmentWeather",    CommandHandlers::HandleSetEnvironmentWeather},
     {"setMaterialMetallic",      CommandHandlers::HandleSetMaterialMetallic},
     {"setMaterialRoughness",     CommandHandlers::HandleSetMaterialRoughness},
     {"setMaterialBaseColor",     CommandHandlers::HandleSetMaterialBaseColor},
@@ -1395,7 +1660,9 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"setNodeTransform",         CommandHandlers::HandleSetNodeTransform},
     {"createNodeWithId",         CommandHandlers::HandleCreateNodeWithId},
     {"planBuildingMassing",      CommandHandlers::HandlePlanBuildingMassing},
+    {"generateMassingFromPrompt", CommandHandlers::HandleGenerateMassingFromPrompt},
     {"previewMassing",           CommandHandlers::HandlePreviewMassing},
+    {"previewBuilding",          CommandHandlers::HandlePreviewBuilding},
     {"clearMassingPreview",      CommandHandlers::HandleClearMassingPreview},
     {"listMassingPresets",       CommandHandlers::HandleListMassingPresets},
     {"loadMassingPreset",        CommandHandlers::HandleLoadMassingPreset},

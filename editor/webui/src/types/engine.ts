@@ -122,6 +122,18 @@ export interface MassingPreset {
   file: string;
 }
 
+export interface MassingPromptResult {
+  ruleJson: string;
+  strategy: string;
+  hiddenContextSummary: string;
+  notes: string[];
+}
+
+export interface EnvironmentSettings {
+  timeOfDayHours: number;
+  weatherType: 'Clear' | 'Cloudy' | 'Rain' | 'Fog' | 'Storm';
+}
+
 // ============ 编辑器状态 ============
 
 export interface EditorState {
@@ -176,8 +188,15 @@ export interface MoonEngineAPI {
   // Massing Preview
   listMassingPresets(): Promise<MassingPreset[]>;
   loadMassingPreset(presetFile: string): Promise<string>;
+  generateMassingFromPrompt(prompt: string, currentRuleJson?: string): Promise<MassingPromptResult>;
   previewMassing(ruleJson: string, options?: { focusCamera?: boolean }): Promise<MassingPreviewResult>;
+  previewBuilding(buildingJson: string, options?: { focusCamera?: boolean }): Promise<MassingPreviewResult>;
   clearMassingPreview(): Promise<void>;
+
+  // Environment
+  getEnvironmentSettings(): Promise<EnvironmentSettings>;
+  setEnvironmentTime(hours: number): Promise<void>;
+  setEnvironmentWeather(weatherType: EnvironmentSettings['weatherType']): Promise<void>;
 
   // ========================================================================
   // 🎯 Component Properties API

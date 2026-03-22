@@ -9,7 +9,17 @@
  * - C++ → JS: window.onXXXChanged 回调 (通过 ExecuteJavaScript 调用)
  */
 
-import type { MassingPreset, MassingPreviewResult, MoonEngineAPI, SceneNode, Transform, Vector3, Quaternion } from '@/types/engine';
+import type {
+  EnvironmentSettings,
+  MassingPreset,
+  MassingPreviewResult,
+  MassingPromptResult,
+  MoonEngineAPI,
+  SceneNode,
+  Transform,
+  Vector3,
+  Quaternion
+} from '@/types/engine';
 import { quaternionToEuler, eulerToQuaternion } from './math';
 
 // ============================================================================
@@ -359,6 +369,42 @@ const createRealAPI = (): MoonEngineAPI => {
       });
     }),
 
+    previewBuilding: wrapAsyncEngineCall('previewBuilding', async (
+      buildingJson: string,
+      options?: { focusCamera?: boolean }
+    ): Promise<MassingPreviewResult> => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<MassingPreviewResult>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'previewBuilding',
+          buildingJson,
+          focusCamera: options?.focusCamera ?? false
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const parsed = JSON.parse(response) as MassingPreviewResult & { success?: boolean; error?: string };
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+              return;
+            }
+            resolve({
+              rootNodeId: parsed.rootNodeId ?? 0,
+              meshCount: parsed.meshCount,
+              warnings: parsed.warnings ?? []
+            });
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
     listMassingPresets: wrapAsyncEngineCall('listMassingPresets', async (): Promise<MassingPreset[]> => {
       if (!window.cefQuery) {
         throw new Error('cefQuery not available');
@@ -414,6 +460,43 @@ const createRealAPI = (): MoonEngineAPI => {
       });
     }),
 
+    generateMassingFromPrompt: wrapAsyncEngineCall(
+      'generateMassingFromPrompt',
+      async (prompt: string, currentRuleJson?: string): Promise<MassingPromptResult> => {
+        if (!window.cefQuery) {
+          throw new Error('cefQuery not available');
+        }
+
+        return new Promise<MassingPromptResult>((resolve, reject) => {
+          const request = JSON.stringify({
+            command: 'generateMassingFromPrompt',
+            prompt,
+            currentRuleJson: currentRuleJson ?? ''
+          });
+
+          window.cefQuery!({
+            request,
+            onSuccess: (response: string) => {
+              const parsed = JSON.parse(response) as MassingPromptResult & { error?: string };
+              if (parsed.error) {
+                reject(new Error(parsed.error));
+                return;
+              }
+              resolve({
+                ruleJson: parsed.ruleJson ?? '',
+                strategy: parsed.strategy ?? 'unknown',
+                hiddenContextSummary: parsed.hiddenContextSummary ?? '',
+                notes: parsed.notes ?? []
+              });
+            },
+            onFailure: (_errorCode: number, errorMessage: string) => {
+              reject(new Error(errorMessage));
+            }
+          });
+        });
+      }
+    ),
+
     clearMassingPreview: wrapAsyncEngineCall('clearMassingPreview', async () => {
       if (!window.cefQuery) {
         throw new Error('cefQuery not available');
@@ -422,6 +505,79 @@ const createRealAPI = (): MoonEngineAPI => {
       return new Promise<void>((resolve, reject) => {
         const request = JSON.stringify({
           command: 'clearMassingPreview'
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => resolve(),
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    getEnvironmentSettings: wrapAsyncEngineCall('getEnvironmentSettings', async (): Promise<EnvironmentSettings> => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<EnvironmentSettings>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'getEnvironmentSettings'
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const parsed = JSON.parse(response) as EnvironmentSettings & { error?: string };
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+              return;
+            }
+
+            resolve({
+              timeOfDayHours: typeof parsed.timeOfDayHours === 'number' ? parsed.timeOfDayHours : 12.0,
+              weatherType: typeof parsed.weatherType === 'string' ? parsed.weatherType as EnvironmentSettings['weatherType'] : 'Clear'
+            });
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setEnvironmentTime: wrapAsyncEngineCall('setEnvironmentTime', async (hours: number) => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setEnvironmentTime',
+          hours
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: () => resolve(),
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    setEnvironmentWeather: wrapAsyncEngineCall('setEnvironmentWeather', async (weatherType: EnvironmentSettings['weatherType']) => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'setEnvironmentWeather',
+          weatherType
         });
 
         window.cefQuery!({

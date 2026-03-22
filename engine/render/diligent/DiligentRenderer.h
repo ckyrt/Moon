@@ -125,6 +125,8 @@ private:
         float fogDensity = 0.0f;
         Moon::Vector3 skyColor = Moon::Vector3(0.20f, 0.40f, 0.60f);
         float fogEnabled = 0.0f;
+        float cloudCoverage = 0.0f;
+        float paddingSky[3] = {0.0f, 0.0f, 0.0f};
     };
 
     struct SkyboxConstantsCPU {
@@ -137,6 +139,14 @@ private:
         float StarIntensity = 0.0f;
         Moon::Vector3 SunColor = Moon::Vector3(1.0f, 0.95f, 0.85f);
         float SunDiscSize = 0.9992f;
+        Moon::Vector3 MoonDirection = Moon::Vector3(0.0f, -1.0f, 0.0f);
+        float MoonIntensity = 0.0f;
+        Moon::Vector3 MoonColor = Moon::Vector3(0.70f, 0.78f, 0.92f);
+        float CloudCoverage = 0.0f;
+        float TimeSeconds = 0.0f;
+        float Padding0 = 0.0f;
+        float Padding1 = 0.0f;
+        float Padding2 = 0.0f;
     };
 
     struct ShadowConstantsCPU {
@@ -253,6 +263,7 @@ private:
     bool m_IsRenderingTransparent = false;
     bool m_HasEnvironmentState = false;
     bool m_RenderProceduralSky = false;
+    std::chrono::steady_clock::time_point m_SkyStartTime;
 
     void CreateDeviceAndSwapchain(const RenderInitParams& params);
     void CreateVSConstants();

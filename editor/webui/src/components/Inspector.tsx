@@ -29,7 +29,7 @@ import {
   SetMaterialBaseColorCommand,
   SetMaterialPresetCommand
 } from '@/undo';
-import type { Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent, MaterialComponent, MassingPreset } from '@/types/engine';
+import type { EnvironmentSettings, Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent, MaterialComponent, MassingPreset } from '@/types/engine';
 import styles from './Inspector.module.css';
 
 const DEFAULT_MASSING_RULE_JSON = `{
@@ -51,12 +51,49 @@ const DEFAULT_MASSING_RULE_JSON = `{
   }
 }`;
 
+const looksLikeBuildingJson = (jsonText: string): boolean => {
+  const trimmed = jsonText.trim();
+  if (!trimmed.startsWith('{')) {
+    return false;
+  }
+
+  return trimmed.includes('"schema": "moon_building"') ||
+    trimmed.includes('"schema":"moon_building"') ||
+    trimmed.includes('"building_type"') ||
+    trimmed.includes('"program"');
+};
+
 export const Inspector: React.FC = () => {
   const { scene, selectedNodeId } = useEditorStore();
   const selectedNode = selectedNodeId ? scene.allNodes[selectedNodeId] : null;
+  const [environmentTime, setEnvironmentTime] = useState(10.5);
+  const [environmentWeather, setEnvironmentWeather] = useState<EnvironmentSettings['weatherType']>('Clear');
 
   // 获取 UndoManager 单例
   const undoManager = getUndoManager({ debug: true });
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadEnvironmentSettings = async () => {
+      try {
+        const settings = await engine.getEnvironmentSettings();
+        if (!disposed) {
+          setEnvironmentTime(settings.timeOfDayHours);
+          setEnvironmentWeather(settings.weatherType);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load environment settings';
+        logger.warn('Inspector', `Environment settings unavailable: ${message}`);
+      }
+    };
+
+    void loadEnvironmentSettings();
+
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   // ========== Transform 修改处理器 ==========
   
@@ -119,12 +156,34 @@ export const Inspector: React.FC = () => {
 
   // ========== 渲染 ==========
 
+  const handleEnvironmentTimeChange = (hours: number) => {
+    setEnvironmentTime(hours);
+    void engine.setEnvironmentTime(hours).catch((error) => {
+      const message = error instanceof Error ? error.message : 'Failed to set environment time';
+      logger.error('Inspector', `Environment time update failed: ${message}`);
+    });
+  };
+
+  const handleEnvironmentWeatherChange = (weatherType: EnvironmentSettings['weatherType']) => {
+    setEnvironmentWeather(weatherType);
+    void engine.setEnvironmentWeather(weatherType).catch((error) => {
+      const message = error instanceof Error ? error.message : 'Failed to set environment weather';
+      logger.error('Inspector', `Environment weather update failed: ${message}`);
+    });
+  };
+
   if (!selectedNode) {
     return (
       <div className={styles.inspector}>
         <div className={styles.header}>Inspector</div>
         <div className={styles.content}>
           <div className={styles.empty}>No object selected</div>
+          <EnvironmentSection
+            timeOfDayHours={environmentTime}
+            weatherType={environmentWeather}
+            onTimeChange={handleEnvironmentTimeChange}
+            onWeatherChange={handleEnvironmentWeatherChange}
+          />
           <MassingPreviewSection />
         </div>
       </div>
@@ -135,6 +194,12 @@ export const Inspector: React.FC = () => {
     <div className={styles.inspector}>
       <div className={styles.header}>Inspector</div>
       <div className={styles.content}>
+        <EnvironmentSection
+          timeOfDayHours={environmentTime}
+          weatherType={environmentWeather}
+          onTimeChange={handleEnvironmentTimeChange}
+          onWeatherChange={handleEnvironmentWeatherChange}
+        />
         
         {/* 节点信息 */}
         <div className={styles.section}>
@@ -212,7 +277,62 @@ export const Inspector: React.FC = () => {
 
 // ========== 组件显示组件 ==========
 
+const formatTimeLabel = (hours: number): string => {
+  const wrappedHours = ((hours % 24) + 24) % 24;
+  const totalMinutes = Math.round(wrappedHours * 60);
+  const displayHours = Math.floor(totalMinutes / 60) % 24;
+  const displayMinutes = totalMinutes % 60;
+  return `${displayHours.toString().padStart(2, '0')}:${displayMinutes.toString().padStart(2, '0')}`;
+};
+
+interface EnvironmentSectionProps {
+  timeOfDayHours: number;
+  weatherType: EnvironmentSettings['weatherType'];
+  onTimeChange: (hours: number) => void;
+  onWeatherChange: (weatherType: EnvironmentSettings['weatherType']) => void;
+}
+
+const EnvironmentSection: React.FC<EnvironmentSectionProps> = ({ timeOfDayHours, weatherType, onTimeChange, onWeatherChange }) => {
+  return (
+    <div className={styles.section}>
+      <div className={styles.sectionTitle}>Environment</div>
+      <div className={styles.field}>
+        <label htmlFor="environment-weather-select">Weather</label>
+        <select
+          id="environment-weather-select"
+          value={weatherType}
+          onChange={(e) => onWeatherChange(e.target.value as EnvironmentSettings['weatherType'])}
+        >
+          <option value="Clear">Clear</option>
+          <option value="Cloudy">Cloudy</option>
+          <option value="Rain">Rain</option>
+          <option value="Fog">Fog</option>
+          <option value="Storm">Storm</option>
+        </select>
+      </div>
+      <div className={styles.rangeHeader}>
+        <label htmlFor="environment-time-slider">Time</label>
+        <span className={styles.rangeValue}>{formatTimeLabel(timeOfDayHours)}</span>
+      </div>
+      <input
+        id="environment-time-slider"
+        className={styles.rangeInput}
+        type="range"
+        min={0}
+        max={24}
+        step={0.05}
+        value={timeOfDayHours}
+        onChange={(e) => onTimeChange(Number(e.target.value))}
+      />
+      <div className={styles.rangeCaption}>
+        Drag to scrub the sky and lighting in real time.
+      </div>
+    </div>
+  );
+};
+
 const MassingPreviewSection: React.FC = () => {
+  const [prompt, setPrompt] = useState('');
   const [ruleJson, setRuleJson] = useState(DEFAULT_MASSING_RULE_JSON);
   const [presets, setPresets] = useState<MassingPreset[]>([]);
   const [selectedPresetFile, setSelectedPresetFile] = useState('');
@@ -307,14 +427,53 @@ const MassingPreviewSection: React.FC = () => {
       await engine.clearMassingPreview();
       await refreshScene();
       await waitForNextFrame();
-      const result = await engine.previewMassing(ruleJson, { focusCamera: false });
+      const isBuildingPreset = selectedPresetFile.startsWith('building/') || looksLikeBuildingJson(ruleJson);
+      const result = isBuildingPreset
+        ? await engine.previewBuilding(ruleJson, { focusCamera: false })
+        : await engine.previewMassing(ruleJson, { focusCamera: false });
       await refreshScene();
 
       const warningText = result.warnings.length > 0 ? `, ${result.warnings.length} warnings` : '';
-      setStatus(`Preview built: ${result.meshCount} meshes${warningText}`);
+      setStatus(`${isBuildingPreset ? 'Building' : 'Preview'} built: ${result.meshCount} meshes${warningText}`);
     } catch (previewError) {
-      const message = previewError instanceof Error ? previewError.message : 'Failed to preview massing';
-      logger.error('Inspector', `Massing preview failed: ${message}`);
+      const message = previewError instanceof Error ? previewError.message : 'Failed to preview preset';
+      logger.error('Inspector', `Preset preview failed: ${message}`);
+      setError(message);
+      setStatus('');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleGenerateFromPrompt = async () => {
+    if (!prompt.trim()) {
+      setError('Enter a building prompt first');
+      setStatus('');
+      return;
+    }
+
+    setIsBusy(true);
+    setError('');
+
+    try {
+      const result = await engine.generateMassingFromPrompt(prompt, ruleJson);
+      setRuleJson(result.ruleJson);
+
+      await engine.clearMassingPreview();
+      await refreshScene();
+      await waitForNextFrame();
+      const previewResult = await engine.previewMassing(result.ruleJson, { focusCamera: false });
+      await refreshScene();
+
+      const notesText = result.notes.length > 0 ? ` ${result.notes.join(' ')}` : '';
+      const warningText = previewResult.warnings.length > 0 ? ` ${previewResult.warnings.length} warnings.` : '';
+      setStatus(
+        `Generated via ${result.strategy}. Preview built: ${previewResult.meshCount} meshes.${warningText}${notesText}`.trim()
+      );
+    } catch (generationError) {
+      const message =
+        generationError instanceof Error ? generationError.message : 'Failed to generate massing from prompt';
+      logger.error('Inspector', `Massing prompt generation failed: ${message}`);
       setError(message);
       setStatus('');
     } finally {
@@ -350,6 +509,12 @@ const MassingPreviewSection: React.FC = () => {
       <div className={styles.massingHint}>
         Pick a preset from assets or paste a rule JSON here to generate a live preview node tree in the scene.
       </div>
+      <textarea
+        className={styles.massingPromptInput}
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="Describe the building you want, for example: a twisted office tower with a strong podium and no floating crown"
+      />
       <div className={styles.massingPresetRow}>
         <div className={styles.massingPresetDropdown}>
           <button
@@ -391,6 +556,9 @@ const MassingPreviewSection: React.FC = () => {
         spellCheck={false}
       />
       <div className={styles.massingActions}>
+        <button type="button" onClick={handleGenerateFromPrompt} disabled={isBusy}>
+          {isBusy ? 'Working...' : 'Generate'}
+        </button>
         <button type="button" onClick={handlePreview} disabled={isBusy}>
           {isBusy ? 'Working...' : 'Preview'}
         </button>

@@ -61,6 +61,37 @@
   height: 16px;
 }
 
+.rangeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.rangeHeader label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.rangeValue {
+  font-size: var(--font-size-xs);
+  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--text-primary);
+}
+
+.rangeInput {
+  width: 100%;
+  margin: 0;
+}
+
+.rangeCaption {
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
 .vector3Field {
   margin-bottom: var(--spacing-sm);
 }
@@ -161,6 +192,20 @@
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+.massingPromptInput {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
 }
 
 .massingEditor {

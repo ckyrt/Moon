@@ -268,12 +268,13 @@ void InitSceneObjects(EngineCore* engine)
 
         environment->SetProfile(profile);
         environment->SetTimeOfDay(10.5f);
-        environment->SetWeather(Moon::WeatherType::Clear, 0.0f);
+        environment->SetWeather(Moon::WeatherType::Cloudy, 0.0f);
 
         Moon::EnvironmentState state = environment->GetState();
         state.timeOfDay.dayLengthMinutes = 3.0f;
         state.timeOfDay.timeScale = 1.0f;
         state.timeOfDay.paused = false;
+        state.atmosphere.cloudCoverage = 0.72f;
         environment->GetSystem().SetState(state);
     }
 

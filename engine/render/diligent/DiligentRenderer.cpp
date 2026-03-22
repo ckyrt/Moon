@@ -52,6 +52,7 @@ template void DiligentRenderer::UpdateCB<Moon::Matrix4x4>(IBuffer*, const Moon::
 // ======= 构造/析构 =======
 DiligentRenderer::DiligentRenderer()
 {
+    m_SkyStartTime = std::chrono::steady_clock::now();
 }
 DiligentRenderer::~DiligentRenderer()
 {
@@ -651,6 +652,7 @@ void DiligentRenderer::SetEnvironmentState(const Moon::EnvironmentState* environ
         m_SceneDataCache.fogDensity = 0.0f;
         m_SceneDataCache.skyColor = Moon::Vector3(0.20f, 0.40f, 0.60f);
         m_SceneDataCache.fogEnabled = 0.0f;
+        m_SceneDataCache.cloudCoverage = 0.0f;
         UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
         return;
     }
@@ -663,6 +665,7 @@ void DiligentRenderer::SetEnvironmentState(const Moon::EnvironmentState* environ
     m_SceneDataCache.skyColor =
         (environmentState->atmosphere.skyZenithColor + environmentState->atmosphere.skyHorizonColor) * 0.5f;
     m_SceneDataCache.fogEnabled = environmentState->atmosphere.fogDensity > 0.0f ? 1.0f : 0.0f;
+    m_SceneDataCache.cloudCoverage = environmentState->atmosphere.cloudCoverage;
     m_RenderProceduralSky = true;
 
     UpdateCB(m_pPSSceneConstants, m_SceneDataCache);

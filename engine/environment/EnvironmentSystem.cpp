@@ -32,7 +32,7 @@ WeatherVisualPreset MakeWeatherPreset(WeatherType weather, const EnvironmentProf
             Vector3(1.00f, 1.00f, 1.00f),
             1.00f,
             profile.clearFogDensity,
-            0.10f + 0.10f * duskBlend,
+            0.28f + 0.12f * duskBlend,
             1.00f,
             1.00f,
             1.00f
@@ -223,23 +223,25 @@ void EnvironmentSystem::UpdateAtmosphere() {
     m_state.atmosphere.sunIntensity =
         m_profile.minSunIntensity + (m_profile.maxSunIntensity - m_profile.minSunIntensity) * daylight;
 
-    const Vector3 dawnZenith(0.22f, 0.28f, 0.45f);
-    const Vector3 dayZenith(0.20f, 0.48f, 0.95f);
-    const Vector3 nightZenith(0.02f, 0.03f, 0.08f);
-    const Vector3 dawnHorizon(0.95f, 0.55f, 0.28f);
-    const Vector3 dayHorizon(0.65f, 0.80f, 0.98f);
-    const Vector3 nightHorizon(0.03f, 0.04f, 0.07f);
+    const Vector3 dawnZenith(0.15f, 0.21f, 0.43f);
+    const Vector3 dayZenith(0.08f, 0.34f, 0.86f);
+    const Vector3 nightZenith(0.01f, 0.02f, 0.06f);
+    const Vector3 dawnHorizon(1.00f, 0.52f, 0.22f);
+    const Vector3 dayHorizon(0.72f, 0.86f, 1.00f);
+    const Vector3 nightHorizon(0.02f, 0.03f, 0.06f);
 
     const float duskBlend = Clamp01(1.0f - std::abs(0.5f - daylight) * 2.0f);
     const bool isNight = daylight <= 0.05f;
 
+    const float zenithBlend = std::pow(daylight, 0.60f);
+    const float horizonBlend = std::pow(daylight, 0.38f);
     m_state.atmosphere.skyZenithColor = isNight
         ? nightZenith
-        : Lerp(dawnZenith, dayZenith, daylight);
+        : Lerp(dawnZenith, dayZenith, zenithBlend);
     m_state.atmosphere.skyHorizonColor = isNight
         ? nightHorizon
-        : Lerp(dawnHorizon, dayHorizon, std::sqrt(daylight));
-    m_state.atmosphere.sunColor = Lerp(Vector3(1.0f, 0.58f, 0.35f), Vector3(1.0f, 0.97f, 0.90f), daylight);
+        : Lerp(dawnHorizon, dayHorizon, horizonBlend);
+    m_state.atmosphere.sunColor = Lerp(Vector3(1.0f, 0.50f, 0.26f), Vector3(1.0f, 0.97f, 0.90f), std::pow(daylight, 0.52f));
 
     const WeatherVisualPreset currentPreset = MakeWeatherPreset(m_state.weather.current, m_profile, duskBlend);
     const WeatherVisualPreset targetPreset = MakeWeatherPreset(m_state.weather.target, m_profile, duskBlend);
