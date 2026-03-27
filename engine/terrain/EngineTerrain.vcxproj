@@ -88,6 +88,7 @@
     <ClInclude Include="TerrainSystem.h" />
     <ClInclude Include="TerrainTypes.h" />
     <ClInclude Include="TerrainVisualBuilder.h" />
+    <ClInclude Include="WorldSpec.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ProceduralTerrainGenerator.cpp" />
@@ -95,6 +96,7 @@
     <ClCompile Include="TerrainShowcaseScene.cpp" />
     <ClCompile Include="TerrainSystem.cpp" />
     <ClCompile Include="TerrainVisualBuilder.cpp" />
+    <ClCompile Include="WorldSpec.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\core\EngineCore.vcxproj">

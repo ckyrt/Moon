@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "kind": "world_prompt_spec",
+  "seed": 86420,
+  "theme": "coastal_island_frontier",
+  "mood": "sunlit",
+  "climate": "temperate",
+  "world_scale": "medium",
+  "terrain_style": "coastal_island",
+  "play_style": "exploration_vehicle",
+  "human_presence": "sparse_rural",
+  "biomes": [
+    { "type": "beach", "coverage": 0.16 },
+    { "type": "grassland", "coverage": 0.34 },
+    { "type": "forest", "coverage": 0.18 },
+    { "type": "rocky_mountain", "coverage": 0.20 },
+    { "type": "riverbank", "coverage": 0.12 }
+  ],
+  "landmarks": [
+    {
+      "type": "main_headland",
+      "position": [0.58, 0.34],
+      "importance": 1.0,
+      "radius_meters": 360.0,
+      "orientation_degrees": 18.0
+    },
+    {
+      "type": "beach_bay",
+      "position": [0.50, 0.74],
+      "importance": 0.92,
+      "radius_meters": 340.0,
+      "orientation_degrees": 0.0
+    },
+    {
+      "type": "coastal_plain",
+      "position": [0.28, 0.60],
+      "importance": 0.78,
+      "radius_meters": 260.0,
+      "orientation_degrees": 12.0
+    },
+    {
+      "type": "ridge",
+      "position": [0.70, 0.42],
+      "importance": 0.72,
+      "radius_meters": 220.0,
+      "orientation_degrees": 30.0
+    }
+  ],
+  "constraints": {
+    "must_have_large_flat_area": true,
+    "must_have_main_river": true,
+    "avoid_extreme_cliffs": false,
+    "prefer_vehicle_traversal": true,
+    "prefer_long_sightlines": true
+  }
+}

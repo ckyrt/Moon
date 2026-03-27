@@ -211,6 +211,8 @@ public:
      */
     void SetTriplanarBlend(float blend) { m_triplanarBlend = blend; }
     float GetTriplanarBlend() const { return m_triplanarBlend; }
+    void SetUseVertexColorTint(bool enabled) { m_useVertexColorTint = enabled; }
+    bool GetUseVertexColorTint() const { return m_useVertexColorTint; }
 
 private:
     float m_metallic;
@@ -232,6 +234,7 @@ private:
     MappingMode m_mappingMode = MappingMode::UV;  ///< 默认使用UV映射
     float m_triplanarTiling = 0.5f;               ///< Triplanar平铺密度
     float m_triplanarBlend = 4.0f;                ///< Triplanar混合锐度
+    bool m_useVertexColorTint = false;            ///< 是否使用顶点色作为材质色调混合
     
     // 材质预设内部实现（25种）
     void SetPresetConcrete();

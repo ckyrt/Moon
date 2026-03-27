@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TerrainTypes.h"
+#include "WorldSpec.h"
 
 #include <vector>
 
@@ -16,17 +17,36 @@ struct TerrainGenerationSettings {
     float riverDepth = 5.0f;
     uint32_t grassClusterBudget = 2200;
     uint32_t seed = 1337;
+    float relief = 0.78f;
+    float mountainDensity = 0.62f;
+    float mountainScale = 0.74f;
+    float hillDensity = 0.35f;
+    float flatAreaRatio = 0.18f;
+    float roughness = 0.58f;
+    float erosionStrength = 0.64f;
+    float cliffFrequency = 0.27f;
+    float ridgeDirectionDegrees = 35.0f;
+    bool hasOcean = false;
+    float seaLevel01 = 0.18f;
+    float beachWidth = 0.18f;
+    float coastalShelf = 0.12f;
+    uint32_t riverCount = 2;
+    float riverMeander = 0.66f;
+    float grassHeight = 0.58f;
 };
 
 struct TerrainGenerationResult {
     TerrainData terrainData;
-    std::vector<float> riverPolyline;
+    std::vector<std::vector<float>> riverPolylines;
     float riverWidth = 0.0f;
     float riverDepth = 0.0f;
+    float seaLevelWorldY = 0.0f;
 };
 
 class ProceduralTerrainGenerator {
 public:
+    static TerrainGenerationSettings CreateSettingsFromWorldBuildSpec(const WorldBuildSpec& spec);
+    static TerrainGenerationResult CreateFromWorldBuildSpec(const WorldBuildSpec& spec);
     static TerrainGenerationResult CreateOpenWorldLandscape(const TerrainGenerationSettings& settings);
 };
 

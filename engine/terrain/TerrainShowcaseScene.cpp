@@ -12,6 +12,7 @@
 #include "ProceduralTerrainGenerator.h"
 #include "TerrainComponent.h"
 #include "TerrainVisualBuilder.h"
+#include "WorldSpec.h"
 
 namespace Moon {
 
@@ -22,11 +23,17 @@ constexpr const char* kSunNodeName = "Environment Sun";
 constexpr const char* kRuntimeNodeName = "Terrain Runtime";
 constexpr const char* kTerrainMeshNodeName = "Terrain Mesh";
 constexpr const char* kRiverNodeName = "Terrain River";
+constexpr const char* kOceanNodeName = "Terrain Ocean";
 constexpr const char* kGrassNodeName = "Terrain Grass";
 
 } // namespace
 
 void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const TerrainShowcaseOptions& options)
+{
+    BuildOpenWorldScene(engine, WorldSpecIO::BuildFromPrompt(WorldSpecIO::CreateDefaultPromptSpec()), options);
+}
+
+void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBuildSpec& buildSpec, const TerrainShowcaseOptions& options)
 {
     if (!engine) {
         return;
@@ -58,14 +65,14 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const Terrain
         Moon::EnvironmentProfile environmentProfile;
         environmentProfile.name = "OpenWorldTerrain";
         environmentProfile.enableClouds = true;
-        environmentProfile.enableFog = true;
+        environmentProfile.enableFog = false;
         environmentProfile.enableWind = true;
-        environmentProfile.maxSunIntensity = 1.55f;
-        environmentProfile.clearFogDensity = 0.0013f;
-        environmentProfile.fogWeatherDensity = 0.010f;
-        environmentProfile.cloudyCloudCoverage = 0.52f;
+        environmentProfile.maxSunIntensity = 1.85f;
+        environmentProfile.clearFogDensity = 0.00015f;
+        environmentProfile.fogWeatherDensity = 0.0025f;
+        environmentProfile.cloudyCloudCoverage = 0.10f;
         environment->SetProfile(environmentProfile);
-        environment->SetTimeOfDay(8.3f);
+        environment->SetTimeOfDay(10.5f);
         environment->SetWeather(Moon::WeatherType::Clear, 0.0f);
     }
 
@@ -77,17 +84,11 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const Terrain
         sun->SetIntensity(1.25f);
     }
 
-    Moon::TerrainGenerationSettings generationSettings;
-    generationSettings.resolution = 257;
-    generationSettings.worldWidth = 1400.0f;
-    generationSettings.worldDepth = 1400.0f;
-    generationSettings.heightScale = 180.0f;
-    generationSettings.riverWidth = 44.0f;
-    generationSettings.riverDepth = 4.5f;
-    generationSettings.grassClusterBudget = 2600;
+    const Moon::TerrainGenerationSettings generationSettings =
+        Moon::ProceduralTerrainGenerator::CreateSettingsFromWorldBuildSpec(buildSpec);
 
     const Moon::TerrainGenerationResult generation =
-        Moon::ProceduralTerrainGenerator::CreateOpenWorldLandscape(generationSettings);
+        Moon::ProceduralTerrainGenerator::CreateFromWorldBuildSpec(buildSpec);
 
     if (options.createTerrainRuntime) {
         Moon::SceneNode* terrainNode = scene->CreateNode(kRuntimeNodeName);
@@ -107,16 +108,19 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const Terrain
             terrain->GetData().heightmap.GetHeight(),
             terrain->GetRuntimeState().chunkCountX,
             terrain->GetRuntimeState().chunkCountZ,
-            generation.riverPolyline.size() / 3);
+            generation.riverPolylines.empty() ? 0 : generation.riverPolylines.front().size() / 3);
     }
 
     Moon::SceneNode* terrainMeshNode = scene->CreateNode(kTerrainMeshNodeName);
     Moon::MeshRenderer* terrainRenderer = terrainMeshNode->AddComponent<Moon::MeshRenderer>();
     Moon::Material* terrainMaterial = terrainMeshNode->AddComponent<Moon::Material>();
-    terrainRenderer->SetMesh(Moon::TerrainVisualBuilder::BuildTerrainMesh(generation.terrainData, generationSettings));
-    terrainMaterial->SetBaseColor(Moon::Vector3(0.47f, 0.58f, 0.34f));
-    terrainMaterial->SetMetallic(0.01f);
-    terrainMaterial->SetRoughness(0.96f);
+    terrainRenderer->SetMesh(Moon::TerrainVisualBuilder::BuildTerrainMesh(generation, generationSettings));
+    terrainMaterial->SetMaterialPreset(Moon::MaterialPreset::Rock);
+    terrainMaterial->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
+    terrainMaterial->SetMappingMode(Moon::MappingMode::Triplanar);
+    terrainMaterial->SetTriplanarTiling(0.12f);
+    terrainMaterial->SetTriplanarBlend(6.0f);
+    terrainMaterial->SetUseVertexColorTint(true);
 
     Moon::SceneNode* riverNode = scene->CreateNode(kRiverNodeName);
     Moon::MeshRenderer* riverRenderer = riverNode->AddComponent<Moon::MeshRenderer>();
@@ -126,6 +130,17 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const Terrain
     riverMaterial->SetMetallic(0.08f);
     riverMaterial->SetRoughness(0.10f);
     riverMaterial->SetOpacity(0.78f);
+
+    if (generationSettings.hasOcean) {
+        Moon::SceneNode* oceanNode = scene->CreateNode(kOceanNodeName);
+        Moon::MeshRenderer* oceanRenderer = oceanNode->AddComponent<Moon::MeshRenderer>();
+        Moon::Material* oceanMaterial = oceanNode->AddComponent<Moon::Material>();
+        oceanRenderer->SetMesh(Moon::TerrainVisualBuilder::BuildOceanMesh(generation, generationSettings));
+        oceanMaterial->SetBaseColor(Moon::Vector3(0.18f, 0.46f, 0.68f));
+        oceanMaterial->SetMetallic(0.02f);
+        oceanMaterial->SetRoughness(0.06f);
+        oceanMaterial->SetOpacity(0.84f);
+    }
 
     Moon::SceneNode* grassNode = scene->CreateNode(kGrassNodeName);
     Moon::MeshRenderer* grassRenderer = grassNode->AddComponent<Moon::MeshRenderer>();

@@ -152,7 +152,9 @@ float4 main(in PSInput i) : SV_Target {
     }
     
     // 不要用顶点颜色调制纹理！这会让纹理变暗
-    // albedo *= i.Color.rgb;
+    if (g_UseVertexColorTint > 0.5) {
+        albedo *= i.Color.rgb;
+    }
     
     // ===== Triplanar Normal Map（CSG专用，不依赖UV）=====
     // ⚠️ CSG的UV不连续，不能用TBN！必须用世界空间triplanar采样

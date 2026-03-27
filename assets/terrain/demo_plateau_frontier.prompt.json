@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "kind": "world_prompt_spec",
+  "seed": 24680,
+  "theme": "plateau_frontier_battlefield",
+  "mood": "windswept",
+  "climate": "temperate",
+  "world_scale": "medium",
+  "terrain_style": "rolling_highlands",
+  "play_style": "combat_sightlines",
+  "human_presence": "sparse_rural",
+  "biomes": [
+    { "type": "grassland", "coverage": 0.40 },
+    { "type": "rocky_mountain", "coverage": 0.18 },
+    { "type": "bare_soil", "coverage": 0.18 },
+    { "type": "forest", "coverage": 0.14 },
+    { "type": "riverbank", "coverage": 0.10 }
+  ],
+  "landmarks": [
+    {
+      "type": "main_plateau",
+      "position": [0.55, 0.40],
+      "importance": 1.0,
+      "radius_meters": 420.0,
+      "orientation_degrees": 18.0
+    },
+    {
+      "type": "river_valley",
+      "position": [0.30, 0.58],
+      "importance": 0.85,
+      "radius_meters": 320.0,
+      "orientation_degrees": 42.0
+    },
+    {
+      "type": "open_field",
+      "position": [0.68, 0.62],
+      "importance": 0.80,
+      "radius_meters": 260.0,
+      "orientation_degrees": 0.0
+    },
+    {
+      "type": "ridge_outpost",
+      "position": [0.18, 0.30],
+      "importance": 0.72,
+      "radius_meters": 180.0,
+      "orientation_degrees": 30.0
+    }
+  ],
+  "constraints": {
+    "must_have_large_flat_area": true,
+    "must_have_main_river": true,
+    "avoid_extreme_cliffs": true,
+    "prefer_vehicle_traversal": true,
+    "prefer_long_sightlines": true
+  }
+}

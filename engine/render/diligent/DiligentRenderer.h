@@ -100,7 +100,8 @@ private:
         float triplanarBlend = 4.0f;
         float hasNormalMap = 0.0f;
         float opacity = 1.0f;
-        float padding2[2] = {0.0f, 0.0f};
+        float useVertexColorTint = 0.0f;
+        float padding2 = 0.0f;
         Moon::Vector3 transmissionColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
         float padding3 = 0.0f;
     };

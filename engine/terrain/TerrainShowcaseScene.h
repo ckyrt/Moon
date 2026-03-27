@@ -4,6 +4,8 @@ class EngineCore;
 
 namespace Moon {
 
+struct WorldBuildSpec;
+
 struct TerrainShowcaseOptions {
     bool configureCamera = true;
     bool createEnvironment = true;
@@ -14,6 +16,7 @@ struct TerrainShowcaseOptions {
 class TerrainShowcaseScene {
 public:
     static void BuildOpenWorldScene(EngineCore* engine, const TerrainShowcaseOptions& options = {});
+    static void BuildOpenWorldScene(EngineCore* engine, const WorldBuildSpec& buildSpec, const TerrainShowcaseOptions& options = {});
 };
 
 } // namespace Moon

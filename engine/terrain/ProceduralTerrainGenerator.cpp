@@ -98,18 +98,24 @@ float DistanceToSegment(const Vector2& point, const Vector2& a, const Vector2& b
     return (point - projection).Length();
 }
 
-std::vector<float> BuildRiverPolyline(const TerrainGenerationSettings& settings)
+std::vector<float> BuildRiverPolyline(const TerrainGenerationSettings& settings, uint32_t riverIndex)
 {
     std::vector<float> polyline;
     const int controlPointCount = 11;
     polyline.reserve(static_cast<size_t>(controlPointCount) * 3);
 
+    const float normalizedIndex = settings.riverCount > 1
+        ? static_cast<float>(riverIndex) / static_cast<float>(settings.riverCount - 1)
+        : 0.5f;
+    const float lateralOffset = (normalizedIndex - 0.5f) * settings.worldWidth * 0.42f;
+    const float meanderScale = 0.06f + settings.riverMeander * 0.14f;
+
     for (int i = 0; i < controlPointCount; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(controlPointCount - 1);
         const float worldZ = -settings.worldDepth * 0.5f + t * settings.worldDepth;
-        const float bendPrimary = std::sin(t * 2.5f * kPi + 0.35f) * settings.worldWidth * 0.12f;
-        const float bendSecondary = std::sin(t * 6.0f * kPi + 0.8f) * settings.worldWidth * 0.03f;
-        const float worldX = bendPrimary + bendSecondary;
+        const float bendPrimary = std::sin(t * (2.0f + settings.riverMeander * 1.8f) * kPi + 0.35f + riverIndex * 0.7f) * settings.worldWidth * meanderScale;
+        const float bendSecondary = std::sin(t * 6.0f * kPi + 0.8f + riverIndex * 1.37f) * settings.worldWidth * 0.03f * settings.riverMeander;
+        const float worldX = lateralOffset + bendPrimary + bendSecondary;
 
         polyline.push_back(worldX);
         polyline.push_back(0.0f);
@@ -135,14 +141,69 @@ float ComputeRiverDistance(const Vector2& point, const std::vector<float>& polyl
     return minDistance;
 }
 
+float ComputeRiverDistance(const Vector2& point, const std::vector<std::vector<float>>& polylines)
+{
+    float minDistance = 999999.0f;
+    for (const std::vector<float>& polyline : polylines) {
+        minDistance = std::min(minDistance, ComputeRiverDistance(point, polyline));
+    }
+    return minDistance;
+}
+
 } // namespace
+
+TerrainGenerationSettings ProceduralTerrainGenerator::CreateSettingsFromWorldBuildSpec(const WorldBuildSpec& spec)
+{
+    TerrainGenerationSettings settings;
+    settings.resolution = spec.world.heightmapResolution;
+    settings.worldWidth = spec.world.sizeMetersX;
+    settings.worldDepth = spec.world.sizeMetersZ;
+    settings.heightScale = spec.terrain.maxHeightMeters;
+    settings.seaLevel01 = Clamp01(spec.world.seaLevel);
+    settings.baseHeight01 = Clamp01(settings.seaLevel01 + 0.07f + spec.terrain.relief * 0.08f);
+    settings.riverWidth = Lerp(spec.hydrology.riverWidthMinMeters, spec.hydrology.riverWidthMaxMeters, 0.5f);
+    settings.riverDepth = Lerp(spec.hydrology.riverDepthMinMeters, spec.hydrology.riverDepthMaxMeters, 0.5f);
+    settings.grassClusterBudget = static_cast<uint32_t>(900.0f + spec.vegetation.grassDensity * 3800.0f);
+    settings.seed = spec.seed;
+    settings.relief = spec.terrain.relief;
+    settings.mountainDensity = spec.terrain.mountainDensity;
+    settings.mountainScale = spec.terrain.mountainScale;
+    settings.hillDensity = spec.terrain.hillDensity;
+    settings.flatAreaRatio = spec.terrain.flatAreaRatio;
+    settings.roughness = spec.terrain.roughness;
+    settings.erosionStrength = spec.terrain.erosionStrength;
+    settings.cliffFrequency = spec.terrain.cliffFrequency;
+    settings.ridgeDirectionDegrees = spec.terrain.ridgeDirectionDegrees;
+    settings.hasOcean = spec.hydrology.hasOcean;
+    settings.beachWidth = Clamp01(0.08f + spec.surface.sandNearWater * 0.40f);
+    settings.coastalShelf = Clamp01(0.06f + spec.world.seaLevel * 0.30f);
+    settings.riverCount = std::max(1u, spec.hydrology.riverCount);
+    settings.riverMeander = spec.hydrology.riverMeander;
+    settings.grassHeight = spec.vegetation.grassHeight;
+    if (!spec.constraints.mustHaveMainRiver && spec.hydrology.riverCount == 0) {
+        settings.riverCount = 0;
+    }
+    return settings;
+}
+
+TerrainGenerationResult ProceduralTerrainGenerator::CreateFromWorldBuildSpec(const WorldBuildSpec& spec)
+{
+    return CreateOpenWorldLandscape(CreateSettingsFromWorldBuildSpec(spec));
+}
 
 TerrainGenerationResult ProceduralTerrainGenerator::CreateOpenWorldLandscape(const TerrainGenerationSettings& settings)
 {
     TerrainGenerationResult result;
     result.riverWidth = settings.riverWidth;
     result.riverDepth = settings.riverDepth;
-    result.riverPolyline = BuildRiverPolyline(settings);
+    result.seaLevelWorldY = settings.seaLevel01 * settings.heightScale;
+
+    if (settings.riverCount > 0) {
+        result.riverPolylines.reserve(settings.riverCount);
+        for (uint32_t riverIndex = 0; riverIndex < settings.riverCount; ++riverIndex) {
+            result.riverPolylines.push_back(BuildRiverPolyline(settings, riverIndex));
+        }
+    }
 
     TerrainData terrainData;
     terrainData.heightmap.Resize(settings.resolution, settings.resolution, settings.baseHeight01);
@@ -153,6 +214,10 @@ TerrainGenerationResult ProceduralTerrainGenerator::CreateOpenWorldLandscape(con
     };
     terrainData.activeMaterialLayerCount = static_cast<uint32_t>(terrainData.materialLayers.size());
 
+    const float ridgeRadians = settings.ridgeDirectionDegrees * (kPi / 180.0f);
+    const float ridgeCos = std::cos(ridgeRadians);
+    const float ridgeSin = std::sin(ridgeRadians);
+
     for (uint32_t z = 0; z < settings.resolution; ++z) {
         for (uint32_t x = 0; x < settings.resolution; ++x) {
             const float u = static_cast<float>(x) / static_cast<float>(settings.resolution - 1);
@@ -160,30 +225,45 @@ TerrainGenerationResult ProceduralTerrainGenerator::CreateOpenWorldLandscape(con
             const float worldX = (u - 0.5f) * settings.worldWidth;
             const float worldZ = (v - 0.5f) * settings.worldDepth;
 
-            const float broad = FractalNoise(u * 2.5f, v * 2.5f, settings.seed + 11u, 4, 2.1f, 0.5f);
-            const float detail = FractalNoise(u * 8.0f, v * 8.0f, settings.seed + 29u, 3, 2.2f, 0.45f);
-            const float ridged = 1.0f - std::abs(FractalNoise(u * 3.4f, v * 3.4f, settings.seed + 71u, 4, 2.0f, 0.5f));
+            const float ru = ridgeCos * (u - 0.5f) - ridgeSin * (v - 0.5f);
+            const float rv = ridgeSin * (u - 0.5f) + ridgeCos * (v - 0.5f);
 
-            const float northMountains = SmoothStep(0.56f, 0.98f, 1.0f - v);
-            const float southHills = SmoothStep(0.48f, 0.92f, v);
-            const float westRise = SmoothStep(0.55f, 1.0f, 1.0f - u) * 0.35f;
-            const float eastRise = SmoothStep(0.70f, 1.0f, u) * 0.18f;
-            const float centerPlainMask = 1.0f - SmoothStep(0.18f, 0.52f, std::sqrt(worldX * worldX + worldZ * worldZ) / (settings.worldWidth * 0.5f));
+            const float broad = FractalNoise((ru + 0.5f) * 2.5f, (rv + 0.5f) * 2.5f, settings.seed + 11u, 4, 2.1f, 0.5f);
+            const float detail = FractalNoise((ru + 0.5f) * 8.0f, (rv + 0.5f) * 8.0f, settings.seed + 29u, 3, 2.2f, 0.45f);
+            const float ridged = 1.0f - std::abs(FractalNoise((ru + 0.5f) * 3.4f, (rv + 0.5f) * 3.4f, settings.seed + 71u, 4, 2.0f, 0.5f));
+            const float cliffNoise = 1.0f - std::abs(FractalNoise((ru + 0.5f) * 11.0f, (rv + 0.5f) * 11.0f, settings.seed + 109u, 2, 2.0f, 0.5f));
+
+            const float primaryMountainMask = SmoothStep(-0.08f, 0.28f, -rv + settings.mountainDensity * 0.24f);
+            const float secondaryHillMask = SmoothStep(-0.35f, 0.45f, rv + settings.hillDensity * 0.20f);
+            const float radialDistance = std::sqrt(worldX * worldX + worldZ * worldZ) / std::max(1.0f, settings.worldWidth * 0.5f);
+            const float centerPlainMask = 1.0f - SmoothStep(0.12f, 0.18f + settings.flatAreaRatio * 1.2f, radialDistance);
 
             float height01 = settings.baseHeight01;
-            height01 += broad * 0.18f;
-            height01 += detail * 0.05f;
-            height01 += ridged * (0.20f * northMountains + 0.07f * southHills);
-            height01 += westRise * 0.14f;
-            height01 += eastRise * 0.08f;
-            height01 -= centerPlainMask * 0.08f;
+            height01 += broad * (0.10f + settings.roughness * 0.15f) * settings.relief;
+            height01 += detail * (0.03f + settings.roughness * 0.09f);
+            height01 += ridged * (0.08f + settings.mountainScale * 0.26f) * primaryMountainMask * settings.mountainDensity;
+            height01 += broad * (0.04f + settings.hillDensity * 0.10f) * secondaryHillMask;
+            height01 += cliffNoise * settings.cliffFrequency * 0.10f * primaryMountainMask;
+            height01 -= centerPlainMask * (0.04f + settings.flatAreaRatio * 0.18f);
+            height01 = Lerp(height01, SmoothStep(0.0f, 1.0f, height01), settings.erosionStrength * 0.12f);
 
-            const float riverDistance = ComputeRiverDistance(Vector2(worldX, worldZ), result.riverPolyline);
-            const float riverMask = 1.0f - SmoothStep(settings.riverWidth * 0.55f, settings.riverWidth * 2.4f, riverDistance);
-            height01 -= riverMask * 0.14f;
+            if (!result.riverPolylines.empty()) {
+                const float riverDistance = ComputeRiverDistance(Vector2(worldX, worldZ), result.riverPolylines);
+                const float riverMask = 1.0f - SmoothStep(settings.riverWidth * 0.55f, settings.riverWidth * (1.6f + settings.riverMeander), riverDistance);
+                height01 -= riverMask * (0.09f + settings.relief * 0.08f);
+            }
 
-            const float shorelineMask = SmoothStep(settings.worldDepth * 0.40f, settings.worldDepth * 0.52f, std::abs(worldZ));
-            height01 -= shorelineMask * 0.05f;
+            if (settings.hasOcean) {
+                const float coastStart = settings.worldDepth * (0.18f + settings.coastalShelf * 0.10f);
+                const float coastEnd = settings.worldDepth * (0.48f - settings.coastalShelf * 0.08f);
+                const float shorelineMask = SmoothStep(coastStart, coastEnd, worldZ);
+                const float beachBandStart = settings.worldDepth * (0.12f + settings.beachWidth * 0.10f);
+                const float beachBandEnd = settings.worldDepth * (0.24f + settings.beachWidth * 0.18f);
+                const float beachMask = SmoothStep(beachBandStart, beachBandEnd, worldZ) * (1.0f - shorelineMask);
+
+                height01 = Lerp(height01, settings.seaLevel01 + 0.012f, beachMask * 0.72f);
+                height01 = Lerp(height01, settings.seaLevel01 - 0.035f, shorelineMask);
+            }
 
             terrainData.heightmap.SetSample(x, z, Clamp01(height01));
         }

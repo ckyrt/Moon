@@ -109,7 +109,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     camera->SetAspectRatio(width / height);
 
     Moon::FPSCameraController cameraController(camera, inputSystem);
-    cameraController.SetMoveSpeed(5.0f);
+    cameraController.SetMoveSpeed(18.0f);
+    cameraController.SetSprintMultiplier(3.5f);
     cameraController.SetMouseSensitivity(20.0f);
 
     DiligentRenderer renderer;
