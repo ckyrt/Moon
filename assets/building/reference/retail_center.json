@@ -1,0 +1,50 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "retail_center",
+  "style": {
+    "category": "retail",
+    "facade": "stone_glass",
+    "roof": "flat",
+    "window_style": "full_height",
+    "material": "stone_white"
+  },
+  "mass": {
+    "footprint_area": 1024,
+    "floors": 2,
+    "total_height": 11.0
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "anchor_retail_floor",
+        "spaces": [
+          { "space_id": "retail_core_gf", "type": "core", "zone": "service", "area_preferred": 62, "constraints": { "connects_to_floor": 1, "ceiling_height": 5.2, "min_width": 4.5 } },
+          { "space_id": "retail_elevator_gf", "type": "elevator", "zone": "service", "area_preferred": 12, "constraints": { "connects_to_floor": 1, "ceiling_height": 5.2, "min_width": 2.5 } },
+          { "space_id": "retail_stairs_gf", "type": "stairs", "zone": "circulation", "area_preferred": 18, "constraints": { "connects_to_floor": 1, "ceiling_height": 5.2, "min_width": 2.5 } },
+          { "space_id": "center_atrium", "type": "void", "zone": "public", "area_preferred": 180, "constraints": { "ceiling_height": 11.0, "min_width": 10.0 } },
+          { "space_id": "main_galleria", "type": "corridor", "zone": "circulation", "area_preferred": 160, "adjacency": [{ "to": "center_atrium", "relationship": "around", "importance": "required" }], "constraints": { "ceiling_height": 5.2, "min_width": 5.5 } },
+          { "space_id": "retail_lobby", "type": "lobby", "zone": "circulation", "area_preferred": 76, "constraints": { "natural_light": "preferred", "ceiling_height": 5.2, "min_width": 6.0 } },
+          { "space_id": "anchor_fashion", "unit_id": "anchor_fashion", "type": "shop", "zone": "public", "area_preferred": 110, "adjacency": [{ "to": "main_galleria", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 5.0, "min_width": 7.0 } },
+          { "space_id": "anchor_market", "unit_id": "anchor_market", "type": "shop", "zone": "public", "area_preferred": 96, "adjacency": [{ "to": "main_galleria", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 5.0, "min_width": 6.5 } },
+          { "space_id": "retail_wc_gf", "type": "bathroom", "zone": "service", "area_preferred": 20, "constraints": { "ceiling_height": 3.5, "min_width": 2.5 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "food_entertainment_floor",
+        "spaces": [
+          { "space_id": "retail_core_l1", "type": "core", "zone": "service", "area_preferred": 60, "constraints": { "connects_from_floor": 0, "ceiling_height": 4.8, "min_width": 4.5 } },
+          { "space_id": "retail_elevator_l1", "type": "elevator", "zone": "service", "area_preferred": 12, "constraints": { "connects_from_floor": 0, "ceiling_height": 4.8, "min_width": 2.5 } },
+          { "space_id": "retail_stairs_l1", "type": "stairs", "zone": "circulation", "area_preferred": 18, "constraints": { "connects_from_floor": 0, "ceiling_height": 4.8, "min_width": 2.5 } },
+          { "space_id": "upper_atrium", "type": "void", "zone": "public", "area_preferred": 170, "constraints": { "ceiling_height": 5.5, "min_width": 9.0 } },
+          { "space_id": "upper_galleria", "type": "corridor", "zone": "circulation", "area_preferred": 150, "adjacency": [{ "to": "upper_atrium", "relationship": "around", "importance": "required" }], "constraints": { "ceiling_height": 4.8, "min_width": 5.0 } },
+          { "space_id": "food_hall_l1", "unit_id": "food_hall_l1", "type": "shop", "zone": "public", "area_preferred": 108, "adjacency": [{ "to": "upper_galleria", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 4.8, "min_width": 6.0 } },
+          { "space_id": "kids_anchor_l1", "unit_id": "kids_anchor_l1", "type": "shop", "zone": "public", "area_preferred": 82, "adjacency": [{ "to": "upper_galleria", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 4.8, "min_width": 5.5 } },
+          { "space_id": "retail_wc_l1", "type": "bathroom", "zone": "service", "area_preferred": 20, "constraints": { "ceiling_height": 3.5, "min_width": 2.5 } }
+        ]
+      }
+    ]
+  }
+}

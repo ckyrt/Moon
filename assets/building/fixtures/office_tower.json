@@ -1,0 +1,65 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "office_tower",
+  "style": {
+    "category": "contemporary",
+    "facade": "glass_curtain",
+    "roof": "flat",
+    "window_style": "full_height",
+    "material": "steel_glass"
+  },
+  "mass": {
+    "footprint_area": 420,
+    "floors": 4,
+    "total_height": 16.0
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "ground_lobby",
+        "spaces": [
+          { "space_id": "tower_core_gf", "type": "core", "zone": "service", "area_preferred": 78, "constraints": { "connects_to_floor": 1, "ceiling_height": 4.5, "min_width": 4.5 } },
+          { "space_id": "main_lobby", "type": "lobby", "zone": "circulation", "area_preferred": 96, "constraints": { "natural_light": "preferred", "ceiling_height": 5.0, "min_width": 6.0 } },
+          { "space_id": "podium_cafe", "unit_id": "podium_cafe", "type": "shop", "zone": "public", "area_preferred": 34, "constraints": { "natural_light": "required", "ceiling_height": 4.5, "min_width": 4.0 } },
+          { "space_id": "reception", "type": "office", "zone": "public", "area_preferred": 42, "constraints": { "natural_light": "preferred", "ceiling_height": 4.0, "min_width": 4.0 } },
+          { "space_id": "meeting_hub", "type": "meeting_room", "zone": "public", "area_preferred": 30, "constraints": { "natural_light": "preferred", "ceiling_height": 4.0, "min_width": 4.0 } },
+          { "space_id": "gf_bathroom", "type": "bathroom", "zone": "service", "area_preferred": 12, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "podium_shared_floor",
+        "spaces": [
+          { "space_id": "tower_core_l1", "type": "core", "zone": "service", "area_preferred": 72, "constraints": { "connects_from_floor": 0, "connects_to_floor": 2, "ceiling_height": 3.8, "min_width": 4.0 } },
+          { "space_id": "co_work_l1", "type": "office", "zone": "public", "area_preferred": 86, "constraints": { "natural_light": "required", "ceiling_height": 3.8, "min_width": 5.5 } },
+          { "space_id": "training_l1", "type": "meeting_room", "zone": "public", "area_preferred": 40, "constraints": { "natural_light": "preferred", "ceiling_height": 3.8, "min_width": 4.5 } },
+          { "space_id": "support_l1", "type": "mechanical", "zone": "service", "area_preferred": 18, "constraints": { "ceiling_height": 3.2, "min_width": 2.5 } },
+          { "space_id": "bathroom_l1", "type": "bathroom", "zone": "service", "area_preferred": 14, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "office_floor_2",
+        "spaces": [
+          { "space_id": "tower_core_l2", "type": "core", "zone": "service", "area_preferred": 72, "constraints": { "connects_from_floor": 1, "connects_to_floor": 3, "ceiling_height": 3.8, "min_width": 4.0 } },
+          { "space_id": "open_office_l2", "type": "office", "zone": "public", "area_preferred": 126, "constraints": { "natural_light": "required", "ceiling_height": 3.8, "min_width": 6.0 } },
+          { "space_id": "meeting_l2", "type": "meeting_room", "zone": "public", "area_preferred": 32, "constraints": { "natural_light": "preferred", "ceiling_height": 3.8, "min_width": 4.0 } },
+          { "space_id": "bathroom_l2", "type": "bathroom", "zone": "service", "area_preferred": 14, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "executive_floor",
+        "spaces": [
+          { "space_id": "tower_core_l3", "type": "core", "zone": "service", "area_preferred": 72, "constraints": { "connects_from_floor": 2, "ceiling_height": 3.8, "min_width": 4.0 } },
+          { "space_id": "executive_office", "type": "office", "zone": "public", "area_preferred": 88, "constraints": { "natural_light": "required", "ceiling_height": 4.0, "min_width": 5.0 } },
+          { "space_id": "board_room", "type": "meeting_room", "zone": "public", "area_preferred": 42, "constraints": { "natural_light": "preferred", "ceiling_height": 4.0, "min_width": 5.0 } },
+          { "space_id": "mechanical_l3", "type": "mechanical", "zone": "service", "area_preferred": 22, "constraints": { "ceiling_height": 3.2, "min_width": 3.0 } },
+          { "space_id": "bathroom_l3", "type": "bathroom", "zone": "service", "area_preferred": 14, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } }
+        ]
+      }
+    ]
+  }
+}

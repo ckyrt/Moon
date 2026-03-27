@@ -1,0 +1,49 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "villa",
+  "style": {
+    "category": "courtyard_family",
+    "facade": "stone_plaster",
+    "roof": "pitched",
+    "window_style": "standard",
+    "material": "stone_sand"
+  },
+  "mass": {
+    "footprint_area": 196,
+    "floors": 2,
+    "total_height": 6.8
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "courtyard_ground_floor",
+        "spaces": [
+          { "space_id": "courtyard_entry", "type": "entrance", "zone": "circulation", "area_preferred": 16, "constraints": { "natural_light": "preferred", "ceiling_height": 3.3, "min_width": 2.5 } },
+          { "space_id": "courtyard_core_gf", "type": "core", "zone": "service", "area_preferred": 18, "constraints": { "connects_to_floor": 1, "ceiling_height": 3.2, "min_width": 2.8 } },
+          { "space_id": "formal_living", "type": "living", "zone": "public", "area_preferred": 36, "constraints": { "natural_light": "required", "ceiling_height": 3.4, "min_width": 4.8 } },
+          { "space_id": "family_dining", "type": "dining", "zone": "public", "area_preferred": 20, "constraints": { "natural_light": "required", "ceiling_height": 3.2, "min_width": 4.0 } },
+          { "space_id": "courtyard_kitchen", "type": "kitchen", "zone": "service", "area_preferred": 18, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "guest_suite", "type": "bedroom", "zone": "private", "area_preferred": 18, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "guest_bath", "type": "bathroom", "zone": "service", "area_preferred": 7, "constraints": { "ceiling_height": 2.8, "min_width": 2.0 } },
+          { "space_id": "mud_storage", "type": "storage", "zone": "service", "area_preferred": 8, "constraints": { "ceiling_height": 2.8, "min_width": 2.0 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "courtyard_upper_floor",
+        "spaces": [
+          { "space_id": "courtyard_core_l1", "type": "core", "zone": "service", "area_preferred": 18, "constraints": { "connects_from_floor": 0, "ceiling_height": 3.0, "min_width": 2.8 } },
+          { "space_id": "upper_gallery", "type": "corridor", "zone": "circulation", "area_preferred": 18, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "primary_suite", "type": "bedroom", "zone": "private", "area_preferred": 28, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "primary_bath", "type": "bathroom", "zone": "service", "area_preferred": 10, "constraints": { "ceiling_height": 2.8, "min_width": 2.4 } },
+          { "space_id": "bedroom_east", "type": "bedroom", "zone": "private", "area_preferred": 16, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.2 } },
+          { "space_id": "bedroom_west", "type": "bedroom", "zone": "private", "area_preferred": 16, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.2 } },
+          { "space_id": "shared_bath_upper", "type": "bathroom", "zone": "service", "area_preferred": 8, "constraints": { "ceiling_height": 2.8, "min_width": 2.0 } },
+          { "space_id": "study_nook", "type": "office", "zone": "private", "area_preferred": 12, "constraints": { "natural_light": "preferred", "ceiling_height": 3.0, "min_width": 3.0 } }
+        ]
+      }
+    ]
+  }
+}

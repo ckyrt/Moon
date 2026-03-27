@@ -1,0 +1,43 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "villa",
+  "style": {
+    "category": "modern",
+    "facade": "glass_white",
+    "roof": "flat",
+    "window_style": "full_height",
+    "material": "concrete_white"
+  },
+  "mass": {
+    "footprint_area": 216,
+    "floors": 2,
+    "total_height": 6.0
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "ground_floor",
+        "spaces": [
+          { "space_id": "living_room", "type": "living", "zone": "public", "area_preferred": 38, "adjacency": [{ "to": "kitchen", "relationship": "connected", "importance": "required" }, { "to": "hall", "relationship": "nearby", "importance": "preferred" }], "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 5.0 } },
+          { "space_id": "kitchen", "type": "kitchen", "zone": "public", "area_preferred": 24, "adjacency": [{ "to": "living_room", "relationship": "connected", "importance": "required" }, { "to": "bathroom_gf", "relationship": "nearby", "importance": "preferred" }], "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "hall", "type": "corridor", "zone": "circulation", "area_preferred": 32, "adjacency": [{ "to": "core", "relationship": "connected", "importance": "required" }, { "to": "living_room", "relationship": "connected", "importance": "preferred" }], "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } },
+          { "space_id": "core", "type": "core", "zone": "service", "area_preferred": 26, "constraints": { "connects_to_floor": 1, "ceiling_height": 3.0, "min_width": 3.0 } },
+          { "space_id": "bathroom_gf", "type": "bathroom", "zone": "service", "area_preferred": 8, "adjacency": [{ "to": "hall", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "garage", "type": "garage", "zone": "service", "area_preferred": 36, "constraints": { "exterior_access": true, "ceiling_height": 3.0, "min_width": 5.5 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "upper_floor",
+        "spaces": [
+          { "space_id": "bedroom_1", "type": "bedroom", "zone": "private", "area_preferred": 26, "adjacency": [{ "to": "bedroom_2", "relationship": "nearby", "importance": "preferred" }], "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "bedroom_2", "type": "bedroom", "zone": "private", "area_preferred": 24, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "bathroom_up", "type": "bathroom", "zone": "service", "area_preferred": 10, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "landing", "type": "corridor", "zone": "circulation", "area_preferred": 20, "constraints": { "ceiling_height": 3.0, "min_width": 2.5 } }
+        ]
+      }
+    ]
+  }
+}

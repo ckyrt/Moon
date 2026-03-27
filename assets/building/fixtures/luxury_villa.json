@@ -1,0 +1,63 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "villa",
+  "style": {
+    "category": "luxury",
+    "facade": "stone_white",
+    "roof": "pitched",
+    "window_style": "french",
+    "material": "brick_white"
+  },
+  "mass": {
+    "footprint_area": 216,
+    "floors": 3,
+    "total_height": 9.5
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "ground_floor",
+        "spaces": [
+          { "space_id": "entrance_hall", "type": "entrance", "zone": "circulation", "area_preferred": 18, "constraints": { "natural_light": "preferred", "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "core_gf", "type": "core", "zone": "service", "area_preferred": 20, "constraints": { "connects_to_floor": 1, "ceiling_height": 3.5, "min_width": 3.0 } },
+          { "space_id": "living_room", "type": "living", "zone": "public", "area_preferred": 42, "constraints": { "natural_light": "required", "ceiling_height": 4.0, "min_width": 5.0 } },
+          { "space_id": "dining_room", "type": "dining", "zone": "public", "area_preferred": 20, "constraints": { "natural_light": "required", "ceiling_height": 3.5, "min_width": 4.0 } },
+          { "space_id": "kitchen", "type": "kitchen", "zone": "service", "area_preferred": 18, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "guest_bedroom", "type": "bedroom", "zone": "private", "area_preferred": 22, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "guest_bathroom", "type": "bathroom", "zone": "service", "area_preferred": 8, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "storage", "type": "storage", "zone": "service", "area_preferred": 9, "constraints": { "ceiling_height": 2.5, "min_width": 2.0 } },
+          { "space_id": "powder_room", "type": "bathroom", "zone": "service", "area_preferred": 8, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "laundry", "type": "laundry", "zone": "service", "area_preferred": 12, "constraints": { "ceiling_height": 2.5, "min_width": 2.5 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "bedroom_floor",
+        "spaces": [
+          { "space_id": "core_l1", "type": "core", "zone": "service", "area_preferred": 18, "constraints": { "connects_from_floor": 0, "connects_to_floor": 2, "ceiling_height": 3.0, "min_width": 3.0 } },
+          { "space_id": "master_bedroom", "type": "bedroom", "zone": "private", "area_preferred": 33, "constraints": { "natural_light": "required", "ceiling_height": 3.2, "min_width": 4.5 } },
+          { "space_id": "master_bathroom", "type": "bathroom", "zone": "service", "area_preferred": 12, "constraints": { "ceiling_height": 3.0, "min_width": 2.5 } },
+          { "space_id": "walk_in_closet", "type": "closet", "zone": "service", "area_preferred": 8, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "bedroom_2", "type": "bedroom", "zone": "private", "area_preferred": 18, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "bedroom_3", "type": "bedroom", "zone": "private", "area_preferred": 18, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "hallway", "type": "corridor", "zone": "circulation", "area_preferred": 24, "constraints": { "ceiling_height": 3.0, "min_width": 2.5 } },
+          { "space_id": "shared_bathroom", "type": "bathroom", "zone": "service", "area_preferred": 10, "constraints": { "ceiling_height": 3.0, "min_width": 2.5 } },
+          { "space_id": "study", "type": "office", "zone": "private", "area_preferred": 18, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "amenity_floor",
+        "spaces": [
+          { "space_id": "core_l2", "type": "core", "zone": "service", "area_preferred": 18, "constraints": { "connects_from_floor": 1, "ceiling_height": 3.0, "min_width": 3.0 } },
+          { "space_id": "entertainment_room", "type": "living", "zone": "public", "area_preferred": 52, "constraints": { "natural_light": "required", "ceiling_height": 3.5, "min_width": 5.0 } },
+          { "space_id": "gym", "type": "office", "zone": "private", "area_preferred": 24, "constraints": { "natural_light": "required", "ceiling_height": 3.5, "min_width": 4.0 } },
+          { "space_id": "terrace", "type": "terrace", "zone": "public", "area_preferred": 28, "constraints": { "exterior_access": true, "ceiling_height": 0.0, "min_width": 4.0 } },
+          { "space_id": "utility_room", "type": "storage", "zone": "service", "area_preferred": 12, "constraints": { "ceiling_height": 2.5, "min_width": 2.5 } }
+        ]
+      }
+    ]
+  }
+}

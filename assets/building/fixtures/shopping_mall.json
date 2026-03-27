@@ -1,0 +1,48 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "mall",
+  "style": {
+    "category": "commercial",
+    "facade": "glass_stone",
+    "roof": "flat",
+    "window_style": "full_height",
+    "material": "stone_glass"
+  },
+  "mass": {
+    "footprint_area": 900,
+    "floors": 2,
+    "total_height": 10.0
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "main_mall_floor",
+        "spaces": [
+          { "space_id": "mall_core_gf", "type": "core", "zone": "service", "area_preferred": 70, "constraints": { "connects_to_floor": 1, "ceiling_height": 4.8, "min_width": 4.5 } },
+          { "space_id": "main_atrium", "type": "void", "zone": "public", "area_preferred": 180, "constraints": { "ceiling_height": 10.0, "min_width": 10.0 } },
+          { "space_id": "main_concourse", "type": "corridor", "zone": "circulation", "area_preferred": 150, "adjacency": [{ "to": "main_atrium", "relationship": "around", "importance": "required" }], "constraints": { "ceiling_height": 4.8, "min_width": 5.0 } },
+          { "space_id": "mall_lobby", "type": "lobby", "zone": "circulation", "area_preferred": 84, "constraints": { "natural_light": "preferred", "ceiling_height": 5.0, "min_width": 6.0 } },
+          { "space_id": "shop_a_gf", "unit_id": "shop_a", "type": "shop", "zone": "public", "area_preferred": 68, "adjacency": [{ "to": "main_concourse", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 4.8, "min_width": 5.0 } },
+          { "space_id": "shop_b_gf", "unit_id": "shop_b", "type": "shop", "zone": "public", "area_preferred": 64, "adjacency": [{ "to": "main_concourse", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 4.8, "min_width": 5.0 } },
+          { "space_id": "shop_c_gf", "unit_id": "shop_c", "type": "shop", "zone": "public", "area_preferred": 72, "adjacency": [{ "to": "main_concourse", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 4.8, "min_width": 5.0 } },
+          { "space_id": "mall_bathroom_gf", "type": "bathroom", "zone": "service", "area_preferred": 18, "constraints": { "ceiling_height": 3.5, "min_width": 2.5 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "upper_mall_floor",
+        "spaces": [
+          { "space_id": "mall_core_l1", "type": "core", "zone": "service", "area_preferred": 68, "constraints": { "connects_from_floor": 0, "ceiling_height": 4.5, "min_width": 4.5 } },
+          { "space_id": "upper_atrium", "type": "void", "zone": "public", "area_preferred": 160, "constraints": { "ceiling_height": 5.0, "min_width": 9.0 } },
+          { "space_id": "upper_concourse", "type": "corridor", "zone": "circulation", "area_preferred": 140, "adjacency": [{ "to": "upper_atrium", "relationship": "around", "importance": "required" }], "constraints": { "ceiling_height": 4.5, "min_width": 5.0 } },
+          { "space_id": "food_hall", "unit_id": "food_hall", "type": "shop", "zone": "public", "area_preferred": 96, "adjacency": [{ "to": "upper_concourse", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 4.5, "min_width": 6.0 } },
+          { "space_id": "shop_d_l1", "unit_id": "shop_d", "type": "shop", "zone": "public", "area_preferred": 62, "adjacency": [{ "to": "upper_concourse", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 4.5, "min_width": 5.0 } },
+          { "space_id": "shop_e_l1", "unit_id": "shop_e", "type": "shop", "zone": "public", "area_preferred": 60, "adjacency": [{ "to": "upper_concourse", "relationship": "connected", "importance": "required" }], "constraints": { "ceiling_height": 4.5, "min_width": 5.0 } },
+          { "space_id": "mall_bathroom_l1", "type": "bathroom", "zone": "service", "area_preferred": 18, "constraints": { "ceiling_height": 3.5, "min_width": 2.5 } }
+        ]
+      }
+    ]
+  }
+}

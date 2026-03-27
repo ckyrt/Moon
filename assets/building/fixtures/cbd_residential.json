@@ -1,0 +1,71 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "cbd_residential",
+  "style": {
+    "category": "urban_modern",
+    "facade": "glass_metal",
+    "roof": "flat",
+    "window_style": "standard",
+    "material": "concrete_glass"
+  },
+  "mass": {
+    "footprint_area": 360,
+    "floors": 4,
+    "total_height": 13.6
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "arrival_floor",
+        "spaces": [
+          { "space_id": "res_core_gf", "type": "core", "zone": "service", "area_preferred": 80, "constraints": { "connects_to_floor": 1, "ceiling_height": 4.0, "min_width": 4.5 } },
+          { "space_id": "res_lobby", "type": "lobby", "zone": "circulation", "area_preferred": 72, "constraints": { "natural_light": "preferred", "ceiling_height": 4.2, "min_width": 5.0 } },
+          { "space_id": "amenity_lounge", "type": "living", "zone": "public", "area_preferred": 44, "constraints": { "natural_light": "required", "ceiling_height": 3.5, "min_width": 4.5 } },
+          { "space_id": "mail_room", "type": "storage", "zone": "service", "area_preferred": 12, "constraints": { "ceiling_height": 3.0, "min_width": 2.5 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "amenity_floor",
+        "spaces": [
+          { "space_id": "res_core_l1", "type": "core", "zone": "service", "area_preferred": 72, "constraints": { "connects_from_floor": 0, "connects_to_floor": 2, "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "res_corridor_l1", "type": "corridor", "zone": "circulation", "area_preferred": 46, "constraints": { "ceiling_height": 3.0, "min_width": 2.5 } },
+          { "space_id": "sky_lounge_l1", "type": "living", "zone": "public", "area_preferred": 42, "constraints": { "natural_light": "required", "ceiling_height": 3.2, "min_width": 5.0 } },
+          { "space_id": "cowork_l1", "type": "office", "zone": "public", "area_preferred": 30, "constraints": { "natural_light": "required", "ceiling_height": 3.2, "min_width": 4.0 } },
+          { "space_id": "gym_l1", "type": "office", "zone": "public", "area_preferred": 28, "constraints": { "natural_light": "preferred", "ceiling_height": 3.2, "min_width": 4.0 } },
+          { "space_id": "amenity_bathroom_l1", "type": "bathroom", "zone": "service", "area_preferred": 10, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "residential_floor_2",
+        "spaces": [
+          { "space_id": "res_core_l2", "type": "core", "zone": "service", "area_preferred": 72, "constraints": { "connects_from_floor": 1, "connects_to_floor": 3, "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "res_corridor_l2", "type": "corridor", "zone": "circulation", "area_preferred": 46, "constraints": { "ceiling_height": 3.0, "min_width": 2.5 } },
+          { "space_id": "living_a_l2", "unit_id": "cbd_a_l2", "type": "living", "zone": "public", "area_preferred": 28, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "bedroom_a_l2", "unit_id": "cbd_a_l2", "type": "bedroom", "zone": "private", "area_preferred": 16, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "bathroom_a_l2", "unit_id": "cbd_a_l2", "type": "bathroom", "zone": "service", "area_preferred": 7, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "living_b_l2", "unit_id": "cbd_b_l2", "type": "living", "zone": "public", "area_preferred": 28, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "bedroom_b_l2", "unit_id": "cbd_b_l2", "type": "bedroom", "zone": "private", "area_preferred": 16, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "bathroom_b_l2", "unit_id": "cbd_b_l2", "type": "bathroom", "zone": "service", "area_preferred": 7, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "residential_floor_3",
+        "spaces": [
+          { "space_id": "res_core_l3", "type": "core", "zone": "service", "area_preferred": 72, "constraints": { "connects_from_floor": 2, "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "res_corridor_l3", "type": "corridor", "zone": "circulation", "area_preferred": 46, "constraints": { "ceiling_height": 3.0, "min_width": 2.5 } },
+          { "space_id": "living_a_l3", "unit_id": "cbd_a_l3", "type": "living", "zone": "public", "area_preferred": 28, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "bedroom_a_l3", "unit_id": "cbd_a_l3", "type": "bedroom", "zone": "private", "area_preferred": 16, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "bathroom_a_l3", "unit_id": "cbd_a_l3", "type": "bathroom", "zone": "service", "area_preferred": 7, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "living_b_l3", "unit_id": "cbd_b_l3", "type": "living", "zone": "public", "area_preferred": 28, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "bedroom_b_l3", "unit_id": "cbd_b_l3", "type": "bedroom", "zone": "private", "area_preferred": 16, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "bathroom_b_l3", "unit_id": "cbd_b_l3", "type": "bathroom", "zone": "service", "area_preferred": 7, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } }
+        ]
+      }
+    ]
+  }
+}

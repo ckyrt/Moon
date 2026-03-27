@@ -1,0 +1,186 @@
+{
+  "schema": "moon_building_asset_catalog",
+  "version": 1,
+  "entries": [
+    {
+      "id": "shopping_center_demo",
+      "path": "test_building.json",
+      "category": "demo",
+      "building_type": "shopping_center",
+      "floors": 2,
+      "footprint_area": 2200,
+      "tags": ["preview", "demo", "retail"]
+    },
+    {
+      "id": "complex_shopping_mall_demo",
+      "path": "complex_shopping_mall_demo.json",
+      "category": "demo",
+      "building_type": "mall",
+      "floors": 3,
+      "footprint_area": 1225,
+      "tags": ["preview", "demo", "atrium", "vertical_transport"]
+    },
+    {
+      "id": "massing_vase_office_demo",
+      "path": "massing_vase_office_demo.json",
+      "category": "demo",
+      "building_type": "office_tower",
+      "floors": 8,
+      "footprint_area": 900,
+      "tags": ["preview", "demo", "massing_rule"]
+    },
+    {
+      "id": "office_collaboration_tower_demo",
+      "path": "office_collaboration_tower_demo.json",
+      "category": "demo",
+      "building_type": "office_tower",
+      "floors": 8,
+      "footprint_area": 900,
+      "tags": ["preview", "demo", "office", "massing_rule"]
+    },
+    {
+      "id": "office_enterprise_tower_demo",
+      "path": "office_enterprise_tower_demo.json",
+      "category": "demo",
+      "building_type": "office_tower",
+      "floors": 8,
+      "footprint_area": 900,
+      "tags": ["preview", "demo", "office", "massing_rule"]
+    },
+    {
+      "id": "fixture_villa",
+      "path": "fixtures/villa.json",
+      "category": "fixture",
+      "building_type": "villa",
+      "floors": 2,
+      "footprint_area": 216,
+      "tags": ["test", "fixture", "residential"]
+    },
+    {
+      "id": "fixture_l_shaped_villa",
+      "path": "fixtures/l_shaped_villa.json",
+      "category": "fixture",
+      "building_type": "villa",
+      "floors": 1,
+      "footprint_area": 176,
+      "tags": ["test", "fixture", "l_shaped"]
+    },
+    {
+      "id": "fixture_luxury_villa",
+      "path": "fixtures/luxury_villa.json",
+      "category": "fixture",
+      "building_type": "villa",
+      "floors": 3,
+      "footprint_area": 216,
+      "tags": ["test", "fixture", "luxury"]
+    },
+    {
+      "id": "fixture_apartment_building",
+      "path": "fixtures/apartment_building.json",
+      "category": "fixture",
+      "building_type": "apartment",
+      "floors": 3,
+      "footprint_area": 300,
+      "tags": ["test", "fixture", "apartment"]
+    },
+    {
+      "id": "fixture_office_tower",
+      "path": "fixtures/office_tower.json",
+      "category": "fixture",
+      "building_type": "office_tower",
+      "floors": 4,
+      "footprint_area": 420,
+      "tags": ["test", "fixture", "office"]
+    },
+    {
+      "id": "fixture_shopping_mall",
+      "path": "fixtures/shopping_mall.json",
+      "category": "fixture",
+      "building_type": "mall",
+      "floors": 2,
+      "footprint_area": 900,
+      "tags": ["test", "fixture", "mall"]
+    },
+    {
+      "id": "fixture_cbd_residential",
+      "path": "fixtures/cbd_residential.json",
+      "category": "fixture",
+      "building_type": "cbd_residential",
+      "floors": 4,
+      "footprint_area": 360,
+      "tags": ["test", "fixture", "residential_tower"]
+    },
+    {
+      "id": "reference_townhouse_villa",
+      "path": "reference/townhouse_villa.json",
+      "category": "reference",
+      "building_type": "villa",
+      "floors": 2,
+      "footprint_area": 132,
+      "tags": ["reference", "residential", "townhouse"]
+    },
+    {
+      "id": "reference_courtyard_villa",
+      "path": "reference/courtyard_villa.json",
+      "category": "reference",
+      "building_type": "villa",
+      "floors": 2,
+      "footprint_area": 196,
+      "tags": ["reference", "residential", "courtyard"]
+    },
+    {
+      "id": "reference_midrise_apartment",
+      "path": "reference/midrise_apartment.json",
+      "category": "reference",
+      "building_type": "apartment",
+      "floors": 4,
+      "footprint_area": 420,
+      "tags": ["reference", "apartment", "midrise"]
+    },
+    {
+      "id": "reference_slender_cbd_residential",
+      "path": "reference/slender_cbd_residential.json",
+      "category": "reference",
+      "building_type": "cbd_residential",
+      "floors": 5,
+      "footprint_area": 361,
+      "tags": ["reference", "residential_tower", "slender"]
+    },
+    {
+      "id": "reference_neighborhood_office",
+      "path": "reference/neighborhood_office.json",
+      "category": "reference",
+      "building_type": "office",
+      "floors": 3,
+      "footprint_area": 320,
+      "tags": ["reference", "office", "lowrise"]
+    },
+    {
+      "id": "reference_corporate_office_tower",
+      "path": "reference/corporate_office_tower.json",
+      "category": "reference",
+      "building_type": "office_tower",
+      "floors": 6,
+      "footprint_area": 576,
+      "tags": ["reference", "office_tower", "podium_tower"]
+    },
+    {
+      "id": "reference_retail_center",
+      "path": "reference/retail_center.json",
+      "category": "reference",
+      "building_type": "retail_center",
+      "floors": 2,
+      "footprint_area": 1024,
+      "tags": ["reference", "retail", "atrium"]
+    },
+    {
+      "id": "reference_shopping_center",
+      "path": "reference/shopping_center.json",
+      "category": "reference",
+      "building_type": "shopping_center",
+      "floors": 2,
+      "footprint_area": 1156,
+      "tags": ["reference", "retail", "galleria"]
+    }
+  ]
+}

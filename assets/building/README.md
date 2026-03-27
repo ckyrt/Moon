@@ -685,6 +685,37 @@ The JSON blueprint remains editable by both **AI and users**.
 
 ------------------------------------------------------------------------
 
+# Reference Assets
+
+`fixtures/` stores stable test fixtures that are still useful as editor-previewable
+building assets.
+
+`reference/` stores reusable semantic building JSON assets that are shared by:
+
+- building pipeline tests
+- editor preview / inspection workflows
+- future scene-building and content-authoring passes
+
+`catalog.json` is the index file for all semantic building JSON assets under
+`assets/building/`. It is intended to be the single place tools or editor UI can
+use to enumerate previewable building inputs.
+
+Current reference archetypes include:
+
+- townhouse villa
+- courtyard villa
+- midrise apartment
+- slender CBD residential tower
+- neighborhood office
+- corporate office tower
+- retail center
+- shopping center
+
+These files should stay realistic enough to represent plausible buildings,
+not just minimal test fixtures.
+
+------------------------------------------------------------------------
+
 # 18. Engine Implementation Notes
 
 This section is the engine-side implementation supplement for the same

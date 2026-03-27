@@ -1,0 +1,49 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "villa",
+  "style": {
+    "category": "modern_family",
+    "facade": "brick_wood",
+    "roof": "pitched",
+    "window_style": "standard",
+    "material": "brick_light"
+  },
+  "mass": {
+    "footprint_area": 132,
+    "floors": 2,
+    "total_height": 6.6
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "family_ground_floor",
+        "spaces": [
+          { "space_id": "entry_hall", "type": "entrance", "zone": "circulation", "area_preferred": 14, "constraints": { "natural_light": "preferred", "ceiling_height": 3.2, "min_width": 2.5 } },
+          { "space_id": "townhouse_core_gf", "type": "core", "zone": "service", "area_preferred": 16, "constraints": { "connects_to_floor": 1, "ceiling_height": 3.2, "min_width": 2.5 } },
+          { "space_id": "family_living", "type": "living", "zone": "public", "area_preferred": 32, "constraints": { "natural_light": "required", "ceiling_height": 3.2, "min_width": 4.5 } },
+          { "space_id": "family_dining", "type": "dining", "zone": "public", "area_preferred": 16, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "family_kitchen", "type": "kitchen", "zone": "service", "area_preferred": 16, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.0 } },
+          { "space_id": "guest_study", "type": "office", "zone": "private", "area_preferred": 12, "constraints": { "natural_light": "preferred", "ceiling_height": 3.0, "min_width": 3.0 } },
+          { "space_id": "powder_room", "type": "bathroom", "zone": "service", "area_preferred": 5, "constraints": { "ceiling_height": 2.8, "min_width": 2.0 } },
+          { "space_id": "pantry_storage", "type": "storage", "zone": "service", "area_preferred": 6, "constraints": { "ceiling_height": 2.8, "min_width": 2.0 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "family_bedroom_floor",
+        "spaces": [
+          { "space_id": "townhouse_core_l1", "type": "core", "zone": "service", "area_preferred": 16, "constraints": { "connects_from_floor": 0, "ceiling_height": 3.0, "min_width": 2.5 } },
+          { "space_id": "family_hall", "type": "corridor", "zone": "circulation", "area_preferred": 16, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "primary_bedroom", "type": "bedroom", "zone": "private", "area_preferred": 24, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.8 } },
+          { "space_id": "primary_bathroom", "type": "bathroom", "zone": "service", "area_preferred": 8, "constraints": { "ceiling_height": 2.8, "min_width": 2.2 } },
+          { "space_id": "kid_bedroom_a", "type": "bedroom", "zone": "private", "area_preferred": 15, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.2 } },
+          { "space_id": "kid_bedroom_b", "type": "bedroom", "zone": "private", "area_preferred": 15, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 3.2 } },
+          { "space_id": "shared_bathroom", "type": "bathroom", "zone": "service", "area_preferred": 7, "constraints": { "ceiling_height": 2.8, "min_width": 2.0 } },
+          { "space_id": "linen_closet", "type": "closet", "zone": "service", "area_preferred": 4, "constraints": { "ceiling_height": 2.8, "min_width": 1.5 } }
+        ]
+      }
+    ]
+  }
+}

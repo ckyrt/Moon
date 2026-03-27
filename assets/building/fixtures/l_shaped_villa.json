@@ -1,0 +1,30 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "villa",
+  "style": {
+    "category": "modern",
+    "facade": "glass_white",
+    "roof": "flat",
+    "window_style": "full_height",
+    "material": "concrete_white"
+  },
+  "mass": {
+    "footprint_area": 176,
+    "floors": 1,
+    "total_height": 3.0
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "l_shape_floor",
+        "spaces": [
+          { "space_id": "living_wing", "type": "living", "zone": "public", "area_preferred": 77, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 6.0 } },
+          { "space_id": "bedroom_wing", "type": "bedroom", "zone": "private", "area_preferred": 63, "constraints": { "natural_light": "required", "ceiling_height": 3.0, "min_width": 5.0 } },
+          { "space_id": "joint_corridor", "type": "corridor", "zone": "circulation", "area_preferred": 18, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } }
+        ]
+      }
+    ]
+  }
+}
