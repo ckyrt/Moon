@@ -348,7 +348,7 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
                 column.depth,
                 "concrete_floor"));
         }
-    } else {
+    } else if (building.floorPlates.empty()) {
         std::unordered_set<std::string> emittedSupportColumns;
         for (const auto& floor : building.definition.floors) {
             const float floorBaseY = GetFloorBaseHeight(building.definition, floor.level);

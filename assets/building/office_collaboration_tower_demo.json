@@ -1,0 +1,106 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "office_tower",
+  "style": {
+    "category": "commercial",
+    "facade": "glass_metal",
+    "roof": "flat",
+    "window_style": "full_height",
+    "material": "glass_metal"
+  },
+  "mass": {
+    "footprint_area": 900,
+    "floors": 8,
+    "total_height": 140.0,
+    "massing_rule": "planned_vase_tower.json"
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "arrival_floor",
+        "spaces": [
+          { "space_id": "core_0", "type": "core", "zone": "service", "area_preferred": 84, "constraints": { "connects_to_floor": 1, "ceiling_height": 6.0, "min_width": 5.0 } },
+          { "space_id": "lobby_0", "type": "lobby", "zone": "circulation", "area_preferred": 150, "constraints": { "ceiling_height": 6.0, "min_width": 8.0 } },
+          { "space_id": "cafe_0", "type": "shop", "zone": "public", "area_preferred": 95, "constraints": { "ceiling_height": 5.5, "min_width": 5.5 } },
+          { "space_id": "showroom_0", "type": "office", "zone": "public", "area_preferred": 120, "constraints": { "ceiling_height": 5.5, "min_width": 6.0 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "client_collab_floor",
+        "spaces": [
+          { "space_id": "core_1", "type": "core", "zone": "service", "area_preferred": 74, "constraints": { "connects_from_floor": 0, "connects_to_floor": 2, "ceiling_height": 5.2, "min_width": 4.5 } },
+          { "space_id": "corridor_1", "type": "corridor", "zone": "circulation", "area_preferred": 72, "constraints": { "ceiling_height": 5.0, "min_width": 3.0 } },
+          { "space_id": "meeting_suite_1", "type": "meeting_room", "zone": "public", "area_preferred": 130, "constraints": { "ceiling_height": 5.0, "min_width": 6.5 } },
+          { "space_id": "client_lounge_1", "type": "office", "zone": "public", "area_preferred": 95, "constraints": { "ceiling_height": 5.0, "min_width": 5.5 } }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "collab_office_2",
+        "spaces": [
+          { "space_id": "core_2", "type": "core", "zone": "service", "area_preferred": 70, "constraints": { "connects_from_floor": 1, "connects_to_floor": 3, "ceiling_height": 4.2, "min_width": 4.5 } },
+          { "space_id": "corridor_2", "type": "corridor", "zone": "circulation", "area_preferred": 54, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "team_neighborhood_2", "type": "office", "zone": "public", "area_preferred": 160, "constraints": { "ceiling_height": 4.0, "min_width": 7.5 } },
+          { "space_id": "project_room_2", "type": "meeting_room", "zone": "public", "area_preferred": 78, "constraints": { "ceiling_height": 4.0, "min_width": 5.0 } },
+          { "space_id": "focus_room_2", "type": "office", "zone": "public", "area_preferred": 68, "constraints": { "ceiling_height": 4.0, "min_width": 4.5 } }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "collab_office_3",
+        "spaces": [
+          { "space_id": "core_3", "type": "core", "zone": "service", "area_preferred": 68, "constraints": { "connects_from_floor": 2, "connects_to_floor": 4, "ceiling_height": 4.0, "min_width": 4.5 } },
+          { "space_id": "corridor_3", "type": "corridor", "zone": "circulation", "area_preferred": 52, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "team_neighborhood_3", "type": "office", "zone": "public", "area_preferred": 150, "constraints": { "ceiling_height": 4.0, "min_width": 7.0 } },
+          { "space_id": "project_room_3", "type": "meeting_room", "zone": "public", "area_preferred": 72, "constraints": { "ceiling_height": 4.0, "min_width": 4.8 } },
+          { "space_id": "training_room_3", "type": "meeting_room", "zone": "public", "area_preferred": 76, "constraints": { "ceiling_height": 4.0, "min_width": 5.0 } }
+        ]
+      },
+      {
+        "level": 4,
+        "name": "collab_office_4",
+        "spaces": [
+          { "space_id": "core_4", "type": "core", "zone": "service", "area_preferred": 66, "constraints": { "connects_from_floor": 3, "connects_to_floor": 5, "ceiling_height": 4.0, "min_width": 4.5 } },
+          { "space_id": "corridor_4", "type": "corridor", "zone": "circulation", "area_preferred": 50, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "studio_4", "type": "office", "zone": "public", "area_preferred": 140, "constraints": { "ceiling_height": 4.0, "min_width": 7.0 } },
+          { "space_id": "project_room_4", "type": "meeting_room", "zone": "public", "area_preferred": 70, "constraints": { "ceiling_height": 4.0, "min_width": 4.8 } },
+          { "space_id": "library_4", "type": "office", "zone": "public", "area_preferred": 64, "constraints": { "ceiling_height": 4.0, "min_width": 4.5 } }
+        ]
+      },
+      {
+        "level": 5,
+        "name": "collab_office_5",
+        "spaces": [
+          { "space_id": "core_5", "type": "core", "zone": "service", "area_preferred": 64, "constraints": { "connects_from_floor": 4, "connects_to_floor": 6, "ceiling_height": 4.0, "min_width": 4.5 } },
+          { "space_id": "corridor_5", "type": "corridor", "zone": "circulation", "area_preferred": 48, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "studio_5", "type": "office", "zone": "public", "area_preferred": 136, "constraints": { "ceiling_height": 4.0, "min_width": 7.0 } },
+          { "space_id": "client_war_room_5", "type": "meeting_room", "zone": "public", "area_preferred": 68, "constraints": { "ceiling_height": 4.0, "min_width": 4.8 } },
+          { "space_id": "focus_room_5", "type": "office", "zone": "public", "area_preferred": 60, "constraints": { "ceiling_height": 4.0, "min_width": 4.2 } }
+        ]
+      },
+      {
+        "level": 6,
+        "name": "collab_office_6",
+        "spaces": [
+          { "space_id": "core_6", "type": "core", "zone": "service", "area_preferred": 62, "constraints": { "connects_from_floor": 5, "connects_to_floor": 7, "ceiling_height": 4.0, "min_width": 4.0 } },
+          { "space_id": "corridor_6", "type": "corridor", "zone": "circulation", "area_preferred": 46, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "leadership_office_6", "type": "office", "zone": "public", "area_preferred": 110, "constraints": { "ceiling_height": 4.0, "min_width": 6.0 } },
+          { "space_id": "boardroom_6", "type": "meeting_room", "zone": "public", "area_preferred": 78, "constraints": { "ceiling_height": 4.0, "min_width": 5.5 } }
+        ]
+      },
+      {
+        "level": 7,
+        "name": "collab_office_7",
+        "spaces": [
+          { "space_id": "core_7", "type": "core", "zone": "service", "area_preferred": 60, "constraints": { "connects_from_floor": 6, "ceiling_height": 4.0, "min_width": 4.0 } },
+          { "space_id": "corridor_7", "type": "corridor", "zone": "circulation", "area_preferred": 44, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "executive_suite_7", "type": "office", "zone": "public", "area_preferred": 120, "constraints": { "ceiling_height": 4.0, "min_width": 6.5 } },
+          { "space_id": "sky_meeting_7", "type": "meeting_room", "zone": "public", "area_preferred": 70, "constraints": { "ceiling_height": 4.0, "min_width": 5.0 } }
+        ]
+      }
+    ]
+  }
+}

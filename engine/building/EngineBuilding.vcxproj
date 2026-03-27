@@ -99,6 +99,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Building.h" />
+    <ClInclude Include="BuildingGenerationInputs.h" />
     <ClInclude Include="BuildingTypes.h" />
     <ClInclude Include="BuildingPipeline.h" />
     <ClInclude Include="SchemaValidator.h" />
@@ -114,9 +115,15 @@
     <ClInclude Include="GridCoord.h" />
     <ClInclude Include="LayoutResolver.h" />
     <ClInclude Include="MassFloorPlateGenerator.h" />
+    <ClInclude Include="OfficeFloorLayoutSolver.h" />
+    <ClInclude Include="ResidentialFloorLayoutSolver.h" />
+    <ClInclude Include="RetailFloorLayoutSolver.h" />
+    <ClInclude Include="SemanticFloorLayoutGenerator.h" />
+    <ClInclude Include="StructuralPlanGenerator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BuildingPipeline.cpp" />
+    <ClCompile Include="BuildingGenerationInputs.cpp" />
     <ClCompile Include="SchemaValidator.cpp" />
     <ClCompile Include="LayoutValidator.cpp" />
     <ClCompile Include="SpaceGraphBuilder.cpp" />
@@ -129,6 +136,11 @@
     <ClCompile Include="BuildingToCSGConverter.cpp" />
     <ClCompile Include="LayoutResolver.cpp" />
     <ClCompile Include="MassFloorPlateGenerator.cpp" />
+    <ClCompile Include="OfficeFloorLayoutSolver.cpp" />
+    <ClCompile Include="ResidentialFloorLayoutSolver.cpp" />
+    <ClCompile Include="RetailFloorLayoutSolver.cpp" />
+    <ClCompile Include="SemanticFloorLayoutGenerator.cpp" />
+    <ClCompile Include="StructuralPlanGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\core\EngineCore.vcxproj">

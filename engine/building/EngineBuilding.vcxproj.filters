@@ -26,6 +26,9 @@
     <ClInclude Include="BuildingPipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="BuildingGenerationInputs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="SchemaValidator.h">
       <Filter>Validators</Filter>
     </ClInclude>
@@ -47,9 +50,24 @@
     <ClInclude Include="FacadeGenerator.h">
       <Filter>Generators</Filter>
     </ClInclude>
+    <ClInclude Include="StructuralPlanGenerator.h">
+      <Filter>Generators</Filter>
+    </ClInclude>
+    <ClInclude Include="OfficeFloorLayoutSolver.h">
+      <Filter>Generators</Filter>
+    </ClInclude>
+    <ClInclude Include="ResidentialFloorLayoutSolver.h">
+      <Filter>Generators</Filter>
+    </ClInclude>
+    <ClInclude Include="RetailFloorLayoutSolver.h">
+      <Filter>Generators</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BuildingPipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BuildingGenerationInputs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SchemaValidator.cpp">
@@ -71,6 +89,18 @@
       <Filter>Generators</Filter>
     </ClCompile>
     <ClCompile Include="FacadeGenerator.cpp">
+      <Filter>Generators</Filter>
+    </ClCompile>
+    <ClCompile Include="StructuralPlanGenerator.cpp">
+      <Filter>Generators</Filter>
+    </ClCompile>
+    <ClCompile Include="OfficeFloorLayoutSolver.cpp">
+      <Filter>Generators</Filter>
+    </ClCompile>
+    <ClCompile Include="ResidentialFloorLayoutSolver.cpp">
+      <Filter>Generators</Filter>
+    </ClCompile>
+    <ClCompile Include="RetailFloorLayoutSolver.cpp">
       <Filter>Generators</Filter>
     </ClCompile>
   </ItemGroup>

@@ -221,6 +221,72 @@ TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_GeneratesVariabl
     EXPECT_GT(building.verticalCores.size(), 0);
 }
 
+TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_GeneratesMassDrivenSemanticLayout) {
+    const std::string json = TestHelpers::LoadFromFile("massing_vase_office_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    const bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    EXPECT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.floorPlates.size(), 8);
+    EXPECT_GE(building.verticalCores.size(), 3);
+    EXPECT_GT(building.programBlocks.size(), 12);
+    EXPECT_GT(building.walls.size(), 0);
+    EXPECT_GT(building.connections.size(), 0);
+
+    int officeSpaceCount = 0;
+    int corridorSpaceCount = 0;
+    for (const auto& floor : building.definition.floors) {
+        EXPECT_FALSE(floor.spaces.empty());
+        for (const auto& space : floor.spaces) {
+            if (space.properties.usage == SpaceUsage::Office) {
+                ++officeSpaceCount;
+            }
+            if (space.properties.usage == SpaceUsage::Corridor ||
+                space.properties.usage == SpaceUsage::Entrance) {
+                ++corridorSpaceCount;
+            }
+        }
+    }
+
+    EXPECT_GE(officeSpaceCount, 8);
+    EXPECT_GT(corridorSpaceCount, 4);
+}
+
+TEST_F(BuildingPipelineTest, ProcessOfficeTower_DistinctSemanticDemos_PreserveProgramIntent) {
+    GeneratedBuilding collaborationBuilding;
+    GeneratedBuilding enterpriseBuilding;
+    std::string collaborationError;
+    std::string enterpriseError;
+
+    const std::string collaborationJson = TestHelpers::LoadFromFile("office_collaboration_tower_demo.json");
+    const std::string enterpriseJson = TestHelpers::LoadFromFile("office_enterprise_tower_demo.json");
+    ASSERT_FALSE(collaborationJson.empty());
+    ASSERT_FALSE(enterpriseJson.empty());
+
+    const bool collaborationResult = pipeline.ProcessBuilding(collaborationJson, collaborationBuilding, collaborationError);
+    const bool enterpriseResult = pipeline.ProcessBuilding(enterpriseJson, enterpriseBuilding, enterpriseError);
+
+    EXPECT_TRUE(collaborationResult) << "Error: " << collaborationError;
+    EXPECT_TRUE(enterpriseResult) << "Error: " << enterpriseError;
+
+    auto hasProgramBlock = [](const GeneratedBuilding& generated, const char* blockId) {
+        return std::any_of(generated.programBlocks.begin(), generated.programBlocks.end(),
+            [&](const ProgramBlock& block) { return block.blockId == blockId; });
+    };
+
+    EXPECT_TRUE(hasProgramBlock(collaborationBuilding, "showroom_0"));
+    EXPECT_TRUE(hasProgramBlock(collaborationBuilding, "client_lounge_1"));
+    EXPECT_TRUE(hasProgramBlock(collaborationBuilding, "sky_meeting_7"));
+
+    EXPECT_TRUE(hasProgramBlock(enterpriseBuilding, "retail_0"));
+    EXPECT_TRUE(hasProgramBlock(enterpriseBuilding, "conference_center_1"));
+    EXPECT_TRUE(hasProgramBlock(enterpriseBuilding, "sky_boardroom_7"));
+
+    EXPECT_FALSE(hasProgramBlock(collaborationBuilding, "conference_center_1"));
+    EXPECT_FALSE(hasProgramBlock(enterpriseBuilding, "showroom_0"));
+}
+
 TEST_F(BuildingPipelineTest, ProcessCBDResidential_Success) {
     std::string json = TestHelpers::CreateCBDResidential();
 

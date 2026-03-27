@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BuildingGenerationInputs.h"
 #include "BuildingTypes.h"
 #include "SchemaValidator.h"
 #include "LayoutValidator.h"
@@ -9,6 +10,8 @@
 #include "StairGenerator.h"
 #include "FacadeGenerator.h"
 #include "MassFloorPlateGenerator.h"
+#include "SemanticFloorLayoutGenerator.h"
+#include "StructuralPlanGenerator.h"
 #include <string>
 #include <memory>
 
@@ -86,6 +89,8 @@ public:
 
 private:
     bool ProcessBuildingInternal(const BuildingDefinition& definition,
+                                 const BuildingFormInput* formInput,
+                                 const BuildingLayoutInput* layoutInput,
                                  GeneratedBuilding& outBuilding,
                                  BestEffortGenerationReport* outReport,
                                  bool bestEffort,
@@ -96,6 +101,11 @@ private:
     bool ProcessMassAndFloors(const BuildingDefinition& definition);
     bool GenerateStructuralPlan(const BuildingDefinition& definition,
                                 GeneratedBuilding& outBuilding);
+    void ApplyMassDrivenSemanticLayout(BuildingDefinition& definition,
+                                       const BuildingFormInput* formInput,
+                                       const BuildingLayoutInput* layoutInput,
+                                       GeneratedBuilding& generated,
+                                       std::string& outError) const;
     bool BuildSpaceGraph(const BuildingDefinition& definition,
                         GeneratedBuilding& outBuilding);
     bool GenerateWalls(const BuildingDefinition& definition,
@@ -115,6 +125,8 @@ private:
     StairGenerator m_stairGenerator;
     FacadeGenerator m_facadeGenerator;
     MassFloorPlateGenerator m_massFloorPlateGenerator;
+    StructuralPlanGenerator m_structuralPlanGenerator;
+    SemanticFloorLayoutGenerator m_semanticFloorLayoutGenerator;
 
     std::vector<StairGeometry> m_stairs;
     std::vector<FacadeElement> m_facadeElements;
