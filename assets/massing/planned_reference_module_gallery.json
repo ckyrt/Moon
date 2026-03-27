@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "reference_module_gallery",
+  "description": "Gallery of reusable massing modules for roofs, entries, facades, and transit parts",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "module_gallery",
+    "building_type": "reference_gallery",
+    "style": "catalog"
+  },
+  "root": {
+    "id": "reference_module_gallery_root",
+    "name": "reference_module_gallery_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "rotunda_dome_demo",
+        "name": "rotunda_dome_demo",
+        "type": "reference",
+        "ref": "planned_glazed_rotunda_dome.json",
+        "transform": {
+          "position": [-90.0, 0.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "entry_canopy_demo",
+        "name": "entry_canopy_demo",
+        "type": "reference",
+        "ref": "planned_entry_canopy_module.json",
+        "transform": {
+          "position": [-30.0, 0.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "skylight_demo",
+        "name": "skylight_demo",
+        "type": "reference",
+        "ref": "planned_linear_skylight_module.json",
+        "transform": {
+          "position": [30.0, 0.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "roof_cap_demo",
+        "name": "roof_cap_demo",
+        "type": "reference",
+        "ref": "planned_faceted_roof_cap_module.json",
+        "transform": {
+          "position": [84.0, 0.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "portico_demo",
+        "name": "portico_demo",
+        "type": "reference",
+        "ref": "planned_portico_entry_module.json",
+        "transform": {
+          "position": [-30.0, 0.0, 28.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "platform_canopy_demo",
+        "name": "platform_canopy_demo",
+        "type": "reference",
+        "ref": "planned_platform_canopy_module.json",
+        "transform": {
+          "position": [30.0, 0.0, 28.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "vertical_fin_demo",
+        "name": "vertical_fin_demo",
+        "type": "reference",
+        "ref": "planned_vertical_fin_module.json",
+        "transform": {
+          "position": [84.0, 0.0, 28.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "crown_frame_demo",
+        "name": "crown_frame_demo",
+        "type": "reference",
+        "ref": "planned_crown_frame_module.json",
+        "transform": {
+          "position": [-90.0, 0.0, 32.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      }
+    ]
+  }
+}

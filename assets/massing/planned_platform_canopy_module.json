@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "platform_canopy_module",
+  "description": "Reusable slim platform canopy for stations, civic walkways, and transit concourses",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "arrival_module",
+    "building_type": "platform_canopy",
+    "style": "infrastructure_metal"
+  },
+  "root": {
+    "id": "platform_canopy_root",
+    "name": "platform_canopy_root",
+    "type": "primitive",
+    "primitive": "cube",
+    "material": "metal",
+    "params": {
+      "size_x": 16.0,
+      "size_y": 0.45,
+      "size_z": 3.5
+    }
+  }
+}

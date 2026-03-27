@@ -79,6 +79,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BuildingMassingPlanner.h" />
+    <ClInclude Include="MassingPromptGenerator.h" />
+    <ClInclude Include="OpenAIMassingService.h" />
     <ClInclude Include="MassRules.h" />
     <ClInclude Include="MassRuleParser.h" />
     <ClInclude Include="MassRuleCompiler.h" />
@@ -89,6 +91,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BuildingMassingPlanner.cpp" />
+    <ClCompile Include="MassingPromptGenerator.cpp" />
+    <ClCompile Include="OpenAIMassingService.cpp" />
     <ClCompile Include="MassRules.cpp" />
     <ClCompile Include="MassRuleParser.cpp" />
     <ClCompile Include="MassRuleCompiler.cpp" />

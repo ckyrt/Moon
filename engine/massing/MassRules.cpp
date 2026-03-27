@@ -14,6 +14,7 @@ const char* ToString(RuleNodeType type) {
         case RuleNodeType::Deform: return "deform";
         case RuleNodeType::Array: return "array";
         case RuleNodeType::Group: return "group";
+        case RuleNodeType::Reference: return "reference";
         default: return "primitive";
     }
 }
@@ -49,6 +50,7 @@ bool TryParseRuleNodeType(const std::string& value, RuleNodeType& outType) {
     if (value == "deform") { outType = RuleNodeType::Deform; return true; }
     if (value == "array") { outType = RuleNodeType::Array; return true; }
     if (value == "group") { outType = RuleNodeType::Group; return true; }
+    if (value == "reference") { outType = RuleNodeType::Reference; return true; }
     return false;
 }
 

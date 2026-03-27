@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "faceted_roof_cap_module",
+  "description": "Reusable faceted metal roof cap for office towers, residential towers, and mixed-use crowns",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "roof_module",
+    "building_type": "roof_cap",
+    "style": "faceted_modern"
+  },
+  "root": {
+    "id": "faceted_roof_cap_root",
+    "name": "faceted_roof_cap_root",
+    "type": "extrude",
+    "material": "metal",
+    "params": {
+      "height": 0.85
+    },
+    "profiles": [
+      {
+        "id": "faceted_roof_cap_profile",
+        "closed": true,
+        "points": [[-6.8, -7.0], [6.8, -7.0], [8.1, -4.2], [8.1, 4.2], [6.8, 7.0], [-6.8, 7.0], [-8.1, 4.2], [-8.1, -4.2]]
+      }
+    ]
+  }
+}

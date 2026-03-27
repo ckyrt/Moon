@@ -92,23 +92,13 @@
       {
         "id": "roof_cap",
         "name": "roof_cap",
-        "type": "extrude",
-        "material": "metal",
-        "params": {
-          "height": 0.85
-        },
+        "type": "reference",
+        "ref": "planned_faceted_roof_cap_module.json",
         "transform": {
           "position": [0.0, 166.0, 0.0],
           "rotation": [0.0, 5.5, 0.0],
           "scale": [1.0, 1.0, 1.0]
-        },
-        "profiles": [
-          {
-            "id": "roof_cap_profile",
-            "closed": true,
-            "points": [[-6.95, -7.05], [5.12, -7.14], [7.16, -5.3], [7.78, -0.95], [7.56, 4.08], [5.82, 6.53], [-5.5, 6.72], [-7.44, 4.49], [-8.05, 0.72], [-7.44, -4.08]]
-          }
-        ]
+        }
       },
       {
         "id": "fins",
@@ -130,14 +120,8 @@
           {
             "id": "fin",
             "name": "fin",
-            "type": "primitive",
-            "primitive": "cube",
-            "material": "metal",
-            "params": {
-              "size_x": 0.32,
-              "size_y": 34.0,
-              "size_z": 0.5
-            }
+            "type": "reference",
+            "ref": "planned_vertical_fin_module.json"
           }
         ]
       }

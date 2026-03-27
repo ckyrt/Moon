@@ -51,6 +51,7 @@ json VecToJson(const Vec3& value) {
 void MergeInlineParams(const json& nodeJson, json& ioParams) {
     static const std::unordered_set<std::string> kReservedKeys = {
         "id", "name", "type", "primitive", "operation", "material",
+        "ref",
         "transform", "editor", "params",
         "profile", "profiles", "path", "paths",
         "child", "children"
@@ -138,6 +139,7 @@ bool MassRuleParser::ParseNode(const json& nodeJson, RuleNode& outNode, std::str
     outNode.id = nodeJson.value("id", "");
     outNode.name = nodeJson.value("name", "");
     outNode.material = nodeJson.value("material", "");
+    outNode.reference = nodeJson.value("ref", "");
     outNode.params = nodeJson.value("params", json::object());
     outNode.editor = nodeJson.value("editor", json::object());
     MergeInlineParams(nodeJson, outNode.params);
@@ -171,6 +173,11 @@ bool MassRuleParser::ParseNode(const json& nodeJson, RuleNode& outNode, std::str
             outError = "Unsupported CSG operation: " + operationString;
             return false;
         }
+    }
+
+    if (outNode.type == RuleNodeType::Reference && outNode.reference.empty()) {
+        outError = "Reference node is missing 'ref'";
+        return false;
     }
 
     if (nodeJson.contains("profiles")) {
@@ -318,6 +325,9 @@ json MassRuleParser::SerializeNode(const RuleNode& node) {
     }
     if (node.type == RuleNodeType::Csg) {
         result["operation"] = ToString(node.csgOperation);
+    }
+    if (node.type == RuleNodeType::Reference && !node.reference.empty()) {
+        result["ref"] = node.reference;
     }
     result["transform"] = SerializeTransform(node.transform);
     if (!node.material.empty()) {

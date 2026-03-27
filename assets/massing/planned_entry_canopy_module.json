@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "entry_canopy_module",
+  "description": "Reusable curved entry canopy module for malls, stations, and civic arrivals",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "arrival_module",
+    "building_type": "entry_canopy",
+    "style": "metal_modern"
+  },
+  "root": {
+    "id": "entry_canopy_module_root",
+    "name": "entry_canopy_module_root",
+    "type": "sweep",
+    "material": "metal",
+    "profiles": [
+      {
+        "id": "entry_canopy_section",
+        "closed": true,
+        "points": [[-1.6, -0.28], [1.6, -0.28], [1.6, 0.28], [-1.6, 0.28]]
+      }
+    ],
+    "paths": [
+      {
+        "id": "entry_canopy_path",
+        "closed": false,
+        "points": [[-16, 0, 0], [-8, 3, 0], [0, 4.5, 0], [8, 3, 0], [16, 0, 0]]
+      }
+    ]
+  }
+}

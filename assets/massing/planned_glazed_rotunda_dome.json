@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "glazed_rotunda_dome_module",
+  "description": "Reusable glazed drum plus civic dome module for museums, halls, malls, and landmark roofs",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "roof_module",
+    "building_type": "rotunda_dome_module",
+    "style": "civic_modern"
+  },
+  "root": {
+    "id": "rotunda_dome_module_root",
+    "name": "rotunda_dome_module_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "drum",
+        "name": "drum",
+        "type": "extrude",
+        "material": "glass",
+        "params": {
+          "height": 12.0
+        },
+        "profiles": [
+          {
+            "id": "drum_profile",
+            "closed": true,
+            "points": [[-12.4, 0.0], [-8.8, -8.8], [0.0, -12.4], [8.8, -8.8], [12.4, 0.0], [8.8, 8.8], [0.0, 12.4], [-8.8, 8.8]]
+          }
+        ]
+      },
+      {
+        "id": "dome",
+        "name": "dome",
+        "type": "loft",
+        "material": "metal",
+        "transform": {
+          "position": [0.0, 12.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "capped": true,
+          "levels": [0.0, 3.5, 7.2, 10.8]
+        },
+        "profiles": [
+          {
+            "id": "dome_base_profile",
+            "closed": true,
+            "points": [[-12.1, 0.0], [-8.6, -8.6], [0.0, -12.1], [8.6, -8.6], [12.1, 0.0], [8.6, 8.6], [0.0, 12.1], [-8.6, 8.6]]
+          },
+          {
+            "id": "dome_mid_profile",
+            "closed": true,
+            "points": [[-10.2, 0.0], [-7.2, -7.2], [0.0, -10.2], [7.2, -7.2], [10.2, 0.0], [7.2, 7.2], [0.0, 10.2], [-7.2, 7.2]]
+          },
+          {
+            "id": "dome_upper_profile",
+            "closed": true,
+            "points": [[-6.9, 0.0], [-4.9, -4.9], [0.0, -6.9], [4.9, -4.9], [6.9, 0.0], [4.9, 4.9], [0.0, 6.9], [-4.9, 4.9]]
+          },
+          {
+            "id": "dome_oculus_profile",
+            "closed": true,
+            "points": [[-1.4, 0.0], [-1.0, -1.0], [0.0, -1.4], [1.0, -1.0], [1.4, 0.0], [1.0, 1.0], [0.0, 1.4], [-1.0, 1.0]]
+          }
+        ]
+      }
+    ]
+  }
+}

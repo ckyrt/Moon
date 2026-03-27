@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "pearl_tower_landmark",
+  "description": "Curated landmark tower inspired by sphere-stacked observation towers with a tall spire",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "sphere_tower",
+    "building_type": "observation_tower",
+    "style": "iconic_future"
+  },
+  "root": {
+    "id": "pearl_root",
+    "name": "pearl_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "base_plinth",
+        "name": "base_plinth",
+        "type": "extrude",
+        "material": "stone",
+        "params": {
+          "height": 8.0
+        },
+        "profiles": [
+          {
+            "id": "base_plinth_profile",
+            "closed": true,
+            "points": [[-26, -18], [26, -18], [30, -12], [30, 12], [26, 18], [-26, 18], [-30, 12], [-30, -12]]
+          }
+        ]
+      },
+      {
+        "id": "lower_sphere",
+        "name": "lower_sphere",
+        "type": "primitive",
+        "primitive": "sphere",
+        "material": "glass",
+        "transform": {
+          "position": [0.0, 24.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "radius": 11.0,
+          "segments": 32,
+          "rings": 20
+        }
+      },
+      {
+        "id": "middle_column",
+        "name": "middle_column",
+        "type": "extrude",
+        "material": "metal",
+        "transform": {
+          "position": [0.0, 20.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "height": 84.0
+        },
+        "profiles": [
+          {
+            "id": "middle_column_profile",
+            "closed": true,
+            "points": [[-4.2, -3.0], [4.2, -3.0], [5.0, -2.0], [5.0, 2.0], [4.2, 3.0], [-4.2, 3.0], [-5.0, 2.0], [-5.0, -2.0]]
+          }
+        ]
+      },
+      {
+        "id": "upper_sphere",
+        "name": "upper_sphere",
+        "type": "primitive",
+        "primitive": "sphere",
+        "material": "glass",
+        "transform": {
+          "position": [0.0, 82.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "radius": 8.2,
+          "segments": 28,
+          "rings": 18
+        }
+      },
+      {
+        "id": "upper_column",
+        "name": "upper_column",
+        "type": "extrude",
+        "material": "metal",
+        "transform": {
+          "position": [0.0, 90.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "height": 46.0
+        },
+        "profiles": [
+          {
+            "id": "upper_column_profile",
+            "closed": true,
+            "points": [[-2.2, -1.6], [2.2, -1.6], [2.7, -1.0], [2.7, 1.0], [2.2, 1.6], [-2.2, 1.6], [-2.7, 1.0], [-2.7, -1.0]]
+          }
+        ]
+      },
+      {
+        "id": "spire",
+        "name": "spire",
+        "type": "primitive",
+        "primitive": "cone",
+        "material": "metal",
+        "transform": {
+          "position": [0.0, 147.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "radius": 1.9,
+          "height": 24.0,
+          "segments": 32
+        }
+      },
+      {
+        "id": "leg_array",
+        "name": "leg_array",
+        "type": "array",
+        "params": {
+          "count_x": 1,
+          "count_y": 1,
+          "count_z": 3,
+          "spacing_z": 7.0
+        },
+        "transform": {
+          "position": [-7.0, 8.0, -7.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "children": [
+          {
+            "id": "leg",
+            "name": "leg",
+            "type": "extrude",
+            "material": "metal",
+            "transform": {
+              "position": [0.0, 0.0, 0.0],
+              "rotation": [0.0, 0.0, -8.0],
+              "scale": [1.0, 1.0, 1.0]
+            },
+            "params": {
+              "height": 20.0
+            },
+            "profiles": [
+              {
+                "id": "leg_profile",
+                "closed": true,
+                "points": [[-0.9, -0.9], [0.9, -0.9], [1.1, 0.0], [0.9, 0.9], [-0.9, 0.9], [-1.1, 0.0]]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

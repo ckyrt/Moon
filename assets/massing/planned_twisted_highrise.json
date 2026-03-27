@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "twisted_highrise_landmark",
+  "description": "Curated twisted highrise with a faceted podium, tapered shaft, and aligned roof cap",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "twisted_highrise",
+    "building_type": "office_tower",
+    "style": "landmark_glass"
+  },
+  "root": {
+    "id": "twist_root",
+    "name": "twist_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "podium",
+        "name": "podium",
+        "type": "extrude",
+        "material": "stone",
+        "params": {
+          "height": 20.0
+        },
+        "profiles": [
+          {
+            "id": "podium_profile",
+            "closed": true,
+            "points": [[-22, -18], [22, -18], [27, -12], [27, 12], [22, 18], [-22, 18], [-27, 12], [-27, -12]]
+          }
+        ]
+      },
+      {
+        "id": "tower_shell",
+        "name": "tower_shell",
+        "type": "deform",
+        "material": "glass",
+        "params": {
+          "mode": "twist",
+          "angle": 22.0,
+          "subdivide": 2
+        },
+        "transform": {
+          "position": [0.0, 20.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "children": [
+          {
+            "id": "tower_loft",
+            "name": "tower_loft",
+            "type": "loft",
+            "material": "glass",
+            "params": {
+              "levels": [0.0, 32.0, 76.0, 128.0],
+              "segments_per_span": 8
+            },
+            "profiles": [
+              {
+                "id": "tower_base",
+                "closed": true,
+                "points": [[-12, -9], [-8, -13], [1, -14], [9, -12], [13, -6], [13, 6], [9, 12], [1, 14], [-8, 13], [-12, 9], [-14, 2], [-14, -2]]
+              },
+              {
+                "id": "tower_mid",
+                "closed": true,
+                "points": [[-11, -8], [-7, -11], [1, -12], [8, -10], [11, -5], [11, 5], [8, 10], [1, 12], [-7, 11], [-11, 8], [-12, 2], [-12, -2]]
+              },
+              {
+                "id": "tower_top",
+                "closed": true,
+                "points": [[-9.5, -7], [-6.2, -9.5], [1, -10.5], [7.2, -8.8], [10, -4.4], [10, 4.4], [7.2, 8.8], [1, 10.5], [-6.2, 9.5], [-9.5, 7], [-10.5, 1.8], [-10.5, -1.8]]
+              },
+              {
+                "id": "tower_cap",
+                "closed": true,
+                "points": [[-8.8, -6.4], [-5.8, -8.7], [1, -9.4], [6.6, -8.0], [9.2, -4.0], [9.2, 4.0], [6.6, 8.0], [1, 9.4], [-5.8, 8.7], [-8.8, 6.4], [-9.8, 1.5], [-9.8, -1.5]]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "roof_cap",
+        "name": "roof_cap",
+        "type": "extrude",
+        "material": "metal",
+        "transform": {
+          "position": [0.0, 148.0, 0.0],
+          "rotation": [0.0, 22.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "height": 0.85
+        },
+        "profiles": [
+          {
+            "id": "roof_cap_profile",
+            "closed": true,
+            "points": [[-8.8, -6.4], [-5.8, -8.7], [1, -9.4], [6.6, -8.0], [9.2, -4.0], [9.2, 4.0], [6.6, 8.0], [1, 9.4], [-5.8, 8.7], [-8.8, 6.4], [-9.8, 1.5], [-9.8, -1.5]]
+          }
+        ]
+      }
+    ]
+  }
+}

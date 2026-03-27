@@ -224,6 +224,24 @@ TEST(MassRuleParserTests, SupportsInlineProfileAndHeight) {
     EXPECT_FLOAT_EQ(ruleSet.root.params["height"].get<float>(), 36.0f);
 }
 
+TEST(MassRuleParserTests, SupportsReferenceNode) {
+    const RuleSet ruleSet = ParseRuleSetOrFail(R"({
+      "version": 1,
+      "root": {
+        "type": "reference",
+        "name": "DomeModule",
+        "ref": "planned_glazed_rotunda_dome.json",
+        "transform": {
+          "position": [0, 20, 0]
+        }
+      }
+    })");
+
+    EXPECT_EQ(ruleSet.root.type, RuleNodeType::Reference);
+    EXPECT_EQ(ruleSet.root.reference, "planned_glazed_rotunda_dome.json");
+    EXPECT_FLOAT_EQ(ruleSet.root.transform.position[1], 20.0f);
+}
+
 TEST(MassMeshBuilderTests, ExtrudeBuildMatchesRequestedHeight) {
     const RuleSet ruleSet = ParseRuleSetOrFail(R"({
       "version": 1,
@@ -348,6 +366,35 @@ TEST(MassMeshBuilderTests, ExtrudeSplitsNormalsAcrossHardEdges) {
 
     EXPECT_GT(mesh->GetVertexCount(), 8u);
     EXPECT_TRUE(HasSplitNormalsAtSharedPosition(*mesh));
+}
+
+TEST(MassMeshBuilderTests, ReferenceBuildsReferencedAssetWithTransform) {
+    const RuleSet ruleSet = ParseRuleSetOrFail(R"({
+      "version": 1,
+      "root": {
+        "type": "reference",
+        "name": "RotundaRoof",
+        "ref": "planned_glazed_rotunda_dome.json",
+        "transform": {
+          "position": [0, 30, 0]
+        }
+      }
+    })");
+
+    MassBuildResult result = BuildRuleSetOrFail(ruleSet);
+    ASSERT_EQ(result.items.size(), 2u);
+    EXPECT_FALSE(result.warnings.empty());
+
+    for (const MassBuildItem& item : result.items) {
+        ExpectMeshLooksValid(item.mesh);
+    }
+
+    const Bounds3 firstBounds = ComputeBounds(*result.items.front().mesh);
+    const Bounds3 secondBounds = ComputeBounds(*result.items.back().mesh);
+    const float minY = std::min(firstBounds.min.y, secondBounds.min.y);
+    const float maxY = std::max(firstBounds.max.y, secondBounds.max.y);
+    EXPECT_NEAR(minY, 30.0f, 0.05f);
+    EXPECT_GT(maxY, 50.0f);
 }
 
 TEST(BuildingMassingPlannerTests, PlansPodiumTowerIntoBuildableRuleSet) {
@@ -487,7 +534,12 @@ TEST(MassMeshBuilderTests, AllSamplePresetsParseAndBuild) {
         "loft_twist_tower.json",
         "deform_twisted_block.json",
         "array_tower_cluster.json",
-        "csg_podium_tower.json"
+        "csg_podium_tower.json",
+        "planned_civic_rotunda.json",
+        "planned_shopping_mall.json",
+        "planned_transit_hub.json",
+        "planned_office_highrise.json",
+        "planned_reference_module_gallery.json"
     };
 
     for (const char* presetFile : presetFiles) {

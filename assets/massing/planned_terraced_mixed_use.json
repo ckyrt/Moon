@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "terraced_mixed_use_tower",
+  "description": "Curated mixed-use building with a carved terrace podium and a slender tower above",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "terraced_podium_tower",
+    "building_type": "mixed_use_tower",
+    "style": "urban_glass_stone"
+  },
+  "root": {
+    "id": "terrace_root",
+    "name": "terrace_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "terraced_podium",
+        "name": "terraced_podium",
+        "type": "csg",
+        "operation": "subtract",
+        "material": "stone",
+        "children": [
+          {
+            "id": "podium_base",
+            "name": "podium_base",
+            "type": "extrude",
+            "material": "stone",
+            "params": {
+              "height": 24.0
+            },
+            "profiles": [
+              {
+                "id": "podium_base_profile",
+                "closed": true,
+                "points": [[-24, -18], [24, -18], [28, -12], [28, 12], [24, 18], [-24, 18], [-28, 12], [-28, -12]]
+              }
+            ]
+          },
+          {
+            "id": "terrace_cut",
+            "name": "terrace_cut",
+            "type": "extrude",
+            "material": "stone",
+            "transform": {
+              "position": [9.0, 10.0, 7.5],
+              "rotation": [0.0, 0.0, 0.0],
+              "scale": [1.0, 1.0, 1.0]
+            },
+            "params": {
+              "height": 20.0
+            },
+            "profiles": [
+              {
+                "id": "terrace_cut_profile",
+                "closed": true,
+                "points": [[-10, -8], [10, -8], [12, -5], [12, 8], [-12, 8], [-12, -5]]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tower",
+        "name": "tower",
+        "type": "loft",
+        "material": "glass",
+        "transform": {
+          "position": [-5.0, 24.0, -2.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "levels": [0.0, 32.0, 70.0, 106.0],
+          "segments_per_span": 6
+        },
+        "profiles": [
+          {
+            "id": "tower_base",
+            "closed": true,
+            "points": [[-9.0, -8.0], [8.0, -8.2], [10.5, -5.5], [10.8, 4.8], [7.5, 8.4], [-7.2, 8.2], [-10.2, 4.5], [-10.6, -4.8]]
+          },
+          {
+            "id": "tower_mid",
+            "closed": true,
+            "points": [[-8.2, -7.2], [7.2, -7.4], [9.5, -4.8], [9.8, 4.2], [6.8, 7.5], [-6.5, 7.3], [-9.2, 4.0], [-9.6, -4.2]]
+          },
+          {
+            "id": "tower_top",
+            "closed": true,
+            "points": [[-7.3, -6.3], [6.3, -6.5], [8.2, -4.2], [8.5, 3.5], [6.0, 6.6], [-5.8, 6.4], [-8.0, 3.4], [-8.3, -3.8]]
+          },
+          {
+            "id": "tower_cap",
+            "closed": true,
+            "points": [[-6.8, -5.8], [5.8, -6.0], [7.5, -3.8], [7.8, 3.1], [5.5, 6.0], [-5.3, 5.8], [-7.4, 3.0], [-7.7, -3.4]]
+          }
+        ]
+      },
+      {
+        "id": "roof_frame",
+        "name": "roof_frame",
+        "type": "extrude",
+        "material": "metal",
+        "transform": {
+          "position": [-5.0, 130.0, -2.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "height": 0.8
+        },
+        "profiles": [
+          {
+            "id": "roof_frame_profile",
+            "closed": true,
+            "points": [[-7.0, -6.0], [6.0, -6.2], [7.8, -3.9], [8.1, 3.2], [5.8, 6.2], [-5.6, 6.0], [-7.7, 3.1], [-8.0, -3.5]]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,15 +1,24 @@
 #include "MassMeshBuilder.h"
 
+#include "MassRuleParser.h"
+#include "../core/Assets/AssetPaths.h"
 #include "../core/CSG/CSGOperations.h"
 #include "../core/Geometry/MeshGenerator.h"
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <limits>
+#include <iterator>
+#include <unordered_set>
 
 namespace Moon {
 namespace Massing {
 
 namespace {
+
+struct BuildContext {
+    std::vector<std::string> referenceStack;
+};
 
 constexpr float kPi = 3.14159265358979323846f;
 constexpr float kTwoPi = 2.0f * kPi;
@@ -74,6 +83,41 @@ Vector3 ApplyNormalTransform(const Vector3& value, const RuleTransform& transfor
         return value;
     }
     return rotated * (1.0f / length);
+}
+
+std::string ReadUtf8TextFile(const std::string& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input.is_open()) {
+        return {};
+    }
+
+    std::string contents((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    if (contents.size() >= 3 &&
+        static_cast<unsigned char>(contents[0]) == 0xEF &&
+        static_cast<unsigned char>(contents[1]) == 0xBB &&
+        static_cast<unsigned char>(contents[2]) == 0xBF) {
+        contents.erase(0, 3);
+    }
+    return contents;
+}
+
+std::string NormalizeReferencePath(const std::string& reference) {
+    if (reference.empty()) {
+        return {};
+    }
+
+    const bool isAbsoluteWindowsPath =
+        reference.size() > 2 &&
+        ((reference[1] == ':') &&
+         (reference[2] == '/' || reference[2] == '\\'));
+    if (isAbsoluteWindowsPath) {
+        return Moon::Assets::NormalizeSlashes(reference);
+    }
+
+    const std::string assetRelative = reference.rfind("massing/", 0) == 0
+        ? reference
+        : std::string("massing/") + reference;
+    return Moon::Assets::NormalizeSlashes(Moon::Assets::BuildAssetPath(assetRelative));
 }
 
 Vector3 SafeNormalize(const Vector3& value, const Vector3& fallback = Vector3(0.0f, 1.0f, 0.0f)) {
@@ -952,7 +996,11 @@ std::shared_ptr<Mesh> CollapseToSingleMesh(const std::vector<MassBuildItem>& ite
     return current;
 }
 
-bool BuildNode(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::vector<std::string>& warnings, std::string& outError);
+bool BuildNode(const RuleNode& node,
+               std::vector<MassBuildItem>& outItems,
+               std::vector<std::string>& warnings,
+               std::string& outError,
+               BuildContext& context);
 
 bool BuildPrimitive(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::string& outError) {
     std::shared_ptr<Mesh> mesh;
@@ -1047,10 +1095,14 @@ bool BuildLoft(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::
     outItems.push_back({node.name.empty() ? node.id : node.name, node.material, mesh});
     return true;
 }
-bool BuildGroup(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::vector<std::string>& warnings, std::string& outError) {
+bool BuildGroup(const RuleNode& node,
+                std::vector<MassBuildItem>& outItems,
+                std::vector<std::string>& warnings,
+                std::string& outError,
+                BuildContext& context) {
     std::vector<MassBuildItem> localItems;
     for (const RuleNode& child : node.children) {
-        if (!BuildNode(child, localItems, warnings, outError)) {
+        if (!BuildNode(child, localItems, warnings, outError, context)) {
             return false;
         }
     }
@@ -1066,14 +1118,18 @@ bool BuildGroup(const RuleNode& node, std::vector<MassBuildItem>& outItems, std:
     return true;
 }
 
-bool BuildArray(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::vector<std::string>& warnings, std::string& outError) {
+bool BuildArray(const RuleNode& node,
+                std::vector<MassBuildItem>& outItems,
+                std::vector<std::string>& warnings,
+                std::string& outError,
+                BuildContext& context) {
     if (node.children.size() != 1) {
         outError = "Array node must have exactly one child";
         return false;
     }
 
     std::vector<MassBuildItem> sourceItems;
-    if (!BuildNode(node.children.front(), sourceItems, warnings, outError)) {
+    if (!BuildNode(node.children.front(), sourceItems, warnings, outError, context)) {
         return false;
     }
 
@@ -1110,7 +1166,11 @@ bool BuildArray(const RuleNode& node, std::vector<MassBuildItem>& outItems, std:
     return true;
 }
 
-bool BuildCsg(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::vector<std::string>& warnings, std::string& outError) {
+bool BuildCsg(const RuleNode& node,
+              std::vector<MassBuildItem>& outItems,
+              std::vector<std::string>& warnings,
+              std::string& outError,
+              BuildContext& context) {
     if (node.children.size() != 2) {
         outError = "CSG node must have exactly two children";
         return false;
@@ -1118,10 +1178,10 @@ bool BuildCsg(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::v
 
     std::vector<MassBuildItem> leftItems;
     std::vector<MassBuildItem> rightItems;
-    if (!BuildNode(node.children[0], leftItems, warnings, outError)) {
+    if (!BuildNode(node.children[0], leftItems, warnings, outError, context)) {
         return false;
     }
-    if (!BuildNode(node.children[1], rightItems, warnings, outError)) {
+    if (!BuildNode(node.children[1], rightItems, warnings, outError, context)) {
         return false;
     }
 
@@ -1150,14 +1210,18 @@ bool BuildCsg(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::v
     return true;
 }
 
-bool BuildDeform(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::vector<std::string>& warnings, std::string& outError) {
+bool BuildDeform(const RuleNode& node,
+                 std::vector<MassBuildItem>& outItems,
+                 std::vector<std::string>& warnings,
+                 std::string& outError,
+                 BuildContext& context) {
     if (node.children.size() != 1) {
         outError = "Deform node must have exactly one child";
         return false;
     }
 
     std::vector<MassBuildItem> localItems;
-    if (!BuildNode(node.children[0], localItems, warnings, outError)) {
+    if (!BuildNode(node.children[0], localItems, warnings, outError, context)) {
         return false;
     }
 
@@ -1194,17 +1258,78 @@ bool BuildDeform(const RuleNode& node, std::vector<MassBuildItem>& outItems, std
     return true;
 }
 
-bool BuildNode(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::vector<std::string>& warnings, std::string& outError) {
+bool BuildReference(const RuleNode& node,
+                    std::vector<MassBuildItem>& outItems,
+                    std::vector<std::string>& warnings,
+                    std::string& outError,
+                    BuildContext& context) {
+    const std::string resolvedPath = NormalizeReferencePath(node.reference);
+    if (resolvedPath.empty()) {
+        outError = "Reference node must specify a non-empty ref";
+        return false;
+    }
+
+    if (std::find(context.referenceStack.begin(), context.referenceStack.end(), resolvedPath) != context.referenceStack.end()) {
+        outError = "Reference cycle detected: " + resolvedPath;
+        return false;
+    }
+
+    const std::string jsonString = ReadUtf8TextFile(resolvedPath);
+    if (jsonString.empty()) {
+        outError = "Failed to read referenced massing asset: " + resolvedPath;
+        return false;
+    }
+
+    RuleSet referencedRuleSet;
+    if (!MassRuleParser::ParseFromString(jsonString, referencedRuleSet, outError)) {
+        outError = "Failed to parse referenced massing asset '" + resolvedPath + "': " + outError;
+        return false;
+    }
+
+    context.referenceStack.push_back(resolvedPath);
+
+    std::vector<MassBuildItem> localItems;
+    const bool built = BuildNode(referencedRuleSet.root, localItems, warnings, outError, context);
+
+    context.referenceStack.pop_back();
+
+    if (!built) {
+        return false;
+    }
+
+    for (MassBuildItem& item : localItems) {
+        if (item.mesh) {
+            ApplyTransformToMesh(*item.mesh, node.transform);
+        }
+        if (!node.material.empty()) {
+            item.material = node.material;
+        }
+        if (!node.name.empty()) {
+            item.name = node.name + "/" + item.name;
+        }
+        outItems.push_back(std::move(item));
+    }
+
+    warnings.push_back("Expanded massing reference: " + node.reference);
+    return true;
+}
+
+bool BuildNode(const RuleNode& node,
+               std::vector<MassBuildItem>& outItems,
+               std::vector<std::string>& warnings,
+               std::string& outError,
+               BuildContext& context) {
     switch (node.type) {
         case RuleNodeType::Primitive: return BuildPrimitive(node, outItems, outError);
         case RuleNodeType::Extrude: return BuildExtrude(node, outItems, outError);
         case RuleNodeType::Revolve: return BuildRevolve(node, outItems, outError);
         case RuleNodeType::Sweep: return BuildSweep(node, outItems, outError);
         case RuleNodeType::Loft: return BuildLoft(node, outItems, outError);
-        case RuleNodeType::Csg: return BuildCsg(node, outItems, warnings, outError);
-        case RuleNodeType::Deform: return BuildDeform(node, outItems, warnings, outError);
-        case RuleNodeType::Array: return BuildArray(node, outItems, warnings, outError);
-        case RuleNodeType::Group: return BuildGroup(node, outItems, warnings, outError);
+        case RuleNodeType::Csg: return BuildCsg(node, outItems, warnings, outError, context);
+        case RuleNodeType::Deform: return BuildDeform(node, outItems, warnings, outError, context);
+        case RuleNodeType::Array: return BuildArray(node, outItems, warnings, outError, context);
+        case RuleNodeType::Group: return BuildGroup(node, outItems, warnings, outError, context);
+        case RuleNodeType::Reference: return BuildReference(node, outItems, warnings, outError, context);
         default:
             outError = "Unsupported massing node type";
             return false;
@@ -1216,7 +1341,8 @@ bool BuildNode(const RuleNode& node, std::vector<MassBuildItem>& outItems, std::
 bool MassMeshBuilder::Build(const RuleSet& ruleSet, MassBuildResult& outResult, std::string& outError) {
     outResult.items.clear();
     outResult.warnings.clear();
-    if (!BuildNode(ruleSet.root, outResult.items, outResult.warnings, outError)) {
+    BuildContext context;
+    if (!BuildNode(ruleSet.root, outResult.items, outResult.warnings, outError, context)) {
         return false;
     }
 

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "vertical_fin_module",
+  "description": "Reusable slim metal fin for facade accents, crown screens, and shading arrays",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "facade_module",
+    "building_type": "vertical_fin",
+    "style": "metal_screen"
+  },
+  "root": {
+    "id": "vertical_fin_root",
+    "name": "vertical_fin_root",
+    "type": "primitive",
+    "primitive": "cube",
+    "material": "metal",
+    "params": {
+      "size_x": 0.32,
+      "size_y": 34.0,
+      "size_z": 0.5
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "linear_skylight_module",
+  "description": "Reusable linear skylight spine for malls, stations, and long hall roofs",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "roof_module",
+    "building_type": "linear_skylight",
+    "style": "glass_modern"
+  },
+  "root": {
+    "id": "linear_skylight_root",
+    "name": "linear_skylight_root",
+    "type": "extrude",
+    "material": "glass",
+    "params": {
+      "height": 1.1
+    },
+    "profiles": [
+      {
+        "id": "linear_skylight_profile",
+        "closed": true,
+        "points": [[-24, -1.2], [24, -1.2], [25, 0.0], [24, 1.2], [-24, 1.2], [-25, 0.0]]
+      }
+    ]
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "crown_frame_module",
+  "description": "Reusable open crown frame for mixed-use towers and office skyline accents",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "roof_module",
+    "building_type": "crown_frame",
+    "style": "frame_modern"
+  },
+  "root": {
+    "id": "crown_frame_root",
+    "name": "crown_frame_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "frame_north",
+        "name": "frame_north",
+        "type": "primitive",
+        "primitive": "cube",
+        "material": "metal",
+        "transform": {
+          "position": [0.0, 0.0, -7.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "size_x": 16.0,
+          "size_y": 1.1,
+          "size_z": 0.42
+        }
+      },
+      {
+        "id": "frame_south",
+        "name": "frame_south",
+        "type": "primitive",
+        "primitive": "cube",
+        "material": "metal",
+        "transform": {
+          "position": [0.0, 0.0, 7.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "size_x": 16.0,
+          "size_y": 1.1,
+          "size_z": 0.42
+        }
+      },
+      {
+        "id": "frame_east",
+        "name": "frame_east",
+        "type": "primitive",
+        "primitive": "cube",
+        "material": "metal",
+        "transform": {
+          "position": [8.0, 0.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "size_x": 0.42,
+          "size_y": 1.1,
+          "size_z": 14.0
+        }
+      },
+      {
+        "id": "frame_west",
+        "name": "frame_west",
+        "type": "primitive",
+        "primitive": "cube",
+        "material": "metal",
+        "transform": {
+          "position": [-8.0, 0.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "params": {
+          "size_x": 0.42,
+          "size_y": 1.1,
+          "size_z": 14.0
+        }
+      }
+    ]
+  }
+}

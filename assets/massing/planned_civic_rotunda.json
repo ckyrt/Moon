@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "civic_rotunda_hall",
+  "description": "Curated civic rotunda with a stone plinth, glazed drum, and metal dome",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "civic_rotunda",
+    "building_type": "museum_hall",
+    "style": "civic_classical_modern"
+  },
+  "root": {
+    "id": "rotunda_root",
+    "name": "rotunda_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "plinth",
+        "name": "plinth",
+        "type": "extrude",
+        "material": "stone",
+        "params": {
+          "height": 6.0
+        },
+        "profiles": [
+          {
+            "id": "plinth_profile",
+            "closed": true,
+            "points": [[-20, -16], [20, -16], [24, -10], [24, 10], [20, 16], [-20, 16], [-24, 10], [-24, -10]]
+          }
+        ]
+      },
+      {
+        "id": "rotunda_dome_module",
+        "name": "rotunda_dome_module",
+        "type": "reference",
+        "ref": "planned_glazed_rotunda_dome.json",
+        "transform": {
+          "position": [0.0, 6.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "entry_portico",
+        "name": "entry_portico",
+        "type": "reference",
+        "ref": "planned_portico_entry_module.json",
+        "transform": {
+          "position": [0.0, 0.0, -15.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      }
+    ]
+  }
+}

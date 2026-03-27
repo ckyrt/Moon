@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "reference_roof_gallery",
+  "description": "Reference gallery showing reusable roof and canopy modules side by side",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "module_gallery",
+    "building_type": "roof_gallery",
+    "style": "catalog"
+  },
+  "root": {
+    "id": "reference_roof_gallery_root",
+    "name": "reference_roof_gallery_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "rotunda_dome_demo",
+        "name": "rotunda_dome_demo",
+        "type": "reference",
+        "ref": "planned_glazed_rotunda_dome.json",
+        "transform": {
+          "position": [-48.0, 0.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "entry_canopy_demo",
+        "name": "entry_canopy_demo",
+        "type": "reference",
+        "ref": "planned_entry_canopy_module.json",
+        "transform": {
+          "position": [0.0, 0.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "linear_skylight_demo",
+        "name": "linear_skylight_demo",
+        "type": "reference",
+        "ref": "planned_linear_skylight_module.json",
+        "transform": {
+          "position": [52.0, 0.0, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      }
+    ]
+  }
+}

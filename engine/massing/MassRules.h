@@ -19,7 +19,8 @@ enum class RuleNodeType {
     Csg,
     Deform,
     Array,
-    Group
+    Group,
+    Reference
 };
 
 enum class PrimitiveType {
@@ -66,6 +67,7 @@ struct RuleNode {
     CsgOperation csgOperation = CsgOperation::Union;
     RuleTransform transform;
     std::string material;
+    std::string reference;
     json params = json::object();
     json editor = json::object();
     std::vector<Curve2D> profiles;

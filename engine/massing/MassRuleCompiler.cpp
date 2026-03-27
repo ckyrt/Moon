@@ -133,6 +133,17 @@ bool MassRuleCompiler::CompileNode(const RuleNode& node, json& outNode, std::str
             return true;
         }
 
+        case RuleNodeType::Reference: {
+            outNode["name"] = nodeName;
+            outNode["type"] = "reference";
+            outNode["ref"] = node.reference;
+            outNode["transform"] = CompileTransform(node.transform);
+            if (!node.material.empty()) {
+                outNode["material"] = node.material;
+            }
+            return true;
+        }
+
         case RuleNodeType::Csg: {
             if (node.children.size() != 2) {
                 outError = "CSG node must have exactly 2 children";

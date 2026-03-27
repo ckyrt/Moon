@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "portico_entry_module",
+  "description": "Reusable stone portico entry for civic buildings, museums, and ceremonial arrivals",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "arrival_module",
+    "building_type": "portico_entry",
+    "style": "civic_stone"
+  },
+  "root": {
+    "id": "portico_entry_root",
+    "name": "portico_entry_root",
+    "type": "extrude",
+    "material": "stone",
+    "params": {
+      "height": 8.0
+    },
+    "profiles": [
+      {
+        "id": "portico_entry_profile",
+        "closed": true,
+        "points": [[-7.0, -3.0], [7.0, -3.0], [8.5, -1.5], [8.5, 3.0], [-8.5, 3.0], [-8.5, -1.5]]
+      }
+    ]
+  }
+}

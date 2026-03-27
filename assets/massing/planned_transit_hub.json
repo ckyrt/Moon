@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "transit_hub_canopy",
+  "description": "Curated transit hall with a long stone base, sweeping canopy, and skylight spine",
+  "unit": "meter",
+  "ai": {
+    "source": "building_massing_planner",
+    "archetype": "transit_hub",
+    "building_type": "station",
+    "style": "infrastructure_modern"
+  },
+  "root": {
+    "id": "transit_root",
+    "name": "transit_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "concourse",
+        "name": "concourse",
+        "type": "extrude",
+        "material": "stone",
+        "params": {
+          "height": 9.0
+        },
+        "profiles": [
+          {
+            "id": "concourse_profile",
+            "closed": true,
+            "points": [[-34, -11], [34, -11], [37, -8], [37, 8], [34, 11], [-34, 11], [-37, 8], [-37, -8]]
+          }
+        ]
+      },
+      {
+        "id": "roof_canopy",
+        "name": "roof_canopy",
+        "type": "sweep",
+        "material": "metal",
+        "profiles": [
+          {
+            "id": "roof_section",
+            "closed": true,
+            "points": [[-2.0, -0.35], [2.0, -0.35], [2.0, 0.35], [-2.0, 0.35]]
+          }
+        ],
+        "paths": [
+          {
+            "id": "roof_path",
+            "closed": false,
+            "points": [[-34, 10, 0], [-20, 15, 0], [0, 18, 0], [20, 15, 0], [34, 10, 0]]
+          }
+        ]
+      },
+      {
+        "id": "skylight_spine",
+        "name": "skylight_spine",
+        "type": "reference",
+        "ref": "planned_linear_skylight_module.json",
+        "transform": {
+          "position": [0.0, 16.4, 0.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        }
+      },
+      {
+        "id": "platform_canopies",
+        "name": "platform_canopies",
+        "type": "array",
+        "params": {
+          "count_x": 2,
+          "count_y": 1,
+          "count_z": 2,
+          "spacing_x": 44.0,
+          "spacing_z": 10.0
+        },
+        "transform": {
+          "position": [-22.0, 6.0, -5.0],
+          "rotation": [0.0, 0.0, 0.0],
+          "scale": [1.0, 1.0, 1.0]
+        },
+        "children": [
+          {
+            "id": "platform_canopy",
+            "name": "platform_canopy",
+            "type": "reference",
+            "ref": "planned_platform_canopy_module.json"
+          }
+        ]
+      }
+    ]
+  }
+}
