@@ -13,6 +13,23 @@
 #include "include/PBR_Lighting.hlsl"
 #include "include/PBR_Shadow.hlsl"
 
+float HashNoise2D(float2 p)
+{
+    float h = dot(p, float2(127.1, 311.7));
+    return frac(sin(h) * 43758.5453123);
+}
+
+float3 SampleTerrainAlbedo(Texture2D tex, SamplerState samp, float3 worldPos, float3 normalWS, float tiling)
+{
+    const float coarseTiling = tiling * 0.38;
+    const float detailTiling = tiling * 1.35;
+    const float noise = HashNoise2D(worldPos.xz * 0.0017);
+    const float blend = saturate(0.30 + noise * 0.55);
+    const float3 coarse = SampleTriplanar(tex, samp, worldPos, normalWS, coarseTiling).rgb;
+    const float3 detail = SampleTriplanar(tex, samp, worldPos + float3(17.0, 0.0, 11.0), normalWS, detailTiling).rgb;
+    return lerp(coarse, detail, blend);
+}
+
 // ============================================================================
 // Main Pixel Shader
 // ============================================================================
@@ -51,7 +68,7 @@ float4 main(in PSInput i) : SV_Target {
     
     if (g_MappingMode > 0.5) {
         // ===== Triplanar模式（CSG/程序化几何）=====
-        albedo = SampleTriplanar(g_AlbedoMap, g_AlbedoMap_sampler, i.WorldPos, N, g_TriplanarTiling).rgb;
+        albedo = SampleTerrainAlbedo(g_AlbedoMap, g_AlbedoMap_sampler, i.WorldPos, N, g_TriplanarTiling);
         ao = SampleTriplanar(g_AOMap, g_AOMap_sampler, i.WorldPos, N, g_TriplanarTiling).r;
         roughness = max(SampleTriplanar(g_RoughnessMap, g_RoughnessMap_sampler, i.WorldPos, N, g_TriplanarTiling).r * g_Roughness, 0.04);
         metallic = saturate(SampleTriplanar(g_MetalnessMap, g_MetalnessMap_sampler, i.WorldPos, N, g_TriplanarTiling).r * g_Metallic);

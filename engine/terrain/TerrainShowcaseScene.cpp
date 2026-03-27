@@ -53,9 +53,9 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
     MOON_LOG_INFO("TerrainShowcaseScene", "Building open-world terrain showcase scene...");
 
     if (options.configureCamera) {
-        camera->SetPosition(Moon::Vector3(-210.0f, 120.0f, -360.0f));
-        camera->LookAt(Moon::Vector3(40.0f, 35.0f, 10.0f));
-        camera->SetFarPlane(3000.0f);
+        camera->SetPosition(Moon::Vector3(-140.0f, 88.0f, -235.0f));
+        camera->LookAt(Moon::Vector3(55.0f, 28.0f, 70.0f));
+        camera->SetFarPlane(6000.0f);
     }
 
     if (options.createEnvironment && !scene->FindNodeByName(kEnvironmentNodeName)) {
@@ -65,14 +65,14 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
         Moon::EnvironmentProfile environmentProfile;
         environmentProfile.name = "OpenWorldTerrain";
         environmentProfile.enableClouds = true;
-        environmentProfile.enableFog = false;
+        environmentProfile.enableFog = true;
         environmentProfile.enableWind = true;
         environmentProfile.maxSunIntensity = 1.85f;
-        environmentProfile.clearFogDensity = 0.00015f;
-        environmentProfile.fogWeatherDensity = 0.0025f;
-        environmentProfile.cloudyCloudCoverage = 0.10f;
+        environmentProfile.clearFogDensity = 0.00030f;
+        environmentProfile.fogWeatherDensity = 0.0032f;
+        environmentProfile.cloudyCloudCoverage = 0.18f;
         environment->SetProfile(environmentProfile);
-        environment->SetTimeOfDay(10.5f);
+        environment->SetTimeOfDay(10.2f);
         environment->SetWeather(Moon::WeatherType::Clear, 0.0f);
     }
 
@@ -118,8 +118,8 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
     terrainMaterial->SetMaterialPreset(Moon::MaterialPreset::Rock);
     terrainMaterial->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
     terrainMaterial->SetMappingMode(Moon::MappingMode::Triplanar);
-    terrainMaterial->SetTriplanarTiling(0.12f);
-    terrainMaterial->SetTriplanarBlend(6.0f);
+    terrainMaterial->SetTriplanarTiling(0.075f);
+    terrainMaterial->SetTriplanarBlend(5.2f);
     terrainMaterial->SetUseVertexColorTint(true);
 
     Moon::SceneNode* riverNode = scene->CreateNode(kRiverNodeName);

@@ -432,9 +432,13 @@ void DiligentRenderer::RenderSkybox()
     if (!m_pSkyboxPSO || !m_pSkyboxSRB) return;
     if (!m_RenderProceduralSky && m_SceneDataCache.hasEnvironmentMap <= 0.5f) return;
     
-    // 1. 使用当前的 ViewProj 矩阵（Skybox 足够大，不需要移除平移）
+    // Keep the sky centered on the camera so the user can never "reach" the cube.
     SkyboxConstantsCPU constants{};
-    constants.ViewProjT = DiligentRendererUtils::Transpose(m_ViewProj);
+    Moon::Matrix4x4 skyViewProj = m_ViewProj;
+    skyViewProj.m[3][0] = 0.0f;
+    skyViewProj.m[3][1] = 0.0f;
+    skyViewProj.m[3][2] = 0.0f;
+    constants.ViewProjT = DiligentRendererUtils::Transpose(skyViewProj);
     constants.UseProceduralSky = (m_RenderProceduralSky && m_SceneDataCache.hasEnvironmentMap <= 0.5f) ? 1.0f : 0.0f;
     constants.SkyHorizonColor = m_SceneDataCache.fogColor;
     constants.SkyZenithColor = m_SceneDataCache.skyColor;

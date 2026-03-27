@@ -5,7 +5,7 @@
   "theme": "coastal_island_frontier",
   "mood": "sunlit",
   "climate": "temperate",
-  "world_scale": "medium",
+  "world_scale": "small",
   "terrain_style": "coastal_island",
   "play_style": "exploration_vehicle",
   "human_presence": "sparse_rural",
