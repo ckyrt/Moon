@@ -9,6 +9,7 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <unordered_set>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -16,6 +17,89 @@
 #endif
 
 namespace DiligentRendererUtils {
+
+namespace {
+
+std::string LoadTextFile(const std::string& path)
+{
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        return {};
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+std::string GetDirectoryPath(const std::string& path)
+{
+    const size_t lastSlash = path.find_last_of("\\/");
+    if (lastSlash == std::string::npos) {
+        return {};
+    }
+    return path.substr(0, lastSlash + 1);
+}
+
+std::string ExpandShaderIncludesRecursive(
+    const std::string& source,
+    const std::string& currentDir,
+    std::unordered_set<std::string>& includeStack)
+{
+    std::string expanded;
+    expanded.reserve(source.size());
+
+    size_t cursor = 0;
+    while (cursor < source.size()) {
+        size_t includePos = source.find("#include", cursor);
+        if (includePos == std::string::npos) {
+            expanded.append(source.substr(cursor));
+            break;
+        }
+
+        expanded.append(source.substr(cursor, includePos - cursor));
+
+        size_t lineEnd = source.find('\n', includePos);
+        if (lineEnd == std::string::npos) {
+            lineEnd = source.size();
+        }
+
+        size_t quoteStart = source.find('\"', includePos);
+        size_t quoteEnd = quoteStart == std::string::npos ? std::string::npos : source.find('\"', quoteStart + 1);
+        if (quoteStart == std::string::npos || quoteEnd == std::string::npos || quoteEnd > lineEnd) {
+            expanded.append(source.substr(includePos, lineEnd - includePos));
+            if (lineEnd < source.size()) {
+                expanded.push_back('\n');
+            }
+            cursor = lineEnd + (lineEnd < source.size() ? 1 : 0);
+            continue;
+        }
+
+        std::string includePath = source.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
+        std::string fullIncludePath = currentDir + includePath;
+
+        if (!includeStack.insert(fullIncludePath).second) {
+            MOON_LOG_WARN("DiligentRenderer", "Skipping recursive include cycle: %s", fullIncludePath.c_str());
+            cursor = lineEnd + (lineEnd < source.size() ? 1 : 0);
+            continue;
+        }
+
+        std::string includeContent = LoadTextFile(fullIncludePath);
+        if (includeContent.empty()) {
+            MOON_LOG_ERROR("DiligentRenderer", "Failed to load include: %s", fullIncludePath.c_str());
+        } else {
+            MOON_LOG_INFO("DiligentRenderer", "Processing include: %s (%zu bytes)", includePath.c_str(), includeContent.size());
+            expanded.append(ExpandShaderIncludesRecursive(includeContent, GetDirectoryPath(fullIncludePath), includeStack));
+        }
+
+        includeStack.erase(fullIncludePath);
+        cursor = lineEnd + (lineEnd < source.size() ? 1 : 0);
+    }
+
+    return expanded;
+}
+
+} // namespace
 
 // ======= 辅助函数：获取 exe 所在目录 =======
 std::string GetExecutableDirectory()
@@ -88,54 +172,16 @@ void UpdateConstantBuffer(Diligent::IBuffer* buf, Diligent::IDeviceContext* cont
 std::string LoadShaderSource(const char* filename)
 {
     std::string shaderPath = Moon::Assets::BuildShaderPath(filename);
-    
-    std::ifstream file(shaderPath);
-    if (!file.is_open()) {
+
+    std::string content = LoadTextFile(shaderPath);
+    if (content.empty()) {
         MOON_LOG_ERROR("DiligentRenderer", "Failed to load shader: %s", shaderPath.c_str());
         return "";
     }
-    
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    std::string content = buffer.str();
-    
-    // Process #include directives manually
-    std::string baseDir = Moon::Assets::BuildShaderPath("") + "/";
-    size_t pos = 0;
-    while ((pos = content.find("#include", pos)) != std::string::npos) {
-        // Find the line containing #include
-        size_t lineStart = pos;
-        size_t lineEnd = content.find('\n', pos);
-        if (lineEnd == std::string::npos) lineEnd = content.length();
-        
-        // Extract the include path
-        size_t quoteStart = content.find('"', pos);
-        size_t quoteEnd = content.find('"', quoteStart + 1);
-        
-        if (quoteStart != std::string::npos && quoteEnd != std::string::npos && quoteStart < lineEnd) {
-            std::string includePath = content.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
-            std::string fullIncludePath = baseDir + includePath;
-            
-            // Load the included file
-            std::ifstream includeFile(fullIncludePath);
-            if (includeFile.is_open()) {
-                std::stringstream includeBuffer;
-                includeBuffer << includeFile.rdbuf();
-                std::string includeContent = includeBuffer.str();
-                
-                MOON_LOG_INFO("DiligentRenderer", "Processing include: %s (%zu bytes)", includePath.c_str(), includeContent.size());
-                
-                // Replace the #include line with the file content
-                content.replace(lineStart, lineEnd - lineStart, includeContent);
-                pos = lineStart + includeContent.length();
-            } else {
-                MOON_LOG_ERROR("DiligentRenderer", "Failed to load include: %s", fullIncludePath.c_str());
-                pos = lineEnd;
-            }
-        } else {
-            pos = lineEnd;
-        }
-    }
+
+    std::unordered_set<std::string> includeStack;
+    includeStack.insert(shaderPath);
+    content = ExpandShaderIncludesRecursive(content, GetDirectoryPath(shaderPath), includeStack);
     
     MOON_LOG_INFO("DiligentRenderer", "Loaded shader: %s (%zu bytes after includes)", shaderPath.c_str(), content.size());
     return content;

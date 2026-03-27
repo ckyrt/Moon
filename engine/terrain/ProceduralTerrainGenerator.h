@@ -27,12 +27,15 @@ struct TerrainGenerationSettings {
     float cliffFrequency = 0.27f;
     float ridgeDirectionDegrees = 35.0f;
     bool hasOcean = false;
+    float oceanCoverage = 0.33f;
     float seaLevel01 = 0.18f;
     float beachWidth = 0.18f;
     float coastalShelf = 0.12f;
     uint32_t riverCount = 2;
     float riverMeander = 0.66f;
     float grassHeight = 0.58f;
+    float shrubDensity = 0.24f;
+    float treeDensity = 0.36f;
 };
 
 struct TerrainGenerationResult {

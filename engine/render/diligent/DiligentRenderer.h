@@ -7,6 +7,7 @@
 
 #include "../../core/Camera/Camera.h"
 #include "../../external/DiligentEngine/DiligentCore/Common/interface/RefCntAutoPtr.hpp"
+#include "Graphics/GraphicsEngine/interface/GraphicsTypes.h"
 #include "../IRenderer.h"
 
 namespace Moon {
@@ -75,6 +76,11 @@ public:
     uint32_t ReadObjectIDAt(int x, int y);
 
 private:
+    enum class MaterialPipeline {
+        DefaultLit,
+        Water
+    };
+
     struct MeshGPUResources {
         Diligent::RefCntAutoPtr<Diligent::IBuffer> VB;
         Diligent::RefCntAutoPtr<Diligent::IBuffer> IB;
@@ -127,7 +133,9 @@ private:
         Moon::Vector3 skyColor = Moon::Vector3(0.20f, 0.40f, 0.60f);
         float fogEnabled = 0.0f;
         float cloudCoverage = 0.0f;
-        float paddingSky[3] = {0.0f, 0.0f, 0.0f};
+        float wetness = 0.0f;
+        float windStrength = 0.0f;
+        float timeSeconds = 0.0f;
     };
 
     struct SkyboxConstantsCPU {
@@ -193,6 +201,8 @@ private:
 
     Diligent::RefCntAutoPtr<Diligent::IPipelineState> m_pTransparentPSO;
     Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pTransparentSRB;
+    Diligent::RefCntAutoPtr<Diligent::IPipelineState> m_pWaterTransparentPSO;
+    Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pWaterTransparentSRB;
 
     Diligent::RefCntAutoPtr<Diligent::IBuffer> m_pShadowVSConstants;
     Diligent::RefCntAutoPtr<Diligent::IPipelineState> m_pShadowPSO;
@@ -262,6 +272,7 @@ private:
     PSSceneCPU m_SceneDataCache;
 
     bool m_IsRenderingTransparent = false;
+    MaterialPipeline m_ActiveMaterialPipeline = MaterialPipeline::DefaultLit;
     bool m_HasEnvironmentState = false;
     bool m_RenderProceduralSky = false;
     std::chrono::steady_clock::time_point m_SkyStartTime;
@@ -271,6 +282,7 @@ private:
     void CreateDefaultWhiteTexture();
     void CreateMainPass();
     void CreateTransparentPass();
+    void CreateWaterTransparentPass();
     void CreateShadowPass();
     void CreateShadowMapResources();
     void CreatePointShadowPass();
@@ -282,6 +294,39 @@ private:
 
     void CreatePickingStatic();
     void CreateOrResizePickingRTs();
+    Diligent::RefCntAutoPtr<Diligent::IShader> CreateShaderFromFile(
+        const char* filename,
+        Diligent::SHADER_TYPE shaderType,
+        const char* debugName);
+    bool BindStaticBuffer(
+        Diligent::IPipelineState* pso,
+        Diligent::SHADER_TYPE shaderType,
+        const char* variableName,
+        Diligent::IBuffer* buffer,
+        const char* passName,
+        bool required = true);
+    bool BindMutableTexture(
+        Diligent::IShaderResourceBinding* srb,
+        Diligent::SHADER_TYPE shaderType,
+        const char* variableName,
+        Diligent::ITextureView* textureView,
+        const char* passName,
+        bool required = true);
+    bool CreateSurfacePass(
+        const char* passName,
+        const char* vsFile,
+        const char* psFile,
+        bool enableBlending,
+        bool bindMaterialToVS,
+        Diligent::RefCntAutoPtr<Diligent::IPipelineState>& outPSO,
+        Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding>& outSRB);
+    void BindSharedSurfaceBuffers(
+        Diligent::IPipelineState* pso,
+        const char* passName,
+        bool bindMaterialToVS);
+    void BindSharedSurfaceTextures(
+        Diligent::IShaderResourceBinding* srb,
+        const char* passName);
 
     MeshGPUResources* GetOrCreateMeshResources(Moon::Mesh* mesh);
     TextureGPUResources* GetOrCreateTextureResources(const std::string& path, bool isSRGB);

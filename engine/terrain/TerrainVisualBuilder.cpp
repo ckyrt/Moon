@@ -51,6 +51,11 @@ Vector3 Lerp(const Vector3& a, const Vector3& b, float t)
     return a * (1.0f - t) + b * t;
 }
 
+struct TerrainSurfaceSample {
+    Vector3 tint = Vector3(1.0f, 1.0f, 1.0f);
+    float wetnessMask = 0.0f;
+};
+
 float SampleHeight(const Heightmap& heightmap, float x, float z, const TerrainGenerationSettings& settings)
 {
     const float normalizedX = Clamp01((x / settings.worldWidth) + 0.5f);
@@ -121,7 +126,7 @@ float ComputeRiverDistance(const Vector2& point, const std::vector<std::vector<f
     return minDistance;
 }
 
-Vector3 ComputeTerrainTint(
+TerrainSurfaceSample ComputeTerrainSurfaceSample(
     const Vector3& worldPosition,
     const Heightmap& heightmap,
     const TerrainGenerationResult& generation,
@@ -139,28 +144,41 @@ Vector3 ComputeTerrainTint(
         : 0.0f;
     const float underwater = settings.hasOcean && worldPosition.y <= generation.seaLevelWorldY ? 1.0f : 0.0f;
 
-    const float riverWetness = 1.0f - SmoothStep(settings.riverWidth * 0.8f, settings.riverWidth * 2.3f, riverDistance);
+    const float riverWetness = 1.0f - SmoothStep(settings.riverWidth * 0.75f, settings.riverWidth * 2.6f, riverDistance);
+    const float shorelineWetness = settings.hasOcean
+        ? 1.0f - SmoothStep(
+            generation.seaLevelWorldY + settings.heightScale * 0.004f,
+            generation.seaLevelWorldY + settings.heightScale * (0.045f + settings.beachWidth * 0.08f),
+            worldPosition.y)
+        : 0.0f;
     const float highland = SmoothStep(0.54f, 0.84f, normalizedHeight);
     const float grassiness = (1.0f - slope01) * (1.0f - highland) * (1.0f - riverWetness * 0.55f) * (1.0f - beachProximity);
     const float rocky = std::max(slope01, highland * 0.85f);
     const float dirtiness = Clamp01(1.0f - grassiness - rocky * 0.55f - beachProximity * 0.35f);
+    const float sedimentMask = Clamp01(std::max(riverWetness * 0.85f, beachProximity * 0.95f));
+    const float wetnessMask = Clamp01(std::max(std::max(riverWetness, shorelineWetness), underwater));
 
     const Vector3 grassColor(0.34f, 0.43f, 0.18f);
     const Vector3 dirtColor(0.50f, 0.40f, 0.24f);
     const Vector3 rockColor(0.63f, 0.61f, 0.56f);
-    const Vector3 riverbedColor(0.74f, 0.70f, 0.52f);
+    const Vector3 riverbankColor(0.58f, 0.47f, 0.28f);
+    const Vector3 wetSoilColor(0.33f, 0.27f, 0.20f);
     const Vector3 beachColor(0.80f, 0.74f, 0.56f);
     const Vector3 shallowWaterColor(0.58f, 0.69f, 0.62f);
 
     Vector3 tint = grassColor;
     tint = Lerp(tint, dirtColor, Clamp01(dirtiness));
     tint = Lerp(tint, rockColor, Clamp01(rocky));
-    tint = Lerp(tint, riverbedColor, Clamp01(riverWetness));
+    tint = Lerp(tint, riverbankColor, sedimentMask * 0.65f);
     tint = Lerp(tint, beachColor, Clamp01(beachProximity));
+    tint = Lerp(tint, wetSoilColor, wetnessMask * 0.52f);
     tint = Lerp(tint, shallowWaterColor, Clamp01(underwater));
 
     const float sunExposure = 0.94f + normalizedHeight * 0.14f;
-    return tint * sunExposure;
+    TerrainSurfaceSample sample;
+    sample.tint = tint * sunExposure;
+    sample.wetnessMask = wetnessMask;
+    return sample;
 }
 
 void AppendGrassBlade(
@@ -188,6 +206,10 @@ void AppendGrassBlade(
     Vertex v1(bottomRight, normal, color, 1.0f, Vector2(1.0f, 1.0f));
     Vertex v2(topRight, normal, color, 1.0f, Vector2(1.0f, 0.0f));
     Vertex v3(topLeft, normal, color, 1.0f, Vector2(0.0f, 0.0f));
+    v0.colorA = 0.0f;
+    v1.colorA = 0.0f;
+    v2.colorA = 1.0f;
+    v3.colorA = 1.0f;
 
     vertices.push_back(v0);
     vertices.push_back(v1);
@@ -230,11 +252,12 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildTerrainMesh(const TerrainGenera
     std::shared_ptr<Mesh> mesh(raw);
     std::vector<Vertex> vertices = mesh->GetVertices();
     for (Vertex& vertex : vertices) {
-        const Vector3 tint = ComputeTerrainTint(vertex.position, terrainData.heightmap, generation, settings);
-        vertex.colorR = tint.x;
-        vertex.colorG = tint.y;
-        vertex.colorB = tint.z;
-        vertex.colorA = 1.0f;
+        const TerrainSurfaceSample sample =
+            ComputeTerrainSurfaceSample(vertex.position, terrainData.heightmap, generation, settings);
+        vertex.colorR = sample.tint.x;
+        vertex.colorG = sample.tint.y;
+        vertex.colorB = sample.tint.z;
+        vertex.colorA = sample.wetnessMask;
     }
 
     mesh->SetVertices(std::move(vertices));
@@ -252,30 +275,81 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildRiverMesh(const TerrainGenerati
     std::vector<uint32_t> indices;
 
     for (const std::vector<float>& riverPolyline : generation.riverPolylines) {
-        if (riverPolyline.empty()) {
+        const size_t pointCount = riverPolyline.size() / 3;
+        if (pointCount < 2) {
             continue;
         }
 
-        Mesh* raw = MeshGenerator::CreateRiverFromPolyline(
-            riverPolyline,
-            generation.riverWidth,
-            generation.riverDepth,
-            generation.terrainData.heightmap.GetSamples().data(),
-            static_cast<int>(generation.terrainData.heightmap.GetWidth()),
-            settings.worldWidth,
-            settings.worldDepth);
-
-        if (!raw) {
-            continue;
-        }
-
-        std::shared_ptr<Mesh> riverMesh(raw);
         const uint32_t indexOffset = static_cast<uint32_t>(vertices.size());
-        const std::vector<Vertex>& riverVertices = riverMesh->GetVertices();
-        const std::vector<uint32_t>& riverIndices = riverMesh->GetIndices();
-        vertices.insert(vertices.end(), riverVertices.begin(), riverVertices.end());
-        for (uint32_t index : riverIndices) {
-            indices.push_back(index + indexOffset);
+        const float halfWidth = generation.riverWidth * 0.5f;
+
+        for (size_t pointIndex = 0; pointIndex < pointCount; ++pointIndex) {
+            const size_t base = pointIndex * 3;
+            const Vector3 p(riverPolyline[base + 0], riverPolyline[base + 1], riverPolyline[base + 2]);
+
+            Vector3 dir;
+            if (pointIndex == 0) {
+                const size_t nextBase = 3;
+                dir = Vector3(
+                    riverPolyline[nextBase + 0] - p.x,
+                    riverPolyline[nextBase + 1] - p.y,
+                    riverPolyline[nextBase + 2] - p.z);
+            } else if (pointIndex == pointCount - 1) {
+                const size_t prevBase = (pointIndex - 1) * 3;
+                dir = Vector3(
+                    p.x - riverPolyline[prevBase + 0],
+                    p.y - riverPolyline[prevBase + 1],
+                    p.z - riverPolyline[prevBase + 2]);
+            } else {
+                const size_t prevBase = (pointIndex - 1) * 3;
+                const size_t nextBase = (pointIndex + 1) * 3;
+                dir = Vector3(
+                    riverPolyline[nextBase + 0] - riverPolyline[prevBase + 0],
+                    riverPolyline[nextBase + 1] - riverPolyline[prevBase + 1],
+                    riverPolyline[nextBase + 2] - riverPolyline[prevBase + 2]);
+            }
+
+            dir.y = 0.0f;
+            dir = NormalizeSafe(dir, Vector3(0.0f, 0.0f, 1.0f));
+            Vector3 right = NormalizeSafe(Vector3::Cross(Vector3(0.0f, 1.0f, 0.0f), dir), Vector3(1.0f, 0.0f, 0.0f));
+
+            const float centerHeight = SampleHeight(generation.terrainData.heightmap, p.x, p.z, settings);
+            const float bankInset = halfWidth * 0.78f;
+            const float leftHeight = SampleHeight(generation.terrainData.heightmap, p.x - right.x * bankInset, p.z - right.z * bankInset, settings);
+            const float rightHeight = SampleHeight(generation.terrainData.heightmap, p.x + right.x * bankInset, p.z + right.z * bankInset, settings);
+            const float bankHeight = std::min(leftHeight, rightHeight);
+            const float desiredSurface = centerHeight + generation.riverDepth;
+            const float minSurface = centerHeight + generation.riverDepth * 0.35f;
+            const float maxSurface = bankHeight - generation.riverDepth * 0.12f;
+            const float waterSurfaceY = std::max(minSurface, std::min(desiredSurface, maxSurface));
+
+            Vertex leftVertex(
+                Vector3(p.x - right.x * halfWidth, waterSurfaceY, p.z - right.z * halfWidth),
+                Vector3(0.0f, 1.0f, 0.0f),
+                Vector3(1.0f, 1.0f, 1.0f),
+                0.0f,
+                Vector2(0.0f, pointCount > 1 ? static_cast<float>(pointIndex) / static_cast<float>(pointCount - 1) : 0.0f));
+            Vertex rightVertex = leftVertex;
+            rightVertex.position = Vector3(p.x + right.x * halfWidth, waterSurfaceY, p.z + right.z * halfWidth);
+            rightVertex.uv.x = 1.0f;
+
+            vertices.push_back(leftVertex);
+            vertices.push_back(rightVertex);
+        }
+
+        for (size_t segmentIndex = 0; segmentIndex + 1 < pointCount; ++segmentIndex) {
+            const uint32_t i0 = indexOffset + static_cast<uint32_t>(segmentIndex * 2 + 0);
+            const uint32_t i1 = indexOffset + static_cast<uint32_t>(segmentIndex * 2 + 1);
+            const uint32_t i2 = indexOffset + static_cast<uint32_t>((segmentIndex + 1) * 2 + 0);
+            const uint32_t i3 = indexOffset + static_cast<uint32_t>((segmentIndex + 1) * 2 + 1);
+
+            indices.push_back(i0);
+            indices.push_back(i2);
+            indices.push_back(i1);
+
+            indices.push_back(i1);
+            indices.push_back(i2);
+            indices.push_back(i3);
         }
     }
 
@@ -293,8 +367,8 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildOceanMesh(const TerrainGenerati
     Mesh* raw = MeshGenerator::CreatePlane(
         settings.worldWidth * 1.02f,
         settings.worldDepth * 1.02f,
-        8,
-        8,
+        96,
+        96,
         Vector3(1.0f, 1.0f, 1.0f));
 
     if (!raw) {
@@ -305,6 +379,7 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildOceanMesh(const TerrainGenerati
     std::vector<Vertex> vertices = mesh->GetVertices();
     for (Vertex& vertex : vertices) {
         vertex.position.y = generation.seaLevelWorldY;
+        vertex.colorA = 0.0f;
     }
     mesh->SetVertices(std::move(vertices));
     return mesh;
@@ -369,6 +444,84 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildGrassMesh(const TerrainData& te
             AppendGrassBlade(vertices, indices, center, yaw0, patchWidth, patchHeight, grassColor);
             AppendGrassBlade(vertices, indices, center, yaw1, patchWidth, patchHeight * 0.95f, grassColor);
             AppendGrassBlade(vertices, indices, center, yaw2, patchWidth * 0.85f, patchHeight * 0.82f, grassColor);
+
+            ++clusterCount;
+        }
+    }
+
+    std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>();
+    mesh->SetVertices(std::move(vertices));
+    mesh->SetIndices(std::move(indices));
+    return mesh;
+}
+
+std::shared_ptr<Mesh> TerrainVisualBuilder::BuildShrubMesh(const TerrainData& terrainData, const TerrainGenerationResult& generation, const TerrainGenerationSettings& settings)
+{
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+
+    const uint32_t shrubBudget = static_cast<uint32_t>(180.0f + settings.shrubDensity * 1400.0f);
+    vertices.reserve(static_cast<size_t>(shrubBudget) * 20);
+    indices.reserve(static_cast<size_t>(shrubBudget) * 60);
+
+    const Heightmap& heightmap = terrainData.heightmap;
+    const uint32_t cells = std::max(10u, static_cast<uint32_t>(std::sqrt(static_cast<float>(shrubBudget)) * 1.35f));
+
+    uint32_t clusterCount = 0;
+    for (uint32_t z = 0; z < cells && clusterCount < shrubBudget; ++z) {
+        for (uint32_t x = 0; x < cells && clusterCount < shrubBudget; ++x) {
+            const float jitterX = std::sin(static_cast<float>(x * 23 + z * 17)) * 0.42f;
+            const float jitterZ = std::cos(static_cast<float>(x * 19 + z * 29)) * 0.42f;
+            const float u = (static_cast<float>(x) + 0.5f + jitterX) / static_cast<float>(cells);
+            const float v = (static_cast<float>(z) + 0.5f + jitterZ) / static_cast<float>(cells);
+            const float worldX = (u - 0.5f) * settings.worldWidth;
+            const float worldZ = (v - 0.5f) * settings.worldDepth;
+
+            const float baseY = SampleHeight(heightmap, worldX, worldZ, settings);
+            const float normalizedHeight = baseY / std::max(0.001f, settings.heightScale);
+            const float slopeScore = ComputeSlopeScore(heightmap, worldX, worldZ, settings);
+            const float riverDistance = ComputeRiverDistance(Vector2(worldX, worldZ), generation.riverPolylines);
+            const bool nearBeach =
+                settings.hasOcean &&
+                baseY <= generation.seaLevelWorldY + settings.heightScale * (0.05f + settings.beachWidth * 0.04f);
+
+            if (normalizedHeight < 0.18f || normalizedHeight > 0.68f) {
+                continue;
+            }
+            if (slopeScore > 10.5f) {
+                continue;
+            }
+            if (riverDistance < settings.riverWidth * 1.5f) {
+                continue;
+            }
+            if (nearBeach) {
+                continue;
+            }
+
+            const float moistureBand = 1.0f - SmoothStep(settings.riverWidth * 1.6f, settings.riverWidth * 4.5f, riverDistance);
+            const float hillsideBand = SmoothStep(0.24f, 0.58f, normalizedHeight) * (1.0f - SmoothStep(0.62f, 0.78f, normalizedHeight));
+            const float placementMask = moistureBand * 0.45f + hillsideBand * 0.75f - slopeScore * 0.025f;
+            if (placementMask < 0.22f) {
+                continue;
+            }
+
+            const Vector3 center(worldX, baseY + 0.18f, worldZ);
+            const float patchHeight = 1.4f + 0.9f * std::sin(static_cast<float>(x * 9 + z * 5)) + placementMask * 0.6f;
+            const float patchWidth = 0.75f + 0.25f * std::cos(static_cast<float>(x * 7 + z * 11));
+            const Vector3 shrubColor(
+                0.20f + 0.05f * std::sin(static_cast<float>(x) * 0.7f),
+                0.34f + 0.12f * placementMask + 0.04f * std::cos(static_cast<float>(z) * 0.8f),
+                0.15f + 0.02f * moistureBand);
+
+            const float yaw0 = static_cast<float>(x * 17 + z * 31) * 0.13f;
+            const float yaw1 = yaw0 + kPi * 0.5f;
+            const float yaw2 = yaw0 + kPi * 0.25f;
+            const float yaw3 = yaw0 + kPi * 0.75f;
+
+            AppendGrassBlade(vertices, indices, center, yaw0, patchWidth, patchHeight, shrubColor);
+            AppendGrassBlade(vertices, indices, center, yaw1, patchWidth * 0.92f, patchHeight * 0.94f, shrubColor);
+            AppendGrassBlade(vertices, indices, center, yaw2, patchWidth * 0.78f, patchHeight * 0.80f, shrubColor);
+            AppendGrassBlade(vertices, indices, center, yaw3, patchWidth * 0.70f, patchHeight * 0.72f, shrubColor);
 
             ++clusterCount;
         }

@@ -71,6 +71,9 @@ struct EnvironmentProfile {
     float fogWeatherDensity = 0.015f;
     float rainCloudCoverage = 0.85f;
     float cloudyCloudCoverage = 0.65f;
+    float baseWindSpeed = 2.0f;
+    float baseWindGustStrength = 0.15f;
+    float baseWindTurbulence = 0.05f;
 };
 
 } // namespace Moon

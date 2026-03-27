@@ -64,6 +64,7 @@ struct WorldBuildTerrainSettings {
 
 struct WorldBuildHydrologySettings {
     bool hasOcean = false;
+    float oceanCoverage = 0.33f;
     uint32_t riverCount = 2;
     float riverWidthMinMeters = 18.0f;
     float riverWidthMaxMeters = 42.0f;

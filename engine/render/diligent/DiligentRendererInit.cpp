@@ -21,9 +21,17 @@ using namespace Diligent;
 void DiligentRenderer::CreateDeviceAndSwapchain(const RenderInitParams& params)
 {
     auto* pFactory = GetEngineFactoryD3D11();
+    if (!pFactory) {
+        MOON_LOG_ERROR("DiligentRenderer", "GetEngineFactoryD3D11 returned null");
+        return;
+    }
 
     EngineD3D11CreateInfo ci{};
     pFactory->CreateDeviceAndContextsD3D11(ci, &m_pDevice, &m_pImmediateContext);
+    if (!m_pDevice || !m_pImmediateContext) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create D3D11 device/context");
+        return;
+    }
     MOON_LOG_INFO("DiligentRenderer", "D3D11 device/context created");
 
     SwapChainDesc sc{};
@@ -37,6 +45,10 @@ void DiligentRenderer::CreateDeviceAndSwapchain(const RenderInitParams& params)
 #else
 #error "This sample currently targets Win32 only."
 #endif
+    if (!m_pSwapChain) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create swap chain");
+        return;
+    }
     MOON_LOG_INFO("DiligentRenderer", "SwapChain created");
 
     m_pRTV = m_pSwapChain->GetCurrentBackBufferRTV();

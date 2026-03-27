@@ -47,6 +47,7 @@ void ApplyTerrainStyleDefaults(WorldBuildSpec& build, const std::string& terrain
 {
     if (terrainStyle == "coastal_island") {
         build.hydrology.hasOcean = true;
+        build.hydrology.oceanCoverage = 0.36f;
         build.hydrology.riverCount = 1;
         build.terrain.flatAreaRatio = 0.24f;
         build.terrain.mountainDensity = 0.38f;
@@ -307,6 +308,7 @@ void to_json(json& j, const WorldBuildSpec& spec)
         }},
         {"hydrology", {
             {"has_ocean", spec.hydrology.hasOcean},
+            {"ocean_coverage", spec.hydrology.oceanCoverage},
             {"river_count", spec.hydrology.riverCount},
             {"river_width_m", {spec.hydrology.riverWidthMinMeters, spec.hydrology.riverWidthMaxMeters}},
             {"river_depth_m", {spec.hydrology.riverDepthMinMeters, spec.hydrology.riverDepthMaxMeters}},
@@ -387,6 +389,7 @@ void from_json(const json& j, WorldBuildSpec& spec)
     if (j.contains("hydrology")) {
         const json& hydrology = j["hydrology"];
         spec.hydrology.hasOcean = hydrology.value("has_ocean", spec.hydrology.hasOcean);
+        spec.hydrology.oceanCoverage = hydrology.value("ocean_coverage", spec.hydrology.oceanCoverage);
         spec.hydrology.riverCount = hydrology.value("river_count", spec.hydrology.riverCount);
         if (hydrology.contains("river_width_m") && hydrology["river_width_m"].is_array() && hydrology["river_width_m"].size() >= 2) {
             spec.hydrology.riverWidthMinMeters = hydrology["river_width_m"][0].get<float>();
@@ -498,6 +501,7 @@ WorldBuildSpec WorldSpecIO::BuildFromPrompt(const WorldPromptSpec& prompt)
     build.terrain.roughness = Clamp01(build.terrain.roughness);
     build.terrain.erosionStrength = Clamp01(build.terrain.erosionStrength);
     build.terrain.cliffFrequency = Clamp01(build.terrain.cliffFrequency);
+    build.hydrology.oceanCoverage = Clamp01(build.hydrology.oceanCoverage);
     build.hydrology.riverMeander = Clamp01(build.hydrology.riverMeander);
     build.hydrology.wetlandRatio = Clamp01(build.hydrology.wetlandRatio);
     build.vegetation.grassDensity = Clamp01(build.vegetation.grassDensity);

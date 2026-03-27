@@ -1,69 +1,30 @@
 // ============================================================================
 // PBR Common Definitions
-// 常量、cbuffer、纹理声明、输入结构
+// Shared constant buffers, texture declarations, and common pixel inputs.
 // ============================================================================
 
 #ifndef PBR_COMMON_HLSL
 #define PBR_COMMON_HLSL
 
+#include "SurfaceShared.hlsl"
+
 static const float PI = 3.14159265359;
 
-// 材质参数常量缓冲区
-cbuffer MaterialConstants { 
-    float g_Metallic;
-    float g_Roughness;
-    float g_TriplanarTiling;  // Triplanar纹理平铺密度（默认0.5 = 每2米重复一次）
-    float g_MappingMode;      // 映射模式（0.0 = UV, 1.0 = Triplanar）
-    float3 g_BaseColor;
-    float g_TriplanarBlend;   // Triplanar混合锐度（默认4.0）
-    float g_HasNormalMap;     // 是否加载了法线贴图（0.0 = 无，1.0 = 有）
-    float g_Opacity;          // 不透明度（0.0 = 完全透明, 1.0 = 完全不透明）
-    float g_UseVertexColorTint;
-    float g_Padding2;
-    float3 g_TransmissionColor; // 透射颜色（用于玻璃）
-    float g_Padding3;
-};
-
-// 场景参数常量缓冲区（相机位置、光源等）
-cbuffer SceneConstants { 
-    float3 g_CameraPosition;
-    float g_HasEnvironmentMap;  // 是否有有效的环境贴图（0.0 = 无，1.0 = 有）
-    float3 g_LightDirection;
-    float g_Padding4;
-    float3 g_LightColor;
-    float g_LightIntensity;
-
-    // 单点光源（v1: 只支持一个点光源）
-    float3 g_PointLightPosition;
-    float g_PointLightRange;
-    float3 g_PointLightColor;
-    float g_PointLightIntensity;
-    float3 g_PointLightAttenuation; // (constant, linear, quadratic)
-    float g_PointLightPadding;
-    float3 g_FogColor;
-    float g_FogDensity;
-    float3 g_SkyColor;
-    float g_FogEnabled;
-};
-
-// 阴影（Shadow Map）参数
 cbuffer ShadowConstants {
-    float4x4 g_WorldToShadowClip;      // world -> light clip space
-    float2   g_ShadowMapTexelSize;     // 1.0 / shadowMapSize
-    float    g_ShadowBias;             // depth bias
-    float    g_ShadowStrength;         // 0=disable, 1=full
+    float4x4 g_WorldToShadowClip;
+    float2 g_ShadowMapTexelSize;
+    float g_ShadowBias;
+    float g_ShadowStrength;
 };
 
-// 点光源阴影（Point Light Shadow Cubemap）参数
 cbuffer PointShadowConstants {
     float3 g_PointShadowLightPos;
-    float  g_PointShadowInvRange;   // 1.0 / pointLightRange
-    float  g_PointShadowBias;       // normalized distance bias
-    float  g_PointShadowStrength;   // 0=disable, 1=full
+    float g_PointShadowInvRange;
+    float g_PointShadowBias;
+    float g_PointShadowStrength;
     float2 g_PointShadowPadding;
 };
 
-// 纹理资源和采样器
 Texture2D g_AlbedoMap;
 SamplerState g_AlbedoMap_sampler;
 
@@ -82,27 +43,23 @@ SamplerState g_NormalMap_sampler;
 Texture2D g_EquirectMap;
 SamplerState g_EquirectMap_sampler;
 
-// BRDF LUT for IBL (256x256 RG16F)
 Texture2D g_BRDF_LUT;
 SamplerState g_BRDF_LUT_sampler;
 
-// Shadow map (depth)
-Texture2D              g_ShadowMap;
+Texture2D g_ShadowMap;
 SamplerComparisonState g_ShadowMap_sampler;
 
-// Point shadow map (cubemap storing normalized radial distance in R channel)
-TextureCube  g_PointShadowMap;
+TextureCube g_PointShadowMap;
 SamplerState g_PointShadowMap_sampler;
 
-struct PSInput { 
-    float4 Pos      : SV_POSITION;
+struct PSInput {
+    float4 Pos : SV_POSITION;
     float3 WorldPos : POSITION;
     float3 NormalWS : NORMAL;
-    float4 Color    : COLOR;
-    float2 UV       : TEXCOORD;  // 保留用于非CSG物体
+    float4 Color : COLOR;
+    float2 UV : TEXCOORD;
 };
 
-// 将 3D 方向转换为 equirectangular UV 坐标
 float2 DirToEquirectUV(float3 dir) {
     float u = atan2(dir.z, dir.x) / (2.0 * PI) + 0.5;
     float v = 1.0 - (asin(dir.y) / PI + 0.5);

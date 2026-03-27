@@ -51,6 +51,12 @@ Phase 1 currently includes:
 3. add terrain material layers and painting
 4. feed terrain data into future water and vegetation modules
 
+## World Generation Notes
+
+- Coastal scenes support an `oceanCoverage` parameter in `WorldBuildSpec.hydrology`.
+- `oceanCoverage` is normalized from `0.0` to `1.0` and controls how much of the map depth becomes ocean.
+- Changing that value should produce a different coastline layout without changing the rest of the terrain pipeline.
+
 ## Cave Strategy
 
 The primary world surface stays heightmap-based.

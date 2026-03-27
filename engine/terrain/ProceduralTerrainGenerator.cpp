@@ -33,6 +33,12 @@ float Lerp(float a, float b, float t)
     return a * (1.0f - t) + b * t;
 }
 
+float RemapClamped(float value, float inMin, float inMax, float outMin, float outMax)
+{
+    const float t = Clamp01((value - inMin) / std::max(0.0001f, inMax - inMin));
+    return Lerp(outMin, outMax, t);
+}
+
 float HashNoise(int x, int y, uint32_t seed)
 {
     uint32_t h = seed;
@@ -98,6 +104,59 @@ float DistanceToSegment(const Vector2& point, const Vector2& a, const Vector2& b
     return (point - projection).Length();
 }
 
+Vector2 CatmullRomInterpolate2D(const Vector2& p0, const Vector2& p1, const Vector2& p2, const Vector2& p3, float t)
+{
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+    return (p1 * 2.0f +
+        (p2 - p0) * t +
+        (p0 * 2.0f - p1 * 5.0f + p2 * 4.0f - p3) * t2 +
+        (-p0 + p1 * 3.0f - p2 * 3.0f + p3) * t3) * 0.5f;
+}
+
+std::vector<float> ResampleRiverPolyline(const std::vector<float>& controlPolyline)
+{
+    const int controlPointCount = static_cast<int>(controlPolyline.size() / 3);
+    if (controlPointCount < 2) {
+        return controlPolyline;
+    }
+
+    float estimatedLength = 0.0f;
+    for (int i = 0; i < controlPointCount - 1; ++i) {
+        const Vector2 a(controlPolyline[static_cast<size_t>(i) * 3 + 0], controlPolyline[static_cast<size_t>(i) * 3 + 2]);
+        const Vector2 b(controlPolyline[static_cast<size_t>(i + 1) * 3 + 0], controlPolyline[static_cast<size_t>(i + 1) * 3 + 2]);
+        estimatedLength += (b - a).Length();
+    }
+
+    const int sampleCount = std::max(controlPointCount * 6, static_cast<int>(estimatedLength / 18.0f));
+    std::vector<float> sampledPolyline;
+    sampledPolyline.reserve(static_cast<size_t>(sampleCount + 1) * 3);
+
+    for (int i = 0; i <= sampleCount; ++i) {
+        const float globalT = static_cast<float>(i) / static_cast<float>(sampleCount);
+        const float scaledT = globalT * static_cast<float>(controlPointCount - 1);
+        const int segment = std::min(static_cast<int>(scaledT), controlPointCount - 2);
+        const float localT = scaledT - static_cast<float>(segment);
+
+        const int idx0 = std::max(0, segment - 1);
+        const int idx1 = segment;
+        const int idx2 = segment + 1;
+        const int idx3 = std::min(controlPointCount - 1, segment + 2);
+
+        const Vector2 p0(controlPolyline[static_cast<size_t>(idx0) * 3 + 0], controlPolyline[static_cast<size_t>(idx0) * 3 + 2]);
+        const Vector2 p1(controlPolyline[static_cast<size_t>(idx1) * 3 + 0], controlPolyline[static_cast<size_t>(idx1) * 3 + 2]);
+        const Vector2 p2(controlPolyline[static_cast<size_t>(idx2) * 3 + 0], controlPolyline[static_cast<size_t>(idx2) * 3 + 2]);
+        const Vector2 p3(controlPolyline[static_cast<size_t>(idx3) * 3 + 0], controlPolyline[static_cast<size_t>(idx3) * 3 + 2]);
+
+        const Vector2 p = CatmullRomInterpolate2D(p0, p1, p2, p3, localT);
+        sampledPolyline.push_back(p.x);
+        sampledPolyline.push_back(0.0f);
+        sampledPolyline.push_back(p.y);
+    }
+
+    return sampledPolyline;
+}
+
 std::vector<float> BuildRiverPolyline(const TerrainGenerationSettings& settings, uint32_t riverIndex)
 {
     std::vector<float> polyline;
@@ -122,7 +181,7 @@ std::vector<float> BuildRiverPolyline(const TerrainGenerationSettings& settings,
         polyline.push_back(worldZ);
     }
 
-    return polyline;
+    return ResampleRiverPolyline(polyline);
 }
 
 float ComputeRiverDistance(const Vector2& point, const std::vector<float>& polyline)
@@ -175,11 +234,14 @@ TerrainGenerationSettings ProceduralTerrainGenerator::CreateSettingsFromWorldBui
     settings.cliffFrequency = spec.terrain.cliffFrequency;
     settings.ridgeDirectionDegrees = spec.terrain.ridgeDirectionDegrees;
     settings.hasOcean = spec.hydrology.hasOcean;
+    settings.oceanCoverage = Clamp01(spec.hydrology.oceanCoverage);
     settings.beachWidth = Clamp01(0.08f + spec.surface.sandNearWater * 0.40f);
     settings.coastalShelf = Clamp01(0.06f + spec.world.seaLevel * 0.30f);
     settings.riverCount = std::max(1u, spec.hydrology.riverCount);
     settings.riverMeander = spec.hydrology.riverMeander;
     settings.grassHeight = spec.vegetation.grassHeight;
+    settings.shrubDensity = Clamp01(spec.vegetation.shrubDensity);
+    settings.treeDensity = Clamp01(spec.vegetation.treeDensity);
     if (!spec.constraints.mustHaveMainRiver && spec.hydrology.riverCount == 0) {
         settings.riverCount = 0;
     }
@@ -249,17 +311,23 @@ TerrainGenerationResult ProceduralTerrainGenerator::CreateOpenWorldLandscape(con
 
             if (!result.riverPolylines.empty()) {
                 const float riverDistance = ComputeRiverDistance(Vector2(worldX, worldZ), result.riverPolylines);
-                const float riverMask = 1.0f - SmoothStep(settings.riverWidth * 0.55f, settings.riverWidth * (1.6f + settings.riverMeander), riverDistance);
-                height01 -= riverMask * (0.09f + settings.relief * 0.08f);
+                const float riverDepth01 = settings.riverDepth / std::max(1.0f, settings.heightScale);
+                const float channelCore = 1.0f - SmoothStep(settings.riverWidth * 0.38f, settings.riverWidth * 0.92f, riverDistance);
+                const float channelBank = 1.0f - SmoothStep(settings.riverWidth * 0.92f, settings.riverWidth * (1.9f + settings.riverMeander * 0.4f), riverDistance);
+                height01 -= channelCore * (riverDepth01 * 1.65f + 0.012f);
+                height01 -= channelBank * (riverDepth01 * 0.55f + 0.010f);
             }
 
             if (settings.hasOcean) {
-                const float coastStart = settings.worldDepth * (0.18f + settings.coastalShelf * 0.10f);
-                const float coastEnd = settings.worldDepth * (0.48f - settings.coastalShelf * 0.08f);
-                const float shorelineMask = SmoothStep(coastStart, coastEnd, worldZ);
-                const float beachBandStart = settings.worldDepth * (0.12f + settings.beachWidth * 0.10f);
-                const float beachBandEnd = settings.worldDepth * (0.24f + settings.beachWidth * 0.18f);
-                const float beachMask = SmoothStep(beachBandStart, beachBandEnd, worldZ) * (1.0f - shorelineMask);
+                const float shorelineV = 1.0f - settings.oceanCoverage;
+                const float shelfHalfWidth = RemapClamped(settings.coastalShelf, 0.0f, 1.0f, 0.035f, 0.11f);
+                const float beachTransition = RemapClamped(settings.beachWidth, 0.0f, 1.0f, 0.025f, 0.08f);
+                const float coastStartV = Clamp01(shorelineV - shelfHalfWidth);
+                const float coastEndV = Clamp01(shorelineV + shelfHalfWidth * 0.65f);
+                const float beachStartV = Clamp01(coastStartV - beachTransition);
+                const float beachEndV = Clamp01(coastStartV + beachTransition * 0.55f);
+                const float shorelineMask = SmoothStep(coastStartV, coastEndV, v);
+                const float beachMask = SmoothStep(beachStartV, beachEndV, v) * (1.0f - shorelineMask);
 
                 height01 = Lerp(height01, settings.seaLevel01 + 0.012f, beachMask * 0.72f);
                 height01 = Lerp(height01, settings.seaLevel01 - 0.035f, shorelineMask);

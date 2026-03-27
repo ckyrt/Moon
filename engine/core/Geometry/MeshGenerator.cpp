@@ -826,7 +826,8 @@ Mesh* MeshGenerator::CreateRiverFromPolyline(
     const float* terrainHeights,
     int terrainResolution,
     float terrainWidth,
-    float terrainDepth)
+    float terrainDepth,
+    float terrainHeightScale)
 {
     const int controlPointCount = static_cast<int>(points.size() / 3);
     if (controlPointCount < 2 || width <= 0.0f)
@@ -849,16 +850,16 @@ Mesh* MeshGenerator::CreateRiverFromPolyline(
     
     // 根据固定间隔计算插值点数量（每0.3米一个采样点）
     const float samplingInterval = 0.3f;  // 采样间隔（米）
-    const int totalSegments = std::max(10, static_cast<int>(estimatedLength / samplingInterval));
+    const int totalSegments = controlPointCount - 1;
     const int interpolatedPointCount = totalSegments + 1;
     
-    vertices.reserve(interpolatedPointCount * 2);
+    vertices.reserve(static_cast<size_t>(controlPointCount) * 2);
     indices.reserve(totalSegments * 6);
 
     // ---------- 生成插值后的顶点 ----------
     for (int i = 0; i <= totalSegments; ++i)
     {
-        float globalT = static_cast<float>(i) / static_cast<float>(totalSegments);
+        float globalT = totalSegments > 0 ? static_cast<float>(i) / static_cast<float>(totalSegments) : 0.0f;
         float scaledT = globalT * (controlPointCount - 1);
         int segment = static_cast<int>(scaledT);
         segment = std::min(segment, controlPointCount - 2);
@@ -956,19 +957,20 @@ Mesh* MeshGenerator::CreateRiverFromPolyline(
                 
                 float h0 = h00 * (1.0f - tx) + h10 * tx;
                 float h1 = h01 * (1.0f - tx) + h11 * tx;
-                return h0 * (1.0f - tz) + h1 * tz;
+                return (h0 * (1.0f - tz) + h1 * tz) * terrainHeightScale;
             };
             
             // 采样左右两侧边缘和中心的地形高度
-            float leftHeight = sampleTerrainHeight(leftEdge);
-            float rightHeight = sampleTerrainHeight(rightEdge);
+            const float bankInset = halfWidth * 0.78f;
+            float leftHeight = sampleTerrainHeight(p - right * bankInset);
+            float rightHeight = sampleTerrainHeight(p + right * bankInset);
             float centerHeight = sampleTerrainHeight(p);
             
-            // 取三个点的最小值作为河床高度（确保水面不会悬空）
-            float riverbedHeight = std::min(std::min(leftHeight, rightHeight), centerHeight);
-            
-            // 水面 = 河床 + 水深
-            waterSurfaceY = riverbedHeight + waterDepth;
+            const float bankHeight = std::min(leftHeight, rightHeight);
+            const float desiredSurface = centerHeight + waterDepth;
+            const float minSurface = centerHeight + waterDepth * 0.35f;
+            const float maxSurface = bankHeight - waterDepth * 0.12f;
+            waterSurfaceY = std::max(minSurface, std::min(desiredSurface, maxSurface));
         }
 
         // 河流表面顶点使用计算出的水面高度，只在XZ平面展开宽度

@@ -146,7 +146,8 @@ public:
         const float* terrainHeights = nullptr,
         int terrainResolution = 0,
         float terrainWidth = 100.0f,
-        float terrainDepth = 100.0f
+        float terrainDepth = 100.0f,
+        float terrainHeightScale = 1.0f
     );
 
 private:

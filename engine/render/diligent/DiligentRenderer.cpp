@@ -12,6 +12,8 @@
 #include "../../core/Mesh/Mesh.h"
 #include "../../environment/EnvironmentTypes.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstring>
 
@@ -29,6 +31,25 @@
 #include <string>
 
 using namespace Diligent;
+
+namespace {
+
+std::array<ShaderResourceVariableDesc, 9> MakeSurfaceTextureVariables()
+{
+    return {{
+        {SHADER_TYPE_PIXEL, "g_AlbedoMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_AOMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_RoughnessMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_MetalnessMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_NormalMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_EquirectMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_BRDF_LUT", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_ShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+        {SHADER_TYPE_PIXEL, "g_PointShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
+    }};
+}
+
+} // namespace
 
 // ======= 工具函数模板实现 =======
 template<typename T>
@@ -59,6 +80,244 @@ DiligentRenderer::~DiligentRenderer()
     Shutdown();
 }
 
+RefCntAutoPtr<IShader> DiligentRenderer::CreateShaderFromFile(
+    const char* filename,
+    SHADER_TYPE shaderType,
+    const char* debugName)
+{
+    MOON_LOG_INFO(
+        "DiligentRenderer",
+        "[%s] CreateShaderFromFile begin (device=%p, file=%s)",
+        debugName ? debugName : "Unnamed Shader",
+        static_cast<void*>(m_pDevice),
+        filename ? filename : "<null>");
+
+    if (!m_pDevice) {
+        MOON_LOG_ERROR(
+            "DiligentRenderer",
+            "[%s] Cannot create shader from %s because render device is null",
+            debugName ? debugName : "Unnamed Shader",
+            filename ? filename : "<null>");
+        return {};
+    }
+
+    std::string shaderCode = DiligentRendererUtils::LoadShaderSource(filename);
+    if (shaderCode.empty()) {
+        MOON_LOG_ERROR(
+            "DiligentRenderer",
+            "[%s] Failed to load shader source from %s",
+            debugName ? debugName : "Unnamed Shader",
+            filename ? filename : "<null>");
+        return {};
+    }
+
+    RefCntAutoPtr<IShader> shader;
+    ShaderCreateInfo ci{};
+    ci.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
+    ci.Desc.ShaderType = shaderType;
+    ci.Desc.Name = debugName ? debugName : "Unnamed Shader";
+    ci.Desc.UseCombinedTextureSamplers = true;
+    ci.Source = shaderCode.c_str();
+    m_pDevice->CreateShader(ci, &shader);
+
+    if (!shader) {
+        MOON_LOG_ERROR(
+            "DiligentRenderer",
+            "[%s] CreateShader failed for %s",
+            debugName ? debugName : "Unnamed Shader",
+            filename ? filename : "<null>");
+    } else {
+        MOON_LOG_INFO(
+            "DiligentRenderer",
+            "[%s] CreateShader succeeded",
+            debugName ? debugName : "Unnamed Shader");
+    }
+
+    return shader;
+}
+
+bool DiligentRenderer::BindStaticBuffer(
+    IPipelineState* pso,
+    SHADER_TYPE shaderType,
+    const char* variableName,
+    IBuffer* buffer,
+    const char* passName,
+    bool required)
+{
+    if (!pso || !buffer) {
+        if (required) {
+            MOON_LOG_ERROR(
+                "DiligentRenderer",
+                "[%s] Cannot bind static buffer %s because %s is null",
+                passName,
+                variableName,
+                pso ? "buffer" : "PSO");
+        }
+        return false;
+    }
+
+    auto* variable = pso->GetStaticVariableByName(shaderType, variableName);
+    if (!variable) {
+        if (required) {
+            MOON_LOG_ERROR(
+                "DiligentRenderer",
+                "[%s] Missing static shader variable %s",
+                passName,
+                variableName);
+        }
+        return false;
+    }
+
+    variable->Set(buffer);
+    return true;
+}
+
+bool DiligentRenderer::BindMutableTexture(
+    IShaderResourceBinding* srb,
+    SHADER_TYPE shaderType,
+    const char* variableName,
+    ITextureView* textureView,
+    const char* passName,
+    bool required)
+{
+    if (!srb || !textureView) {
+        if (required) {
+            MOON_LOG_ERROR(
+                "DiligentRenderer",
+                "[%s] Cannot bind texture %s because %s is null",
+                passName,
+                variableName,
+                srb ? "texture view" : "SRB");
+        }
+        return false;
+    }
+
+    auto* variable = srb->GetVariableByName(shaderType, variableName);
+    if (!variable) {
+        if (required) {
+            MOON_LOG_ERROR(
+                "DiligentRenderer",
+                "[%s] Missing mutable shader variable %s",
+                passName,
+                variableName);
+        }
+        return false;
+    }
+
+    variable->Set(textureView);
+    return true;
+}
+
+void DiligentRenderer::BindSharedSurfaceBuffers(
+    IPipelineState* pso,
+    const char* passName,
+    bool bindMaterialToVS)
+{
+    BindStaticBuffer(pso, SHADER_TYPE_VERTEX, "Constants", m_pVSConstants, passName);
+    BindStaticBuffer(pso, SHADER_TYPE_PIXEL, "MaterialConstants", m_pPSMaterialConstants, passName);
+    BindStaticBuffer(pso, SHADER_TYPE_PIXEL, "SceneConstants", m_pPSSceneConstants, passName);
+    BindStaticBuffer(pso, SHADER_TYPE_VERTEX, "SceneConstants", m_pPSSceneConstants, passName, false);
+    BindStaticBuffer(pso, SHADER_TYPE_PIXEL, "ShadowConstants", m_pShadowConstants, passName, false);
+    BindStaticBuffer(pso, SHADER_TYPE_PIXEL, "PointShadowConstants", m_pPointShadowConstants, passName, false);
+
+    if (bindMaterialToVS) {
+        BindStaticBuffer(pso, SHADER_TYPE_VERTEX, "MaterialConstants", m_pPSMaterialConstants, passName);
+    }
+}
+
+void DiligentRenderer::BindSharedSurfaceTextures(
+    IShaderResourceBinding* srb,
+    const char* passName)
+{
+    ITextureView* environmentView = m_pEquirectHDR_SRV ? m_pEquirectHDR_SRV : m_pDefaultWhiteTextureSRV;
+    if (environmentView) {
+        BindMutableTexture(srb, SHADER_TYPE_PIXEL, "g_EquirectMap", environmentView, passName);
+    }
+
+    if (m_pBRDF_LUT_SRV) {
+        BindMutableTexture(srb, SHADER_TYPE_PIXEL, "g_BRDF_LUT", m_pBRDF_LUT_SRV, passName, false);
+    }
+}
+
+bool DiligentRenderer::CreateSurfacePass(
+    const char* passName,
+    const char* vsFile,
+    const char* psFile,
+    bool enableBlending,
+    bool bindMaterialToVS,
+    RefCntAutoPtr<IPipelineState>& outPSO,
+    RefCntAutoPtr<IShaderResourceBinding>& outSRB)
+{
+    const std::string vsDebugName = std::string(passName) + " VS";
+    const std::string psDebugName = std::string(passName) + " PS";
+
+    RefCntAutoPtr<IShader> vs = CreateShaderFromFile(vsFile, SHADER_TYPE_VERTEX, vsDebugName.c_str());
+    if (!vs) {
+        return false;
+    }
+
+    RefCntAutoPtr<IShader> ps = CreateShaderFromFile(psFile, SHADER_TYPE_PIXEL, psDebugName.c_str());
+    if (!ps) {
+        return false;
+    }
+
+    LayoutElement layout[4];
+    Uint32 numElements = 0;
+    DiligentRendererUtils::GetVertexLayout(layout, numElements);
+    auto vars = MakeSurfaceTextureVariables();
+
+    GraphicsPipelineStateCreateInfo pci{};
+    pci.PSODesc.Name = passName;
+    pci.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
+    pci.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
+    pci.PSODesc.ResourceLayout.Variables = vars.data();
+    pci.PSODesc.ResourceLayout.NumVariables = static_cast<Uint32>(vars.size());
+    pci.Flags = PSO_CREATE_FLAG_NONE;
+
+    pci.GraphicsPipeline.NumRenderTargets = 1;
+    pci.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
+    pci.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
+    pci.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    pci.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
+    pci.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
+    pci.GraphicsPipeline.DepthStencilDesc.DepthWriteEnable = enableBlending ? False : True;
+    pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
+    pci.GraphicsPipeline.InputLayout.NumElements = numElements;
+
+    if (enableBlending) {
+        auto& rtBlend = pci.GraphicsPipeline.BlendDesc.RenderTargets[0];
+        rtBlend.BlendEnable = True;
+        rtBlend.SrcBlend = BLEND_FACTOR_SRC_ALPHA;
+        rtBlend.DestBlend = BLEND_FACTOR_INV_SRC_ALPHA;
+        rtBlend.BlendOp = BLEND_OPERATION_ADD;
+        rtBlend.SrcBlendAlpha = BLEND_FACTOR_ONE;
+        rtBlend.DestBlendAlpha = BLEND_FACTOR_ZERO;
+        rtBlend.BlendOpAlpha = BLEND_OPERATION_ADD;
+    }
+
+    pci.pVS = vs;
+    pci.pPS = ps;
+
+    outPSO.Release();
+    m_pDevice->CreateGraphicsPipelineState(pci, &outPSO);
+    if (!outPSO) {
+        MOON_LOG_ERROR("DiligentRenderer", "[%s] Failed to create PSO", passName);
+        return false;
+    }
+
+    BindSharedSurfaceBuffers(outPSO, passName, bindMaterialToVS);
+
+    outSRB.Release();
+    outPSO->CreateShaderResourceBinding(&outSRB, true);
+    if (!outSRB) {
+        MOON_LOG_ERROR("DiligentRenderer", "[%s] Failed to create SRB", passName);
+        return false;
+    }
+
+    MOON_LOG_INFO("DiligentRenderer", "%s created", passName);
+    return true;
+}
+
 // ======= 初始化 =======
 bool DiligentRenderer::Initialize(const RenderInitParams& params)
 {
@@ -71,72 +330,37 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
     MOON_LOG_INFO("DiligentRenderer", "Starting initialization...");
     try {
         CreateDeviceAndSwapchain(params);
+        if (!m_pDevice || !m_pImmediateContext || !m_pSwapChain) {
+            MOON_LOG_ERROR("DiligentRenderer", "Device, context, or swap chain initialization failed");
+            return false;
+        }
+
         CreateDefaultWhiteTexture();  // 创建默认白色纹理
         CreateVSConstants();
         CreateShadowPass();  // Shadow map depth-only pipeline
         CreatePointShadowPass();
+        MOON_LOG_INFO("DiligentRenderer", "Before surface pass creation device=%p", static_cast<void*>(m_pDevice));
+        if (!m_pShadowPSO || !m_pPointShadowPSO) {
+            MOON_LOG_ERROR("DiligentRenderer", "Failed to initialize shadow passes");
+            return false;
+        }
+
         CreateMainPass();  // 主渲染管线（用于正常场景渲染，不透明物体）
         CreateTransparentPass();  // 透明物体渲染管线（Alpha Blending）
+        CreateWaterTransparentPass();  // 水体专用透明渲染管线
+        if (!m_pPSO || !m_pSRB || !m_pTransparentPSO || !m_pTransparentSRB || !m_pWaterTransparentPSO || !m_pWaterTransparentSRB) {
+            MOON_LOG_ERROR("DiligentRenderer", "Failed to initialize one or more surface passes");
+            return false;
+        }
+
         CreateShadowMapResources();  // Shadow map texture + bind to SRBs
         CreatePointShadowMapResources();
         CreateSkyboxPass(); // Skybox 渲染管线
         PrecomputeIBL();    // 预计算 IBL 资源
         
-        // 绑定 IBL 纹理到主渲染管线
-        if (m_pEquirectHDR_SRV) {
-            auto* equirectVar = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap");
-            if (equirectVar) {
-                equirectVar->Set(m_pEquirectHDR_SRV);
-                MOON_LOG_INFO("DiligentRenderer", "IBL equirectangular texture bound to main pipeline");
-            } else {
-                MOON_LOG_ERROR("DiligentRenderer", "Failed to get g_EquirectMap variable from SRB");
-            }
-        } else {
-            // 如果 HDR 加载失败，使用默认纹理
-            if (m_pDefaultWhiteTextureSRV) {
-                auto* equirectVar = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap");
-                if (equirectVar) {
-                    equirectVar->Set(m_pDefaultWhiteTextureSRV);
-                }
-            }
-        }
-        
-        // 绑定 BRDF LUT 到主渲染管线
-        if (m_pBRDF_LUT_SRV) {
-            auto* brdfVar = m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_BRDF_LUT");
-            if (brdfVar) {
-                brdfVar->Set(m_pBRDF_LUT_SRV);
-                MOON_LOG_INFO("DiligentRenderer", "BRDF LUT bound to main pipeline");
-            } else {
-                MOON_LOG_ERROR("DiligentRenderer", "Failed to get g_BRDF_LUT variable from SRB");
-            }
-        } else {
-            MOON_LOG_WARN("DiligentRenderer", "BRDF LUT not available");
-        }
-        
-        // 绑定 IBL 纹理到透明渲染管线
-        if (m_pEquirectHDR_SRV) {
-            auto* equirectVar = m_pTransparentSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap");
-            if (equirectVar) {
-                equirectVar->Set(m_pEquirectHDR_SRV);
-                MOON_LOG_INFO("DiligentRenderer", "IBL equirectangular texture bound to transparent pipeline");
-            }
-        } else {
-            if (m_pDefaultWhiteTextureSRV) {
-                auto* equirectVar = m_pTransparentSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_EquirectMap");
-                if (equirectVar) {
-                    equirectVar->Set(m_pDefaultWhiteTextureSRV);
-                }
-            }
-        }
-        
-        if (m_pBRDF_LUT_SRV) {
-            auto* brdfVar = m_pTransparentSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_BRDF_LUT");
-            if (brdfVar) {
-                brdfVar->Set(m_pBRDF_LUT_SRV);
-                MOON_LOG_INFO("DiligentRenderer", "BRDF LUT bound to transparent pipeline");
-            }
-        }
+        BindSharedSurfaceTextures(m_pSRB, "Main PSO");
+        BindSharedSurfaceTextures(m_pTransparentSRB, "Transparent PSO");
+        BindSharedSurfaceTextures(m_pWaterTransparentSRB, "Water Transparent PSO");
         
         // 注意：g_AlbedoMap 是 MUTABLE 变量，必须在每次渲染前通过 BindAlbedoTexture() 设置，不在这里初始化
 
@@ -161,242 +385,24 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
 
 void DiligentRenderer::CreateMainPass()
 {
-    // 从文件加载 PBR 着色器
-    std::string vsCode = DiligentRendererUtils::LoadShaderSource("PBR.vs.hlsl");
-    std::string psCode = DiligentRendererUtils::LoadShaderSource("PBR.ps.hlsl");
-    
-    if (vsCode.empty() || psCode.empty()) {
-        MOON_LOG_ERROR("DiligentRenderer", "Failed to load PBR shaders");
-        return;
-    }
-
-    // Create Vertex Shader
-    RefCntAutoPtr<IShader> vs;
-    {
-        ShaderCreateInfo ci{};
-        ci.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
-        ci.Desc.ShaderType = SHADER_TYPE_VERTEX;
-        ci.Desc.Name = "Main VS";
-        ci.Desc.UseCombinedTextureSamplers = true;  // 关键：启用组合纹理采样器
-        ci.Source = vsCode.c_str();
-        m_pDevice->CreateShader(ci, &vs);
-    }
-
-    // Create Pixel Shader
-    RefCntAutoPtr<IShader> ps;
-    {
-        ShaderCreateInfo ci{};
-        ci.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
-        ci.Desc.ShaderType = SHADER_TYPE_PIXEL;
-        ci.Desc.Name = "Main PS";
-        ci.Desc.UseCombinedTextureSamplers = true;  // 关键：启用组合纹理采样器
-        ci.Source = psCode.c_str();
-        m_pDevice->CreateShader(ci, &ps);
-    }
-
-    // 使用统一的 Vertex Layout（避免手写重复声明）
-    LayoutElement layout[4];  // ⭐ 从3改成4（添加了UV）
-    Uint32 numElements;
-    DiligentRendererUtils::GetVertexLayout(layout, numElements);
-
-    // 定义着色器资源变量（纹理需要设置为 MUTABLE 或 DYNAMIC）
-    ShaderResourceVariableDesc Vars[] = {
-        {SHADER_TYPE_PIXEL, "g_AlbedoMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_AOMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_RoughnessMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_MetalnessMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_NormalMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_EquirectMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_BRDF_LUT", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_ShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_PointShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
-    };
-
-    GraphicsPipelineStateCreateInfo pci{};
-    pci.PSODesc.Name = "Main PSO";
-    pci.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
-    pci.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
-    pci.PSODesc.ResourceLayout.Variables = Vars;
-    pci.PSODesc.ResourceLayout.NumVariables = _countof(Vars);
-    
-    // 允许动态绑定纹理
-    pci.Flags = PSO_CREATE_FLAG_NONE;
-    
-    // 暂时不使用 ImmutableSamplers，尝试动态绑定
-    // (Tutorial03 使用 ImmutableSamplers，但我们的多纹理配置可能有所不同)
-    
-    pci.GraphicsPipeline.NumRenderTargets = 1;
-    pci.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
-    pci.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
-    pci.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    pci.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
-    pci.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
-    pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
-    pci.GraphicsPipeline.InputLayout.NumElements = numElements;
-
-    pci.pVS = vs;
-    pci.pPS = ps;
-
-    m_pDevice->CreateGraphicsPipelineState(pci, &m_pPSO);
-    
-    // 检查并绑定 Vertex Shader 的常量缓冲区
-    auto* vsConstants = m_pPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants");
-    if (vsConstants) {
-        vsConstants->Set(m_pVSConstants);
-    } else {
-        MOON_LOG_ERROR("DiligentRenderer", "Failed to get VS Constants variable");
-    }
-    
-    // 检查并绑定 Pixel Shader 的常量缓冲区
-    auto* psMaterialConstants = m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "MaterialConstants");
-    if (psMaterialConstants) {
-        psMaterialConstants->Set(m_pPSMaterialConstants);
-    } else {
-        MOON_LOG_ERROR("DiligentRenderer", "Failed to get PS MaterialConstants variable");
-    }
-    
-    auto* psSceneConstants = m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "SceneConstants");
-    if (psSceneConstants) {
-        psSceneConstants->Set(m_pPSSceneConstants);
-    } else {
-        MOON_LOG_ERROR("DiligentRenderer", "Failed to get PS SceneConstants variable");
-    }
-
-    auto* psShadowConstants = m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "ShadowConstants");
-    if (psShadowConstants) {
-        psShadowConstants->Set(m_pShadowConstants);
-    } else {
-        MOON_LOG_ERROR("DiligentRenderer", "Failed to get PS ShadowConstants variable");
-    }
-
-    auto* psPointShadowConstants = m_pPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "PointShadowConstants");
-    if (psPointShadowConstants) {
-        psPointShadowConstants->Set(m_pPointShadowConstants);
-    } else {
-        MOON_LOG_ERROR("DiligentRenderer", "Failed to get PS PointShadowConstants variable");
-    }
-    
-    // 创建 SRB（MUTABLE 变量会在渲染时动态绑定）
-    m_pPSO->CreateShaderResourceBinding(&m_pSRB, true);
-
-    MOON_LOG_INFO("DiligentRenderer", "Main PSO created (opaque objects)");
+    CreateSurfacePass("Main PSO", "PBR.vs.hlsl", "PBR.ps.hlsl", false, true, m_pPSO, m_pSRB);
 }
 
 void DiligentRenderer::CreateTransparentPass()
 {
-    // 透明物体使用与不透明物体相同的shader，只是PSO配置不同
-    std::string vsCode = DiligentRendererUtils::LoadShaderSource("PBR.vs.hlsl");
-    std::string psCode = DiligentRendererUtils::LoadShaderSource("PBR.ps.hlsl");
-    
-    if (vsCode.empty() || psCode.empty()) {
-        MOON_LOG_ERROR("DiligentRenderer", "Failed to load PBR shaders for transparent pass");
-        return;
-    }
+    CreateSurfacePass("Transparent PSO", "PBR.vs.hlsl", "PBR.ps.hlsl", true, true, m_pTransparentPSO, m_pTransparentSRB);
+}
 
-    // Create Vertex Shader
-    RefCntAutoPtr<IShader> vs;
-    {
-        ShaderCreateInfo ci{};
-        ci.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
-        ci.Desc.ShaderType = SHADER_TYPE_VERTEX;
-        ci.Desc.Name = "Transparent VS";
-        ci.Desc.UseCombinedTextureSamplers = true;
-        ci.Source = vsCode.c_str();
-        m_pDevice->CreateShader(ci, &vs);
-    }
-
-    // Create Pixel Shader
-    RefCntAutoPtr<IShader> ps;
-    {
-        ShaderCreateInfo ci{};
-        ci.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
-        ci.Desc.ShaderType = SHADER_TYPE_PIXEL;
-        ci.Desc.Name = "Transparent PS";
-        ci.Desc.UseCombinedTextureSamplers = true;
-        ci.Source = psCode.c_str();
-        m_pDevice->CreateShader(ci, &ps);
-    }
-
-    LayoutElement layout[4];
-    Uint32 numElements;
-    DiligentRendererUtils::GetVertexLayout(layout, numElements);
-
-    ShaderResourceVariableDesc Vars[] = {
-        {SHADER_TYPE_PIXEL, "g_AlbedoMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_AOMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_RoughnessMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_MetalnessMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_NormalMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_EquirectMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_BRDF_LUT", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_ShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-        {SHADER_TYPE_PIXEL, "g_PointShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
-    };
-
-    GraphicsPipelineStateCreateInfo pci{};
-    pci.PSODesc.Name = "Transparent PSO";
-    pci.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
-    pci.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
-    pci.PSODesc.ResourceLayout.Variables = Vars;
-    pci.PSODesc.ResourceLayout.NumVariables = _countof(Vars);
-    pci.Flags = PSO_CREATE_FLAG_NONE;
-    
-    pci.GraphicsPipeline.NumRenderTargets = 1;
-    pci.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
-    pci.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
-    pci.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    pci.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
-    
-    // ✅ 业界标准透明渲染配置：深度测试开启，深度写入关闭
-    pci.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
-    pci.GraphicsPipeline.DepthStencilDesc.DepthWriteEnable = False;  // 关键：不写入深度
-    
-    // ✅ 启用 Alpha 混合（标准混合公式）
-    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].BlendEnable = True;
-    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].SrcBlend = BLEND_FACTOR_SRC_ALPHA;
-    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].DestBlend = BLEND_FACTOR_INV_SRC_ALPHA;
-    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].BlendOp = BLEND_OPERATION_ADD;
-    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].SrcBlendAlpha = BLEND_FACTOR_ONE;
-    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].DestBlendAlpha = BLEND_FACTOR_ZERO;
-    pci.GraphicsPipeline.BlendDesc.RenderTargets[0].BlendOpAlpha = BLEND_OPERATION_ADD;
-    
-    pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
-    pci.GraphicsPipeline.InputLayout.NumElements = numElements;
-
-    pci.pVS = vs;
-    pci.pPS = ps;
-
-    m_pDevice->CreateGraphicsPipelineState(pci, &m_pTransparentPSO);
-    
-    // 绑定常量缓冲区（与不透明物体共享）
-    auto* vsConstants = m_pTransparentPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants");
-    if (vsConstants) {
-        vsConstants->Set(m_pVSConstants);
-    }
-    
-    auto* psMaterialConstants = m_pTransparentPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "MaterialConstants");
-    if (psMaterialConstants) {
-        psMaterialConstants->Set(m_pPSMaterialConstants);
-    }
-    
-    auto* psSceneConstants = m_pTransparentPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "SceneConstants");
-    if (psSceneConstants) {
-        psSceneConstants->Set(m_pPSSceneConstants);
-    }
-
-    auto* psShadowConstants = m_pTransparentPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "ShadowConstants");
-    if (psShadowConstants) {
-        psShadowConstants->Set(m_pShadowConstants);
-    }
-
-    auto* psPointShadowConstants = m_pTransparentPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "PointShadowConstants");
-    if (psPointShadowConstants) {
-        psPointShadowConstants->Set(m_pPointShadowConstants);
-    }
-    
-    m_pTransparentPSO->CreateShaderResourceBinding(&m_pTransparentSRB, true);
-
-    MOON_LOG_INFO("DiligentRenderer", "Transparent PSO created (depth write disabled, alpha blending enabled)");
+void DiligentRenderer::CreateWaterTransparentPass()
+{
+    CreateSurfacePass(
+        "Water Transparent PSO",
+        "Water.vs.hlsl",
+        "Water.ps.hlsl",
+        true,
+        false,
+        m_pWaterTransparentPSO,
+        m_pWaterTransparentSRB);
 }
 
 void DiligentRenderer::CreateShadowPass()
@@ -516,6 +522,11 @@ void DiligentRenderer::CreateShadowMapResources()
             var->Set(m_pShadowMapSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
         }
     }
+    if (m_pWaterTransparentSRB && m_pShadowMapSRV) {
+        if (auto* var = m_pWaterTransparentSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_ShadowMap")) {
+            var->Set(m_pShadowMapSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+        }
+    }
 
     // Initialize shadow constants
     ShadowConstantsCPU sc{};
@@ -608,6 +619,7 @@ void DiligentRenderer::SetMaterialParameters(Moon::Material* material)
         mat.opacity = 1.0f;  // 不透明
         mat.useVertexColorTint = 0.0f;
         mat.transmissionColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
+        m_ActiveMaterialPipeline = MaterialPipeline::DefaultLit;
         UpdateCB(m_pPSMaterialConstants, mat);
         return;
     }
@@ -630,6 +642,10 @@ void DiligentRenderer::SetMaterialParameters(Moon::Material* material)
     mat.opacity = material->GetOpacity();
     mat.useVertexColorTint = material->GetUseVertexColorTint() ? 1.0f : 0.0f;
     mat.transmissionColor = material->GetTransmissionColor();
+    m_ActiveMaterialPipeline =
+        material->GetShadingModel() == Moon::ShadingModel::Water
+            ? MaterialPipeline::Water
+            : MaterialPipeline::DefaultLit;
     
     UpdateCB(m_pPSMaterialConstants, mat);
 }
@@ -639,6 +655,8 @@ void DiligentRenderer::SetCameraPosition(const Moon::Vector3& position)
 {
     // 更新缓存中的相机位置
     m_SceneDataCache.cameraPosition = position;
+    m_SceneDataCache.timeSeconds =
+        std::chrono::duration<float>(std::chrono::steady_clock::now() - m_SkyStartTime).count();
     
     // 上传到 GPU
     UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
@@ -655,6 +673,10 @@ void DiligentRenderer::SetEnvironmentState(const Moon::EnvironmentState* environ
         m_SceneDataCache.skyColor = Moon::Vector3(0.20f, 0.40f, 0.60f);
         m_SceneDataCache.fogEnabled = 0.0f;
         m_SceneDataCache.cloudCoverage = 0.0f;
+        m_SceneDataCache.wetness = 0.0f;
+        m_SceneDataCache.windStrength = 0.0f;
+        m_SceneDataCache.timeSeconds =
+            std::chrono::duration<float>(std::chrono::steady_clock::now() - m_SkyStartTime).count();
         UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
         return;
     }
@@ -668,6 +690,33 @@ void DiligentRenderer::SetEnvironmentState(const Moon::EnvironmentState* environ
         (environmentState->atmosphere.skyZenithColor + environmentState->atmosphere.skyHorizonColor) * 0.5f;
     m_SceneDataCache.fogEnabled = environmentState->atmosphere.fogDensity > 0.0f ? 1.0f : 0.0f;
     m_SceneDataCache.cloudCoverage = environmentState->atmosphere.cloudCoverage;
+    const float currentWetness =
+        environmentState->weather.current == Moon::WeatherType::Rain ||
+            environmentState->weather.current == Moon::WeatherType::Storm
+            ? 1.0f
+            : (environmentState->weather.current == Moon::WeatherType::Fog
+                   ? 0.7f
+                   : (environmentState->weather.current == Moon::WeatherType::Cloudy ? 0.28f : 0.0f));
+    const float targetWetness =
+        environmentState->weather.target == Moon::WeatherType::Rain ||
+            environmentState->weather.target == Moon::WeatherType::Storm
+            ? 1.0f
+            : (environmentState->weather.target == Moon::WeatherType::Fog
+                   ? 0.7f
+                   : (environmentState->weather.target == Moon::WeatherType::Cloudy ? 0.28f : 0.0f));
+    const float weatherBlend = std::clamp(environmentState->weather.transitionAlpha, 0.0f, 1.0f);
+    m_SceneDataCache.wetness = std::min(
+        1.0f,
+        (1.0f - weatherBlend) * currentWetness +
+            weatherBlend * targetWetness +
+            environmentState->atmosphere.cloudCoverage * 0.10f);
+    m_SceneDataCache.windStrength = std::min(
+        1.0f,
+        environmentState->wind.speed * 0.11f +
+            environmentState->wind.gustStrength * 1.8f +
+            environmentState->wind.turbulence * 2.5f);
+    m_SceneDataCache.timeSeconds =
+        std::chrono::duration<float>(std::chrono::steady_clock::now() - m_SkyStartTime).count();
     m_RenderProceduralSky = true;
 
     UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
@@ -829,8 +878,13 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
         UpdateCB(m_pVSConstants, cbuf);
 
         // ✅ 根据当前渲染状态选择PSO和SRB
-        auto* pso = m_IsRenderingTransparent ? m_pTransparentPSO.RawPtr() : m_pPSO.RawPtr();
-        auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+        auto* pso = m_pPSO.RawPtr();
+        auto* srb = m_pSRB.RawPtr();
+        if (m_IsRenderingTransparent) {
+            const bool useWaterPipeline = m_ActiveMaterialPipeline == MaterialPipeline::Water;
+            pso = useWaterPipeline ? m_pWaterTransparentPSO.RawPtr() : m_pTransparentPSO.RawPtr();
+            srb = useWaterPipeline ? m_pWaterTransparentSRB.RawPtr() : m_pTransparentSRB.RawPtr();
+        }
 
         // 设置管线状态
         m_pImmediateContext->SetPipelineState(pso);
@@ -1014,6 +1068,11 @@ void DiligentRenderer::CreatePointShadowMapResources()
     }
     if (m_pTransparentSRB && m_pPointShadowCubeSRV) {
         if (auto* var = m_pTransparentSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_PointShadowMap")) {
+            var->Set(m_pPointShadowCubeSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+        }
+    }
+    if (m_pWaterTransparentSRB && m_pPointShadowCubeSRV) {
+        if (auto* var = m_pWaterTransparentSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_PointShadowMap")) {
             var->Set(m_pPointShadowCubeSRV, SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
         }
     }
@@ -1247,6 +1306,8 @@ void DiligentRenderer::Shutdown()
     // 主渲染管线
     m_pSRB.Release();
     m_pPSO.Release();
+    m_pWaterTransparentSRB.Release();
+    m_pWaterTransparentPSO.Release();
     m_pVSConstants.Release();
     m_pPSMaterialConstants.Release();
     m_pPSSceneConstants.Release();

@@ -145,7 +145,12 @@ DiligentRenderer::TextureGPUResources* DiligentRenderer::GetOrCreateTextureResou
 void DiligentRenderer::BindAlbedoTexture(const std::string& texturePath)
 {
     // 根据当前渲染状态选择SRB
-    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    auto* srb = m_pSRB.RawPtr();
+    if (m_IsRenderingTransparent) {
+        srb = m_ActiveMaterialPipeline == MaterialPipeline::Water
+            ? m_pWaterTransparentSRB.RawPtr()
+            : m_pTransparentSRB.RawPtr();
+    }
     
     if (texturePath.empty() || !srb) {
         if (m_pDefaultWhiteTextureSRV) {
@@ -175,7 +180,12 @@ void DiligentRenderer::BindAlbedoTexture(const std::string& texturePath)
 
 void DiligentRenderer::BindAOTexture(const std::string& texturePath)
 {
-    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    auto* srb = m_pSRB.RawPtr();
+    if (m_IsRenderingTransparent) {
+        srb = m_ActiveMaterialPipeline == MaterialPipeline::Water
+            ? m_pWaterTransparentSRB.RawPtr()
+            : m_pTransparentSRB.RawPtr();
+    }
     
     if (texturePath.empty() || !srb) {
         if (m_pDefaultWhiteTextureSRV) {
@@ -205,7 +215,12 @@ void DiligentRenderer::BindAOTexture(const std::string& texturePath)
 
 void DiligentRenderer::BindRoughnessTexture(const std::string& texturePath)
 {
-    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    auto* srb = m_pSRB.RawPtr();
+    if (m_IsRenderingTransparent) {
+        srb = m_ActiveMaterialPipeline == MaterialPipeline::Water
+            ? m_pWaterTransparentSRB.RawPtr()
+            : m_pTransparentSRB.RawPtr();
+    }
     
     if (texturePath.empty() || !srb) {
         if (m_pDefaultWhiteTextureSRV) {
@@ -235,7 +250,12 @@ void DiligentRenderer::BindRoughnessTexture(const std::string& texturePath)
 
 void DiligentRenderer::BindMetalnessTexture(const std::string& texturePath)
 {
-    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    auto* srb = m_pSRB.RawPtr();
+    if (m_IsRenderingTransparent) {
+        srb = m_ActiveMaterialPipeline == MaterialPipeline::Water
+            ? m_pWaterTransparentSRB.RawPtr()
+            : m_pTransparentSRB.RawPtr();
+    }
     
     if (texturePath.empty() || !srb) {
         if (m_pDefaultWhiteTextureSRV) {
@@ -265,7 +285,12 @@ void DiligentRenderer::BindMetalnessTexture(const std::string& texturePath)
 
 void DiligentRenderer::BindNormalTexture(const std::string& texturePath)
 {
-    auto* srb = m_IsRenderingTransparent ? m_pTransparentSRB.RawPtr() : m_pSRB.RawPtr();
+    auto* srb = m_pSRB.RawPtr();
+    if (m_IsRenderingTransparent) {
+        srb = m_ActiveMaterialPipeline == MaterialPipeline::Water
+            ? m_pWaterTransparentSRB.RawPtr()
+            : m_pTransparentSRB.RawPtr();
+    }
     
     if (texturePath.empty() || !srb) {
         if (m_pDefaultWhiteTextureSRV) {

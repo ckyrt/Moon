@@ -8,6 +8,11 @@ namespace Moon {
 // 前向声明
 class Texture;
 
+enum class ShadingModel {
+    DefaultLit,
+    Water
+};
+
 /**
  * @brief 材质预设枚举 - 别墅级材质系统（25种）
  * 基于 6 种 PBR 贴图 + 参数变体实现
@@ -132,6 +137,8 @@ public:
      * @param color RGB 颜色 [0.0 - 1.0]
      */
     void SetTransmissionColor(const Vector3& color);
+    void SetShadingModel(ShadingModel shadingModel) { m_shadingModel = shadingModel; }
+    ShadingModel GetShadingModel() const { return m_shadingModel; }
     
     /**
      * @brief 获取透射颜色
@@ -218,6 +225,7 @@ private:
     float m_metallic;
     float m_roughness;
     Vector3 m_baseColor;
+    ShadingModel m_shadingModel = ShadingModel::DefaultLit;
     float m_opacity;                // 不透明度 [0.0 = 完全透明, 1.0 = 完全不透明]
     Vector3 m_transmissionColor;    // 透射颜色（用于玻璃）
     

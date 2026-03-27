@@ -267,9 +267,9 @@ void EnvironmentSystem::UpdateAtmosphere() {
     m_state.atmosphere.cloudCoverage =
         (1.0f - weatherBlend) * currentPreset.cloudCoverage + weatherBlend * targetPreset.cloudCoverage;
 
-    const float baseWindSpeed = 2.0f;
-    const float baseGustStrength = 0.15f;
-    const float baseTurbulence = 0.05f;
+    const float baseWindSpeed = std::max(0.0f, m_profile.baseWindSpeed);
+    const float baseGustStrength = std::max(0.0f, m_profile.baseWindGustStrength);
+    const float baseTurbulence = std::max(0.0f, m_profile.baseWindTurbulence);
     m_state.wind.speed =
         baseWindSpeed * ((1.0f - weatherBlend) * currentPreset.windSpeedScale + weatherBlend * targetPreset.windSpeedScale);
     m_state.wind.gustStrength =

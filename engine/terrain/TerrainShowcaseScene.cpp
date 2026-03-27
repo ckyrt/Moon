@@ -25,6 +25,53 @@ constexpr const char* kTerrainMeshNodeName = "Terrain Mesh";
 constexpr const char* kRiverNodeName = "Terrain River";
 constexpr const char* kOceanNodeName = "Terrain Ocean";
 constexpr const char* kGrassNodeName = "Terrain Grass";
+constexpr const char* kShrubNodeName = "Terrain Shrubs";
+
+float ResolveTimeOfDayHours(const std::string& timeOfDay)
+{
+    if (timeOfDay == "dawn") {
+        return 5.5f;
+    }
+    if (timeOfDay == "sunrise") {
+        return 6.2f;
+    }
+    if (timeOfDay == "morning") {
+        return 8.8f;
+    }
+    if (timeOfDay == "noon") {
+        return 12.0f;
+    }
+    if (timeOfDay == "afternoon") {
+        return 15.5f;
+    }
+    if (timeOfDay == "sunset") {
+        return 18.2f;
+    }
+    if (timeOfDay == "dusk") {
+        return 19.1f;
+    }
+    if (timeOfDay == "night") {
+        return 22.0f;
+    }
+    return 10.2f;
+}
+
+Moon::WeatherType ResolveWeatherType(const std::string& weather)
+{
+    if (weather == "cloudy" || weather == "overcast") {
+        return Moon::WeatherType::Cloudy;
+    }
+    if (weather == "rain" || weather == "drizzle") {
+        return Moon::WeatherType::Rain;
+    }
+    if (weather == "fog" || weather == "mist") {
+        return Moon::WeatherType::Fog;
+    }
+    if (weather == "storm" || weather == "thunderstorm") {
+        return Moon::WeatherType::Storm;
+    }
+    return Moon::WeatherType::Clear;
+}
 
 } // namespace
 
@@ -67,13 +114,24 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
         environmentProfile.enableClouds = true;
         environmentProfile.enableFog = true;
         environmentProfile.enableWind = true;
+        environmentProfile.lockToFixedTime = true;
+        environmentProfile.enableDayNightCycle = false;
         environmentProfile.maxSunIntensity = 1.85f;
-        environmentProfile.clearFogDensity = 0.00030f;
-        environmentProfile.fogWeatherDensity = 0.0032f;
+        environmentProfile.clearFogDensity = 0.00022f + buildSpec.atmosphere.fog * 0.00075f;
+        environmentProfile.fogWeatherDensity = 0.0018f + buildSpec.atmosphere.fog * 0.0085f;
         environmentProfile.cloudyCloudCoverage = 0.18f;
+        environmentProfile.baseWindSpeed = 1.4f + buildSpec.atmosphere.wind * 5.2f;
+        environmentProfile.baseWindGustStrength = 0.08f + buildSpec.atmosphere.wind * 0.24f;
+        environmentProfile.baseWindTurbulence = 0.03f + buildSpec.atmosphere.wind * 0.11f;
         environment->SetProfile(environmentProfile);
-        environment->SetTimeOfDay(10.2f);
-        environment->SetWeather(Moon::WeatherType::Clear, 0.0f);
+        environment->SetTimeOfDay(ResolveTimeOfDayHours(buildSpec.atmosphere.timeOfDay));
+        environment->SetWeather(ResolveWeatherType(buildSpec.atmosphere.weather), 0.0f);
+
+        Moon::EnvironmentState state = environment->GetState();
+        state.timeOfDay.paused = true;
+        state.timeOfDay.timeScale = 0.0f;
+        state.wind.direction = Moon::Vector3(0.85f, 0.0f, 0.35f).Normalized();
+        environment->GetSystem().SetState(state);
     }
 
     if (options.createSunLight && !scene->FindNodeByName(kSunNodeName)) {
@@ -130,6 +188,8 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
     riverMaterial->SetMetallic(0.08f);
     riverMaterial->SetRoughness(0.10f);
     riverMaterial->SetOpacity(0.78f);
+    riverMaterial->SetShadingModel(Moon::ShadingModel::Water);
+    riverMaterial->SetTransmissionColor(Moon::Vector3(0.72f, 0.88f, 0.96f));
 
     if (generationSettings.hasOcean) {
         Moon::SceneNode* oceanNode = scene->CreateNode(kOceanNodeName);
@@ -140,6 +200,8 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
         oceanMaterial->SetMetallic(0.02f);
         oceanMaterial->SetRoughness(0.06f);
         oceanMaterial->SetOpacity(0.84f);
+        oceanMaterial->SetShadingModel(Moon::ShadingModel::Water);
+        oceanMaterial->SetTransmissionColor(Moon::Vector3(0.74f, 0.90f, 0.98f));
     }
 
     Moon::SceneNode* grassNode = scene->CreateNode(kGrassNodeName);
@@ -149,6 +211,16 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
     grassMaterial->SetBaseColor(Moon::Vector3(0.33f, 0.55f, 0.21f));
     grassMaterial->SetMetallic(0.0f);
     grassMaterial->SetRoughness(0.88f);
+    grassMaterial->SetUseVertexColorTint(true);
+
+    Moon::SceneNode* shrubNode = scene->CreateNode(kShrubNodeName);
+    Moon::MeshRenderer* shrubRenderer = shrubNode->AddComponent<Moon::MeshRenderer>();
+    Moon::Material* shrubMaterial = shrubNode->AddComponent<Moon::Material>();
+    shrubRenderer->SetMesh(Moon::TerrainVisualBuilder::BuildShrubMesh(generation.terrainData, generation, generationSettings));
+    shrubMaterial->SetBaseColor(Moon::Vector3(0.30f, 0.46f, 0.20f));
+    shrubMaterial->SetMetallic(0.0f);
+    shrubMaterial->SetRoughness(0.92f);
+    shrubMaterial->SetUseVertexColorTint(true);
 }
 
 } // namespace Moon
