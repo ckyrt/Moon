@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "name": "coffee_table_v1",
+  "description": "Low coffee table assembled from reusable tabletop, shelf and metal legs. Origin at floor.",
+  "version": 2,
+  "parameters": {
+    "w": 110.0,
+    "d": 60.0,
+    "h": 42.0,
+    "top_t": 3.0,
+    "shelf_t": 2.2,
+    "shelf_y": 14.0,
+    "leg_r": 2.5,
+    "leg_inset": 8.0
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "top_center": [0, "$h + $top_t", 0],
+    "center": [0, "($h + $top_t) / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "top",
+        "type": "reference",
+        "ref": "table_top_v1",
+        "overrides": { "w": "$w", "d": "$d", "t": "$top_t" },
+        "transform": { "position": [0, "$h + $top_t / 2", 0] }
+      },
+      {
+        "name": "shelf",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w - 10.0", "h": "$shelf_t", "d": "$d - 10.0" },
+        "transform": { "position": [0, "$shelf_y + $shelf_t / 2", 0] }
+      },
+      {
+        "name": "leg_fl",
+        "type": "reference",
+        "ref": "round_leg_metal_v1",
+        "overrides": { "r": "$leg_r", "h": "$h" },
+        "transform": { "position": ["$w / 2 - $leg_inset", "$h / 2", "$d / 2 - $leg_inset"] }
+      },
+      {
+        "name": "leg_fr",
+        "type": "reference",
+        "ref": "round_leg_metal_v1",
+        "overrides": { "r": "$leg_r", "h": "$h" },
+        "transform": { "position": ["$w / 2 - $leg_inset", "$h / 2", "-$d / 2 + $leg_inset"] }
+      },
+      {
+        "name": "leg_bl",
+        "type": "reference",
+        "ref": "round_leg_metal_v1",
+        "overrides": { "r": "$leg_r", "h": "$h" },
+        "transform": { "position": ["-$w / 2 + $leg_inset", "$h / 2", "$d / 2 - $leg_inset"] }
+      },
+      {
+        "name": "leg_br",
+        "type": "reference",
+        "ref": "round_leg_metal_v1",
+        "overrides": { "r": "$leg_r", "h": "$h" },
+        "transform": { "position": ["-$w / 2 + $leg_inset", "$h / 2", "-$d / 2 + $leg_inset"] }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

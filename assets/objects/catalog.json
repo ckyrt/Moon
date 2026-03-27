@@ -1,0 +1,314 @@
+{
+  "schema_version": 1,
+  "description": "High-level world object catalog built on top of reusable geometry generators.",
+  "objects": [
+    {
+      "id": "dining_table",
+      "display_name": "Dining Table",
+      "description": "General-purpose dining table family built from the reusable table blueprint.",
+      "category": "furniture",
+      "graph_asset": "table_v1",
+      "tags": ["furniture", "table", "dining", "interior"],
+      "defaults": {
+        "w": 140.0,
+        "d": 85.0,
+        "h": 74.0,
+        "t": 3.2,
+        "r": 3.2,
+        "inset": 11.0
+      },
+      "parameters": [
+        { "name": "w", "default": 140.0, "random_range": { "min": 110.0, "max": 220.0 } },
+        { "name": "d", "default": 85.0, "random_range": { "min": 70.0, "max": 110.0 } },
+        { "name": "h", "default": 74.0, "random_range": { "min": 70.0, "max": 78.0 } },
+        { "name": "t", "default": 3.2, "random_range": { "min": 2.8, "max": 4.5 } },
+        { "name": "r", "default": 3.2, "random_range": { "min": 2.5, "max": 4.0 } },
+        { "name": "inset", "default": 11.0, "random_range": { "min": 8.0, "max": 16.0 } }
+      ],
+      "variants": [
+        { "id": "small", "description": "Compact apartment dining table.", "tags": ["small", "apartment"], "params": { "w": 120.0, "d": 75.0, "h": 74.0 } },
+        { "id": "standard", "description": "Balanced everyday table.", "tags": ["standard"], "params": { "w": 140.0, "d": 85.0, "h": 74.0 } },
+        { "id": "large", "description": "Large family table.", "tags": ["large", "family"], "params": { "w": 200.0, "d": 95.0, "h": 75.0, "r": 3.5, "inset": 13.0 } }
+      ]
+    },
+    {
+      "id": "dining_chair",
+      "display_name": "Dining Chair",
+      "description": "Reusable dining chair family for most rooms and interiors.",
+      "category": "furniture",
+      "graph_asset": "chair_v1",
+      "tags": ["furniture", "chair", "seating", "interior"],
+      "defaults": {
+        "seat_height": 45.0,
+        "seat_thickness": 3.0,
+        "seat_width": 45.0,
+        "seat_depth": 40.0,
+        "backrest_height": 40.0,
+        "backrest_thickness": 3.0,
+        "leg_radius": 2.5,
+        "leg_inset": 5.0
+      },
+      "parameters": [
+        { "name": "seat_height", "default": 45.0, "random_range": { "min": 42.0, "max": 48.0 } },
+        { "name": "seat_thickness", "default": 3.0, "random_range": { "min": 2.4, "max": 4.0 } },
+        { "name": "seat_width", "default": 45.0, "random_range": { "min": 40.0, "max": 55.0 } },
+        { "name": "seat_depth", "default": 40.0, "random_range": { "min": 36.0, "max": 48.0 } },
+        { "name": "backrest_height", "default": 40.0, "random_range": { "min": 32.0, "max": 55.0 } },
+        { "name": "backrest_thickness", "default": 3.0, "random_range": { "min": 2.2, "max": 4.2 } },
+        { "name": "leg_radius", "default": 2.5, "random_range": { "min": 2.0, "max": 3.5 } },
+        { "name": "leg_inset", "default": 5.0, "random_range": { "min": 3.0, "max": 7.0 } }
+      ],
+      "variants": [
+        { "id": "compact", "description": "Smaller chair suitable for dense rooms.", "tags": ["small"], "params": { "seat_width": 42.0, "seat_depth": 38.0, "backrest_height": 35.0 } },
+        { "id": "standard", "description": "Default upright dining chair.", "tags": ["standard"], "params": { "seat_width": 45.0, "seat_depth": 40.0, "backrest_height": 40.0 } },
+        { "id": "comfort", "description": "Wider chair with taller backrest.", "tags": ["wide", "comfort"], "params": { "seat_width": 52.0, "seat_depth": 45.0, "backrest_height": 52.0, "seat_thickness": 3.5 } }
+      ]
+    },
+    {
+      "id": "bed",
+      "display_name": "Bed",
+      "description": "Bedroom bed family based on the bed generator.",
+      "category": "furniture",
+      "graph_asset": "bed_v1",
+      "tags": ["furniture", "bed", "sleeping", "bedroom"],
+      "defaults": {
+        "bed_width": 160.0,
+        "bed_length": 210.0,
+        "leg_height": 14.0,
+        "leg_radius": 3.0,
+        "leg_inset": 12.0,
+        "frame_height": 4.0,
+        "frame_thickness": 4.0,
+        "mattress_height": 18.0,
+        "headboard_height": 70.0,
+        "headboard_thickness": 5.0
+      },
+      "parameters": [
+        { "name": "bed_width", "default": 160.0, "random_range": { "min": 100.0, "max": 200.0 } },
+        { "name": "bed_length", "default": 210.0, "random_range": { "min": 190.0, "max": 230.0 } },
+        { "name": "leg_height", "default": 14.0, "random_range": { "min": 10.0, "max": 22.0 } },
+        { "name": "leg_radius", "default": 3.0, "random_range": { "min": 2.2, "max": 4.0 } },
+        { "name": "leg_inset", "default": 12.0, "random_range": { "min": 8.0, "max": 18.0 } },
+        { "name": "frame_height", "default": 4.0, "random_range": { "min": 3.0, "max": 8.0 } },
+        { "name": "frame_thickness", "default": 4.0, "random_range": { "min": 3.0, "max": 7.0 } },
+        { "name": "mattress_height", "default": 18.0, "random_range": { "min": 14.0, "max": 26.0 } },
+        { "name": "headboard_height", "default": 70.0, "random_range": { "min": 50.0, "max": 100.0 } },
+        { "name": "headboard_thickness", "default": 5.0, "random_range": { "min": 3.0, "max": 8.0 } }
+      ],
+      "variants": [
+        { "id": "single", "description": "Compact single bed.", "tags": ["single", "small"], "params": { "bed_width": 100.0, "bed_length": 205.0, "headboard_height": 60.0 } },
+        { "id": "double", "description": "Standard double bed.", "tags": ["double", "standard"], "params": { "bed_width": 140.0, "bed_length": 210.0, "headboard_height": 70.0 } },
+        { "id": "queen", "description": "Larger bed for master bedrooms.", "tags": ["queen", "large"], "params": { "bed_width": 160.0, "bed_length": 215.0, "headboard_height": 85.0, "mattress_height": 20.0 } }
+      ]
+    },
+    {
+      "id": "desk_lamp",
+      "display_name": "Desk Lamp",
+      "description": "Small lighting prop for desks, side tables and bedside scenes.",
+      "category": "lighting",
+      "graph_asset": "desk_lamp_v1",
+      "tags": ["lighting", "lamp", "desk", "decor"],
+      "defaults": {
+        "base_r": 9.0,
+        "base_h": 2.5,
+        "pole_r": 1.0,
+        "pole_h": 32.0,
+        "arm_r": 1.2,
+        "arm_len": 24.0,
+        "shade_r": 7.0,
+        "shade_thickness": 1.2,
+        "bulb_r": 2.5,
+        "light_color_r": 1.0,
+        "light_color_g": 0.85,
+        "light_color_b": 0.7
+      },
+      "parameters": [
+        { "name": "base_r", "default": 9.0, "random_range": { "min": 7.0, "max": 12.0 } },
+        { "name": "base_h", "default": 2.5, "random_range": { "min": 2.0, "max": 4.0 } },
+        { "name": "pole_r", "default": 1.0, "random_range": { "min": 0.8, "max": 1.6 } },
+        { "name": "pole_h", "default": 32.0, "random_range": { "min": 24.0, "max": 40.0 } },
+        { "name": "arm_r", "default": 1.2, "random_range": { "min": 0.8, "max": 1.8 } },
+        { "name": "arm_len", "default": 24.0, "random_range": { "min": 18.0, "max": 32.0 } },
+        { "name": "shade_r", "default": 7.0, "random_range": { "min": 5.0, "max": 10.0 } },
+        { "name": "shade_thickness", "default": 1.2, "random_range": { "min": 0.8, "max": 1.8 } },
+        { "name": "bulb_r", "default": 2.5, "random_range": { "min": 1.8, "max": 3.5 } }
+      ],
+      "variants": [
+        { "id": "compact", "description": "Tighter small-space lamp.", "tags": ["small"], "params": { "pole_h": 26.0, "arm_len": 20.0, "shade_r": 5.5 } },
+        { "id": "reading", "description": "Longer arm for work surfaces.", "tags": ["task", "reading"], "params": { "pole_h": 36.0, "arm_len": 28.0, "shade_r": 7.5, "bulb_r": 2.8 } }
+      ]
+    },
+    {
+      "id": "sofa",
+      "display_name": "Sofa",
+      "description": "Living room sofa family for lounges, lobbies and seating areas.",
+      "category": "furniture",
+      "graph_asset": "sofa_v1",
+      "tags": ["furniture", "sofa", "living_room", "seating"],
+      "defaults": {
+        "w": 180.0,
+        "d": 88.0,
+        "seat_h": 18.0,
+        "seat_y": 24.0,
+        "back_h": 42.0,
+        "back_t": 14.0,
+        "arm_w": 16.0,
+        "arm_h": 30.0,
+        "leg_h": 8.0,
+        "leg_r": 2.5,
+        "leg_inset": 10.0
+      },
+      "parameters": [
+        { "name": "w", "default": 180.0, "random_range": { "min": 150.0, "max": 260.0 } },
+        { "name": "d", "default": 88.0, "random_range": { "min": 80.0, "max": 105.0 } },
+        { "name": "seat_h", "default": 18.0, "random_range": { "min": 15.0, "max": 24.0 } },
+        { "name": "seat_y", "default": 24.0, "random_range": { "min": 18.0, "max": 28.0 } },
+        { "name": "back_h", "default": 42.0, "random_range": { "min": 35.0, "max": 60.0 } },
+        { "name": "arm_w", "default": 16.0, "random_range": { "min": 10.0, "max": 22.0 } },
+        { "name": "arm_h", "default": 30.0, "random_range": { "min": 24.0, "max": 38.0 } }
+      ],
+      "variants": [
+        { "id": "loveseat", "description": "Two-seat sofa for small rooms.", "tags": ["small", "two_seat"], "params": { "w": 155.0, "d": 84.0, "back_h": 40.0 } },
+        { "id": "standard", "description": "Regular three-seat sofa.", "tags": ["standard", "three_seat"], "params": { "w": 190.0, "d": 90.0, "back_h": 45.0 } },
+        { "id": "deep_lounge", "description": "Deeper lounge sofa.", "tags": ["large", "lounge"], "params": { "w": 230.0, "d": 102.0, "seat_h": 20.0, "arm_w": 18.0, "back_h": 50.0 } }
+      ]
+    },
+    {
+      "id": "coffee_table",
+      "display_name": "Coffee Table",
+      "description": "Low living-room table with extra shelf storage.",
+      "category": "furniture",
+      "graph_asset": "coffee_table_v1",
+      "tags": ["furniture", "table", "coffee_table", "living_room"],
+      "defaults": {
+        "w": 110.0,
+        "d": 60.0,
+        "h": 42.0,
+        "top_t": 3.0,
+        "shelf_t": 2.2,
+        "shelf_y": 14.0,
+        "leg_r": 2.5,
+        "leg_inset": 8.0
+      },
+      "parameters": [
+        { "name": "w", "default": 110.0, "random_range": { "min": 80.0, "max": 140.0 } },
+        { "name": "d", "default": 60.0, "random_range": { "min": 45.0, "max": 80.0 } },
+        { "name": "h", "default": 42.0, "random_range": { "min": 32.0, "max": 48.0 } }
+      ],
+      "variants": [
+        { "id": "compact", "description": "Compact apartment coffee table.", "tags": ["small"], "params": { "w": 85.0, "d": 50.0, "h": 38.0 } },
+        { "id": "standard", "description": "Balanced everyday coffee table.", "tags": ["standard"], "params": { "w": 110.0, "d": 60.0, "h": 42.0 } },
+        { "id": "wide", "description": "Wider coffee table for larger seating groups.", "tags": ["large"], "params": { "w": 135.0, "d": 72.0, "h": 42.0 } }
+      ]
+    },
+    {
+      "id": "bookshelf",
+      "display_name": "Bookshelf",
+      "description": "Open storage shelf for offices, bedrooms and living rooms.",
+      "category": "furniture",
+      "graph_asset": "bookshelf_v1",
+      "tags": ["furniture", "bookshelf", "storage", "office"],
+      "defaults": {
+        "w": 90.0,
+        "d": 30.0,
+        "h": 185.0,
+        "panel_t": 3.0,
+        "base_h": 6.0,
+        "shelf_t": 2.5
+      },
+      "parameters": [
+        { "name": "w", "default": 90.0, "random_range": { "min": 70.0, "max": 120.0 } },
+        { "name": "d", "default": 30.0, "random_range": { "min": 24.0, "max": 38.0 } },
+        { "name": "h", "default": 185.0, "random_range": { "min": 150.0, "max": 220.0 } }
+      ],
+      "variants": [
+        { "id": "narrow", "description": "Narrow shelf for small corners.", "tags": ["small"], "params": { "w": 72.0, "d": 28.0, "h": 175.0 } },
+        { "id": "standard", "description": "General-purpose bookshelf.", "tags": ["standard"], "params": { "w": 90.0, "d": 30.0, "h": 185.0 } },
+        { "id": "wide", "description": "Wider office shelf.", "tags": ["large"], "params": { "w": 115.0, "d": 34.0, "h": 200.0 } }
+      ]
+    },
+    {
+      "id": "storage_cabinet",
+      "display_name": "Storage Cabinet",
+      "description": "General closed storage cabinet object family.",
+      "category": "furniture",
+      "graph_asset": "cabinet_v1",
+      "tags": ["furniture", "cabinet", "storage"],
+      "defaults": {
+        "w": 100.0,
+        "d": 42.0,
+        "h": 90.0,
+        "panel_t": 2.5,
+        "leg_h": 10.0,
+        "leg_r": 2.0,
+        "leg_inset": 8.0,
+        "door_gap": 0.8
+      },
+      "parameters": [
+        { "name": "w", "default": 100.0, "random_range": { "min": 55.0, "max": 140.0 } },
+        { "name": "d", "default": 42.0, "random_range": { "min": 30.0, "max": 55.0 } },
+        { "name": "h", "default": 90.0, "random_range": { "min": 55.0, "max": 220.0 } }
+      ],
+      "variants": [
+        { "id": "compact", "description": "Small side cabinet.", "tags": ["small"], "params": { "w": 70.0, "d": 36.0, "h": 78.0 } },
+        { "id": "standard", "description": "General room cabinet.", "tags": ["standard"], "params": { "w": 100.0, "d": 42.0, "h": 90.0 } },
+        { "id": "tall", "description": "Tall cabinet for vertical storage.", "tags": ["tall", "large"], "params": { "w": 90.0, "d": 45.0, "h": 180.0 } }
+      ]
+    },
+    {
+      "id": "nightstand",
+      "base_object": "storage_cabinet",
+      "display_name": "Nightstand",
+      "description": "Bedroom nightstand derived from the cabinet asset family.",
+      "category": "furniture",
+      "tags": ["furniture", "nightstand", "bedroom", "storage"],
+      "defaults": {
+        "w": 52.0,
+        "d": 38.0,
+        "h": 58.0,
+        "panel_t": 2.2,
+        "leg_h": 8.0,
+        "leg_r": 1.8,
+        "leg_inset": 6.0,
+        "door_gap": 0.7
+      },
+      "parameters": [
+        { "name": "w", "default": 52.0, "random_range": { "min": 42.0, "max": 65.0 } },
+        { "name": "d", "default": 38.0, "random_range": { "min": 30.0, "max": 45.0 } },
+        { "name": "h", "default": 58.0, "random_range": { "min": 48.0, "max": 70.0 } }
+      ],
+      "variants": [
+        { "id": "compact", "description": "Small single-drawer style nightstand silhouette.", "tags": ["small"], "params": { "w": 46.0, "d": 34.0, "h": 54.0 } },
+        { "id": "standard", "description": "Typical bedside table.", "tags": ["standard"], "params": { "w": 52.0, "d": 38.0, "h": 58.0 } }
+      ]
+    },
+    {
+      "id": "wardrobe",
+      "base_object": "storage_cabinet",
+      "display_name": "Wardrobe",
+      "description": "Tall bedroom wardrobe derived from the cabinet asset family.",
+      "category": "furniture",
+      "tags": ["furniture", "wardrobe", "bedroom", "storage"],
+      "defaults": {
+        "w": 120.0,
+        "d": 55.0,
+        "h": 200.0,
+        "panel_t": 2.8,
+        "leg_h": 8.0,
+        "leg_r": 2.2,
+        "leg_inset": 8.0,
+        "door_gap": 1.0
+      },
+      "parameters": [
+        { "name": "w", "default": 120.0, "random_range": { "min": 90.0, "max": 160.0 } },
+        { "name": "d", "default": 55.0, "random_range": { "min": 45.0, "max": 70.0 } },
+        { "name": "h", "default": 200.0, "random_range": { "min": 170.0, "max": 235.0 } }
+      ],
+      "variants": [
+        { "id": "single", "description": "Narrow wardrobe for compact bedrooms.", "tags": ["single", "small"], "params": { "w": 92.0, "d": 50.0, "h": 185.0 } },
+        { "id": "double", "description": "Standard double-door wardrobe.", "tags": ["double", "standard"], "params": { "w": 120.0, "d": 55.0, "h": 200.0 } },
+        { "id": "wide", "description": "Wider wardrobe for master bedrooms.", "tags": ["large"], "params": { "w": 150.0, "d": 60.0, "h": 215.0 } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "name": "cabinet_v1",
+  "description": "Closed cabinet assembled from reusable shell, shelf, legs and door front assets.",
+  "version": 2,
+  "parameters": {
+    "w": 100.0,
+    "d": 42.0,
+    "h": 90.0,
+    "panel_t": 2.5,
+    "leg_h": 10.0,
+    "leg_r": 2.0,
+    "leg_inset": 8.0,
+    "door_gap": 0.8
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "top_center": [0, "$leg_h + $h", 0],
+    "center": [0, "($leg_h + $h) / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "leg_fl",
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_r", "h": "$leg_h" },
+        "transform": { "position": ["$w / 2 - $leg_inset", "$leg_h / 2", "$d / 2 - $leg_inset"] }
+      },
+      {
+        "name": "leg_fr",
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_r", "h": "$leg_h" },
+        "transform": { "position": ["$w / 2 - $leg_inset", "$leg_h / 2", "-$d / 2 + $leg_inset"] }
+      },
+      {
+        "name": "leg_bl",
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_r", "h": "$leg_h" },
+        "transform": { "position": ["-$w / 2 + $leg_inset", "$leg_h / 2", "$d / 2 - $leg_inset"] }
+      },
+      {
+        "name": "leg_br",
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_r", "h": "$leg_h" },
+        "transform": { "position": ["-$w / 2 + $leg_inset", "$leg_h / 2", "-$d / 2 + $leg_inset"] }
+      },
+      {
+        "name": "shell",
+        "type": "reference",
+        "ref": "storage_shell_v1",
+        "overrides": {
+          "w": "$w",
+          "d": "$d",
+          "h": "$h",
+          "side_t": "$panel_t",
+          "top_t": "$panel_t",
+          "bottom_t": "$panel_t",
+          "back_t": 1.2
+        },
+        "transform": { "position": [0, "$leg_h", 0] }
+      },
+      {
+        "name": "shelf_mid",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w - $panel_t * 2", "h": "$panel_t", "d": "$d - 3.0" },
+        "transform": { "position": [0, "$leg_h + $h / 2", 0] }
+      },
+      {
+        "name": "doors",
+        "type": "reference",
+        "ref": "double_door_front_v1",
+        "overrides": {
+          "w": "$w - $panel_t * 2",
+          "h": "$h - $panel_t * 2",
+          "t": 1.8,
+          "gap": "$door_gap"
+        },
+        "transform": { "position": [0, "$leg_h + $h / 2", "$d / 2 - 0.9"] }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

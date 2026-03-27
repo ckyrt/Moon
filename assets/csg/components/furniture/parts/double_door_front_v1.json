@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "name": "double_door_front_v1",
+  "description": "Reusable double-door front assembly using two painted panels. Origin at geometric center.",
+  "version": 1,
+  "parameters": {
+    "w": 90.0,
+    "h": 70.0,
+    "t": 1.8,
+    "gap": 0.8
+  },
+  "anchors": {
+    "center": [0, 0, 0],
+    "bottom_center": [0, "-$h / 2", 0],
+    "top_center": [0, "$h / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "door_left",
+        "type": "reference",
+        "ref": "painted_panel_v1",
+        "overrides": {
+          "w": "($w - $gap) / 2",
+          "h": "$h",
+          "d": "$t"
+        },
+        "transform": {
+          "position": ["($w + $gap) / 4", 0, 0]
+        }
+      },
+      {
+        "name": "door_right",
+        "type": "reference",
+        "ref": "painted_panel_v1",
+        "overrides": {
+          "w": "($w - $gap) / 2",
+          "h": "$h",
+          "d": "$t"
+        },
+        "transform": {
+          "position": ["-(($w + $gap) / 4)", 0, 0]
+        }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

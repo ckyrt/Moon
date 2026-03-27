@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "simple_table_v1",
-  "description": "Simple table (top + single center leg) - using group instead of CSG",
-  "version": 1,
+  "description": "Simple table assembled from reusable tabletop and center leg components.",
+  "version": 2,
   "anchors": {
-    "origin":       [0, 0, 0],
+    "origin": [0, 0, 0],
     "floor_center": [0, 0, 0],
-    "top_surface":  [0, "$table_height", 0],
-    "center":       [0, "$table_height / 2", 0]
+    "top_surface": [0, "$table_height", 0],
+    "center": [0, "$table_height / 2", 0]
   },
   "parameters": {
     "table_length": 120.0,
@@ -20,23 +20,25 @@
     "type": "group",
     "children": [
       {
-        "type": "primitive",
-        "primitive": "cube",
-        "params": {
-          "size_x": "$table_length",
-          "size_y": "$top_thickness",
-          "size_z": "$table_width"
+        "name": "top",
+        "type": "reference",
+        "ref": "table_top_v1",
+        "overrides": {
+          "w": "$table_length",
+          "d": "$table_width",
+          "t": "$top_thickness"
         },
         "transform": {
           "position": [0, "$table_height - $top_thickness / 2", 0]
         }
       },
       {
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$table_height - $top_thickness"
+        "name": "center_leg",
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": {
+          "r": "$leg_radius",
+          "h": "$table_height - $top_thickness"
         },
         "transform": {
           "position": [0, "($table_height - $top_thickness) / 2", 0]

@@ -129,6 +129,10 @@
     <ClInclude Include="CSG\Blueprint.h" />
     <ClInclude Include="CSG\BlueprintLoader.h" />
     <ClInclude Include="CSG\CSGBuilder.h" />
+    <ClInclude Include="Object\ObjectCatalog.h" />
+    <ClInclude Include="Object\ObjectFactory.h" />
+    <ClInclude Include="Object\ObjectLibrary.h" />
+    <ClInclude Include="Object\ObjectTypes.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineCore.cpp" />
@@ -157,6 +161,9 @@
     <ClCompile Include="CSG\CSGBuilder.cpp" />
     <ClCompile Include="CSG\CSGOperations.cpp" />
     <ClCompile Include="CSG\Blueprint.cpp" />
+    <ClCompile Include="Object\ObjectCatalog.cpp" />
+    <ClCompile Include="Object\ObjectFactory.cpp" />
+    <ClCompile Include="Object\ObjectLibrary.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\thirdparty\manifold\Manifold.vcxproj">

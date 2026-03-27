@@ -127,11 +127,74 @@
       "tags": ["level1", "furniture", "part", "leg"]
     },
     {
+      "id": "round_leg_wood_v1",
+      "path": "components/furniture/parts/round_leg_wood_v1.json",
+      "description": "Generic cylindrical wooden furniture leg",
+      "category": "furniture_parts",
+      "tags": ["level1", "furniture", "part", "leg", "wood"]
+    },
+    {
+      "id": "round_leg_metal_v1",
+      "path": "components/furniture/parts/round_leg_metal_v1.json",
+      "description": "Generic cylindrical metal furniture leg",
+      "category": "furniture_parts",
+      "tags": ["level1", "furniture", "part", "leg", "metal"]
+    },
+    {
+      "id": "rect_leg_wood_v1",
+      "path": "components/furniture/parts/rect_leg_wood_v1.json",
+      "description": "Rectangular wooden furniture leg",
+      "category": "furniture_parts",
+      "tags": ["level1", "furniture", "part", "leg", "wood", "rect"]
+    },
+    {
+      "id": "rect_leg_metal_v1",
+      "path": "components/furniture/parts/rect_leg_metal_v1.json",
+      "description": "Rectangular metal furniture leg",
+      "category": "furniture_parts",
+      "tags": ["level1", "furniture", "part", "leg", "metal", "rect"]
+    },
+    {
       "id": "table_top_v1",
       "path": "components/furniture/parts/table_top_v1.json",
       "description": "Flat table top surface",
       "category": "furniture_parts",
       "tags": ["level1", "furniture", "part", "top"]
+    },
+    {
+      "id": "wood_panel_v1",
+      "path": "components/furniture/parts/wood_panel_v1.json",
+      "description": "Generic wood panel block",
+      "category": "furniture_parts",
+      "tags": ["level1", "furniture", "part", "panel", "wood"]
+    },
+    {
+      "id": "painted_panel_v1",
+      "path": "components/furniture/parts/painted_panel_v1.json",
+      "description": "Generic painted wood panel block",
+      "category": "furniture_parts",
+      "tags": ["level1", "furniture", "part", "panel", "painted"]
+    },
+    {
+      "id": "fabric_block_v1",
+      "path": "components/furniture/parts/fabric_block_v1.json",
+      "description": "Generic upholstered fabric block",
+      "category": "furniture_parts",
+      "tags": ["level1", "furniture", "part", "upholstery", "fabric"]
+    },
+    {
+      "id": "storage_shell_v1",
+      "path": "components/furniture/parts/storage_shell_v1.json",
+      "description": "Reusable cabinet and shelf carcass shell",
+      "category": "furniture_parts",
+      "tags": ["level2", "furniture", "part", "storage", "shell"]
+    },
+    {
+      "id": "double_door_front_v1",
+      "path": "components/furniture/parts/double_door_front_v1.json",
+      "description": "Reusable double-door front assembly",
+      "category": "furniture_parts",
+      "tags": ["level2", "furniture", "part", "door", "front"]
     },
     {
       "id": "simple_table_v1",
@@ -167,6 +230,34 @@
       "description": "Simple bed with mattress, frame, 4 legs and headboard",
       "category": "furniture",
       "tags": ["level3", "furniture", "bed"]
+    },
+    {
+      "id": "sofa_v1",
+      "path": "components/furniture/sofa_v1.json",
+      "description": "Simple sofa with seat, backrest, armrests and legs",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "sofa", "seating"]
+    },
+    {
+      "id": "coffee_table_v1",
+      "path": "components/furniture/coffee_table_v1.json",
+      "description": "Low coffee table with lower shelf and four legs",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "table", "coffee_table", "living_room"]
+    },
+    {
+      "id": "bookshelf_v1",
+      "path": "components/furniture/bookshelf_v1.json",
+      "description": "Open bookshelf with multiple fixed shelves",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "bookshelf", "storage"]
+    },
+    {
+      "id": "cabinet_v1",
+      "path": "components/furniture/cabinet_v1.json",
+      "description": "Closed cabinet with doors, inner shelf and legs",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "cabinet", "storage"]
     },
     {
       "id": "beam_v1",

@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "name": "bookshelf_v1",
+  "description": "Open bookshelf assembled from a reusable storage shell plus shelf boards.",
+  "version": 2,
+  "parameters": {
+    "w": 90.0,
+    "d": 30.0,
+    "h": 185.0,
+    "panel_t": 3.0,
+    "base_h": 6.0,
+    "shelf_t": 2.5
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "top_center": [0, "$h", 0],
+    "center": [0, "$h / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "shell",
+        "type": "reference",
+        "ref": "storage_shell_v1",
+        "overrides": {
+          "w": "$w",
+          "d": "$d",
+          "h": "$h",
+          "side_t": "$panel_t",
+          "top_t": "$panel_t",
+          "bottom_t": "$base_h",
+          "back_t": 1.5
+        }
+      },
+      {
+        "name": "shelf_1",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w - $panel_t * 2", "h": "$shelf_t", "d": "$d - 2.0" },
+        "transform": { "position": [0, "$base_h + 28.0", 0] }
+      },
+      {
+        "name": "shelf_2",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w - $panel_t * 2", "h": "$shelf_t", "d": "$d - 2.0" },
+        "transform": { "position": [0, "$base_h + 65.0", 0] }
+      },
+      {
+        "name": "shelf_3",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w - $panel_t * 2", "h": "$shelf_t", "d": "$d - 2.0" },
+        "transform": { "position": [0, "$base_h + 102.0", 0] }
+      },
+      {
+        "name": "shelf_4",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w - $panel_t * 2", "h": "$shelf_t", "d": "$d - 2.0" },
+        "transform": { "position": [0, "$base_h + 139.0", 0] }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "name": "storage_shell_v1",
+  "description": "Reusable storage carcass with side panels, top, bottom and painted back panel. Origin at floor.",
+  "version": 1,
+  "parameters": {
+    "w": 100.0,
+    "d": 40.0,
+    "h": 80.0,
+    "side_t": 2.5,
+    "top_t": 2.5,
+    "bottom_t": 2.5,
+    "back_t": 1.2
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "top_center": [0, "$h", 0],
+    "center": [0, "$h / 2", 0],
+    "inner_mid": [0, "($bottom_t + ($h - $top_t)) / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "left_side",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$side_t", "h": "$h", "d": "$d" },
+        "transform": { "position": ["$w / 2 - $side_t / 2", "$h / 2", 0] }
+      },
+      {
+        "name": "right_side",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$side_t", "h": "$h", "d": "$d" },
+        "transform": { "position": ["-$w / 2 + $side_t / 2", "$h / 2", 0] }
+      },
+      {
+        "name": "top",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$top_t", "d": "$d" },
+        "transform": { "position": [0, "$h - $top_t / 2", 0] }
+      },
+      {
+        "name": "bottom",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$bottom_t", "d": "$d" },
+        "transform": { "position": [0, "$bottom_t / 2", 0] }
+      },
+      {
+        "name": "back",
+        "type": "reference",
+        "ref": "painted_panel_v1",
+        "overrides": {
+          "w": "$w - $side_t * 2",
+          "h": "$h - $top_t - $bottom_t",
+          "d": "$back_t"
+        },
+        "transform": {
+          "position": [0, "$bottom_t + ($h - $top_t - $bottom_t) / 2", "-$d / 2 + $back_t / 2"]
+        }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

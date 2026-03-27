@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "name": "chair_v1",
-  "description": "Simple chair with seat, backrest and four legs. Origin at floor (y=0 = bottom of legs).",
-  "version": 1,
+  "description": "Simple chair assembled from reusable legs and upholstered blocks. Origin at floor.",
+  "version": 2,
   "parameters": {
     "seat_height": 45.0,
     "seat_thickness": 3.0,
@@ -14,99 +14,69 @@
     "leg_inset": 5.0
   },
   "anchors": {
-    "center":        [0, "($seat_height + $seat_thickness + $backrest_height) / 2", 0],
+    "center": [0, "($seat_height + $seat_thickness + $backrest_height) / 2", 0],
     "bottom_center": [0, 0, 0],
-    "top_center":    [0, "$seat_height + $seat_thickness + $backrest_height", 0],
-    "seat_top":      [0, "$seat_height + $seat_thickness", 0]
+    "top_center": [0, "$seat_height + $seat_thickness + $backrest_height", 0],
+    "seat_top": [0, "$seat_height + $seat_thickness", 0]
   },
   "root": {
     "type": "group",
     "children": [
       {
         "name": "leg_fl",
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$seat_height"
-        },
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_radius", "h": "$seat_height" },
         "transform": {
           "position": ["$seat_width / 2 - $leg_inset", "$seat_height / 2", "$seat_depth / 2 - $leg_inset"]
-        },
-        "material": "wood",
-        "comment": "Cylinder几何中心在原点，Y[-h/2, h/2]，position.y=$seat_height/2让底部在地面"
+        }
       },
       {
         "name": "leg_fr",
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$seat_height"
-        },
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_radius", "h": "$seat_height" },
         "transform": {
           "position": ["$seat_width / 2 - $leg_inset", "$seat_height / 2", "-$seat_depth / 2 + $leg_inset"]
-        },
-        "material": "wood"
+        }
       },
       {
         "name": "leg_bl",
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$seat_height"
-        },
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_radius", "h": "$seat_height" },
         "transform": {
           "position": ["-$seat_width / 2 + $leg_inset", "$seat_height / 2", "$seat_depth / 2 - $leg_inset"]
-        },
-        "material": "wood"
+        }
       },
       {
         "name": "leg_br",
-        "type": "primitive",
-        "primitive": "cylinder",
-        "params": {
-          "radius": "$leg_radius",
-          "height": "$seat_height"
-        },
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_radius", "h": "$seat_height" },
         "transform": {
           "position": ["-$seat_width / 2 + $leg_inset", "$seat_height / 2", "-$seat_depth / 2 + $leg_inset"]
-        },
-        "material": "wood"
+        }
       },
       {
         "name": "seat",
-        "type": "primitive",
-        "primitive": "cube",
-        "params": {
-          "size_x": "$seat_width",
-          "size_y": "$seat_thickness",
-          "size_z": "$seat_depth"
-        },
+        "type": "reference",
+        "ref": "fabric_block_v1",
+        "overrides": { "w": "$seat_width", "h": "$seat_thickness", "d": "$seat_depth" },
         "transform": {
           "position": [0, "$seat_height + $seat_thickness / 2", 0]
-        },
-        "material": "leather",
-        "comment": "Box几何中心在原点，Y[-t/2, t/2]，position.y=$seat_height+$seat_thickness/2让底部在seat_height"
+        }
       },
       {
         "name": "backrest",
-        "type": "primitive",
-        "primitive": "cube",
-        "params": {
-          "size_x": "$seat_width",
-          "size_y": "$backrest_height",
-          "size_z": "$backrest_thickness"
-        },
+        "type": "reference",
+        "ref": "fabric_block_v1",
+        "overrides": { "w": "$seat_width", "h": "$backrest_height", "d": "$backrest_thickness" },
         "transform": {
           "position": [0, "$seat_height + $seat_thickness + $backrest_height / 2", "-$seat_depth / 2 + $backrest_thickness / 2"]
-        },
-        "material": "leather"
+        }
       }
     ],
-    "output": {
-      "mode": "separate"
-    }
+    "output": { "mode": "separate" }
   }
 }

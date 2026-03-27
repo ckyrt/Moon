@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "name": "rect_leg_metal_v1",
+  "description": "Rectangular metal tube style furniture leg. Use when profile differs from round metal legs.",
+  "version": 1,
+  "parameters": {
+    "w": 3.0,
+    "d": 3.0,
+    "h": 40.0
+  },
+  "anchors": {
+    "center": [0, 0, 0],
+    "bottom_center": [0, "-$h / 2", 0],
+    "top_center": [0, "$h / 2", 0]
+  },
+  "root": {
+    "type": "primitive",
+    "primitive": "cube",
+    "params": {
+      "size_x": "$w",
+      "size_y": "$h",
+      "size_z": "$d"
+    },
+    "material": "metal"
+  }
+}

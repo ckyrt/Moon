@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "name": "sofa_v1",
+  "description": "Simple sofa assembled from reusable legs and upholstered blocks. Origin at floor.",
+  "version": 2,
+  "parameters": {
+    "w": 180.0,
+    "d": 88.0,
+    "seat_h": 18.0,
+    "seat_y": 24.0,
+    "back_h": 42.0,
+    "back_t": 14.0,
+    "arm_w": 16.0,
+    "arm_h": 30.0,
+    "leg_h": 8.0,
+    "leg_r": 2.5,
+    "leg_inset": 10.0
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "seat_top": [0, "$seat_y + $seat_h", 0],
+    "top_center": [0, "$seat_y + $seat_h + $back_h", 0],
+    "center": [0, "($seat_y + $seat_h + $back_h) / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "leg_fl",
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_r", "h": "$leg_h" },
+        "transform": { "position": ["$w / 2 - $leg_inset", "$leg_h / 2", "$d / 2 - $leg_inset"] }
+      },
+      {
+        "name": "leg_fr",
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_r", "h": "$leg_h" },
+        "transform": { "position": ["$w / 2 - $leg_inset", "$leg_h / 2", "-$d / 2 + $leg_inset"] }
+      },
+      {
+        "name": "leg_bl",
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_r", "h": "$leg_h" },
+        "transform": { "position": ["-$w / 2 + $leg_inset", "$leg_h / 2", "$d / 2 - $leg_inset"] }
+      },
+      {
+        "name": "leg_br",
+        "type": "reference",
+        "ref": "round_leg_wood_v1",
+        "overrides": { "r": "$leg_r", "h": "$leg_h" },
+        "transform": { "position": ["-$w / 2 + $leg_inset", "$leg_h / 2", "-$d / 2 + $leg_inset"] }
+      },
+      {
+        "name": "seat",
+        "type": "reference",
+        "ref": "fabric_block_v1",
+        "overrides": { "w": "$w - $arm_w * 2", "h": "$seat_h", "d": "$d - 6.0" },
+        "transform": { "position": [0, "$seat_y + $seat_h / 2", 0] }
+      },
+      {
+        "name": "backrest",
+        "type": "reference",
+        "ref": "fabric_block_v1",
+        "overrides": { "w": "$w - $arm_w * 2", "h": "$back_h", "d": "$back_t" },
+        "transform": { "position": [0, "$seat_y + $seat_h + $back_h / 2", "-$d / 2 + $back_t / 2"] }
+      },
+      {
+        "name": "arm_left",
+        "type": "reference",
+        "ref": "fabric_block_v1",
+        "overrides": { "w": "$arm_w", "h": "$arm_h", "d": "$d" },
+        "transform": { "position": ["$w / 2 - $arm_w / 2", "$seat_y + $arm_h / 2", 0] }
+      },
+      {
+        "name": "arm_right",
+        "type": "reference",
+        "ref": "fabric_block_v1",
+        "overrides": { "w": "$arm_w", "h": "$arm_h", "d": "$d" },
+        "transform": { "position": ["-$w / 2 + $arm_w / 2", "$seat_y + $arm_h / 2", 0] }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}
