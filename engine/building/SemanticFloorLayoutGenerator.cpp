@@ -48,6 +48,7 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
                                             const std::vector<FloorPlate>& floorPlates,
                                             const std::vector<VerticalCore>& verticalCores,
                                             std::vector<Floor>& ioFloors,
+                                            ResolvedBuildingLayout* outResolvedLayout,
                                             std::vector<ProgramBlock>* outDebugBlocks,
                                             std::string& outError) const {
     if (!layoutInput || floorPlates.empty()) {
@@ -55,21 +56,38 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
     }
 
     const std::string buildingType = formInput ? formInput->buildingType : std::string();
-    const bool useOfficeSolver =
-        buildingType == "office" || buildingType == "office_tower" || IsOfficeLike(definition);
-    const bool useResidentialSolver =
-        buildingType == "apartment" || buildingType == "cbd_residential" || buildingType == "villa" ||
-        IsResidentialLike(definition);
-    const bool useRetailSolver =
-        buildingType == "mall" || buildingType == "shopping_center" || buildingType == "retail_center" ||
-        IsRetailLike(definition);
+    enum class LayoutTypology {
+        None,
+        Office,
+        Residential,
+        Retail
+    };
 
-    if (!useOfficeSolver && !useResidentialSolver && !useRetailSolver) {
+    LayoutTypology typology = LayoutTypology::None;
+    if (buildingType == "mall" || buildingType == "shopping_center" || buildingType == "retail_center") {
+        typology = LayoutTypology::Retail;
+    } else if (buildingType == "apartment" || buildingType == "cbd_residential" || buildingType == "villa") {
+        typology = LayoutTypology::Residential;
+    } else if (buildingType == "office" || buildingType == "office_tower") {
+        typology = LayoutTypology::Office;
+    } else if (IsRetailLike(definition)) {
+        typology = LayoutTypology::Retail;
+    } else if (IsResidentialLike(definition)) {
+        typology = LayoutTypology::Residential;
+    } else if (IsOfficeLike(definition)) {
+        typology = LayoutTypology::Office;
+    }
+
+    if (typology == LayoutTypology::None) {
         return true;
     }
 
     if (outDebugBlocks) {
         outDebugBlocks->clear();
+    }
+    if (outResolvedLayout) {
+        outResolvedLayout->buildingType = buildingType;
+        outResolvedLayout->floors.clear();
     }
 
     int nextSpaceId = 1;
@@ -92,46 +110,49 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
         }
 
         const std::vector<VerticalCore> floorCores = CollectFloorCores(verticalCores, floor.level);
-        std::vector<Space> synthesizedSpaces;
-        if (useOfficeSolver) {
+        ResolvedFloorLayout resolvedFloor;
+        if (typology == LayoutTypology::Office) {
             if (!m_officeSolver.GenerateFloor(
                     definition,
                     *semanticFloor,
                     *plateIt,
                     floorCores,
-                    nextSpaceId,
-                    synthesizedSpaces,
-                    outDebugBlocks,
+                    resolvedFloor,
                     outError)) {
                 return false;
             }
-        } else if (useResidentialSolver) {
+        } else if (typology == LayoutTypology::Residential) {
             if (!m_residentialSolver.GenerateFloor(
                     definition,
                     *semanticFloor,
                     *plateIt,
                     floorCores,
-                    nextSpaceId,
-                    synthesizedSpaces,
-                    outDebugBlocks,
+                    resolvedFloor,
                     outError)) {
                 return false;
             }
-        } else if (useRetailSolver) {
+        } else if (typology == LayoutTypology::Retail) {
             if (!m_retailSolver.GenerateFloor(
                     definition,
                     *semanticFloor,
                     *plateIt,
                     floorCores,
-                    nextSpaceId,
-                    synthesizedSpaces,
-                    outDebugBlocks,
+                    resolvedFloor,
                     outError)) {
                 return false;
             }
         }
 
-        floor.spaces = std::move(synthesizedSpaces);
+        if (outDebugBlocks) {
+            outDebugBlocks->insert(outDebugBlocks->end(),
+                                   resolvedFloor.debugBlocks.begin(),
+                                   resolvedFloor.debugBlocks.end());
+        }
+        if (outResolvedLayout) {
+            outResolvedLayout->floors.push_back(resolvedFloor);
+        }
+
+        BuildFloorSpacesFromResolvedLayout(resolvedFloor, nextSpaceId, floor.spaces);
     }
 
     return true;

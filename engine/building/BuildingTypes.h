@@ -383,6 +383,7 @@ struct SpaceConnection {
  */
 struct GeneratedBuilding {
     BuildingDefinition definition;
+    std::string resolvedLayoutJson;
     std::vector<FloorPlate> floorPlates;
     std::vector<VerticalCore> verticalCores;
     std::vector<SupportColumn> supportColumns;

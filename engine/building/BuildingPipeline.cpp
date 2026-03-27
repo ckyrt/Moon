@@ -185,6 +185,7 @@ bool BuildingPipeline::ProcessBuildingInternal(const BuildingDefinition& definit
     if (!outError.empty()) {
         return false;
     }
+    outBuilding.definition = workingDefinition;
     
     // Step 4: Build space connectivity graph
     if (!BuildSpaceGraph(workingDefinition, outBuilding)) {
@@ -415,9 +416,7 @@ void BuildingPipeline::ApplyMassDrivenSemanticLayout(BuildingDefinition& definit
                                                      const BuildingLayoutInput* layoutInput,
                                                      GeneratedBuilding& generated,
                                                      std::string& outError) const {
-    const bool hasMassingRule = std::any_of(definition.masses.begin(), definition.masses.end(),
-        [](const Mass& mass) { return !mass.massingRuleAsset.empty(); });
-    if (!hasMassingRule || generated.floorPlates.empty()) {
+    if (generated.floorPlates.empty()) {
         return;
     }
 
@@ -425,6 +424,7 @@ void BuildingPipeline::ApplyMassDrivenSemanticLayout(BuildingDefinition& definit
         return;
     }
 
+    ResolvedBuildingLayout resolvedLayout;
     m_semanticFloorLayoutGenerator.Generate(
         definition,
         formInput,
@@ -432,8 +432,19 @@ void BuildingPipeline::ApplyMassDrivenSemanticLayout(BuildingDefinition& definit
         generated.floorPlates,
         generated.verticalCores,
         definition.floors,
+        &resolvedLayout,
         &generated.programBlocks,
         outError);
+
+    if (!outError.empty()) {
+        return;
+    }
+
+    std::string resolvedLayoutJson;
+    if (!SerializeResolvedBuildingLayout(formInput, resolvedLayout, resolvedLayoutJson, outError)) {
+        return;
+    }
+    generated.resolvedLayoutJson = std::move(resolvedLayoutJson);
 }
 
 bool BuildingPipeline::BuildSpaceGraph(const BuildingDefinition& definition,

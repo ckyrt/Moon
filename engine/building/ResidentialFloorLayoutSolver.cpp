@@ -117,41 +117,31 @@ Rect FitRectToArea(const Rect& source, float targetArea, float minWidth) {
     return rect;
 }
 
-Space MakeSpace(int spaceId,
-                const std::string& rectId,
-                SpaceUsage usage,
-                const Rect& rect,
-                float ceilingHeight,
-                int floorLevel) {
-    Space space;
+ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
+                                    SpaceUsage usage,
+                                    const Rect& rect,
+                                    float ceilingHeight,
+                                    int floorLevel) {
+    ResolvedSpacePlan space;
     space.spaceId = spaceId;
-    space.properties.usage = usage;
-    space.properties.isOutdoor = false;
-    space.properties.hasStairs = (usage == SpaceUsage::Stairwell);
-    space.properties.ceilingHeight = ceilingHeight > 0.0f ? ceilingHeight : 3.0f;
-    Rect taggedRect = rect;
-    taggedRect.rectId = rectId;
-    space.rects.push_back(taggedRect);
-    if (usage == SpaceUsage::Stairwell) {
-        space.stairsConfig.connectToLevel = floorLevel + 1;
-        space.stairsConfig.width = rect.size[0];
-        space.stairsConfig.position = rect.origin;
-    }
+    space.usage = usage;
+    space.rect = rect;
+    space.rect.rectId = spaceId;
+    space.ceilingHeight = ceilingHeight > 0.0f ? ceilingHeight : 3.0f;
+    space.hasStairs = (usage == SpaceUsage::Stairwell);
+    space.stairConnectToLevel = floorLevel + 1;
     return space;
 }
 
-void AddDebugBlock(const Space& space,
+void AddDebugBlock(const ResolvedSpacePlan& space,
                    int floorLevel,
-                   std::vector<ProgramBlock>* outDebugBlocks) {
-    if (!outDebugBlocks || space.rects.empty()) {
-        return;
-    }
+                   std::vector<ProgramBlock>& outDebugBlocks) {
     ProgramBlock block;
-    block.blockId = space.rects.front().rectId;
+    block.blockId = space.spaceId;
     block.floorLevel = floorLevel;
-    block.usage = space.properties.usage;
-    block.rect = space.rects.front();
-    outDebugBlocks->push_back(block);
+    block.usage = space.usage;
+    block.rect = space.rect;
+    outDebugBlocks.push_back(block);
 }
 
 } // namespace
@@ -163,11 +153,11 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
                                                  const FloorLayoutInput& layoutInput,
                                                  const FloorPlate& floorPlate,
                                                  const std::vector<VerticalCore>& floorCores,
-                                                 int& ioNextSpaceId,
-                                                 std::vector<Space>& outSpaces,
-                                                 std::vector<ProgramBlock>* outDebugBlocks,
+                                                 ResolvedFloorLayout& outResolvedFloor,
                                                  std::string& outError) const {
-    outSpaces.clear();
+    outResolvedFloor.level = layoutInput.level;
+    outResolvedFloor.spaces.clear();
+    outResolvedFloor.debugBlocks.clear();
 
     const Rect combinedCore = MergeCoreEnvelope(floorCores);
     if (combinedCore.size[0] <= 0.0f || combinedCore.size[1] <= 0.0f) {
@@ -252,9 +242,12 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
             }
 
             if (matchedCore) {
-                Space space = MakeSpace(ioNextSpaceId++, semanticSpace.spaceId, usage,
-                    matchedCore->rect, semanticSpace.constraints.ceilingHeight, layoutInput.level);
-                outSpaces.push_back(space);
+                outResolvedFloor.spaces.push_back(MakeResolvedSpace(
+                    semanticSpace.spaceId,
+                    usage,
+                    matchedCore->rect,
+                    semanticSpace.constraints.ceilingHeight,
+                    layoutInput.level));
                 synthesizedAny = true;
             }
             continue;
@@ -267,10 +260,14 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
 
         if ((usage == SpaceUsage::Corridor || usage == SpaceUsage::Entrance) &&
             RectFitsPlate(floorPlate, corridorRect, margin)) {
-            Space space = MakeSpace(ioNextSpaceId++, semanticSpace.spaceId, usage,
-                corridorRect, semanticSpace.constraints.ceilingHeight, layoutInput.level);
-            AddDebugBlock(space, layoutInput.level, outDebugBlocks);
-            outSpaces.push_back(space);
+            ResolvedSpacePlan space = MakeResolvedSpace(
+                semanticSpace.spaceId,
+                usage,
+                corridorRect,
+                semanticSpace.constraints.ceilingHeight,
+                layoutInput.level);
+            AddDebugBlock(space, layoutInput.level, outResolvedFloor.debugBlocks);
+            outResolvedFloor.spaces.push_back(std::move(space));
             synthesizedAny = true;
             continue;
         }
@@ -287,10 +284,14 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
                 continue;
             }
 
-            Space space = MakeSpace(ioNextSpaceId++, semanticSpace.spaceId, usage,
-                candidate, semanticSpace.constraints.ceilingHeight, layoutInput.level);
-            AddDebugBlock(space, layoutInput.level, outDebugBlocks);
-            outSpaces.push_back(space);
+            ResolvedSpacePlan space = MakeResolvedSpace(
+                semanticSpace.spaceId,
+                usage,
+                candidate,
+                semanticSpace.constraints.ceilingHeight,
+                layoutInput.level);
+            AddDebugBlock(space, layoutInput.level, outResolvedFloor.debugBlocks);
+            outResolvedFloor.spaces.push_back(std::move(space));
             synthesizedAny = true;
         }
     }

@@ -19,6 +19,7 @@ public:
                   const std::vector<FloorPlate>& floorPlates,
                   const std::vector<VerticalCore>& verticalCores,
                   std::vector<Floor>& ioFloors,
+                  ResolvedBuildingLayout* outResolvedLayout,
                   std::vector<ProgramBlock>* outDebugBlocks,
                   std::string& outError) const;
 

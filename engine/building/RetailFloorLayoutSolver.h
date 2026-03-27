@@ -14,9 +14,7 @@ public:
                        const FloorLayoutInput& layoutInput,
                        const FloorPlate& floorPlate,
                        const std::vector<VerticalCore>& floorCores,
-                       int& ioNextSpaceId,
-                       std::vector<Space>& outSpaces,
-                       std::vector<ProgramBlock>* outDebugBlocks,
+                       ResolvedFloorLayout& outResolvedFloor,
                        std::string& outError) const;
 };
 

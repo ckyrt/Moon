@@ -2,6 +2,7 @@
 #include "building/BuildingPipeline.h"
 #include "building/BuildingTypes.h"
 #include "TestHelpers.h"
+#include <array>
 #include <chrono>
 #include <limits>
 
@@ -17,6 +18,93 @@ protected:
     GeneratedBuilding building;
     std::string errorMsg;
 };
+
+namespace {
+
+bool RectContainsPoint(const Rect& rect, const GridPos2D& point) {
+    return point[0] > rect.origin[0] + 0.001f &&
+           point[0] < rect.origin[0] + rect.size[0] - 0.001f &&
+           point[1] > rect.origin[1] + 0.001f &&
+           point[1] < rect.origin[1] + rect.size[1] - 0.001f;
+}
+
+bool PointInOutline(const std::vector<GridPos2D>& outline, const GridPos2D& point) {
+    if (outline.size() < 3) {
+        return false;
+    }
+
+    bool inside = false;
+    for (size_t i = 0, j = outline.size() - 1; i < outline.size(); j = i++) {
+        const auto& a = outline[i];
+        const auto& b = outline[j];
+        const bool intersects = ((a[1] > point[1]) != (b[1] > point[1])) &&
+            (point[0] < (b[0] - a[0]) * (point[1] - a[1]) / ((b[1] - a[1]) + 0.000001f) + a[0]);
+        if (intersects) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+bool RectFitsPlate(const FloorPlate& plate, const Rect& rect, float margin) {
+    const std::array<GridPos2D, 5> samplePoints = {{
+        {rect.origin[0] + margin, rect.origin[1] + margin},
+        {rect.origin[0] + rect.size[0] - margin, rect.origin[1] + margin},
+        {rect.origin[0] + rect.size[0] - margin, rect.origin[1] + rect.size[1] - margin},
+        {rect.origin[0] + margin, rect.origin[1] + rect.size[1] - margin},
+        {rect.origin[0] + rect.size[0] * 0.5f, rect.origin[1] + rect.size[1] * 0.5f}
+    }};
+
+    for (const auto& point : samplePoints) {
+        for (const auto& voidRect : plate.voids) {
+            if (RectContainsPoint(voidRect, point)) {
+                return false;
+            }
+        }
+
+        if (plate.outline.size() >= 3) {
+            if (!PointInOutline(plate.outline, point)) {
+                return false;
+            }
+        } else {
+            const bool insideBounds =
+                point[0] > plate.origin[0] + margin &&
+                point[0] < plate.origin[0] + plate.size[0] - margin &&
+                point[1] > plate.origin[1] + margin &&
+                point[1] < plate.origin[1] + plate.size[1] - margin;
+            if (!insideBounds) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+const FloorPlate* FindFloorPlate(const GeneratedBuilding& building, int floorLevel) {
+    for (const auto& plate : building.floorPlates) {
+        if (plate.floorLevel == floorLevel) {
+            return &plate;
+        }
+    }
+    return nullptr;
+}
+
+void ExpectAllSpacesInsideFloorPlates(const GeneratedBuilding& building) {
+    for (const auto& floor : building.definition.floors) {
+        const FloorPlate* plate = FindFloorPlate(building, floor.level);
+        ASSERT_NE(plate, nullptr) << "Missing floor plate for level " << floor.level;
+
+        for (const auto& space : floor.spaces) {
+            for (const auto& rect : space.rects) {
+                EXPECT_TRUE(RectFitsPlate(*plate, rect, 0.1f))
+                    << "Space rect '" << rect.rectId << "' escaped floor plate on level " << floor.level;
+            }
+        }
+    }
+}
+
+} // namespace
 
 // ========================================
 // Integration Tests - Full Pipeline
@@ -231,6 +319,7 @@ TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_GeneratesMassDri
     EXPECT_EQ(building.floorPlates.size(), 8);
     EXPECT_GE(building.verticalCores.size(), 3);
     EXPECT_GT(building.programBlocks.size(), 12);
+    EXPECT_FALSE(building.resolvedLayoutJson.empty());
     EXPECT_GT(building.walls.size(), 0);
     EXPECT_GT(building.connections.size(), 0);
 
@@ -251,6 +340,17 @@ TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_GeneratesMassDri
 
     EXPECT_GE(officeSpaceCount, 8);
     EXPECT_GT(corridorSpaceCount, 4);
+}
+
+TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_AllResolvedSpacesStayInsideFloorPlates) {
+    const std::string json = TestHelpers::LoadFromFile("massing_vase_office_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    const bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    ASSERT_FALSE(building.floorPlates.empty());
+    ExpectAllSpacesInsideFloorPlates(building);
 }
 
 TEST_F(BuildingPipelineTest, ProcessOfficeTower_DistinctSemanticDemos_PreserveProgramIntent) {
@@ -285,6 +385,17 @@ TEST_F(BuildingPipelineTest, ProcessOfficeTower_DistinctSemanticDemos_PreservePr
 
     EXPECT_FALSE(hasProgramBlock(collaborationBuilding, "conference_center_1"));
     EXPECT_FALSE(hasProgramBlock(enterpriseBuilding, "showroom_0"));
+}
+
+TEST_F(BuildingPipelineTest, ProcessComplexShoppingMall_AllResolvedSpacesStayInsideFloorPlatesAndAvoidVoids) {
+    const std::string json = TestHelpers::LoadFromFile("complex_shopping_mall_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    const bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    ASSERT_FALSE(building.floorPlates.empty());
+    ExpectAllSpacesInsideFloorPlates(building);
 }
 
 TEST_F(BuildingPipelineTest, ProcessCBDResidential_Success) {

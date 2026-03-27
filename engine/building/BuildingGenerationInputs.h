@@ -25,8 +25,36 @@ struct BuildingLayoutInput {
     const FloorLayoutInput* FindFloor(int level) const;
 };
 
+struct ResolvedSpacePlan {
+    std::string spaceId;
+    SpaceUsage usage = SpaceUsage::Unknown;
+    Rect rect;
+    float ceilingHeight = 0.0f;
+    bool isOutdoor = false;
+    bool hasStairs = false;
+    int stairConnectToLevel = -1;
+};
+
+struct ResolvedFloorLayout {
+    int level = 0;
+    std::vector<ResolvedSpacePlan> spaces;
+    std::vector<ProgramBlock> debugBlocks;
+};
+
+struct ResolvedBuildingLayout {
+    std::string buildingType;
+    std::vector<ResolvedFloorLayout> floors;
+};
+
 BuildingFormInput ExtractBuildingFormInput(const SemanticBuilding& building);
 BuildingLayoutInput ExtractBuildingLayoutInput(const SemanticBuilding& building);
+void BuildFloorSpacesFromResolvedLayout(const ResolvedFloorLayout& resolvedFloor,
+                                        int& ioNextSpaceId,
+                                        std::vector<Space>& outSpaces);
+bool SerializeResolvedBuildingLayout(const BuildingFormInput* formInput,
+                                     const ResolvedBuildingLayout& resolvedLayout,
+                                     std::string& outJson,
+                                     std::string& outError);
 
 } // namespace Building
 } // namespace Moon
