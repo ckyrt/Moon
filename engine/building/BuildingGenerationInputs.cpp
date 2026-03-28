@@ -60,8 +60,11 @@ void BuildFloorSpacesFromResolvedLayout(const ResolvedFloorLayout& resolvedFloor
             space.stairsConfig.connectToLevel = resolvedSpace.stairConnectToLevel >= 0
                 ? resolvedSpace.stairConnectToLevel
                 : resolvedFloor.level + 1;
-            space.stairsConfig.width = rect.size[0];
-            space.stairsConfig.position = rect.origin;
+            space.stairsConfig.type = resolvedSpace.stairType;
+            space.stairsConfig.width = resolvedSpace.stairWidth > 0.0f
+                ? resolvedSpace.stairWidth
+                : rect.size[0];
+            space.stairsConfig.position = resolvedSpace.stairPosition;
         }
 
         outSpaces.push_back(std::move(space));

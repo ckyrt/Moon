@@ -229,6 +229,16 @@ TEST_F(RealWorldBuildingTest, LuxuryVilla_FullPipeline) {
     // Verify output
     EXPECT_GT(output.walls.size(), 0) << "Should generate walls";
     EXPECT_EQ(output.definition.floors.size(), 3) << "Should have 3 floors";
+    EXPECT_GT(output.connections.size(), 10u) << "Luxury villa should preserve meaningful room adjacencies";
+    EXPECT_GT(output.doors.size(), 5u) << "Luxury villa should generate indoor doors, not just an exterior shell";
+
+    int interiorWalls = 0;
+    for (const auto& wall : output.walls) {
+        if (wall.type == WallType::Interior) {
+            ++interiorWalls;
+        }
+    }
+    EXPECT_GT(interiorWalls, 10) << "Luxury villa should keep interior partitions after full pipeline processing";
     
     std::cout << "\n=== Luxury Villa Pipeline Output ===" << std::endl;
     std::cout << "Walls generated: " << output.walls.size() << std::endl;

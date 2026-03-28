@@ -134,20 +134,20 @@ Rect FitRectToArea(const Rect& source, float targetArea, float minWidth) {
 
 Rect MergeCoreEnvelope(const std::vector<VerticalCore>& cores) {
     Rect merged;
-    const auto stairIt = std::find_if(cores.begin(), cores.end(),
-        [](const VerticalCore& core) { return core.type == VerticalCoreType::Stair; });
-    const auto elevatorIt = std::find_if(cores.begin(), cores.end(),
-        [](const VerticalCore& core) { return core.type == VerticalCoreType::Elevator; });
-    if (stairIt == cores.end() || elevatorIt == cores.end()) {
+    if (cores.empty()) {
         return merged;
     }
 
-    const float minX = std::min(stairIt->rect.origin[0], elevatorIt->rect.origin[0]);
-    const float minY = std::min(stairIt->rect.origin[1], elevatorIt->rect.origin[1]);
-    const float maxX = std::max(stairIt->rect.origin[0] + stairIt->rect.size[0],
-                                elevatorIt->rect.origin[0] + elevatorIt->rect.size[0]);
-    const float maxY = std::max(stairIt->rect.origin[1] + stairIt->rect.size[1],
-                                elevatorIt->rect.origin[1] + elevatorIt->rect.size[1]);
+    float minX = cores.front().rect.origin[0];
+    float minY = cores.front().rect.origin[1];
+    float maxX = cores.front().rect.origin[0] + cores.front().rect.size[0];
+    float maxY = cores.front().rect.origin[1] + cores.front().rect.size[1];
+    for (const auto& core : cores) {
+        minX = std::min(minX, core.rect.origin[0]);
+        minY = std::min(minY, core.rect.origin[1]);
+        maxX = std::max(maxX, core.rect.origin[0] + core.rect.size[0]);
+        maxY = std::max(maxY, core.rect.origin[1] + core.rect.size[1]);
+    }
     merged.origin = {minX, minY};
     merged.size = {maxX - minX, maxY - minY};
     return merged;
@@ -157,15 +157,23 @@ ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
                                     SpaceUsage usage,
                                     const Rect& rect,
                                     float ceilingHeight,
-                                    int floorLevel) {
+                                    int floorLevel,
+                                    bool hasStairs = false,
+                                    int stairConnectToLevel = -1,
+                                    float stairWidth = 0.0f,
+                                    const GridPos2D& stairPosition = {0.0f, 0.0f},
+                                    StairType stairType = StairType::Straight) {
     ResolvedSpacePlan space;
     space.spaceId = spaceId;
     space.usage = usage;
     space.rect = rect;
     space.rect.rectId = spaceId;
     space.ceilingHeight = ceilingHeight > 0.0f ? ceilingHeight : 3.6f;
-    space.hasStairs = (usage == SpaceUsage::Stairwell);
-    space.stairConnectToLevel = floorLevel + 1;
+    space.hasStairs = hasStairs;
+    space.stairConnectToLevel = hasStairs ? stairConnectToLevel : -1;
+    space.stairWidth = stairWidth > 0.0f ? stairWidth : rect.size[0];
+    space.stairPosition = stairPosition;
+    space.stairType = stairType;
     return space;
 }
 
@@ -276,12 +284,20 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
             }
 
             if (matchedCore) {
+                const bool connectsUp = semanticSpace.constraints.connectsToFloor >= 0 &&
+                    semanticSpace.constraints.connectsToFloor != layoutInput.level;
+                const bool shouldGenerateStair = semanticSpace.type == "core" || semanticSpace.type == "stairs";
                 outResolvedFloor.spaces.push_back(MakeResolvedSpace(
                     semanticSpace.spaceId,
                     usage,
                     matchedCore->rect,
                     semanticSpace.constraints.ceilingHeight,
-                    layoutInput.level));
+                    layoutInput.level,
+                    shouldGenerateStair && connectsUp,
+                    semanticSpace.constraints.connectsToFloor,
+                    matchedCore->rect.size[0],
+                    matchedCore->rect.origin,
+                    StairType::Straight));
             }
             continue;
         }

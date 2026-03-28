@@ -36,6 +36,16 @@ std::vector<VerticalCore> CollectFloorCores(const std::vector<VerticalCore>& cor
     return result;
 }
 
+bool FloorDeclaresCoreLikeSpaces(const FloorLayoutInput& floor) {
+    for (const auto& space : floor.spaces) {
+        if (space.type == "core" || space.type == "stairs" || space.type == "elevator" ||
+            space.type == "mechanical") {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 } // namespace
 
@@ -66,13 +76,13 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
     LayoutTypology typology = LayoutTypology::None;
     if (buildingType == "mall" || buildingType == "shopping_center" || buildingType == "retail_center") {
         typology = LayoutTypology::Retail;
-    } else if (buildingType == "apartment" || buildingType == "cbd_residential" || buildingType == "villa") {
+    } else if (buildingType == "apartment" || buildingType == "cbd_residential") {
         typology = LayoutTypology::Residential;
     } else if (buildingType == "office" || buildingType == "office_tower") {
         typology = LayoutTypology::Office;
     } else if (IsRetailLike(definition)) {
         typology = LayoutTypology::Retail;
-    } else if (IsResidentialLike(definition)) {
+    } else if (IsResidentialLike(definition) && buildingType != "villa") {
         typology = LayoutTypology::Residential;
     } else if (IsOfficeLike(definition)) {
         typology = LayoutTypology::Office;
@@ -110,6 +120,12 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
         }
 
         const std::vector<VerticalCore> floorCores = CollectFloorCores(verticalCores, floor.level);
+        const bool needsStructuredCoreLayout = typology == LayoutTypology::Office ||
+            typology == LayoutTypology::Residential;
+        if (needsStructuredCoreLayout && floorCores.empty() && !FloorDeclaresCoreLikeSpaces(*semanticFloor)) {
+            continue;
+        }
+
         ResolvedFloorLayout resolvedFloor;
         if (typology == LayoutTypology::Office) {
             if (!m_officeSolver.GenerateFloor(

@@ -33,6 +33,9 @@ struct ResolvedSpacePlan {
     bool isOutdoor = false;
     bool hasStairs = false;
     int stairConnectToLevel = -1;
+    StairType stairType = StairType::Straight;
+    float stairWidth = 0.0f;
+    GridPos2D stairPosition = {0.0f, 0.0f};
 };
 
 struct ResolvedFloorLayout {

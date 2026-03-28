@@ -4,6 +4,7 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <unordered_map>
 
 namespace {
 
@@ -81,22 +82,133 @@ bool RectFitsPlate(const FloorPlate& plate, const Rect& rect, float margin) {
     return true;
 }
 
+bool IsResidentialUnitUsage(SpaceUsage usage) {
+    return usage == SpaceUsage::Living ||
+           usage == SpaceUsage::Bedroom ||
+           usage == SpaceUsage::Kitchen ||
+           usage == SpaceUsage::Dining ||
+           usage == SpaceUsage::Bathroom ||
+           usage == SpaceUsage::Office ||
+           usage == SpaceUsage::Closet ||
+           usage == SpaceUsage::Storage;
+}
+
+int RoomPriority(const SemanticSpace& space) {
+    const SpaceUsage usage = StringToSpaceUsage(space.type);
+    switch (usage) {
+        case SpaceUsage::Living: return 0;
+        case SpaceUsage::Dining: return 1;
+        case SpaceUsage::Kitchen: return 2;
+        case SpaceUsage::Bedroom: return 3;
+        case SpaceUsage::Office: return 4;
+        case SpaceUsage::Bathroom: return 5;
+        case SpaceUsage::Closet: return 6;
+        case SpaceUsage::Storage: return 7;
+        default: return 8;
+    }
+}
+
+struct UnitGroup {
+    std::string unitId;
+    std::vector<const SemanticSpace*> spaces;
+};
+
+std::vector<UnitGroup> CollectUnitGroups(const FloorLayoutInput& layoutInput) {
+    std::vector<UnitGroup> groups;
+    std::unordered_map<std::string, size_t> indexByUnitId;
+    for (const auto& semanticSpace : layoutInput.spaces) {
+        if (semanticSpace.unitId.empty()) {
+            continue;
+        }
+
+        const SpaceUsage usage = StringToSpaceUsage(semanticSpace.type);
+        if (!IsResidentialUnitUsage(usage)) {
+            continue;
+        }
+
+        auto [it, inserted] = indexByUnitId.emplace(semanticSpace.unitId, groups.size());
+        if (inserted) {
+            UnitGroup group;
+            group.unitId = semanticSpace.unitId;
+            groups.push_back(std::move(group));
+        }
+        groups[it->second].spaces.push_back(&semanticSpace);
+    }
+
+    for (auto& group : groups) {
+        std::stable_sort(group.spaces.begin(), group.spaces.end(),
+            [](const SemanticSpace* a, const SemanticSpace* b) {
+                return RoomPriority(*a) < RoomPriority(*b);
+            });
+    }
+    return groups;
+}
+
+std::vector<Rect> SplitBandForRooms(const Rect& band,
+                                    const std::vector<const SemanticSpace*>& spaces,
+                                    float grid) {
+    std::vector<Rect> rects;
+    if (spaces.empty() || band.size[0] <= 0.0f || band.size[1] <= 0.0f) {
+        return rects;
+    }
+
+    const float minDepth = std::max(2.0f, grid * 4.0f);
+    std::vector<float> depths;
+    depths.reserve(spaces.size());
+
+    float totalDepth = 0.0f;
+    for (const auto* space : spaces) {
+        const float preferredDepth = std::max(
+            minDepth,
+            std::max(space->constraints.minWidth, space->areaPreferred / std::max(band.size[0], 2.0f)));
+        depths.push_back(preferredDepth);
+        totalDepth += preferredDepth;
+    }
+
+    if (totalDepth > band.size[1]) {
+        const float adjustableDepth = std::max(0.001f, totalDepth - minDepth * static_cast<float>(spaces.size()));
+        const float targetAdjustableDepth = std::max(0.0f, band.size[1] - minDepth * static_cast<float>(spaces.size()));
+        for (size_t i = 0; i < depths.size(); ++i) {
+            const float extraDepth = std::max(0.0f, depths[i] - minDepth);
+            const float scaledExtra = extraDepth * (targetAdjustableDepth / adjustableDepth);
+            depths[i] = minDepth + scaledExtra;
+        }
+    } else if (totalDepth < band.size[1]) {
+        depths.back() += band.size[1] - totalDepth;
+    }
+
+    float cursorY = band.origin[1];
+    for (size_t i = 0; i < spaces.size(); ++i) {
+        Rect rect;
+        rect.rectId = spaces[i]->spaceId;
+        rect.origin = {band.origin[0], cursorY};
+        rect.size = {
+            band.size[0],
+            i + 1 == spaces.size() ? band.origin[1] + band.size[1] - cursorY : depths[i]
+        };
+        cursorY += rect.size[1];
+        rects.push_back(rect);
+    }
+
+    return rects;
+}
+
 Rect MergeCoreEnvelope(const std::vector<VerticalCore>& cores) {
     Rect merged;
-    const auto stairIt = std::find_if(cores.begin(), cores.end(),
-        [](const VerticalCore& core) { return core.type == VerticalCoreType::Stair; });
-    const auto elevatorIt = std::find_if(cores.begin(), cores.end(),
-        [](const VerticalCore& core) { return core.type == VerticalCoreType::Elevator; });
-    if (stairIt == cores.end() || elevatorIt == cores.end()) {
+    if (cores.empty()) {
         return merged;
     }
 
-    const float minX = std::min(stairIt->rect.origin[0], elevatorIt->rect.origin[0]);
-    const float minY = std::min(stairIt->rect.origin[1], elevatorIt->rect.origin[1]);
-    const float maxX = std::max(stairIt->rect.origin[0] + stairIt->rect.size[0],
-                                elevatorIt->rect.origin[0] + elevatorIt->rect.size[0]);
-    const float maxY = std::max(stairIt->rect.origin[1] + stairIt->rect.size[1],
-                                elevatorIt->rect.origin[1] + elevatorIt->rect.size[1]);
+    float minX = cores.front().rect.origin[0];
+    float minY = cores.front().rect.origin[1];
+    float maxX = cores.front().rect.origin[0] + cores.front().rect.size[0];
+    float maxY = cores.front().rect.origin[1] + cores.front().rect.size[1];
+    for (const auto& core : cores) {
+        minX = std::min(minX, core.rect.origin[0]);
+        minY = std::min(minY, core.rect.origin[1]);
+        maxX = std::max(maxX, core.rect.origin[0] + core.rect.size[0]);
+        maxY = std::max(maxY, core.rect.origin[1] + core.rect.size[1]);
+    }
     merged.origin = {minX, minY};
     merged.size = {maxX - minX, maxY - minY};
     return merged;
@@ -121,15 +233,23 @@ ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
                                     SpaceUsage usage,
                                     const Rect& rect,
                                     float ceilingHeight,
-                                    int floorLevel) {
+                                    int floorLevel,
+                                    bool hasStairs = false,
+                                    int stairConnectToLevel = -1,
+                                    float stairWidth = 0.0f,
+                                    const GridPos2D& stairPosition = {0.0f, 0.0f},
+                                    StairType stairType = StairType::Straight) {
     ResolvedSpacePlan space;
     space.spaceId = spaceId;
     space.usage = usage;
     space.rect = rect;
     space.rect.rectId = spaceId;
     space.ceilingHeight = ceilingHeight > 0.0f ? ceilingHeight : 3.0f;
-    space.hasStairs = (usage == SpaceUsage::Stairwell);
-    space.stairConnectToLevel = floorLevel + 1;
+    space.hasStairs = hasStairs;
+    space.stairConnectToLevel = hasStairs ? stairConnectToLevel : -1;
+    space.stairWidth = stairWidth > 0.0f ? stairWidth : rect.size[0];
+    space.stairPosition = stairPosition;
+    space.stairType = stairType;
     return space;
 }
 
@@ -218,6 +338,11 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
 
     size_t nextUnitBand = 0;
     bool synthesizedAny = false;
+    const std::vector<UnitGroup> unitGroups = CollectUnitGroups(layoutInput);
+    std::unordered_map<std::string, size_t> unitBandAssignments;
+    for (size_t i = 0; i < unitGroups.size() && i < unitBands.size(); ++i) {
+        unitBandAssignments.emplace(unitGroups[i].unitId, i);
+    }
 
     for (const auto& semanticSpace : layoutInput.spaces) {
         if (IsCoreSemanticType(semanticSpace.type)) {
@@ -242,12 +367,20 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
             }
 
             if (matchedCore) {
+                const bool connectsUp = semanticSpace.constraints.connectsToFloor >= 0 &&
+                    semanticSpace.constraints.connectsToFloor != layoutInput.level;
+                const bool shouldGenerateStair = semanticSpace.type == "core" || semanticSpace.type == "stairs";
                 outResolvedFloor.spaces.push_back(MakeResolvedSpace(
                     semanticSpace.spaceId,
                     usage,
                     matchedCore->rect,
                     semanticSpace.constraints.ceilingHeight,
-                    layoutInput.level));
+                    layoutInput.level,
+                    shouldGenerateStair && connectsUp,
+                    semanticSpace.constraints.connectsToFloor,
+                    matchedCore->rect.size[0],
+                    matchedCore->rect.origin,
+                    StairType::Straight));
                 synthesizedAny = true;
             }
             continue;
@@ -255,6 +388,10 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
 
         const SpaceUsage usage = StringToSpaceUsage(semanticSpace.type);
         if (usage == SpaceUsage::Unknown) {
+            continue;
+        }
+
+        if (!semanticSpace.unitId.empty() && IsResidentialUnitUsage(usage)) {
             continue;
         }
 
@@ -287,6 +424,37 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
             ResolvedSpacePlan space = MakeResolvedSpace(
                 semanticSpace.spaceId,
                 usage,
+                candidate,
+                semanticSpace.constraints.ceilingHeight,
+                layoutInput.level);
+            AddDebugBlock(space, layoutInput.level, outResolvedFloor.debugBlocks);
+            outResolvedFloor.spaces.push_back(std::move(space));
+            synthesizedAny = true;
+        }
+    }
+
+    for (const auto& unitGroup : unitGroups) {
+        const auto assignmentIt = unitBandAssignments.find(unitGroup.unitId);
+        if (assignmentIt == unitBandAssignments.end() || assignmentIt->second >= unitBands.size()) {
+            continue;
+        }
+
+        const Rect& unitBand = unitBands[assignmentIt->second];
+        const std::vector<Rect> roomRects = SplitBandForRooms(unitBand, unitGroup.spaces, definition.grid);
+        for (size_t i = 0; i < roomRects.size() && i < unitGroup.spaces.size(); ++i) {
+            const SemanticSpace& semanticSpace = *unitGroup.spaces[i];
+            Rect candidate = FitRectToArea(
+                roomRects[i],
+                std::max(6.0f, semanticSpace.areaPreferred),
+                std::max(2.0f, semanticSpace.constraints.minWidth));
+            candidate.rectId = semanticSpace.spaceId;
+            if (!RectFitsPlate(floorPlate, candidate, margin)) {
+                continue;
+            }
+
+            ResolvedSpacePlan space = MakeResolvedSpace(
+                semanticSpace.spaceId,
+                StringToSpaceUsage(semanticSpace.type),
                 candidate,
                 semanticSpace.constraints.ceilingHeight,
                 layoutInput.level);

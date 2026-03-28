@@ -887,20 +887,17 @@ void LayoutResolver::BuildOutput(BuildingDefinition& output, const SemanticBuild
             space.properties.usage = StringToSpaceUsage(semanticSpace.type);
             space.properties.isOutdoor = (semanticSpace.type == "balcony" || 
                                          semanticSpace.type == "terrace");
-            space.properties.hasStairs = (semanticSpace.type == "stairs" || semanticSpace.type == "core");
+            const bool canHostStairs =
+                semanticSpace.type == "stairs" || semanticSpace.type == "core";
+            const bool hasExplicitUpperConnection = semanticSpace.constraints.connectsToFloor >= 0;
+            space.properties.hasStairs = canHostStairs && hasExplicitUpperConnection;
             space.properties.ceilingHeight = semanticSpace.constraints.ceilingHeight > 0.0f
                 ? semanticSpace.constraints.ceilingHeight
                 : floor.floorHeight;
 
-            if (semanticSpace.type == "stairs" || semanticSpace.type == "core") {
+            if (space.properties.hasStairs) {
                 space.stairsConfig.type = StairType::Straight;
-                if (semanticSpace.constraints.connectsToFloor >= 0) {
-                    space.stairsConfig.connectToLevel = semanticSpace.constraints.connectsToFloor;
-                } else if (semanticFloor.level + 1 < input.mass.floors) {
-                    space.stairsConfig.connectToLevel = semanticFloor.level + 1;
-                } else {
-                    space.stairsConfig.connectToLevel = semanticFloor.level;
-                }
+                space.stairsConfig.connectToLevel = semanticSpace.constraints.connectsToFloor;
                 space.stairsConfig.position = {
                     origin[0] + size[0] * 0.5f,
                     origin[1] + size[1] * 0.5f

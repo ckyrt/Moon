@@ -74,6 +74,46 @@ public:
     static std::string CreateCBDResidential();
 
     /**
+     * @brief Create a realistic compact townhouse-style villa
+     */
+    static std::string CreateTownhouseVilla();
+
+    /**
+     * @brief Create a realistic mid-rise apartment with lobby, amenity, and typical unit floors
+     */
+    static std::string CreateMidriseApartment();
+
+    /**
+     * @brief Create a realistic neighborhood office building
+     */
+    static std::string CreateNeighborhoodOffice();
+
+    /**
+     * @brief Create a realistic retail center with atrium and anchor tenants
+     */
+    static std::string CreateRetailCenter();
+
+    /**
+     * @brief Create a realistic courtyard villa with detached-family proportions
+     */
+    static std::string CreateCourtyardVilla();
+
+    /**
+     * @brief Create a realistic slender CBD residential tower
+     */
+    static std::string CreateSlenderCBDResidential();
+
+    /**
+     * @brief Create a realistic corporate office tower with podium and tower split
+     */
+    static std::string CreateCorporateOfficeTower();
+
+    /**
+     * @brief Create a realistic shopping center with distributed anchors
+     */
+    static std::string CreateShoppingCenter();
+
+    /**
      * @brief Create invalid JSON (missing required fields)
      */
     static std::string CreateInvalidJSON_MissingGrid();

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "building/BuildingPipeline.h"
+#include "building/LayoutResolver.h"
 #include "building/BuildingTypes.h"
 #include "TestHelpers.h"
 #include <array>
@@ -88,6 +89,110 @@ const FloorPlate* FindFloorPlate(const GeneratedBuilding& building, int floorLev
         }
     }
     return nullptr;
+}
+
+int CountSpacesByUsage(const GeneratedBuilding& building, SpaceUsage usage) {
+    int count = 0;
+    for (const auto& floor : building.definition.floors) {
+        for (const auto& space : floor.spaces) {
+            if (space.properties.usage == usage) {
+                ++count;
+            }
+        }
+    }
+    return count;
+}
+
+int CountSpacesOnFloorByUsage(const GeneratedBuilding& building, int floorLevel, SpaceUsage usage) {
+    for (const auto& floor : building.definition.floors) {
+        if (floor.level != floorLevel) {
+            continue;
+        }
+
+        int count = 0;
+        for (const auto& space : floor.spaces) {
+            if (space.properties.usage == usage) {
+                ++count;
+            }
+        }
+        return count;
+    }
+    return 0;
+}
+
+int CountWindowsOnFloor(const GeneratedBuilding& building, int floorLevel) {
+    return static_cast<int>(std::count_if(
+        building.windows.begin(),
+        building.windows.end(),
+        [&](const Window& window) { return window.floorLevel == floorLevel; }));
+}
+
+int CountVerticalCoresByType(const GeneratedBuilding& building, VerticalCoreType type) {
+    return static_cast<int>(std::count_if(
+        building.verticalCores.begin(),
+        building.verticalCores.end(),
+        [&](const VerticalCore& core) { return core.type == type; }));
+}
+
+int CountWallsByType(const GeneratedBuilding& building, WallType type) {
+    return static_cast<int>(std::count_if(
+        building.walls.begin(),
+        building.walls.end(),
+        [&](const WallSegment& wall) { return wall.type == type; }));
+}
+
+float AverageAreaForType(const SemanticBuilding& building, const std::string& spaceType) {
+    float total = 0.0f;
+    int count = 0;
+    for (const auto& floor : building.floors) {
+        for (const auto& space : floor.spaces) {
+            if (space.type == spaceType) {
+                total += space.areaPreferred;
+                ++count;
+            }
+        }
+    }
+    return count > 0 ? total / static_cast<float>(count) : 0.0f;
+}
+
+int CountSemanticSpaces(const SemanticBuilding& building, const std::string& spaceType) {
+    int count = 0;
+    for (const auto& floor : building.floors) {
+        for (const auto& space : floor.spaces) {
+            if (space.type == spaceType) {
+                ++count;
+            }
+        }
+    }
+    return count;
+}
+
+void ExpectReferenceDatasetLooksPlausible(const std::string& json,
+                                          const std::string& expectedType,
+                                          int minFloors,
+                                          int maxFloors) {
+    SemanticBuilding semantic;
+    std::string parseError;
+    ASSERT_TRUE(SemanticBuildingParser::ParseFromString(json, semantic, parseError))
+        << "Semantic parse failed: " << parseError;
+
+    EXPECT_EQ(semantic.buildingType, expectedType);
+    EXPECT_GE(static_cast<int>(semantic.floors.size()), minFloors);
+    EXPECT_LE(static_cast<int>(semantic.floors.size()), maxFloors);
+    EXPECT_GT(semantic.mass.footprintArea, 60.0f);
+
+    for (const auto& floor : semantic.floors) {
+        EXPECT_FALSE(floor.spaces.empty()) << "Each reference floor should declare explicit program";
+        for (const auto& space : floor.spaces) {
+            if (space.type == "terrace" || space.type == "balcony" || space.type == "void") {
+                continue;
+            }
+            EXPECT_GE(space.constraints.ceilingHeight, 2.6f);
+            EXPECT_LE(space.constraints.ceilingHeight, 6.0f);
+            EXPECT_GE(space.constraints.minWidth, 1.5f);
+            EXPECT_GT(space.areaPreferred, 3.0f);
+        }
+    }
 }
 
 void ExpectAllSpacesInsideFloorPlates(const GeneratedBuilding& building) {
@@ -416,6 +521,220 @@ TEST_F(BuildingPipelineTest, ProcessCBDResidential_AmenityFloor_Success) {
     EXPECT_TRUE(result) << "Error: " << errorMsg;
     EXPECT_EQ(building.definition.floors.size(), 4);
     EXPECT_GT(building.walls.size(), 0);
+}
+
+TEST_F(BuildingPipelineTest, ProcessCBDResidential_StairsOnlyConnectToExistingUpperFloors) {
+    std::string json = TestHelpers::CreateCBDResidential();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    ASSERT_GT(building.stairs.size(), 0u);
+
+    int maxFloorLevel = 0;
+    for (const auto& floor : building.definition.floors) {
+        maxFloorLevel = std::max(maxFloorLevel, floor.level);
+    }
+
+    for (const auto& stair : building.stairs) {
+        EXPECT_GT(stair.toLevel, stair.fromLevel)
+            << "Stairs should only be emitted for upward links";
+        EXPECT_LE(stair.toLevel, maxFloorLevel)
+            << "Stair target level must exist in the resolved building";
+    }
+}
+
+TEST_F(BuildingPipelineTest, ProcessApartmentBuilding_TypicalFloorsKeepCirculationAndDaylight) {
+    std::string json = TestHelpers::CreateApartmentBuilding();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    ASSERT_EQ(building.definition.floors.size(), 3u);
+    EXPECT_GT(building.stairs.size(), 0u);
+    EXPECT_GT(building.doors.size(), 6u);
+    EXPECT_GT(building.windows.size(), 8u);
+    EXPECT_GE(CountSpacesByUsage(building, SpaceUsage::Corridor), 2);
+
+    for (int floorLevel : {1, 2}) {
+        EXPECT_GE(CountSpacesOnFloorByUsage(building, floorLevel, SpaceUsage::Corridor), 1)
+            << "Typical apartment floors should keep a shared circulation spine";
+        EXPECT_GE(CountSpacesOnFloorByUsage(building, floorLevel, SpaceUsage::Living), 2)
+            << "Typical apartment floors should still read as multiple units";
+        EXPECT_GE(CountSpacesOnFloorByUsage(building, floorLevel, SpaceUsage::Bedroom), 2)
+            << "Typical apartment floors should preserve private rooms";
+        EXPECT_GE(CountWindowsOnFloor(building, floorLevel), 3)
+            << "Residential upper floors should keep enough facade openings to avoid dead-looking units";
+    }
+}
+
+TEST_F(BuildingPipelineTest, ProcessComplexShoppingMall_PreservesRetailAtriumAndVerticalTransport) {
+    std::string json = TestHelpers::CreateComplexShoppingMall();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    ASSERT_EQ(building.definition.floors.size(), 3u);
+    ASSERT_EQ(building.floorPlates.size(), 3u);
+    EXPECT_GT(building.doors.size(), 2u);
+    EXPECT_GT(building.windows.size(), 12u);
+    EXPECT_GE(building.stairs.size(), 2u);
+    EXPECT_GE(building.programBlocks.size(), 12u);
+    EXPECT_FALSE(building.resolvedLayoutJson.empty());
+    EXPECT_GE(CountVerticalCoresByType(building, VerticalCoreType::Elevator), 1)
+        << "Mall should preserve an elevator core, not only stairs";
+    EXPECT_GE(CountVerticalCoresByType(building, VerticalCoreType::Stair), 1)
+        << "Mall should preserve dedicated stair circulation";
+
+    for (const auto& plate : building.floorPlates) {
+        EXPECT_FALSE(plate.voids.empty())
+            << "Mall floor plate should keep atrium voids so the mass does not collapse into a solid block";
+    }
+}
+
+TEST_F(BuildingPipelineTest, ProcessTownhouseVilla_RealisticReferenceDataRemainsPlausible) {
+    std::string json = TestHelpers::CreateTownhouseVilla();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.definition.floors.size(), 2u);
+    EXPECT_GT(building.stairs.size(), 0u);
+    EXPECT_GT(building.doors.size(), 6u);
+    EXPECT_GT(building.windows.size(), 8u);
+    EXPECT_GT(CountWallsByType(building, WallType::Interior), 8);
+}
+
+TEST_F(BuildingPipelineTest, ProcessMidriseApartment_ReferenceDataKeepsResidentialPattern) {
+    std::string json = TestHelpers::CreateMidriseApartment();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.definition.floors.size(), 4u);
+    EXPECT_GT(building.stairs.size(), 1u);
+    EXPECT_GE(building.doors.size(), 8u);
+    EXPECT_GT(building.windows.size(), 12u);
+    EXPECT_GE(CountSpacesByUsage(building, SpaceUsage::Bedroom), 4);
+    EXPECT_GE(building.connections.size(), 8u);
+}
+
+TEST_F(BuildingPipelineTest, ProcessNeighborhoodOffice_ReferenceDataKeepsOfficeProgram) {
+    std::string json = TestHelpers::CreateNeighborhoodOffice();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.definition.floors.size(), 3u);
+    EXPECT_GE(building.doors.size(), 2u);
+    EXPECT_GT(building.windows.size(), 10u);
+    EXPECT_GE(building.programBlocks.size(), 8u);
+    EXPECT_GE(CountSpacesByUsage(building, SpaceUsage::Office), 3);
+}
+
+TEST_F(BuildingPipelineTest, ProcessRetailCenter_ReferenceDataKeepsAtriumAndCores) {
+    std::string json = TestHelpers::CreateRetailCenter();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.definition.floors.size(), 2u);
+    EXPECT_GT(building.windows.size(), 10u);
+    EXPECT_GT(building.stairs.size(), 0u);
+    EXPECT_GE(CountVerticalCoresByType(building, VerticalCoreType::Elevator), 1);
+    EXPECT_GE(CountVerticalCoresByType(building, VerticalCoreType::Stair), 1);
+    ASSERT_EQ(building.floorPlates.size(), 2u);
+    for (const auto& plate : building.floorPlates) {
+        EXPECT_FALSE(plate.voids.empty());
+    }
+}
+
+TEST_F(BuildingPipelineTest, ReferenceDatasets_UsePlausibleResidentialInputs) {
+    ExpectReferenceDatasetLooksPlausible(TestHelpers::CreateTownhouseVilla(), "villa", 2, 2);
+    ExpectReferenceDatasetLooksPlausible(TestHelpers::CreateCourtyardVilla(), "villa", 2, 2);
+    ExpectReferenceDatasetLooksPlausible(TestHelpers::CreateMidriseApartment(), "apartment", 4, 4);
+    ExpectReferenceDatasetLooksPlausible(TestHelpers::CreateSlenderCBDResidential(), "cbd_residential", 5, 5);
+
+    SemanticBuilding townhouse;
+    std::string parseError;
+    ASSERT_TRUE(SemanticBuildingParser::ParseFromString(TestHelpers::CreateTownhouseVilla(), townhouse, parseError));
+    EXPECT_GE(CountSemanticSpaces(townhouse, "bedroom"), 3);
+    EXPECT_GE(AverageAreaForType(townhouse, "bedroom"), 15.0f);
+
+    SemanticBuilding slender;
+    ASSERT_TRUE(SemanticBuildingParser::ParseFromString(TestHelpers::CreateSlenderCBDResidential(), slender, parseError));
+    EXPECT_GE(CountSemanticSpaces(slender, "corridor"), 4);
+    EXPECT_EQ(CountSemanticSpaces(slender, "core"), 5);
+}
+
+TEST_F(BuildingPipelineTest, ReferenceDatasets_UsePlausibleCommercialInputs) {
+    ExpectReferenceDatasetLooksPlausible(TestHelpers::CreateNeighborhoodOffice(), "office", 3, 3);
+    ExpectReferenceDatasetLooksPlausible(TestHelpers::CreateCorporateOfficeTower(), "office_tower", 6, 6);
+    ExpectReferenceDatasetLooksPlausible(TestHelpers::CreateRetailCenter(), "retail_center", 2, 2);
+    ExpectReferenceDatasetLooksPlausible(TestHelpers::CreateShoppingCenter(), "shopping_center", 2, 2);
+
+    SemanticBuilding corporate;
+    std::string parseError;
+    ASSERT_TRUE(SemanticBuildingParser::ParseFromString(TestHelpers::CreateCorporateOfficeTower(), corporate, parseError));
+    EXPECT_GE(CountSemanticSpaces(corporate, "office"), 4);
+    EXPECT_GE(CountSemanticSpaces(corporate, "meeting_room"), 5);
+    EXPECT_GE(AverageAreaForType(corporate, "office"), 80.0f);
+
+    SemanticBuilding retail;
+    ASSERT_TRUE(SemanticBuildingParser::ParseFromString(TestHelpers::CreateShoppingCenter(), retail, parseError));
+    EXPECT_GE(CountSemanticSpaces(retail, "void"), 2);
+    EXPECT_GE(CountSemanticSpaces(retail, "shop"), 4);
+    EXPECT_GE(AverageAreaForType(retail, "shop"), 90.0f);
+}
+
+TEST_F(BuildingPipelineTest, ProcessCourtyardVilla_ReferenceDataRemainsPlausible) {
+    std::string json = TestHelpers::CreateCourtyardVilla();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.definition.floors.size(), 2u);
+    EXPECT_GT(building.stairs.size(), 0u);
+    EXPECT_GT(building.doors.size(), 8u);
+    EXPECT_GT(CountWallsByType(building, WallType::Interior), 10);
+}
+
+TEST_F(BuildingPipelineTest, ProcessSlenderCBDResidential_ReferenceDataKeepsTowerPattern) {
+    std::string json = TestHelpers::CreateSlenderCBDResidential();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.definition.floors.size(), 5u);
+    EXPECT_GT(building.stairs.size(), 2u);
+    EXPECT_GE(CountSpacesByUsage(building, SpaceUsage::Bedroom), 3);
+    EXPECT_GT(building.windows.size(), 14u);
+}
+
+TEST_F(BuildingPipelineTest, ProcessCorporateOfficeTower_ReferenceDataKeepsPodiumTowerSplit) {
+    std::string json = TestHelpers::CreateCorporateOfficeTower();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.definition.floors.size(), 6u);
+    EXPECT_GT(building.stairs.size(), 2u);
+    EXPECT_GE(CountSpacesByUsage(building, SpaceUsage::Office), 4);
+    EXPECT_GE(CountSpacesByUsage(building, SpaceUsage::Entrance), 1);
+    EXPECT_GT(building.programBlocks.size(), 12u);
+}
+
+TEST_F(BuildingPipelineTest, ProcessShoppingCenter_ReferenceDataKeepsRetailPattern) {
+    std::string json = TestHelpers::CreateShoppingCenter();
+
+    bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.definition.floors.size(), 2u);
+    EXPECT_GE(CountVerticalCoresByType(building, VerticalCoreType::Elevator), 1);
+    EXPECT_GE(CountVerticalCoresByType(building, VerticalCoreType::Stair), 1);
+    EXPECT_GT(building.windows.size(), 12u);
+    EXPECT_GT(building.doors.size(), 2u);
 }
 
 TEST_F(BuildingPipelineTest, ProcessInvalidJSON_Fails) {

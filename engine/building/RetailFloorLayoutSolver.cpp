@@ -364,15 +364,23 @@ ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
                                     SpaceUsage usage,
                                     const Rect& rect,
                                     float ceilingHeight,
-                                    int floorLevel) {
+                                    int floorLevel,
+                                    bool hasStairs = false,
+                                    int stairConnectToLevel = -1,
+                                    float stairWidth = 0.0f,
+                                    const GridPos2D& stairPosition = {0.0f, 0.0f},
+                                    StairType stairType = StairType::Straight) {
     ResolvedSpacePlan space;
     space.spaceId = spaceId;
     space.usage = usage;
     space.rect = rect;
     space.rect.rectId = spaceId;
     space.ceilingHeight = ceilingHeight > 0.0f ? ceilingHeight : 4.2f;
-    space.hasStairs = (usage == SpaceUsage::Stairwell);
-    space.stairConnectToLevel = floorLevel + 1;
+    space.hasStairs = hasStairs;
+    space.stairConnectToLevel = hasStairs ? stairConnectToLevel : -1;
+    space.stairWidth = stairWidth > 0.0f ? stairWidth : rect.size[0];
+    space.stairPosition = stairPosition;
+    space.stairType = stairType;
     return space;
 }
 
@@ -564,12 +572,20 @@ bool RetailFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
             }
 
             if (matchedCore && RectFitsPlate(floorPlate, matchedCore->rect, margin)) {
+                const bool connectsUp = semanticSpace.constraints.connectsToFloor >= 0 &&
+                    semanticSpace.constraints.connectsToFloor != layoutInput.level;
+                const bool shouldGenerateStair = semanticSpace.type == "core" || semanticSpace.type == "stairs";
                 ResolvedSpacePlan space = MakeResolvedSpace(
                     semanticSpace.spaceId,
                     usage,
                     matchedCore->rect,
                     semanticSpace.constraints.ceilingHeight,
-                    layoutInput.level);
+                    layoutInput.level,
+                    shouldGenerateStair && connectsUp,
+                    semanticSpace.constraints.connectsToFloor,
+                    matchedCore->rect.size[0],
+                    matchedCore->rect.origin,
+                    StairType::Straight);
                 AddDebugBlock(space, layoutInput.level, outResolvedFloor.debugBlocks);
                 outResolvedFloor.spaces.push_back(std::move(space));
                 synthesizedAny = true;
