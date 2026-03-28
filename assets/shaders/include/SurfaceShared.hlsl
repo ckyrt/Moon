@@ -11,7 +11,7 @@ cbuffer MaterialConstants {
     float g_HasNormalMap;
     float g_Opacity;
     float g_UseVertexColorTint;
-    float g_Padding2;
+    float g_AlphaCutoff;
     float3 g_TransmissionColor;
     float g_Padding3;
 };

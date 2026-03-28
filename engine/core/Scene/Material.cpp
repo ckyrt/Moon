@@ -55,6 +55,11 @@ void Material::SetTransmissionColor(const Vector3& color)
 
 // === 纹理贴图设置 ===
 
+void Material::SetAlphaCutoff(float cutoff)
+{
+    m_alphaCutoff = std::max(0.0f, std::min(1.0f, cutoff));
+}
+
 void Material::SetAlbedoMap(const std::string& texturePath)
 {
     m_albedoMap = texturePath;

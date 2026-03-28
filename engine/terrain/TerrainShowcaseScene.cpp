@@ -9,10 +9,13 @@
 #include "../core/Scene/SceneNode.h"
 
 #include "../environment/EnvironmentComponent.h"
+#include "../physics/PhysicsSystem.h"
 #include "ProceduralTerrainGenerator.h"
 #include "TerrainComponent.h"
 #include "TerrainVisualBuilder.h"
 #include "WorldSpec.h"
+
+#include <algorithm>
 
 namespace Moon {
 
@@ -26,6 +29,8 @@ constexpr const char* kRiverNodeName = "Terrain River";
 constexpr const char* kOceanNodeName = "Terrain Ocean";
 constexpr const char* kGrassNodeName = "Terrain Grass";
 constexpr const char* kShrubNodeName = "Terrain Shrubs";
+constexpr const char* kTerrainCollisionNodeName = "Terrain Collision";
+constexpr const char* kGrassTextureBasePath = "materials/GrassMedium01_2K-PNG/";
 
 float ResolveTimeOfDayHours(const std::string& timeOfDay)
 {
@@ -171,6 +176,30 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
             terrain->GetRuntimeState().chunkCountX,
             terrain->GetRuntimeState().chunkCountZ,
             generation.riverPolylines.empty() ? 0 : generation.riverPolylines.front().size() / 3);
+
+        if (!scene->FindNodeByName(kTerrainCollisionNodeName)) {
+            if (Moon::PhysicsSystem* physicsSystem = engine->GetPhysicsSystem()) {
+                const uint32_t sampleCount = generation.terrainData.heightmap.GetWidth();
+                const float scaleX = generationSettings.worldWidth / static_cast<float>(std::max(1u, sampleCount - 1));
+                const float scaleZ = generationSettings.worldDepth / static_cast<float>(std::max(1u, sampleCount - 1));
+                const Vector3 offset(
+                    -generationSettings.worldWidth * 0.5f,
+                    0.0f,
+                    -generationSettings.worldDepth * 0.5f);
+                const Vector3 scale(scaleX, generationSettings.heightScale, scaleZ);
+                const JPH::BodyID terrainBody = physicsSystem->CreateStaticHeightField(
+                    generation.terrainData.heightmap.GetSamples().data(),
+                    sampleCount,
+                    offset,
+                    scale);
+                if (!terrainBody.IsInvalid()) {
+                    scene->CreateNode(kTerrainCollisionNodeName);
+                    MOON_LOG_INFO("TerrainShowcaseScene", "Terrain physics collision created.");
+                } else {
+                    MOON_LOG_WARN("TerrainShowcaseScene", "Failed to create terrain physics collision.");
+                }
+            }
+        }
     }
 
     Moon::SceneNode* terrainMeshNode = scene->CreateNode(kTerrainMeshNodeName);
@@ -212,19 +241,31 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
     Moon::MeshRenderer* grassRenderer = grassNode->AddComponent<Moon::MeshRenderer>();
     Moon::Material* grassMaterial = grassNode->AddComponent<Moon::Material>();
     grassRenderer->SetMesh(Moon::TerrainVisualBuilder::BuildGrassMesh(generation.terrainData, generation, generationSettings));
-    grassMaterial->SetBaseColor(Moon::Vector3(0.33f, 0.55f, 0.21f));
+    grassMaterial->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
     grassMaterial->SetMetallic(0.0f);
-    grassMaterial->SetRoughness(0.88f);
+    grassMaterial->SetRoughness(1.0f);
+    grassMaterial->SetMappingMode(Moon::MappingMode::UV);
+    grassMaterial->SetAlbedoMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_Color.png");
+    grassMaterial->SetAOMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_AmbientOcclusion.png");
+    grassMaterial->SetNormalMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_NormalDX.png");
+    grassMaterial->SetRoughnessMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_Roughness.png");
     grassMaterial->SetUseVertexColorTint(true);
+    grassMaterial->SetAlphaCutoff(0.35f);
 
     Moon::SceneNode* shrubNode = scene->CreateNode(kShrubNodeName);
     Moon::MeshRenderer* shrubRenderer = shrubNode->AddComponent<Moon::MeshRenderer>();
     Moon::Material* shrubMaterial = shrubNode->AddComponent<Moon::Material>();
     shrubRenderer->SetMesh(Moon::TerrainVisualBuilder::BuildShrubMesh(generation.terrainData, generation, generationSettings));
-    shrubMaterial->SetBaseColor(Moon::Vector3(0.30f, 0.46f, 0.20f));
+    shrubMaterial->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
     shrubMaterial->SetMetallic(0.0f);
-    shrubMaterial->SetRoughness(0.92f);
+    shrubMaterial->SetRoughness(1.0f);
+    shrubMaterial->SetMappingMode(Moon::MappingMode::UV);
+    shrubMaterial->SetAlbedoMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_Color.png");
+    shrubMaterial->SetAOMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_AmbientOcclusion.png");
+    shrubMaterial->SetNormalMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_NormalDX.png");
+    shrubMaterial->SetRoughnessMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_Roughness.png");
     shrubMaterial->SetUseVertexColorTint(true);
+    shrubMaterial->SetAlphaCutoff(0.42f);
 
 }
 

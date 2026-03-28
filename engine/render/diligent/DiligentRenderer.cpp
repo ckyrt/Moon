@@ -623,6 +623,7 @@ void DiligentRenderer::SetMaterialParameters(Moon::Material* material)
         mat.hasNormalMap = 0.0f;
         mat.opacity = 1.0f;  // 不透明
         mat.useVertexColorTint = 0.0f;
+        mat.alphaCutoff = 0.0f;
         mat.transmissionColor = Moon::Vector3(1.0f, 1.0f, 1.0f);
         m_ActiveMaterialPipeline = MaterialPipeline::DefaultLit;
         UpdateCB(m_pPSMaterialConstants, mat);
@@ -646,6 +647,7 @@ void DiligentRenderer::SetMaterialParameters(Moon::Material* material)
     // ✅ 设置透明度参数
     mat.opacity = material->GetOpacity();
     mat.useVertexColorTint = material->GetUseVertexColorTint() ? 1.0f : 0.0f;
+    mat.alphaCutoff = material->GetAlphaCutoff();
     mat.transmissionColor = material->GetTransmissionColor();
     switch (material->GetShadingModel()) {
     case Moon::ShadingModel::Water:

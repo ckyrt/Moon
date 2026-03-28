@@ -220,6 +220,8 @@ public:
     float GetTriplanarBlend() const { return m_triplanarBlend; }
     void SetUseVertexColorTint(bool enabled) { m_useVertexColorTint = enabled; }
     bool GetUseVertexColorTint() const { return m_useVertexColorTint; }
+    void SetAlphaCutoff(float cutoff);
+    float GetAlphaCutoff() const { return m_alphaCutoff; }
 
 private:
     float m_metallic;
@@ -245,6 +247,7 @@ private:
     bool m_useVertexColorTint = false;            ///< 是否使用顶点色作为材质色调混合
     
     // 材质预设内部实现（25种）
+    float m_alphaCutoff = 0.0f;                   ///< UV alpha cutout threshold for foliage-style materials
     void SetPresetConcrete();
     void SetPresetConcreteFloor();
     void SetPresetConcretePolished();

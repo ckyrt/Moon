@@ -54,13 +54,15 @@ float3 SampleUVNormal(float3 normalWS, float3 worldPos, float2 uv)
 float4 main(in PSInput i) : SV_Target
 {
     float3 N = normalize(i.NormalWS);
+    float4 albedoSample;
     float3 albedo;
     float ao;
     float roughness;
     float metallic;
 
     if (g_MappingMode > 0.5) {
-        albedo = SampleTerrainAlbedo(g_AlbedoMap, g_AlbedoMap_sampler, i.WorldPos, N, g_TriplanarTiling);
+        albedoSample = float4(SampleTerrainAlbedo(g_AlbedoMap, g_AlbedoMap_sampler, i.WorldPos, N, g_TriplanarTiling), 1.0);
+        albedo = albedoSample.rgb;
         ao = SampleTriplanar(g_AOMap, g_AOMap_sampler, i.WorldPos, N, g_TriplanarTiling).r;
         roughness = max(SampleTriplanar(g_RoughnessMap, g_RoughnessMap_sampler, i.WorldPos, N, g_TriplanarTiling).r * g_Roughness, 0.04);
         metallic = saturate(SampleTriplanar(g_MetalnessMap, g_MetalnessMap_sampler, i.WorldPos, N, g_TriplanarTiling).r * g_Metallic);
@@ -70,7 +72,8 @@ float4 main(in PSInput i) : SV_Target
             N = normalize(lerp(N, triplanarNormal, 0.5));
         }
     } else {
-        albedo = g_AlbedoMap.Sample(g_AlbedoMap_sampler, i.UV).rgb;
+        albedoSample = g_AlbedoMap.Sample(g_AlbedoMap_sampler, i.UV);
+        albedo = albedoSample.rgb;
         ao = g_AOMap.Sample(g_AOMap_sampler, i.UV).r;
         roughness = max(g_RoughnessMap.Sample(g_RoughnessMap_sampler, i.UV).r * g_Roughness, 0.04);
         metallic = saturate(g_MetalnessMap.Sample(g_MetalnessMap_sampler, i.UV).r * g_Metallic);
@@ -80,6 +83,10 @@ float4 main(in PSInput i) : SV_Target
         }
     }
 
+    if (g_MappingMode < 0.5 && g_AlphaCutoff > 0.001) {
+        clip(albedoSample.a - g_AlphaCutoff);
+    }
+
     if (dot(albedo, albedo) > 0.001) {
         albedo *= g_BaseColor;
     } else {
@@ -87,7 +94,12 @@ float4 main(in PSInput i) : SV_Target
     }
 
     if (g_UseVertexColorTint > 0.5) {
-        albedo *= i.Color.rgb;
+        if (g_MappingMode > 0.5) {
+            float3 terrainTint = saturate(i.Color.rgb * 1.18);
+            albedo = lerp(albedo, albedo * terrainTint, 0.82);
+        } else {
+            albedo *= i.Color.rgb;
+        }
     }
 
     if (g_MappingMode > 0.5) {
