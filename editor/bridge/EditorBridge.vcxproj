@@ -126,6 +126,9 @@
     <ClCompile Include="cef\MoonEngineMessageHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\engine\building\EngineBuilding.vcxproj">
+      <Project>{7B8C9D0E-1F2A-3B4C-5D6E-7F8A9B0C1D2E}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\engine\physics\EnginePhysics.vcxproj">
       <Project>{8B8E3F24-2E8D-4F3A-9B1C-7A3D5E6F8C9D}</Project>
     </ProjectReference>

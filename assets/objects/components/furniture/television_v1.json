@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "name": "television_v1",
+  "description": "Flat-screen television with slim bezel, central stem and low stand base. Origin at floor.",
+  "version": 1,
+  "parameters": {
+    "screen_w": 140.0,
+    "screen_h": 82.0,
+    "screen_t": 5.0,
+    "bezel_t": 2.5,
+    "stand_h": 24.0,
+    "stem_w": 10.0,
+    "stem_d": 6.0,
+    "base_w": 54.0,
+    "base_d": 24.0,
+    "base_h": 3.0
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "screen_center": [0, "$base_h + $stand_h + $screen_h / 2", 0],
+    "top_center": [0, "$base_h + $stand_h + $screen_h", 0],
+    "center": [0, "($base_h + $stand_h + $screen_h) / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "stand_base",
+        "type": "reference",
+        "ref": "painted_panel_v1",
+        "overrides": { "w": "$base_w", "h": "$base_h", "d": "$base_d" },
+        "transform": { "position": [0, "$base_h / 2", 0] }
+      },
+      {
+        "name": "stem",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$stem_w", "h": "$stand_h", "d": "$stem_d" },
+        "transform": { "position": [0, "$base_h + $stand_h / 2", "-2.0"] }
+      },
+      {
+        "name": "back_panel",
+        "type": "reference",
+        "ref": "painted_panel_v1",
+        "overrides": { "w": "$screen_w", "h": "$screen_h", "d": "$screen_t" },
+        "transform": { "position": [0, "$base_h + $stand_h + $screen_h / 2", "-$screen_t / 2"] }
+      },
+      {
+        "name": "screen_face",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$screen_w - $bezel_t * 2",
+          "size_y": "$screen_h - $bezel_t * 2",
+          "size_z": 1.0
+        },
+        "transform": {
+          "position": [0, "$base_h + $stand_h + $screen_h / 2", "$screen_t / 2"]
+        },
+        "material": "glass"
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

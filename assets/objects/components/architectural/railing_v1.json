@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "name": "railing_v1",
+  "description": "Straight architectural railing with posts, top rail and evenly spaced balusters. Origin at floor center.",
+  "version": 1,
+  "parameters": {
+    "w": 220.0,
+    "h": 98.0,
+    "d": 8.0,
+    "post_w": 6.0,
+    "rail_h": 5.0,
+    "bottom_gap": 10.0,
+    "baluster_w": 2.5,
+    "baluster_count": 8.0
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "top_center": [0, "$h", 0],
+    "left_end": ["-$w / 2", "$h / 2", 0],
+    "right_end": ["$w / 2", "$h / 2", 0],
+    "center": [0, "$h / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "post_left",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$post_w", "h": "$h", "d": "$d" },
+        "transform": { "position": ["-$w / 2 + $post_w / 2", "$h / 2", 0] }
+      },
+      {
+        "name": "post_right",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$post_w", "h": "$h", "d": "$d" },
+        "transform": { "position": ["$w / 2 - $post_w / 2", "$h / 2", 0] }
+      },
+      {
+        "name": "top_rail",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$w", "h": "$rail_h", "d": "$d" },
+        "transform": { "position": [0, "$h - $rail_h / 2", 0] }
+      },
+      {
+        "name": "mid_rail",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$w - $post_w * 2", "h": 3.0, "d": "$d - 1.0" },
+        "transform": { "position": [0, "$bottom_gap + ($h - $bottom_gap) * 0.55", 0] }
+      },
+      {
+        "name": "baluster_1",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$baluster_w", "h": "$h - $bottom_gap - $rail_h", "d": "$d - 2.0" },
+        "transform": { "position": ["-$w / 2 + $w / ($baluster_count + 1) * 1", "$bottom_gap + ($h - $bottom_gap - $rail_h) / 2", 0] }
+      },
+      {
+        "name": "baluster_2",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$baluster_w", "h": "$h - $bottom_gap - $rail_h", "d": "$d - 2.0" },
+        "transform": { "position": ["-$w / 2 + $w / ($baluster_count + 1) * 2", "$bottom_gap + ($h - $bottom_gap - $rail_h) / 2", 0] }
+      },
+      {
+        "name": "baluster_3",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$baluster_w", "h": "$h - $bottom_gap - $rail_h", "d": "$d - 2.0" },
+        "transform": { "position": ["-$w / 2 + $w / ($baluster_count + 1) * 3", "$bottom_gap + ($h - $bottom_gap - $rail_h) / 2", 0] }
+      },
+      {
+        "name": "baluster_4",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$baluster_w", "h": "$h - $bottom_gap - $rail_h", "d": "$d - 2.0" },
+        "transform": { "position": ["-$w / 2 + $w / ($baluster_count + 1) * 4", "$bottom_gap + ($h - $bottom_gap - $rail_h) / 2", 0] }
+      },
+      {
+        "name": "baluster_5",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$baluster_w", "h": "$h - $bottom_gap - $rail_h", "d": "$d - 2.0" },
+        "transform": { "position": ["-$w / 2 + $w / ($baluster_count + 1) * 5", "$bottom_gap + ($h - $bottom_gap - $rail_h) / 2", 0] }
+      },
+      {
+        "name": "baluster_6",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$baluster_w", "h": "$h - $bottom_gap - $rail_h", "d": "$d - 2.0" },
+        "transform": { "position": ["-$w / 2 + $w / ($baluster_count + 1) * 6", "$bottom_gap + ($h - $bottom_gap - $rail_h) / 2", 0] }
+      },
+      {
+        "name": "baluster_7",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$baluster_w", "h": "$h - $bottom_gap - $rail_h", "d": "$d - 2.0" },
+        "transform": { "position": ["-$w / 2 + $w / ($baluster_count + 1) * 7", "$bottom_gap + ($h - $bottom_gap - $rail_h) / 2", 0] }
+      },
+      {
+        "name": "baluster_8",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$baluster_w", "h": "$h - $bottom_gap - $rail_h", "d": "$d - 2.0" },
+        "transform": { "position": ["-$w / 2 + $w / ($baluster_count + 1) * 8", "$bottom_gap + ($h - $bottom_gap - $rail_h) / 2", 0] }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

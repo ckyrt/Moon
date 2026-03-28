@@ -146,9 +146,6 @@
     <ClInclude Include="Profiling\FPSCounter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Object\ObjectCatalog.h">
-      <Filter>Object</Filter>
-    </ClInclude>
     <ClInclude Include="Object\ObjectFactory.h">
       <Filter>Object</Filter>
     </ClInclude>
@@ -240,9 +237,6 @@
     </ClCompile>
     <ClCompile Include="Profiling\FPSCounter.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Object\ObjectCatalog.cpp">
-      <Filter>Object</Filter>
     </ClCompile>
     <ClCompile Include="Object\ObjectFactory.cpp">
       <Filter>Object</Filter>

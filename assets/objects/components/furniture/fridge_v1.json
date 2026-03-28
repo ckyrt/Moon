@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "name": "fridge_v1",
+  "description": "Top-freezer refrigerator assembled from painted panels, recessed door seams and metal handles. Origin at floor.",
+  "version": 1,
+  "parameters": {
+    "w": 92.0,
+    "d": 72.0,
+    "h": 185.0,
+    "body_t": 3.0,
+    "base_h": 4.0,
+    "freezer_h": 48.0,
+    "door_gap": 1.0,
+    "handle_w": 2.2,
+    "handle_h": 34.0,
+    "handle_d": 3.0
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "top_center": [0, "$h", 0],
+    "front_center": [0, "$h / 2", "$d / 2"],
+    "center": [0, "$h / 2", 0]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "body",
+        "type": "reference",
+        "ref": "painted_panel_v1",
+        "overrides": { "w": "$w", "h": "$h", "d": "$d" },
+        "transform": { "position": [0, "$h / 2", 0] }
+      },
+      {
+        "name": "toe_kick",
+        "type": "reference",
+        "ref": "painted_panel_v1",
+        "overrides": { "w": "$w - 8.0", "h": "$base_h", "d": "$d - 8.0" },
+        "transform": { "position": [0, "$base_h / 2", "$d / 2 - ($d - 8.0) / 2 - 4.0"] }
+      },
+      {
+        "name": "freezer_inset",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$w - $body_t * 2 - $door_gap * 2",
+          "size_y": "$freezer_h - $door_gap",
+          "size_z": 1.2
+        },
+        "transform": {
+          "position": [0, "$h - $freezer_h / 2 - $door_gap / 2", "$d / 2 + 0.2"]
+        },
+        "material": "plastic"
+      },
+      {
+        "name": "door_inset",
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$w - $body_t * 2 - $door_gap * 2",
+          "size_y": "$h - $freezer_h - $base_h - $door_gap * 2",
+          "size_z": 1.2
+        },
+        "transform": {
+          "position": [0, "$base_h + ($h - $freezer_h - $base_h) / 2", "$d / 2 + 0.2"]
+        },
+        "material": "plastic"
+      },
+      {
+        "name": "freezer_handle",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$handle_w", "h": "$handle_h", "d": "$handle_d" },
+        "transform": {
+          "position": ["$w / 2 - 10.0", "$h - $freezer_h / 2", "$d / 2 + $handle_d / 2"]
+        }
+      },
+      {
+        "name": "door_handle",
+        "type": "reference",
+        "ref": "rect_leg_metal_v1",
+        "overrides": { "w": "$handle_w", "h": "$handle_h + 18.0", "d": "$handle_d" },
+        "transform": {
+          "position": ["$w / 2 - 10.0", "$base_h + ($h - $freezer_h - $base_h) / 2", "$d / 2 + $handle_d / 2"]
+        }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

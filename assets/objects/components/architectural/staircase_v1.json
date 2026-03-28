@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "name": "staircase_v1",
+  "description": "Straight interior stair flight with ten treads, side stringers and paired railings. Origin at floor and lower landing center.",
+  "version": 1,
+  "parameters": {
+    "w": 120.0,
+    "step_count": 10.0,
+    "tread_d": 28.0,
+    "step_h": 18.0,
+    "step_t": 4.0,
+    "stringer_t": 4.0,
+    "rail_h": 92.0
+  },
+  "anchors": {
+    "bottom_center": [0, 0, 0],
+    "top_center": [0, "$step_count * $step_h", "$step_count * $tread_d"],
+    "run_end": [0, "$step_count * $step_h", "$step_count * $tread_d"],
+    "center": [0, "$step_count * $step_h / 2", "$step_count * $tread_d / 2"]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "name": "stringer_left",
+        "type": "reference",
+        "ref": "painted_panel_v1",
+        "overrides": { "w": "$stringer_t", "h": "$step_count * $step_h", "d": "$step_count * $tread_d + $tread_d" },
+        "transform": { "position": ["$w / 2 - $stringer_t / 2", "$step_count * $step_h / 2", "$step_count * $tread_d / 2"] }
+      },
+      {
+        "name": "stringer_right",
+        "type": "reference",
+        "ref": "painted_panel_v1",
+        "overrides": { "w": "$stringer_t", "h": "$step_count * $step_h", "d": "$step_count * $tread_d + $tread_d" },
+        "transform": { "position": ["-$w / 2 + $stringer_t / 2", "$step_count * $step_h / 2", "$step_count * $tread_d / 2"] }
+      },
+      {
+        "name": "step_1",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$step_t", "d": "$tread_d" },
+        "transform": { "position": [0, "$step_h * 1 - $step_t / 2", "$tread_d / 2"] }
+      },
+      {
+        "name": "step_2",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$step_t", "d": "$tread_d" },
+        "transform": { "position": [0, "$step_h * 2 - $step_t / 2", "$tread_d * 1.5"] }
+      },
+      {
+        "name": "step_3",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$step_t", "d": "$tread_d" },
+        "transform": { "position": [0, "$step_h * 3 - $step_t / 2", "$tread_d * 2.5"] }
+      },
+      {
+        "name": "step_4",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$step_t", "d": "$tread_d" },
+        "transform": { "position": [0, "$step_h * 4 - $step_t / 2", "$tread_d * 3.5"] }
+      },
+      {
+        "name": "step_5",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$step_t", "d": "$tread_d" },
+        "transform": { "position": [0, "$step_h * 5 - $step_t / 2", "$tread_d * 4.5"] }
+      },
+      {
+        "name": "step_6",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$step_t", "d": "$tread_d" },
+        "transform": { "position": [0, "$step_h * 6 - $step_t / 2", "$tread_d * 5.5"] }
+      },
+      {
+        "name": "step_7",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$step_t", "d": "$tread_d" },
+        "transform": { "position": [0, "$step_h * 7 - $step_t / 2", "$tread_d * 6.5"] }
+      },
+      {
+        "name": "step_8",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$step_t", "d": "$tread_d" },
+        "transform": { "position": [0, "$step_h * 8 - $step_t / 2", "$tread_d * 7.5"] }
+      },
+      {
+        "name": "step_9",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$step_t", "d": "$tread_d" },
+        "transform": { "position": [0, "$step_h * 9 - $step_t / 2", "$tread_d * 8.5"] }
+      },
+      {
+        "name": "step_10",
+        "type": "reference",
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$w", "h": "$step_t", "d": "$tread_d" },
+        "transform": { "position": [0, "$step_h * 10 - $step_t / 2", "$tread_d * 9.5"] }
+      },
+      {
+        "name": "railing_left",
+        "type": "reference",
+        "ref": "railing_v1",
+        "overrides": { "w": "$step_count * $tread_d + $tread_d / 2", "h": "$rail_h", "d": 6.0 },
+        "transform": {
+          "position": ["$w / 2 + 4.0", "$step_h + 8.0", "$step_count * $tread_d / 2 + $tread_d / 4"],
+          "rotation_euler": [0, 90, 0]
+        }
+      },
+      {
+        "name": "railing_right",
+        "type": "reference",
+        "ref": "railing_v1",
+        "overrides": { "w": "$step_count * $tread_d + $tread_d / 2", "h": "$rail_h", "d": 6.0 },
+        "transform": {
+          "position": ["-$w / 2 - 4.0", "$step_h + 8.0", "$step_count * $tread_d / 2 + $tread_d / 4"],
+          "rotation_euler": [0, 90, 0]
+        }
+      }
+    ],
+    "output": { "mode": "separate" }
+  }
+}

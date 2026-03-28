@@ -1,111 +1,84 @@
 #pragma once
 
 #include "BlueprintTypes.h"
-#include <string>
 #include <array>
 #include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace Moon {
 namespace Object {
 
-/**
- * @brief Blueprint - 可复用的"物体配方"
- * 
- * 包含参数定义和 Node 树结构
- */
 class Blueprint {
 public:
     Blueprint();
     ~Blueprint();
 
-    // 元数据访问
     const std::string& GetId() const { return m_metadata.id; }
     const std::string& GetCategory() const { return m_metadata.category; }
     const std::vector<std::string>& GetTags() const { return m_metadata.tags; }
     int GetSchemaVersion() const { return m_metadata.schemaVersion; }
 
-    // 设置元数据
     void SetId(const std::string& id) { m_metadata.id = id; }
     void SetCategory(const std::string& category) { m_metadata.category = category; }
     void SetTags(const std::vector<std::string>& tags) { m_metadata.tags = tags; }
     void SetSchemaVersion(int version) { m_metadata.schemaVersion = version; }
 
-    // 参数系统
     void AddParameter(const std::string& name, const ParameterDef& def);
     bool HasParameter(const std::string& name) const;
     const ParameterDef* GetParameter(const std::string& name) const;
     const std::unordered_map<std::string, ParameterDef>& GetParameters() const { return m_parameters; }
 
-    // Anchor 系统
-    // anchors 存储为表达式字符串三元组 [x, y, z]，在 Build 时用 ParameterScope 求值
-    using AnchorExpr = std::array<std::string, 3>;  // [x_expr, y_expr, z_expr]
+    using AnchorExpr = std::array<std::string, 3>;
     void AddAnchor(const std::string& name, const AnchorExpr& expr) { m_anchors[name] = expr; }
     bool HasAnchor(const std::string& name) const { return m_anchors.count(name) > 0; }
     const std::unordered_map<std::string, AnchorExpr>& GetAnchors() const { return m_anchors; }
 
-    // Node 树
     void SetRootNode(std::unique_ptr<Node> root);
     const Node* GetRootNode() const { return m_rootNode.get(); }
     Node* GetRootNode() { return m_rootNode.get(); }
 
-    // 验证
     bool Validate(std::string& outError) const;
 
 private:
     BlueprintMetadata m_metadata;
     std::unordered_map<std::string, ParameterDef> m_parameters;
-    std::unordered_map<std::string, std::array<std::string, 3>> m_anchors;  // name -> [x,y,z] expr
+    std::unordered_map<std::string, AnchorExpr> m_anchors;
     std::unique_ptr<Node> m_rootNode;
 };
 
-/**
- * @brief Blueprint Database - 管理所有加载的 Blueprint
- */
 class BlueprintDatabase {
 public:
+    struct EntryInfo {
+        std::string id;
+        std::string path;
+        std::string description;
+        std::string category;
+        std::vector<std::string> tags;
+    };
+
     BlueprintDatabase();
     ~BlueprintDatabase();
 
-    /**
-     * @brief 加载单个 Blueprint JSON 文件
-     */
     bool LoadBlueprint(const std::string& filepath, std::string& outError);
-
-    /**
-     * @brief 设置组件目录路径（用于懒加载）
-     */
     void SetComponentsDirectory(const std::string& baseDir);
-
-    /**
-     * @brief 加载索引文件 index.json（只加载场景物体列表，不加载所有蓝图）
-     */
     bool LoadIndex(const std::string& indexPath, std::string& outError);
 
-    /**
-     * @brief 根据 ID 获取 Blueprint（懒加载：如未缓存则从文件加载）
-     */
     const Blueprint* GetBlueprint(const std::string& id);
-
-    /**
-     * @brief 检查 Blueprint 是否已缓存
-     */
+    const EntryInfo* GetEntryInfo(const std::string& id) const;
+    std::vector<EntryInfo> FindEntriesByCategory(const std::string& category) const;
+    std::vector<EntryInfo> FindEntriesByTag(const std::string& tag) const;
     bool HasBlueprint(const std::string& id) const;
-
-    /**
-     * @brief 清空数据库
-     */
     void Clear();
 
 private:
-    /**
-     * @brief 内部加载方法（用于懒加载）
-     */
     const Blueprint* LoadBlueprintLazy(const std::string& id);
 
-    std::unordered_map<std::string, std::unique_ptr<Blueprint>> m_blueprints;  // 缓存
-    std::unordered_map<std::string, std::string> m_idToPath;   // id -> filepath 映射
-    std::string m_baseDir;                                     // 组件基础目录
+    std::unordered_map<std::string, std::unique_ptr<Blueprint>> m_blueprints;
+    std::unordered_map<std::string, std::string> m_idToPath;
+    std::unordered_map<std::string, EntryInfo> m_entries;
+    std::string m_baseDir;
 };
 
 } // namespace Object

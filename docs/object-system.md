@@ -1,81 +1,82 @@
 # Object System
 
-This is the human-facing source of truth for the object system.
+This is the human-facing source of truth for the current object system.
 
 ## Purpose
 
-The object system is the top-level semantic layer for reusable world objects.
+The object system is now asset-library driven.
 
 It answers:
 
-- what the object is
-- which variants it supports
-- which parameters are exposed
-- which graph asset builds it
+- which asset ids exist
+- where each asset file lives
+- which category and tags each asset exposes
+- how a selected asset builds geometry
 
 ## Ownership
 
-- `assets/objects/catalog.json` is the semantic object catalog
-- `assets/objects/index.json` is the runtime graph registry
+- `assets/objects/index.json` is the runtime object registry
 - `assets/objects/components/*` stores reusable object graph assets
-- `engine/core/Object/*` implements loading, inheritance, resolution, and build requests
+- `engine/core/Object/*` implements index loading and direct asset builds
 - `engine/core/CSG/*` is one geometry backend used by object graphs
 
 ## Layer Model
 
-1. Object definition
-2. Object graph
+1. Index entry
+2. Object graph asset
 3. Geometry backend
 4. Built runtime meshes/lights
 
-`Object` is the semantic owner.
-
 `Blueprint` is the current graph format.
 
-`CSG` is an implementation technique inside the graph layer, not the semantic owner of object assets.
+`CSG` is an implementation technique inside the graph layer, not a separate semantic registry.
 
 ## Current Asset Contract
 
-### Semantic object entry
+### Runtime object entry
 
-Defined in `assets/objects/catalog.json`.
+Defined in `assets/objects/index.json`.
 
-Key fields:
+Each entry should include:
 
 - `id`
-- `display_name`
+- `path`
 - `description`
 - `category`
-- `graph_asset`
 - `tags`
-- `defaults`
-- `parameters`
-- `variants`
-- optional `base_object`
 
-### Graph asset entry
+`id` is the buildable object id. Scene and tooling should reference this id directly.
 
-Registered in `assets/objects/index.json`.
+### Graph asset file
 
-Each entry maps a runtime graph id to a `.json` asset file under `assets/objects/components/*`.
+Stored under `assets/objects/components/*`.
+
+Each graph asset owns:
+
+- parameters and their defaults
+- references to reusable sub-assets
+- the actual graph used to build geometry/lights
 
 ## Authoring Rules
 
 - Prefer reusing existing parts before creating a new complex asset
-- Keep semantic object metadata in `catalog.json`
-- Keep graph implementation details in component JSON files
-- Do not create a second semantic registry
-- Do not make CSG-specific concerns visible at the semantic object layer unless required by runtime behavior
+- Keep searchable metadata in `index.json`
+- Keep shape and parameter implementation details in component JSON files
+- Treat random selection as choosing among approved assets, not inventing new parameter combinations
+- If you need a new visual/spec variant, create a new asset id instead of adding a semantic catalog layer
 
 ## Scene Usage Direction
 
-Scene placement should reference semantic object ids and optional variants/parameter overrides.
+Scene placement should reference concrete asset ids plus optional parameter overrides.
 
-The scene should not depend directly on low-level component asset paths unless it is intentionally previewing raw graph assets.
+Examples:
+
+- `television_v1`
+- `fridge_v1`
+- `staircase_v1`
 
 ## Canonical References
 
-- `assets/objects/catalog.json`
 - `assets/objects/index.json`
 - `assets/objects/components/furniture/chair_v1.json`
 - `assets/objects/test_room.json`

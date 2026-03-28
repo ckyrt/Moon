@@ -5,37 +5,23 @@ namespace Moon {
 namespace Object {
 
 bool ObjectLibrary::InitializeDefaults(std::string& outError) {
-    const std::string objectCatalogPath = Assets::BuildObjectPath("catalog.json");
-    if (Initialize(Assets::BuildObjectPath("index.json"), objectCatalogPath, outError)) {
-        return true;
-    }
-    return false;
+    return Initialize(Assets::BuildObjectPath("index.json"), outError);
 }
 
-bool ObjectLibrary::Initialize(const std::string& backendIndexPath,
-                               const std::string& objectCatalogPath,
-                               std::string& outError) {
+bool ObjectLibrary::Initialize(const std::string& backendIndexPath, std::string& outError) {
     Clear();
 
     if (!m_blueprintDatabase.LoadIndex(backendIndexPath, outError)) {
         return false;
     }
 
-    if (!m_catalog.LoadFromFile(objectCatalogPath, outError)) {
-        Clear();
-        return false;
-    }
-
     m_factory.SetBlueprintDatabase(&m_blueprintDatabase);
-    m_factory.SetCatalog(&m_catalog);
     return true;
 }
 
 void ObjectLibrary::Clear() {
     m_blueprintDatabase.Clear();
-    m_catalog.Clear();
     m_factory.SetBlueprintDatabase(nullptr);
-    m_factory.SetCatalog(nullptr);
 }
 
 GeneratedObject ObjectLibrary::BuildObject(const ObjectBuildRequest& request, std::string& outError) const {

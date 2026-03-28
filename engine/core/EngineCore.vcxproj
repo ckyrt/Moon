@@ -129,7 +129,6 @@
     <ClInclude Include="Object\BlueprintTypes.h" />
     <ClInclude Include="Object\Blueprint.h" />
     <ClInclude Include="Object\BlueprintLoader.h" />
-    <ClInclude Include="Object\ObjectCatalog.h" />
     <ClInclude Include="Object\ObjectFactory.h" />
     <ClInclude Include="Object\ObjectLibrary.h" />
     <ClInclude Include="Object\ObjectTypes.h" />
@@ -161,7 +160,6 @@
     <ClCompile Include="CSG\CSGOperations.cpp" />
     <ClCompile Include="Object\BlueprintLoader.cpp" />
     <ClCompile Include="Object\Blueprint.cpp" />
-    <ClCompile Include="Object\ObjectCatalog.cpp" />
     <ClCompile Include="Object\ObjectFactory.cpp" />
     <ClCompile Include="Object\ObjectLibrary.cpp" />
   </ItemGroup>

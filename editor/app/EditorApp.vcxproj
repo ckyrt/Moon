@@ -81,7 +81,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;EngineCore.lib;EngineRender.lib;EngineEnvironment.lib;EnginePhysics.lib;EngineMassing.lib;EngineTerrain.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;EngineCore.lib;EngineRender.lib;EngineEnvironment.lib;EnginePhysics.lib;EngineMassing.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -111,7 +111,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;EngineCore.lib;EngineRender.lib;EngineEnvironment.lib;EnginePhysics.lib;EngineMassing.lib;EngineTerrain.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;EngineCore.lib;EngineRender.lib;EngineEnvironment.lib;EnginePhysics.lib;EngineMassing.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -151,9 +151,6 @@
     </ProjectReference>
     <ProjectReference Include="..\..\engine\massing\EngineMassing.vcxproj">
       <Project>{B6D7E8F9-1A2B-4C3D-8E9F-1029384756AB}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\engine\terrain\EngineTerrain.vcxproj">
-      <Project>{1C2D3E4F-5061-4728-93A4-B5C6D7E8F901}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\thirdparty\imgui\ImGui.vcxproj">
       <Project>{A9F5D891-2E3C-4B7D-8F1A-6E9C3D4B5A72}</Project>

@@ -260,6 +260,34 @@
       "tags": ["level3", "furniture", "cabinet", "storage"]
     },
     {
+      "id": "fridge_v1",
+      "path": "components/furniture/fridge_v1.json",
+      "description": "Top-freezer refrigerator with painted body and metal handles",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "appliance", "kitchen", "fridge"]
+    },
+    {
+      "id": "television_v1",
+      "path": "components/furniture/television_v1.json",
+      "description": "Flat-screen television with slim frame and pedestal stand",
+      "category": "furniture",
+      "tags": ["level3", "furniture", "electronics", "tv", "living_room"]
+    },
+    {
+      "id": "railing_v1",
+      "path": "components/architectural/railing_v1.json",
+      "description": "Straight architectural railing with metal posts and balusters",
+      "category": "architectural",
+      "tags": ["level2", "architectural", "railing", "handrail", "balcony"]
+    },
+    {
+      "id": "staircase_v1",
+      "path": "components/architectural/staircase_v1.json",
+      "description": "Straight interior stair flight with side railings",
+      "category": "architectural",
+      "tags": ["level3", "architectural", "stairs", "staircase", "interior"]
+    },
+    {
       "id": "beam_v1",
       "path": "components/structural/beam_v1.json",
       "description": "Rectangular beam (horizontal structural element)",
