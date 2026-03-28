@@ -67,7 +67,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>EngineCore.lib;EngineObjects.lib;EngineRender.lib;EngineBuilding.lib;EngineEnvironment.lib;EngineTerrain.lib;EngineVehicle.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>EngineCore.lib;EngineObjects.lib;EnginePhysics.lib;EngineRender.lib;EngineBuilding.lib;EngineEnvironment.lib;EngineTerrain.lib;EngineVehicle.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -88,7 +88,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>EngineCore.lib;EngineObjects.lib;EngineRender.lib;EngineBuilding.lib;EngineEnvironment.lib;EngineTerrain.lib;EngineVehicle.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>EngineCore.lib;EngineObjects.lib;EnginePhysics.lib;EngineRender.lib;EngineBuilding.lib;EngineEnvironment.lib;EngineTerrain.lib;EngineVehicle.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -125,6 +125,9 @@
     </ProjectReference>
     <ProjectReference Include="..\render\EngineRender.vcxproj">
       <Project>{256A3289-BE13-44ED-B3AE-BFDCAA130227}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\physics\EnginePhysics.vcxproj">
+      <Project>{9D8E5F6A-7B4C-3E2D-8A1F-0C6E4B5D7A92}</Project>
     </ProjectReference>
     <ProjectReference Include="..\environment\EngineEnvironment.vcxproj">
       <Project>{6A7B8C9D-0E1F-4234-A5B6-C7D8E9F01234}</Project>

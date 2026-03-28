@@ -93,6 +93,13 @@ namespace Moon {
         }
     }
 
+    void RigidBody::AddForceAtPosition(const Vector3& force, const Vector3& position)
+    {
+        if (m_physicsSystem && !m_bodyID.IsInvalid()) {
+            m_physicsSystem->AddForceAtPosition(m_bodyID, force, position);
+        }
+    }
+
     void RigidBody::AddImpulse(const Vector3& impulse)
     {
         if (m_physicsSystem && !m_bodyID.IsInvalid()) {
@@ -130,6 +137,45 @@ namespace Moon {
         return Vector3(0, 0, 0);
     }
 
+    Vector3 RigidBody::GetPosition() const
+    {
+        if (m_physicsSystem && !m_bodyID.IsInvalid()) {
+            return m_physicsSystem->GetPosition(m_bodyID);
+        }
+        return m_owner && m_owner->GetTransform() ? m_owner->GetTransform()->GetWorldPosition() : Vector3(0, 0, 0);
+    }
+
+    Quaternion RigidBody::GetRotation() const
+    {
+        if (m_physicsSystem && !m_bodyID.IsInvalid()) {
+            return m_physicsSystem->GetRotation(m_bodyID);
+        }
+        return m_owner && m_owner->GetTransform() ? m_owner->GetTransform()->GetWorldRotation() : Quaternion::Identity();
+    }
+
+    void RigidBody::SetPositionRotation(const Vector3& position, const Quaternion& rotation)
+    {
+        if (m_physicsSystem && !m_bodyID.IsInvalid()) {
+            m_physicsSystem->SetPositionRotation(m_bodyID, position, rotation);
+        }
+
+        Transform* transform = m_owner ? m_owner->GetTransform() : nullptr;
+        if (transform) {
+            transform->SetWorldPosition(position);
+            transform->SetWorldRotation(rotation);
+        }
+    }
+
+    void RigidBody::SyncFromPhysics()
+    {
+        if (m_syncToTransform && m_mass > 0.0f && !m_bodyID.IsInvalid()) {
+            Transform* transform = m_owner->GetTransform();
+            if (transform && m_physicsSystem) {
+                m_physicsSystem->UpdateTransformFromPhysics(*transform, m_bodyID);
+            }
+        }
+    }
+
     void RigidBody::OnEnable()
     {
         // 组件启用时激活物理体
@@ -148,13 +194,7 @@ namespace Moon {
 
     void RigidBody::Update(float deltaTime)
     {
-        // 如果是动态物体，同步物理状态到 Transform
-        if (m_syncToTransform && m_mass > 0.0f && !m_bodyID.IsInvalid()) {
-            Transform* transform = m_owner->GetTransform();
-            if (transform && m_physicsSystem) {
-                m_physicsSystem->UpdateTransformFromPhysics(*transform, m_bodyID);
-            }
-        }
+        (void)deltaTime;
     }
 
 } // namespace Moon

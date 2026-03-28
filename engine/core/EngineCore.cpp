@@ -1,5 +1,9 @@
 #include "EngineCore.h"
 #include "Logging/Logger.h"
+#include "../physics/PhysicsSystem.h"
+#include "../physics/RigidBody.h"
+
+EngineCore::~EngineCore() = default;
 
 void EngineCore::Initialize() {
     MOON_LOG_INFO("EngineCore", "Initialize");
@@ -22,6 +26,10 @@ void EngineCore::Initialize() {
     // Initialize Texture Manager (CPU 端，不依赖渲染设备)
     m_textureManager = std::make_unique<Moon::TextureManager>();
     MOON_LOG_INFO("EngineCore", "TextureManager initialized");
+
+    m_physicsSystem = std::make_shared<Moon::PhysicsSystem>();
+    m_physicsSystem->Init();
+    MOON_LOG_INFO("EngineCore", "PhysicsSystem initialized");
     
     // Initialize Main Scene
     m_mainScene = std::make_unique<Moon::Scene>("Main Scene");
@@ -34,9 +42,17 @@ void EngineCore::Tick(double dt) {
         m_inputSystem->Update();
     }
     
-    // Update Main Scene (all nodes and components)
-    if (m_mainScene) {
-        m_mainScene->Update(static_cast<float>(dt));
+    if (dt > 0.25) {
+        dt = 0.25;
+    }
+
+    m_physicsAccumulator += dt;
+
+    while (m_mainScene && m_physicsSystem && m_physicsAccumulator >= kFixedPhysicsStep) {
+        m_mainScene->Update(static_cast<float>(kFixedPhysicsStep));
+        m_physicsSystem->Step(static_cast<float>(kFixedPhysicsStep));
+        SyncPhysicsToScene();
+        m_physicsAccumulator -= kFixedPhysicsStep;
     }
     
     // Game/Editor logic would advance here.
@@ -57,6 +73,11 @@ void EngineCore::Shutdown() {
         MOON_LOG_INFO("EngineCore", "Destroying MeshManager...");
         m_meshManager.reset();
     }
+
+    if (m_physicsSystem) {
+        MOON_LOG_INFO("EngineCore", "Destroying PhysicsSystem...");
+        m_physicsSystem.reset();
+    }
     
     if (m_camera) {
         m_camera.reset();
@@ -67,4 +88,22 @@ void EngineCore::Shutdown() {
     }
     
     MOON_LOG_INFO("EngineCore", "Shutdown complete");
+}
+
+void EngineCore::SyncPhysicsToScene() {
+    if (!m_mainScene) {
+        return;
+    }
+
+    m_mainScene->TraverseActive([](Moon::SceneNode* node) {
+        if (!node) {
+            return;
+        }
+
+        Moon::RigidBody* rigidBody = node->GetComponent<Moon::RigidBody>();
+        if (rigidBody) {
+            rigidBody->SyncFromPhysics();
+        }
+
+    });
 }

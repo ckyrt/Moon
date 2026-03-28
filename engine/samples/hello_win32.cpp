@@ -22,8 +22,14 @@
 #include "../render/IRenderer.h"
 #include "../render/RenderCommon.h"
 #include "../render/SceneRenderer.h"
+#include "../terrain/TerrainComponent.h"
+#include "../vehicle/VehicleComponent.h"
+#include "../vehicle/VehicleFactory.h"
+#include "../vehicle/VehicleInteractionService.h"
 #include "HelloEngineImGui.h"
 #include "TestScenes.h"
+
+#include <memory>
 
 static const wchar_t* kWndClass = L"UGC_Editor_WndClass";
 static IRenderer* g_pRenderer = nullptr;
@@ -43,6 +49,79 @@ Moon::EnvironmentComponent* FindEnvironmentComponent(Moon::Scene* scene)
     }
 
     return environmentNode->GetComponent<Moon::EnvironmentComponent>();
+}
+
+Moon::TerrainComponent* FindTerrainComponent(Moon::Scene* scene)
+{
+    if (!scene) {
+        return nullptr;
+    }
+
+    Moon::TerrainComponent* found = nullptr;
+    scene->TraverseActive([&](Moon::SceneNode* node) {
+        if (!node || found) {
+            return;
+        }
+
+        if (Moon::TerrainComponent* terrain = node->GetComponent<Moon::TerrainComponent>()) {
+            found = terrain;
+        }
+    });
+    return found;
+}
+
+Moon::Vector3 ResolveVehicleSpawn(Moon::Scene* scene, const Moon::Vector3& preferredPosition)
+{
+    Moon::TerrainComponent* terrain = FindTerrainComponent(scene);
+    if (!terrain) {
+        MOON_LOG_WARN("HelloEngine", "No terrain component found for vehicle spawn search; using preferred spawn.");
+        return preferredPosition;
+    }
+
+    Moon::Vector3 bestPosition = preferredPosition;
+    Moon::Vector3 bestNormal(0.0f, 1.0f, 0.0f);
+    float bestScore = -1.0f;
+
+    for (int z = -8; z <= 8; ++z) {
+        for (int x = -8; x <= 8; ++x) {
+            const Moon::Vector3 candidate(
+                preferredPosition.x + static_cast<float>(x) * 18.0f,
+                preferredPosition.y,
+                preferredPosition.z + static_cast<float>(z) * 18.0f);
+
+            float groundHeight = 0.0f;
+            Moon::Vector3 groundNormal(0.0f, 1.0f, 0.0f);
+            if (!terrain->SampleWorldHeightAndNormal(candidate, groundHeight, groundNormal)) {
+                continue;
+            }
+
+            const float flatness = groundNormal.y;
+            const float distancePenalty =
+                (std::abs(static_cast<float>(x)) + std::abs(static_cast<float>(z))) * 0.02f;
+            const float score = flatness - distancePenalty;
+            if (score > bestScore) {
+                bestScore = score;
+                bestNormal = groundNormal;
+                bestPosition = Moon::Vector3(candidate.x, groundHeight, candidate.z);
+            }
+        }
+    }
+
+    MOON_LOG_INFO(
+        "HelloEngine",
+        "Resolved vehicle spawn from preferred (%.2f, %.2f, %.2f) to (%.2f, %.2f, %.2f) normal=(%.2f, %.2f, %.2f) score=%.3f",
+        preferredPosition.x,
+        preferredPosition.y,
+        preferredPosition.z,
+        bestPosition.x,
+        bestPosition.y,
+        bestPosition.z,
+        bestNormal.x,
+        bestNormal.y,
+        bestNormal.z,
+        bestScore);
+
+    return bestPosition;
 }
 
 const wchar_t* WeatherLabel(Moon::WeatherType weather)
@@ -218,6 +297,16 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
     Moon::Scene* scene = engine.GetScene();
     Moon::SceneNode* mainLightNode = scene ? scene->FindNodeByName("Environment Sun") : nullptr;
     Moon::EnvironmentComponent* environment = FindEnvironmentComponent(scene);
+    const Moon::Vector3 kPreferredVehicleSpawn(35.0f, 4.5f, 28.0f);
+    const Moon::Vector3 kVehicleSpawn = ResolveVehicleSpawn(scene, kPreferredVehicleSpawn);
+    Moon::VehicleFactory::CreateBuggy(scene, engine.GetPhysicsSystem(), kVehicleSpawn);
+    camera->SetPosition(Moon::Vector3(kVehicleSpawn.x, kVehicleSpawn.y + 3.5f, kVehicleSpawn.z - 5.5f));
+    camera->LookAt(Moon::Vector3(kVehicleSpawn.x, kVehicleSpawn.y + 1.5f, kVehicleSpawn.z));
+    auto vehicleInteraction = std::make_unique<Moon::VehicleInteractionService>(
+        scene,
+        camera,
+        inputSystem,
+        &cameraController);
 
     constexpr float kLightYawDegPerSec = 60.0f;
 
@@ -254,7 +343,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
                 environmentState ? TimeLabel(environmentState->timeOfDay.timeOfDayHours) : L"NoEnv";
             swprintf_s(
                 title,
-                L"Moon Engine - HelloEngine | FPS: %.1f | Frame Time: %.2f ms | 1-6 Weather | 7-0 Time | %ls | %ls",
+                L"Moon Engine - HelloEngine | FPS: %.1f | Frame Time: %.2f ms | F7 Force Enter | F8 Focus Vehicle | RMB+WASD Fly | E Enter/Exit Vehicle | %ls | %ls",
                 fpsCounter.GetFPS(),
                 fpsCounter.GetFrameTimeMs(),
                 weatherText,
@@ -263,8 +352,26 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
             lastTitleUpdate = now;
         }
 
-        engine.Tick(dt);
         cameraController.Update(static_cast<float>(dt));
+        vehicleInteraction->BeginFrame();
+        engine.Tick(dt);
+        if (scene) {
+            scene->TraverseActive([](Moon::SceneNode* node) {
+                if (!node) {
+                    return;
+                }
+
+                if (Moon::VehicleComponent* vehicle = node->GetComponent<Moon::VehicleComponent>()) {
+                    vehicle->PostPhysicsSync();
+                }
+            });
+        }
+        vehicleInteraction->EndFrame(static_cast<float>(dt));
+
+        if (inputSystem && inputSystem->IsKeyPressed(Moon::KeyCode::F8)) {
+            camera->SetPosition(Moon::Vector3(kVehicleSpawn.x, kVehicleSpawn.y + 3.5f, kVehicleSpawn.z - 5.5f));
+            camera->LookAt(Moon::Vector3(kVehicleSpawn.x, kVehicleSpawn.y + 1.5f, kVehicleSpawn.z));
+        }
 
         if (inputSystem && mainLightNode) {
             if (environment) {
