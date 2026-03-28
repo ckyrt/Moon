@@ -9,8 +9,8 @@
 #include <Mesh/Mesh.h>
 #include <Assets/AssetPaths.h>
 #include <Building.h>
-#include <CSG/Blueprint.h>
-#include <CSG/BlueprintLoader.h>
+#include <Object/Blueprint.h>
+#include <Object/BlueprintLoader.h>
 #include <CSG/CSGBuilder.h>
 #include <fstream>
 #include <unordered_map>
@@ -19,7 +19,7 @@ namespace TestScenes {
 
 void TestBuildingSample(EngineCore* engine)
 {
-    MOON_LOG_INFO("BuildingSample", "=== Testing semantic building sample with CSG ===");
+    MOON_LOG_INFO("BuildingSample", "=== Testing semantic building sample with object blueprints ===");
     MOON_LOG_INFO("BuildingSample", "Using fixed asset root: %s", Moon::Assets::kAssetRootPath);
 
     const std::string semanticFilePath = Moon::Assets::BuildBuildingPath("test_building.json");
@@ -79,34 +79,34 @@ void TestBuildingSample(EngineCore* engine)
     MOON_LOG_INFO("BuildingSample", "  - Windows: %zu", result.windows.size());
     MOON_LOG_INFO("BuildingSample", "  - Connections: %zu", result.connections.size());
 
-    MOON_LOG_INFO("BuildingSample", "Converting to CSG Blueprint...");
-    std::string blueprintJsonStr = Moon::Building::BuildingToCSGConverter::Convert(result);
+    MOON_LOG_INFO("BuildingSample", "Converting to object blueprint...");
+    std::string blueprintJsonStr = Moon::Building::BuildingToObjectBlueprintConverter::Convert(result);
 
-    const std::string outputPath = Moon::Assets::BuildCsgPath("generated_building.json");
+    const std::string outputPath = Moon::Assets::BuildObjectPath("generated_building.json");
     std::ofstream outFile(outputPath);
     if (outFile.is_open()) {
         outFile << blueprintJsonStr;
         outFile.close();
-        MOON_LOG_INFO("BuildingSample", "Saved CSG Blueprint to: %s", outputPath.c_str());
-        MOON_LOG_INFO("BuildingSample", "CSG Blueprint size: %zu bytes", blueprintJsonStr.size());
+        MOON_LOG_INFO("BuildingSample", "Saved object blueprint to: %s", outputPath.c_str());
+        MOON_LOG_INFO("BuildingSample", "Object blueprint size: %zu bytes", blueprintJsonStr.size());
     } else {
-        MOON_LOG_ERROR("BuildingSample", "Failed to save CSG Blueprint to %s", outputPath.c_str());
+        MOON_LOG_ERROR("BuildingSample", "Failed to save object blueprint to %s", outputPath.c_str());
         return;
     }
 
-    MOON_LOG_INFO("BuildingSample", "Loading generated CSG Blueprint...");
+    MOON_LOG_INFO("BuildingSample", "Loading generated object blueprint...");
 
     Moon::Scene* scene = engine->GetScene();
-    Moon::CSG::BlueprintDatabase database;
+    Moon::Object::BlueprintDatabase database;
     std::string loadError;
 
-    const std::string csgIndexPath = Moon::Assets::BuildCsgPath("index.json");
+    const std::string csgIndexPath = Moon::Assets::BuildObjectPath("index.json");
     if (!database.LoadIndex(csgIndexPath, loadError)) {
-        MOON_LOG_ERROR("BuildingSample", "Failed to load CSG index: %s", loadError.c_str());
+        MOON_LOG_ERROR("BuildingSample", "Failed to load object blueprint index: %s", loadError.c_str());
         return;
     }
 
-    auto generatedBlueprint = Moon::CSG::BlueprintLoader::ParseFromString(blueprintJsonStr, loadError);
+    auto generatedBlueprint = Moon::Object::BlueprintLoader::ParseFromString(blueprintJsonStr, loadError);
     if (!generatedBlueprint) {
         MOON_LOG_ERROR("BuildingSample", "Failed to parse generated blueprint: %s", loadError.c_str());
         return;
@@ -119,11 +119,11 @@ void TestBuildingSample(EngineCore* engine)
     Moon::CSG::BuildResult buildResult = builder.Build(generatedBlueprint.get(), params, loadError);
 
     if (buildResult.meshes.empty()) {
-        MOON_LOG_ERROR("BuildingSample", "Failed to build CSG scene: %s", loadError.c_str());
+        MOON_LOG_ERROR("BuildingSample", "Failed to build object blueprint scene: %s", loadError.c_str());
         return;
     }
 
-    MOON_LOG_INFO("BuildingSample", "CSG scene built successfully: %d meshes", (int)buildResult.meshes.size());
+    MOON_LOG_INFO("BuildingSample", "Object blueprint scene built successfully: %d meshes", (int)buildResult.meshes.size());
 
     for (size_t i = 0; i < buildResult.meshes.size(); ++i) {
         const auto& item = buildResult.meshes[i];
@@ -205,3 +205,5 @@ void TestBuildingSample(EngineCore* engine)
 }
 
 } // namespace TestScenes
+
+

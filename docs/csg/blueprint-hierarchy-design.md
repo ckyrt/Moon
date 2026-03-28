@@ -359,7 +359,7 @@ Level 4: room ← wall_panel (x4) + floor_panel + door + window
 ### 文件组织
 
 ```
-assets/csg/
+assets/objects/
 ├── primitives/          # Level 0（通常由引擎提供，不需要 JSON）
 ├── components/          # Level 1-2
 │   ├── wall_panel_v1.json

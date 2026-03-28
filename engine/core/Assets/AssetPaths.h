@@ -46,19 +46,9 @@ inline std::string BuildBuildingPath(const std::string& path)
     return BuildAssetPath("building/" + path);
 }
 
-inline std::string BuildCsgPath(const std::string& path)
-{
-    return BuildAssetPath("csg/" + path);
-}
-
 inline std::string BuildObjectPath(const std::string& path)
 {
     return BuildAssetPath("objects/" + path);
-}
-
-inline std::string BuildCsgObjectPath(const std::string& path)
-{
-    return BuildObjectPath(path);
 }
 
 inline std::string BuildShaderPath(const std::string& path)

@@ -101,7 +101,7 @@ Blueprint 的具体使用，包含：
 ### 3.1 资源目录结构
 
 ```
-/assets/csg/
+/assets/objects/
   ├── index.json              # 全局索引（必需）
   ├── primitives.json         # 基础几何体配置（可选）
   ├── components/             # 可复用组件
@@ -463,7 +463,7 @@ cacheKey = Hash(
 ```cpp
 // 启动时加载
 std::unordered_map<std::string, std::string> blueprintIndex;
-LoadIndex("assets/csg/index.json", blueprintIndex);
+LoadIndex("assets/objects/index.json", blueprintIndex);
 
 // 快速查找
 std::string path = blueprintIndex["bike_v1"];
@@ -681,7 +681,7 @@ if (schema_version == 1) {
 
 **方案2：离线升级工具**
 ```bash
-./upgrade_blueprints --from=1 --to=2 assets/csg/
+./upgrade_blueprints --from=1 --to=2 assets/objects/
 ```
 
 ---

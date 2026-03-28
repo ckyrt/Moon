@@ -6,7 +6,7 @@
 
 ## ⚡ 关键规则 (Quick Reference)
 
-> **完整规则和示例请查看：[assets/csg/README.md](../../assets/csg/README.md)**
+> **完整规则和示例请查看：[assets/objects/README.md](../../assets/objects/README.md)**
 
 ### 核心原则
 
@@ -68,7 +68,7 @@
 
 ## 🎯 实际应用
 
-**参考示例：** 查看 [assets/csg/components/](../../assets/csg/components/) 中的实际JSON文件
+**参考示例：** 查看 [assets/objects/components/](../../assets/objects/components/) 中的实际JSON文件
 
 - **table_v1.json** - 完整桌子示例（腿+桌面组合）
 - **chair_v1.json** - 完整椅子示例（腿+座椅+靠背堆叠）
@@ -103,7 +103,7 @@ Vector3 ManifoldToEngine(x, y, z) {
 
 ## 📚 参考文档
 
-- **[assets/csg/README.md](../../assets/csg/README.md)** - 完整规则和实用示例 ⭐ 主要参考
+- **[assets/objects/README.md](../../assets/objects/README.md)** - 完整规则和实用示例 ⭐ 主要参考
 - [CSG 可组合物体系统](./csg-composable-object-system.md) - 蓝图系统架构
 - [ADR-0005: 坐标系统与矩阵约定](../adr-0005-coordinate-system-and-matrix-conventions.md) - 技术规范
 

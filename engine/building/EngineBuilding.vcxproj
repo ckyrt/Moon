@@ -109,7 +109,7 @@
     <ClInclude Include="DoorGenerator.h" />
     <ClInclude Include="StairGenerator.h" />
     <ClInclude Include="FacadeGenerator.h" />
-    <ClInclude Include="BuildingToCSGConverter.h" />
+    <ClInclude Include="BuildingToObjectBlueprintConverter.h" />
     <ClInclude Include="EdgeTopologyBuilder.h" />
     <ClInclude Include="BuildingIndex.h" />
     <ClInclude Include="GridCoord.h" />
@@ -133,7 +133,7 @@
     <ClCompile Include="BuildingIndex.cpp" />
     <ClCompile Include="StairGenerator.cpp" />
     <ClCompile Include="FacadeGenerator.cpp" />
-    <ClCompile Include="BuildingToCSGConverter.cpp" />
+    <ClCompile Include="BuildingToObjectBlueprintConverter.cpp" />
     <ClCompile Include="LayoutResolver.cpp" />
     <ClCompile Include="MassFloorPlateGenerator.cpp" />
     <ClCompile Include="OfficeFloorLayoutSolver.cpp" />
@@ -154,3 +154,4 @@
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>
+

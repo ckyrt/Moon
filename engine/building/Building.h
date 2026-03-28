@@ -59,7 +59,8 @@
 #include "FacadeGenerator.h"
 
 // Converters
-#include "BuildingToCSGConverter.h"
+#include "BuildingToObjectBlueprintConverter.h"
 
 // Main pipeline
 #include "BuildingPipeline.h"
+

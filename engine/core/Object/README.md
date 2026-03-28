@@ -1,10 +1,12 @@
 # Object Generation System
 
-This module sits above the low-level procedural shape builders.
+This module is the semantic entry point for procedural world objects.
 
 Layer split:
 
-- `CSG/*`: current implementation of the procedural object graph runtime.
+- `Object/*`: object-facing catalog, variants, inheritance, defaults, and build requests.
+- `CSG/*`: one geometry backend that currently executes object graphs.
+- `Massing/*`: another shape-generation backend that can feed the same object layer.
 - `ObjectCatalog`: editor/game-facing object families, tags, defaults, variants, and graph asset references.
 - `ObjectCatalog`: supports `base_object` inheritance so related objects can share one definition and only override differences.
 - `ObjectFactory`: resolves a build request into concrete parameters and builds a referenced object graph asset.
@@ -12,9 +14,13 @@ Layer split:
 
 Design intent:
 
-- the object layer should reference one unified object graph asset
-- that graph can internally use group/reference/boolean and later add mass nodes
+- `CSG` is part of the object system, not a sibling semantic system.
+- `Blueprint` should be read as the current object graph format, not as a CSG-only concept.
+- a single object graph can mix multiple construction techniques
+- `csg` is one node/operator family inside the graph
+- `mass` or other generators can be added as more node/back-end options
 - object-level metadata should not need to classify which sub-technique the graph uses
+- we do not need a separate `graphs/` asset concept unless object assets start mixing multiple backend index formats in practice
 
 Recommended scene-data shape for the future:
 
@@ -41,4 +47,5 @@ That keeps placement data and generation data separate:
 Default asset layout:
 
 - `assets/objects/catalog.json`: semantic object catalog
-- `assets/csg/index.json`: CSG backend registry
+- `assets/objects/index.json`: object blueprint registry
+- `assets/objects/components/*`: reusable blueprint/component assets used by objects

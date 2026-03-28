@@ -1,7 +1,7 @@
 #pragma once
 
-#include "BlueprintTypes.h"
-#include "Blueprint.h"
+#include "../Object/BlueprintTypes.h"
+#include "../Object/Blueprint.h"
 #include "../Mesh/Mesh.h"
 #include <string>
 #include <vector>
@@ -148,7 +148,7 @@ public:
     /**
      * @brief 设置 Blueprint 数据库（用于 Reference 节点）
      */
-    void SetBlueprintDatabase(BlueprintDatabase* db) {
+    void SetBlueprintDatabase(Object::BlueprintDatabase* db) {
         m_database = db;
     }
 
@@ -159,50 +159,50 @@ public:
      * @param outError 错误信息
      * @return 构建结果
      */
-    BuildResult Build(const Blueprint* blueprint, 
+    BuildResult Build(const Object::Blueprint* blueprint,
                       const std::unordered_map<std::string, float>& parameterOverrides,
                       std::string& outError);
 
 private:
     // 构建单个节点
-    BuildResult BuildNode(const Node* node, ParameterScope& scope, std::string& outError);
+    BuildResult BuildNode(const Object::Node* node, ParameterScope& scope, std::string& outError);
 
     // 构建基础几何体
-    BuildResult BuildPrimitive(const PrimitiveNode* prim, ParameterScope& scope, std::string& outError);
+    BuildResult BuildPrimitive(const Object::PrimitiveNode* prim, ParameterScope& scope, std::string& outError);
 
     // 执行 CSG 运算
-    BuildResult BuildCSG(const CsgNode* csg, ParameterScope& scope, std::string& outError);
+    BuildResult BuildCSG(const Object::CsgNode* csg, ParameterScope& scope, std::string& outError);
 
     // 构建 Group
-    BuildResult BuildGroup(const GroupNode* group, ParameterScope& scope, std::string& outError);
+    BuildResult BuildGroup(const Object::GroupNode* group, ParameterScope& scope, std::string& outError);
 
     // 构建 Reference（内部版本，返回结果 + 求值后的 anchor 坐标）
-    BuildResult BuildReference(const RefNode* ref, ParameterScope& scope, std::string& outError);
+    BuildResult BuildReference(const Object::RefNode* ref, ParameterScope& scope, std::string& outError);
 
     // 构建 Light
-    BuildResult BuildLight(const LightNode* light, ParameterScope& scope, std::string& outError);
+    BuildResult BuildLight(const Object::LightNode* light, ParameterScope& scope, std::string& outError);
 
     // 对 blueprint 的 anchors 用指定 scope 求值，返回 name -> Vector3
     // CM_TO_M 会在此处应用（anchors 坐标单位为 cm）
     std::unordered_map<std::string, Vector3> EvaluateAnchors(
-        const Blueprint* blueprint, ParameterScope& scope, std::string& outError);
+        const Object::Blueprint* blueprint, ParameterScope& scope, std::string& outError);
 
     // 解析单个表达式字符串（用于 anchor 坐标）
     float EvaluateStringExpr(const std::string& exprStr, ParameterScope& scope, std::string& outError);
 
     // 解析值表达式
-    float ResolveValue(const ValueExpr& expr, ParameterScope& scope, std::string& outError);
+    float ResolveValue(const Object::ValueExpr& expr, ParameterScope& scope, std::string& outError);
 
     // 计算表达式字符串（支持 +, -, *, / 和 $param 引用）
     float EvaluateExpression(const std::string& exprStr, ParameterScope& scope, std::string& outError);
 
     // 解析 Transform（将 ValueExpr 转换为实际值）
-    void ResolveTransform(const TransformTRS& transformExpr, ParameterScope& scope,
+    void ResolveTransform(const Object::TransformTRS& transformExpr, ParameterScope& scope,
                           Vector3& outPosition, Quaternion& outRotation, Vector3& outScale,
                           std::string& outError);
 
     // Blueprint 数据库（用于 Reference）
-    BlueprintDatabase* m_database;
+    Object::BlueprintDatabase* m_database;
 
     // 递归构建深度计数（0 = 最外层，>0 = 被 reference 调用）
     // 用于避免对已经 FlatShading 的 mesh 重复转换

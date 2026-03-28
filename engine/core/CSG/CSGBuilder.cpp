@@ -8,6 +8,8 @@
 namespace Moon {
 namespace CSG {
 
+using namespace Moon::Object;
+
 CSGBuilder::CSGBuilder() 
     : m_database(nullptr) {
 }

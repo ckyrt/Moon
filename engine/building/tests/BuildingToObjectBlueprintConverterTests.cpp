@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "building/BuildingToCSGConverter.h"
+#include "building/BuildingToObjectBlueprintConverter.h"
 #include "building/BuildingPipeline.h"
 #include "building/SchemaValidator.h"
 #include "TestHelpers.h"
@@ -11,9 +11,9 @@ using namespace Moon::Building::Test;
 using json = nlohmann::json;
 
 /**
- * @brief Test fixture for BuildingToCSGConverter
+ * @brief Test fixture for BuildingToObjectBlueprintConverter
  */
-class BuildingToCSGConverterTest : public ::testing::Test {
+class BuildingToObjectBlueprintConverterTest : public ::testing::Test {
 protected:
     BuildingPipeline pipeline;
     
@@ -27,8 +27,8 @@ protected:
         }
     }
     
-    // Helper to check if JSON has required CSG fields
-    bool HasCSGFields(const std::string& jsonStr) {
+    // Helper to check if JSON has required object blueprint fields
+    bool HasObjectBlueprintFields(const std::string& jsonStr) {
         try {
             json j = json::parse(jsonStr);
             return j.contains("schema_version") && 
@@ -44,7 +44,7 @@ protected:
 // Basic Conversion Tests
 // ========================================
 
-TEST_F(BuildingToCSGConverterTest, SimpleRoom_ValidCSGOutput) {
+TEST_F(BuildingToObjectBlueprintConverterTest, SimpleRoom_ValidObjectBlueprintOutput) {
     std::string inputJson = TestHelpers::CreateSimpleRoom();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -52,14 +52,14 @@ TEST_F(BuildingToCSGConverterTest, SimpleRoom_ValidCSGOutput) {
     bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
     ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
     
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
-    EXPECT_FALSE(csgJson.empty()) << "CSG JSON should not be empty";
+    EXPECT_FALSE(csgJson.empty()) << "object blueprint JSON should not be empty";
     EXPECT_TRUE(IsValidJSON(csgJson)) << "Output should be valid JSON";
-    EXPECT_TRUE(HasCSGFields(csgJson)) << "Should have CSG required fields";
+    EXPECT_TRUE(HasObjectBlueprintFields(csgJson)) << "Should have object blueprint required fields";
 }
 
-TEST_F(BuildingToCSGConverterTest, MultiRoom_ValidCSGOutput) {
+TEST_F(BuildingToObjectBlueprintConverterTest, MultiRoom_ValidObjectBlueprintOutput) {
     std::string inputJson = TestHelpers::CreateLShapedBuilding();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -67,14 +67,14 @@ TEST_F(BuildingToCSGConverterTest, MultiRoom_ValidCSGOutput) {
     bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
     ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
     
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     EXPECT_FALSE(csgJson.empty());
     EXPECT_TRUE(IsValidJSON(csgJson));
-    EXPECT_TRUE(HasCSGFields(csgJson));
+    EXPECT_TRUE(HasObjectBlueprintFields(csgJson));
 }
 
-TEST_F(BuildingToCSGConverterTest, MultiFloor_ValidCSGOutput) {
+TEST_F(BuildingToObjectBlueprintConverterTest, MultiFloor_ValidObjectBlueprintOutput) {
     std::string inputJson = TestHelpers::CreateMultiFloorBuilding();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -82,24 +82,24 @@ TEST_F(BuildingToCSGConverterTest, MultiFloor_ValidCSGOutput) {
     bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
     ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
     
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     EXPECT_FALSE(csgJson.empty());
     EXPECT_TRUE(IsValidJSON(csgJson));
-    EXPECT_TRUE(HasCSGFields(csgJson));
+    EXPECT_TRUE(HasObjectBlueprintFields(csgJson));
 }
 
 // ========================================
 // Structure Validation Tests
 // ========================================
 
-TEST_F(BuildingToCSGConverterTest, OutputHasSchemaVersion) {
+TEST_F(BuildingToObjectBlueprintConverterTest, OutputHasSchemaVersion) {
     std::string inputJson = TestHelpers::CreateSimpleRoom();
     GeneratedBuilding building;
     std::string errorMsg;
     
     pipeline.ProcessBuilding(inputJson, building, errorMsg);
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     json j = json::parse(csgJson);
     EXPECT_TRUE(j.contains("schema_version") || j.contains("version"));
@@ -108,26 +108,26 @@ TEST_F(BuildingToCSGConverterTest, OutputHasSchemaVersion) {
     }
 }
 
-TEST_F(BuildingToCSGConverterTest, OutputHasRoot) {
+TEST_F(BuildingToObjectBlueprintConverterTest, OutputHasRoot) {
     std::string inputJson = TestHelpers::CreateSimpleRoom();
     GeneratedBuilding building;
     std::string errorMsg;
     
     pipeline.ProcessBuilding(inputJson, building, errorMsg);
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     json j = json::parse(csgJson);
     EXPECT_TRUE(j.contains("root"));
     EXPECT_TRUE(j["root"].is_object() || j["root"].is_string());
 }
 
-TEST_F(BuildingToCSGConverterTest, OutputHasChildren) {
+TEST_F(BuildingToObjectBlueprintConverterTest, OutputHasChildren) {
     std::string inputJson = TestHelpers::CreateSimpleRoom();
     GeneratedBuilding building;
     std::string errorMsg;
     
     pipeline.ProcessBuilding(inputJson, building, errorMsg);
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     json j = json::parse(csgJson);
     EXPECT_TRUE(j.contains("root"));
@@ -140,7 +140,7 @@ TEST_F(BuildingToCSGConverterTest, OutputHasChildren) {
 // Content Tests
 // ========================================
 
-TEST_F(BuildingToCSGConverterTest, WallsIncludedInOutput) {
+TEST_F(BuildingToObjectBlueprintConverterTest, WallsIncludedInOutput) {
     std::string inputJson = TestHelpers::CreateSimpleRoom();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -148,13 +148,13 @@ TEST_F(BuildingToCSGConverterTest, WallsIncludedInOutput) {
     pipeline.ProcessBuilding(inputJson, building, errorMsg);
     ASSERT_GT(building.walls.size(), 0) << "Building should have walls";
     
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     // Check that CSG output is not trivial
     EXPECT_GT(csgJson.length(), 100) << "CSG output should be substantial";
 }
 
-TEST_F(BuildingToCSGConverterTest, WindowsHandledInOutput) {
+TEST_F(BuildingToObjectBlueprintConverterTest, WindowsHandledInOutput) {
     std::string inputJson = TestHelpers::CreateSimpleRoom();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -162,20 +162,20 @@ TEST_F(BuildingToCSGConverterTest, WindowsHandledInOutput) {
     pipeline.ProcessBuilding(inputJson, building, errorMsg);
     
     // CSG converter should handle both buildings with and without windows
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     EXPECT_GT(csgJson.length(), 100) << "CSG output should be valid";
     EXPECT_TRUE(IsValidJSON(csgJson));
 }
 
-TEST_F(BuildingToCSGConverterTest, DoorsHandledInOutput) {
+TEST_F(BuildingToObjectBlueprintConverterTest, DoorsHandledInOutput) {
     std::string inputJson = TestHelpers::CreateLShapedBuilding();
     GeneratedBuilding building;
     std::string errorMsg;
     
     pipeline.ProcessBuilding(inputJson, building, errorMsg);
     
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     // Doors should not break CSG generation
     EXPECT_TRUE(IsValidJSON(csgJson));
@@ -186,16 +186,16 @@ TEST_F(BuildingToCSGConverterTest, DoorsHandledInOutput) {
 // Edge Cases
 // ========================================
 
-TEST_F(BuildingToCSGConverterTest, EmptyBuilding_ValidOutput) {
+TEST_F(BuildingToObjectBlueprintConverterTest, EmptyBuilding_ValidOutput) {
     GeneratedBuilding emptyBuilding;
     
-    std::string csgJson = BuildingToCSGConverter::Convert(emptyBuilding);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(emptyBuilding);
     
     // Even empty building should produce valid JSON
     EXPECT_TRUE(IsValidJSON(csgJson)) << "Empty building should produce valid JSON";
 }
 
-TEST_F(BuildingToCSGConverterTest, BuildingWithOnlyWalls_ValidOutput) {
+TEST_F(BuildingToObjectBlueprintConverterTest, BuildingWithOnlyWalls_ValidOutput) {
     std::string inputJson = TestHelpers::CreateSimpleRoom();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -206,26 +206,26 @@ TEST_F(BuildingToCSGConverterTest, BuildingWithOnlyWalls_ValidOutput) {
     building.windows.clear();
     building.doors.clear();
     
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     EXPECT_TRUE(IsValidJSON(csgJson));
     EXPECT_FALSE(csgJson.empty());
 }
 
-TEST_F(BuildingToCSGConverterTest, MultiFloorBuilding_ValidOutput) {
+TEST_F(BuildingToObjectBlueprintConverterTest, MultiFloorBuilding_ValidOutput) {
     std::string inputJson = TestHelpers::CreateMultiFloorBuilding();
     GeneratedBuilding building;
     std::string errorMsg;
     
     pipeline.ProcessBuilding(inputJson, building, errorMsg);
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     // Multi-floor should produce output
     EXPECT_GT(csgJson.length(), 100) << "Multi-floor building should have CSG";
     EXPECT_TRUE(IsValidJSON(csgJson));
 }
 
-TEST_F(BuildingToCSGConverterTest, MultiFloorBuilding_EmitsSupportColumns) {
+TEST_F(BuildingToObjectBlueprintConverterTest, MultiFloorBuilding_EmitsSupportColumns) {
     std::string inputJson = TestHelpers::CreateMultiFloorBuilding();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -233,7 +233,7 @@ TEST_F(BuildingToCSGConverterTest, MultiFloorBuilding_EmitsSupportColumns) {
     bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
     ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
 
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json j = json::parse(csgJson);
 
     ASSERT_TRUE(j.contains("root"));
@@ -253,7 +253,7 @@ TEST_F(BuildingToCSGConverterTest, MultiFloorBuilding_EmitsSupportColumns) {
     EXPECT_TRUE(foundSupportColumn) << "Expected support columns for elevated floors";
 }
 
-TEST_F(BuildingToCSGConverterTest, ComplexShoppingMall_EmitsPlannedColumns) {
+TEST_F(BuildingToObjectBlueprintConverterTest, ComplexShoppingMall_EmitsPlannedColumns) {
     std::string inputJson = TestHelpers::CreateComplexShoppingMall();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -262,7 +262,7 @@ TEST_F(BuildingToCSGConverterTest, ComplexShoppingMall_EmitsPlannedColumns) {
     ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
     ASSERT_GT(building.supportColumns.size(), 0u);
 
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json j = json::parse(csgJson);
 
     bool foundSupportColumn = false;
@@ -283,7 +283,7 @@ TEST_F(BuildingToCSGConverterTest, ComplexShoppingMall_EmitsPlannedColumns) {
 // Integration Tests
 // ========================================
 
-TEST_F(BuildingToCSGConverterTest, FullPipeline_SimpleRoom) {
+TEST_F(BuildingToObjectBlueprintConverterTest, FullPipeline_SimpleRoom) {
     std::string inputJson = TestHelpers::CreateSimpleRoom();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -293,11 +293,11 @@ TEST_F(BuildingToCSGConverterTest, FullPipeline_SimpleRoom) {
     ASSERT_TRUE(success) << errorMsg;
     
     // Convert to CSG
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     // Validate CSG
     EXPECT_TRUE(IsValidJSON(csgJson));
-    EXPECT_TRUE(HasCSGFields(csgJson));
+    EXPECT_TRUE(HasObjectBlueprintFields(csgJson));
     
     // Parse and check structure
     json j = json::parse(csgJson);
@@ -305,7 +305,7 @@ TEST_F(BuildingToCSGConverterTest, FullPipeline_SimpleRoom) {
     EXPECT_TRUE(j.contains("root"));
 }
 
-TEST_F(BuildingToCSGConverterTest, FullPipeline_ComplexBuilding) {
+TEST_F(BuildingToObjectBlueprintConverterTest, FullPipeline_ComplexBuilding) {
     std::string inputJson = TestHelpers::CreateLShapedBuilding();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -313,10 +313,10 @@ TEST_F(BuildingToCSGConverterTest, FullPipeline_ComplexBuilding) {
     bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
     ASSERT_TRUE(success) << errorMsg;
     
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
     EXPECT_TRUE(IsValidJSON(csgJson));
-    EXPECT_TRUE(HasCSGFields(csgJson));
+    EXPECT_TRUE(HasObjectBlueprintFields(csgJson));
     EXPECT_GT(csgJson.length(), 100);
 }
 
@@ -324,7 +324,7 @@ TEST_F(BuildingToCSGConverterTest, FullPipeline_ComplexBuilding) {
 // Performance Tests
 // ========================================
 
-TEST_F(BuildingToCSGConverterTest, LargeBuilding_ReasonablePerformance) {
+TEST_F(BuildingToObjectBlueprintConverterTest, LargeBuilding_ReasonablePerformance) {
     std::string inputJson = TestHelpers::CreateMultiFloorBuilding();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -333,7 +333,7 @@ TEST_F(BuildingToCSGConverterTest, LargeBuilding_ReasonablePerformance) {
     
     // Measure conversion time
     auto start = std::chrono::high_resolution_clock::now();
-    std::string csgJson = BuildingToCSGConverter::Convert(building);
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     auto end = std::chrono::high_resolution_clock::now();
     
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -342,3 +342,5 @@ TEST_F(BuildingToCSGConverterTest, LargeBuilding_ReasonablePerformance) {
     EXPECT_LT(duration.count(), 100) << "Conversion should be fast";
     EXPECT_TRUE(IsValidJSON(csgJson));
 }
+
+

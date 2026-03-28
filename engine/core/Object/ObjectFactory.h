@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ObjectCatalog.h"
-#include "../CSG/Blueprint.h"
+#include "Blueprint.h"
 #include "../CSG/CSGBuilder.h"
 
 namespace Moon {
@@ -9,7 +9,7 @@ namespace Object {
 
 class ObjectFactory {
 public:
-    void SetBlueprintDatabase(CSG::BlueprintDatabase* database);
+    void SetBlueprintDatabase(BlueprintDatabase* database);
     void SetCatalog(const ObjectCatalog* catalog);
 
     GeneratedObject BuildObject(const ObjectBuildRequest& request, std::string& outError) const;
@@ -21,7 +21,7 @@ private:
                                  const ObjectBuildRequest& request,
                                  std::unordered_map<std::string, float>& inOutParameters) const;
 
-    CSG::BlueprintDatabase* m_blueprintDatabase = nullptr;
+    BlueprintDatabase* m_blueprintDatabase = nullptr;
     const ObjectCatalog* m_catalog = nullptr;
 };
 

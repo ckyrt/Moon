@@ -100,7 +100,7 @@
     <ClCompile Include="DoorGeneratorTests.cpp" />
     <ClCompile Include="FacadeGeneratorTests.cpp" />
     <ClCompile Include="StairGeneratorTests.cpp" />
-    <ClCompile Include="BuildingToCSGConverterTests.cpp" />
+    <ClCompile Include="BuildingToObjectBlueprintConverterTests.cpp" />
     <ClCompile Include="RealWorldBuildingTests.cpp" />
     <ClCompile Include="TestHelpers.cpp" />
     <ClCompile Include="ComplexTestData.cpp" />
@@ -111,7 +111,7 @@
     <ClCompile Include="DeepTests_LayoutValidator.cpp" />
     <ClCompile Include="DeepTests_FacadeGenerator.cpp" />
     <ClCompile Include="DeepTests_DoorGenerator.cpp" />
-    <ClCompile Include="DeepTests_BuildingToCSGConverter.cpp" />
+    <ClCompile Include="DeepTests_BuildingToObjectBlueprintConverter.cpp" />
     <ClCompile Include="DeepTests_BuildingPipeline.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -132,3 +132,4 @@
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>
+

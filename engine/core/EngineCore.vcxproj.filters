@@ -137,15 +137,6 @@
     <ClInclude Include="CSG\CSGComponent.h">
       <Filter>CSG</Filter>
     </ClInclude>
-    <ClInclude Include="CSG\BlueprintTypes.h">
-      <Filter>CSG</Filter>
-    </ClInclude>
-    <ClInclude Include="CSG\Blueprint.h">
-      <Filter>CSG</Filter>
-    </ClInclude>
-    <ClInclude Include="CSG\BlueprintLoader.h">
-      <Filter>CSG</Filter>
-    </ClInclude>
     <ClInclude Include="CSG\CSGBuilder.h">
       <Filter>CSG</Filter>
     </ClInclude>
@@ -165,6 +156,15 @@
       <Filter>Object</Filter>
     </ClInclude>
     <ClInclude Include="Object\ObjectTypes.h">
+      <Filter>Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Object\BlueprintTypes.h">
+      <Filter>Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Object\Blueprint.h">
+      <Filter>Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Object\BlueprintLoader.h">
       <Filter>Object</Filter>
     </ClInclude>
   </ItemGroup>
@@ -232,12 +232,6 @@
     <ClCompile Include="CSG\CSGComponent.cpp">
       <Filter>CSG</Filter>
     </ClCompile>
-    <ClCompile Include="CSG\Blueprint.cpp">
-      <Filter>CSG</Filter>
-    </ClCompile>
-    <ClCompile Include="CSG\BlueprintLoader.cpp">
-      <Filter>CSG</Filter>
-    </ClCompile>
     <ClCompile Include="CSG\CSGBuilder.cpp">
       <Filter>CSG</Filter>
     </ClCompile>
@@ -254,6 +248,12 @@
       <Filter>Object</Filter>
     </ClCompile>
     <ClCompile Include="Object\ObjectLibrary.cpp">
+      <Filter>Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Object\Blueprint.cpp">
+      <Filter>Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Object\BlueprintLoader.cpp">
       <Filter>Object</Filter>
     </ClCompile>
   </ItemGroup>

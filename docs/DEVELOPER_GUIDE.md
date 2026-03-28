@@ -167,7 +167,7 @@ E:\game_engine\Moon\assets
 ```
 
 影响：
-- 修改 `assets/building/*.json`、`assets/csg/*.json`、`assets/shaders/*`、`assets/textures/*` 后，无需再手动复制到 `bin`
+- 修改 `assets/building/*.json`、`assets/objects/*.json`、`assets/shaders/*`、`assets/textures/*` 后，无需再手动复制到 `bin`
 - 重新编译可执行文件后，运行时会直接读取源目录资源
 - 如果未来切到本地缓存目录，只需要统一修改资源路径工具
 

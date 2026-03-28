@@ -1,7 +1,7 @@
 #include "TestScenes.h"
 #include <Logging/Logger.h>
-#include <CSG/Blueprint.h>
-#include <CSG/BlueprintLoader.h>
+#include <Object/Blueprint.h>
+#include <Object/BlueprintLoader.h>
 #include <CSG/CSGBuilder.h>
 #include <CSG/CSGOperations.h>
 #include <Assets/AssetPaths.h>
@@ -17,17 +17,17 @@ void TestCSGBlueprint(EngineCore* engine)
     MOON_LOG_INFO("CSGBlueprint", "=== Testing Wall Rotation ===");
 
     Moon::Scene* scene = engine->GetScene();
-    Moon::CSG::BlueprintDatabase database;
+    Moon::Object::BlueprintDatabase database;
     std::string error;
 
     // 加载 index.json
-    if (!database.LoadIndex(Moon::Assets::BuildCsgPath("index.json"), error)) {
+    if (!database.LoadIndex(Moon::Assets::BuildObjectPath("index.json"), error)) {
         MOON_LOG_ERROR("CSGBlueprint", "Failed to load index: %s", error.c_str());
         return;
     }
 
     // 加载 4 墙 + 窗户 + 门测试
-    auto sceneBlueprint = Moon::CSG::BlueprintLoader::LoadFromFile(Moon::Assets::BuildCsgPath("test_walls_with_openings.json"), error);
+    auto sceneBlueprint = Moon::Object::BlueprintLoader::LoadFromFile(Moon::Assets::BuildObjectPath("test_walls_with_openings.json"), error);
     if (!sceneBlueprint) {
         MOON_LOG_ERROR("CSGBlueprint", "Failed to load test_walls_with_openings.json: %s", error.c_str());
         return;

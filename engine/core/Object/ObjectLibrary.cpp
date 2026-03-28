@@ -5,18 +5,19 @@ namespace Moon {
 namespace Object {
 
 bool ObjectLibrary::InitializeDefaults(std::string& outError) {
-    return Initialize(
-        Assets::BuildCsgPath("index.json"),
-        Assets::BuildObjectPath("catalog.json"),
-        outError);
+    const std::string objectCatalogPath = Assets::BuildObjectPath("catalog.json");
+    if (Initialize(Assets::BuildObjectPath("index.json"), objectCatalogPath, outError)) {
+        return true;
+    }
+    return false;
 }
 
-bool ObjectLibrary::Initialize(const std::string& csgIndexPath,
+bool ObjectLibrary::Initialize(const std::string& backendIndexPath,
                                const std::string& objectCatalogPath,
                                std::string& outError) {
     Clear();
 
-    if (!m_blueprintDatabase.LoadIndex(csgIndexPath, outError)) {
+    if (!m_blueprintDatabase.LoadIndex(backendIndexPath, outError)) {
         return false;
     }
 

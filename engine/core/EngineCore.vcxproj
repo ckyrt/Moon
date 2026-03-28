@@ -125,10 +125,10 @@
     <ClInclude Include="Texture\TextureManager.h" />
     <ClInclude Include="CSG\CSGOperations.h" />
     <ClInclude Include="CSG\CSGComponent.h" />
-    <ClInclude Include="CSG\BlueprintTypes.h" />
-    <ClInclude Include="CSG\Blueprint.h" />
-    <ClInclude Include="CSG\BlueprintLoader.h" />
     <ClInclude Include="CSG\CSGBuilder.h" />
+    <ClInclude Include="Object\BlueprintTypes.h" />
+    <ClInclude Include="Object\Blueprint.h" />
+    <ClInclude Include="Object\BlueprintLoader.h" />
     <ClInclude Include="Object\ObjectCatalog.h" />
     <ClInclude Include="Object\ObjectFactory.h" />
     <ClInclude Include="Object\ObjectLibrary.h" />
@@ -157,10 +157,10 @@
     <ClCompile Include="Assets\MeshManager.cpp" />
     <ClCompile Include="Texture\TextureManager.cpp" />
     <ClCompile Include="CSG\CSGComponent.cpp" />
-    <ClCompile Include="CSG\BlueprintLoader.cpp" />
     <ClCompile Include="CSG\CSGBuilder.cpp" />
     <ClCompile Include="CSG\CSGOperations.cpp" />
-    <ClCompile Include="CSG\Blueprint.cpp" />
+    <ClCompile Include="Object\BlueprintLoader.cpp" />
+    <ClCompile Include="Object\Blueprint.cpp" />
     <ClCompile Include="Object\ObjectCatalog.cpp" />
     <ClCompile Include="Object\ObjectFactory.cpp" />
     <ClCompile Include="Object\ObjectLibrary.cpp" />

@@ -1,9 +1,10 @@
 #include "RelationshipResolver.h"
-#include "Blueprint.h"
 #include "../Logging/Logger.h"
 
 namespace Moon {
 namespace CSG {
+
+using namespace Moon::Object;
 
 RelationshipResolver::RelationshipResolver() {
 }
@@ -11,7 +12,7 @@ RelationshipResolver::RelationshipResolver() {
 RelationshipResolver::~RelationshipResolver() {
 }
 
-std::unique_ptr<Blueprint> RelationshipResolver::Resolve(const Blueprint* input, std::string& outError) {
+std::unique_ptr<Object::Blueprint> RelationshipResolver::Resolve(const Object::Blueprint* input, std::string& outError) {
     if (!input) {
         outError = "Input blueprint is null";
         return nullptr;

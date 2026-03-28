@@ -22,7 +22,7 @@ Implemented in this pass:
 - standalone `EngineMassing` project
 - rule schema for `primitive`, `extrude`, `revolve`, `sweep`, `loft`, `csg`, `deform`, `array`, `group`
 - recursive JSON parser / serializer
-- compiler from massing rules to current CSG blueprint JSON
+- compiler from massing rules to the current object-graph JSON runtime format, which is still implemented by the CSG blueprint runtime today
 - direct compilation support for `primitive`, `group`, `csg`, `array`
 - placeholder compilation path for `extrude`, `revolve`, `sweep`, `loft`, `deform`
 
@@ -32,7 +32,7 @@ Not implemented yet:
 - deformation operators
 - editor inspector / gizmo UI
 - LLM intent classifier and prompt runner
-- bidirectional sync from generated blueprint back to editable rule graph
+- bidirectional sync from generated object graph back to editable rule graph
 
 ## Rule Format
 
@@ -102,7 +102,7 @@ Suggested pipeline:
 2. `AI strategy selector -> EngineMassing RuleSet JSON`
 3. `MassRuleParser::ParseFromString`
 4. `MassRuleCompiler::CompileToBlueprint`
-5. existing `CSG::BlueprintLoader` / `CSGBuilder`
+5. existing object-graph runtime via `Object::BlueprintLoader` / `CSGBuilder`
 6. runtime scene update in editor
 
 ## Strategy Selection Guidelines
@@ -143,7 +143,7 @@ That path generates runtime meshes directly for:
 - `group`
 - `csg` via mesh boolean operations
 
-This is the path intended for real building massing forms that cannot be represented cleanly by the current CSG blueprint schema alone.
+This is the path intended for real building massing forms that cannot be represented cleanly by the current object-graph schema alone.
 
 ## Remaining Gaps
 

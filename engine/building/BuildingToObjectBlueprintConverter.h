@@ -1,10 +1,10 @@
 #pragma once
 
 /**
- * @file BuildingToCSGConverter.h
- * @brief Converts a GeneratedBuilding into a CSG Blueprint JSON string
+ * @file BuildingToObjectBlueprintConverter.h
+ * @brief Converts a GeneratedBuilding into an object blueprint JSON string
  *
- * This is the bridge between the Building pipeline output and the CSG renderer.
+ * This is the bridge between the Building pipeline output and the object blueprint runtime.
  * It handles:
  *   - Wall cube generation
  *   - Window hole cutting (CSG subtract chain per wall)
@@ -13,7 +13,7 @@
  *   - Stair step and landing primitive generation
  *   - Floor slab generation (material by room usage)
  *
- * Produced JSON is suitable for Moon::CSG::BlueprintLoader::ParseFromString().
+ * Produced JSON is suitable for Moon::Object::BlueprintLoader::ParseFromString().
  */
 
 #include "BuildingTypes.h"
@@ -22,11 +22,11 @@
 namespace Moon {
 namespace Building {
 
-class BuildingToCSGConverter
+class BuildingToObjectBlueprintConverter
 {
 public:
     /**
-     * @brief Convert a GeneratedBuilding to a CSG Blueprint JSON string.
+     * @brief Convert a GeneratedBuilding to an object blueprint JSON string.
      *
     * @param building   Output of BuildingPipeline::ProcessBuilding()
      * @return           JSON string ready for BlueprintLoader::ParseFromString()
@@ -45,3 +45,5 @@ private:
 
 } // namespace Building
 } // namespace Moon
+
+

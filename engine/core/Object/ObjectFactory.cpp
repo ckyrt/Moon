@@ -5,7 +5,7 @@
 namespace Moon {
 namespace Object {
 
-void ObjectFactory::SetBlueprintDatabase(CSG::BlueprintDatabase* database) {
+void ObjectFactory::SetBlueprintDatabase(BlueprintDatabase* database) {
     m_blueprintDatabase = database;
 }
 
@@ -68,7 +68,7 @@ GeneratedObject ObjectFactory::BuildObject(const ObjectBuildRequest& request, st
         return result;
     }
 
-    const CSG::Blueprint* blueprint = m_blueprintDatabase->GetBlueprint(graphAsset.graphAssetId);
+    const Blueprint* blueprint = m_blueprintDatabase->GetBlueprint(graphAsset.graphAssetId);
     if (!blueprint) {
         outError = "Object graph asset not found: " + graphAsset.graphAssetId;
         return result;

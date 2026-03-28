@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Blueprint.h"
+#include "../Object/Blueprint.h"
 #include <memory>
 #include <string>
 
@@ -35,7 +35,7 @@ public:
      * @param outError 错误信息
      * @return 展开后的纯CSG Blueprint，失败返回 nullptr
      */
-    std::unique_ptr<Blueprint> Resolve(const Blueprint* input, std::string& outError);
+    std::unique_ptr<Object::Blueprint> Resolve(const Object::Blueprint* input, std::string& outError);
 
 private:
     // Phase A: 扫描所有节点，收集 Host 关系
@@ -47,22 +47,22 @@ private:
         Vector3 guestSize;          // 客体的尺寸（用于生成洞）
     };
     
-    void CollectHostRelations(const Node* node, 
+    void CollectHostRelations(const Object::Node* node,
                              const std::string& currentPath,
                              std::vector<HostRelation>& relations,
                              std::string& outError);
 
     // Phase B: 为每个宿主生成 CSG subtract 节点
-    std::unique_ptr<Node> InsertOpenings(const Node* hostNode,
+    std::unique_ptr<Object::Node> InsertOpenings(const Object::Node* hostNode,
                                          const std::vector<HostRelation>& openings,
                                          std::string& outError);
 
     // Phase C: 移除客体节点的 attach.cut_opening 标记（已处理）
-    void CleanupAttachFlags(Node* node);
+    void CleanupAttachFlags(Object::Node* node);
 
     // 辅助：从 Blueprint 和 overrides 推算 bounding box
     Vector3 EstimateSize(const std::string& blueprintId,
-                        const std::unordered_map<std::string, ValueExpr>& overrides);
+                        const std::unordered_map<std::string, Object::ValueExpr>& overrides);
 };
 
 } // namespace CSG

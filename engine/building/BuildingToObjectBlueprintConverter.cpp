@@ -1,4 +1,4 @@
-#include "BuildingToCSGConverter.h"
+#include "BuildingToObjectBlueprintConverter.h"
 #include "../../external/nlohmann/json.hpp"
 #include <cmath>
 #include <sstream>
@@ -13,7 +13,7 @@ namespace Building {
 // Unit helpers
 // ---------------------------------------------------------------------------
 
-// Meters â†’ centimetres (CSG blueprint uses cm)
+// Meters â†?centimetres (CSG blueprint uses cm)
 static inline float m2cm(float meters) { return meters * 100.0f; }
 
 static inline json pos3(float x, float y, float z)
@@ -135,7 +135,7 @@ static const char* GetProgramMaterial(SpaceUsage usage)
 // Wall / window / door association helpers
 // ---------------------------------------------------------------------------
 
-// Returns the parameter t âˆˆ [0,1] of the closest point on the wall to 'pt',
+// Returns the parameter t âˆ?[0,1] of the closest point on the wall to 'pt',
 // and sets perpDist to the perpendicular distance from pt to the wall line.
 // Returns false if the wall is degenerate.
 static bool ProjectOntoWall(const GridPos2D& pt, const WallSegment& wall,
@@ -158,7 +158,7 @@ static bool ProjectOntoWall(const GridPos2D& pt, const WallSegment& wall,
     return true;
 }
 
-// Window belongs to a wall if: same spaceId, same floor, t âˆˆ [0.02,0.98],
+// Window belongs to a wall if: same spaceId, same floor, t âˆ?[0.02,0.98],
 // perpendicular distance < 50 cm.
 static bool IsWindowOnWall(const Window& window, const WallSegment& wall)
 {
@@ -171,7 +171,7 @@ static bool IsWindowOnWall(const Window& window, const WallSegment& wall)
 }
 
 // Door belongs to a wall if: door.spaceA or spaceB matches wall.spaceId,
-// same floor, t âˆˆ [0.02,0.98], perpendicular distance < 50 cm.
+// same floor, t âˆ?[0.02,0.98], perpendicular distance < 50 cm.
 static bool IsDoorOnWall(const Door& door, const WallSegment& wall)
 {
     if (wall.spaceId != door.spaceA && wall.spaceId != door.spaceB) return false;
@@ -197,10 +197,10 @@ static json SubtractHoles(json base, const std::vector<json>& holes)
 }
 
 // ---------------------------------------------------------------------------
-// BuildingToCSGConverter::Convert
+// BuildingToObjectBlueprintConverter::Convert
 // ---------------------------------------------------------------------------
 
-std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
+std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding& building)
 {
     json blueprint;
     blueprint["schema_version"] = 1;
@@ -612,10 +612,12 @@ std::string BuildingToCSGConverter::Convert(const GeneratedBuilding& building)
 }
 
 // Satisfy the declaration in the header (delegates to file-scope helper)
-bool BuildingToCSGConverter::IsWindowOnWall(const Window& window, const WallSegment& wall)
+bool BuildingToObjectBlueprintConverter::IsWindowOnWall(const Window& window, const WallSegment& wall)
 {
     return ::Moon::Building::IsWindowOnWall(window, wall);
 }
 
 } // namespace Building
 } // namespace Moon
+
+
