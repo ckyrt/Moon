@@ -234,6 +234,23 @@ namespace {
         return std::filesystem::path(Moon::Assets::BuildAssetPath("building"));
     }
 
+    std::filesystem::path GetObjectPresetDirectory() {
+        return std::filesystem::path(Moon::Assets::BuildObjectPath(""));
+    }
+
+    std::string ToForwardSlashPath(const std::filesystem::path& path) {
+        return path.generic_string();
+    }
+
+    std::string BuildObjectPresetName(const std::filesystem::path& relativePath) {
+        std::string name = relativePath.stem().string();
+        const std::string parent = relativePath.parent_path().generic_string();
+        if (!parent.empty()) {
+            name += " (" + parent + ")";
+        }
+        return name;
+    }
+
     std::string ReadTextFile(const std::filesystem::path& path) {
         std::ifstream input(path, std::ios::in | std::ios::binary);
         if (!input.is_open()) {
@@ -1639,6 +1656,61 @@ namespace CommandHandlers {
         return response.dump();
     }
 
+    std::string HandlePreviewObject(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        if (!req.contains("objectJson")) {
+            return CreateErrorResponse("Missing 'objectJson' field");
+        }
+
+        std::string loadError;
+        Moon::Object::BlueprintDatabase database;
+        const std::string objectIndexPath = Moon::Assets::BuildObjectPath("index.json");
+        if (!database.LoadIndex(objectIndexPath, loadError)) {
+            return CreateErrorResponse("Failed to load object index: " + loadError);
+        }
+
+        auto blueprint = Moon::Object::BlueprintLoader::ParseFromString(req["objectJson"].get<std::string>(), loadError);
+        if (!blueprint) {
+            return CreateErrorResponse("Failed to parse object preview: " + loadError);
+        }
+
+        Moon::CSG::CSGBuilder builder;
+        builder.SetBlueprintDatabase(&database);
+        std::unordered_map<std::string, float> params;
+        Moon::CSG::BuildResult buildResult = builder.Build(blueprint.get(), params, loadError);
+        if (buildResult.meshes.empty()) {
+            return CreateErrorResponse("Failed to build object preview: " + loadError);
+        }
+
+        ClearMassingPreviewNodes(scene);
+        Moon::SceneNode* previewRoot = scene->CreateNode("__MassingPreview");
+
+        for (size_t i = 0; i < buildResult.meshes.size(); ++i) {
+            const auto& item = buildResult.meshes[i];
+            const std::string childName = "ObjectPart_" + std::to_string(i);
+            Moon::SceneNode* childNode = scene->CreateNode(childName);
+            childNode->SetParent(previewRoot, false);
+            childNode->GetTransform()->SetLocalPosition(item.worldTransform.position);
+            childNode->GetTransform()->SetLocalRotation(item.worldTransform.rotation);
+            childNode->GetTransform()->SetLocalScale(item.worldTransform.scale);
+
+            Moon::MeshRenderer* renderer = childNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(item.mesh);
+            AddPreviewMaterial(childNode, item.material);
+        }
+
+        const bool focusCamera = req.value("focusCamera", false);
+        if (focusCamera) {
+            FrameCameraToBounds(handler, ComputePreviewBounds(buildResult));
+        }
+
+        json response;
+        response["success"] = true;
+        response["rootNodeId"] = previewRoot->GetID();
+        response["meshCount"] = buildResult.meshes.size();
+        response["warnings"] = json::array();
+        return response.dump();
+    }
+
     std::string HandlePlanBuildingMassing(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         (void)handler;
         (void)scene;
@@ -1783,6 +1855,82 @@ namespace CommandHandlers {
         return response.dump();
     }
 
+    std::string HandleListObjectPresets(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)req;
+        (void)scene;
+
+        const std::filesystem::path objectDirectory = GetObjectPresetDirectory();
+        if (!std::filesystem::exists(objectDirectory)) {
+            return CreateErrorResponse("Object preset directory not found: " + objectDirectory.string());
+        }
+
+        std::vector<std::filesystem::path> presetPaths;
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(objectDirectory)) {
+            if (!entry.is_regular_file() || entry.path().extension() != ".json") {
+                continue;
+            }
+
+            const std::filesystem::path relativePath = std::filesystem::relative(entry.path(), objectDirectory);
+            const std::string relativeString = ToForwardSlashPath(relativePath);
+            if (relativeString == "catalog.json" ||
+                relativeString == "index.json" ||
+                relativeString == "generated_building.json") {
+                continue;
+            }
+
+            presetPaths.push_back(relativePath);
+        }
+
+        std::sort(presetPaths.begin(), presetPaths.end());
+
+        json response;
+        response["success"] = true;
+        response["presets"] = json::array();
+
+        for (const std::filesystem::path& relativePath : presetPaths) {
+            json preset;
+            preset["id"] = "object:" + ToForwardSlashPath(relativePath);
+            preset["name"] = BuildObjectPresetName(relativePath);
+            preset["file"] = "objects/" + ToForwardSlashPath(relativePath);
+            response["presets"].push_back(preset);
+        }
+
+        return response.dump();
+    }
+
+    std::string HandleLoadObjectPreset(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)scene;
+
+        if (!req.contains("presetFile")) {
+            return CreateErrorResponse("Missing 'presetFile' field");
+        }
+
+        const std::string presetFile = req["presetFile"].get<std::string>();
+        std::filesystem::path presetPath;
+        if (presetFile.rfind("objects/", 0) == 0) {
+            presetPath = GetObjectPresetDirectory() / presetFile.substr(8);
+        } else {
+            presetPath = GetObjectPresetDirectory() / presetFile;
+        }
+
+        if (!std::filesystem::exists(presetPath) || presetPath.extension() != ".json") {
+            return CreateErrorResponse("Object preset not found: " + presetPath.string());
+        }
+
+        const std::string objectJson = ReadTextFile(presetPath);
+        if (objectJson.empty()) {
+            return CreateErrorResponse("Failed to read object preset: " + presetPath.string());
+        }
+
+        json response;
+        response["success"] = true;
+        response["presetFile"] = ToForwardSlashPath(std::filesystem::relative(presetPath, GetObjectPresetDirectory()));
+        response["objectJson"] = objectJson;
+        return response.dump();
+    }
+
     std::string HandleWriteLog(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         if (!req.contains("logContent")) {
             return CreateErrorResponse("Missing 'logContent' field");
@@ -1837,6 +1985,9 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"getEnvironmentSettings",   CommandHandlers::HandleGetEnvironmentSettings},
     {"setEnvironmentTime",       CommandHandlers::HandleSetEnvironmentTime},
     {"setEnvironmentWeather",    CommandHandlers::HandleSetEnvironmentWeather},
+    {"listObjectPresets",        CommandHandlers::HandleListObjectPresets},
+    {"loadObjectPreset",         CommandHandlers::HandleLoadObjectPreset},
+    {"previewObject",            CommandHandlers::HandlePreviewObject},
     {"setMaterialMetallic",      CommandHandlers::HandleSetMaterialMetallic},
     {"setMaterialRoughness",     CommandHandlers::HandleSetMaterialRoughness},
     {"setMaterialBaseColor",     CommandHandlers::HandleSetMaterialBaseColor},
@@ -1936,6 +2087,4 @@ std::string MoonEngineMessageHandler::ProcessRequest(const std::string& request)
         return CreateErrorResponse(std::string("Exception: ") + e.what());
     }
 }
-
-
 

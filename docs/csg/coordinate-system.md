@@ -6,7 +6,7 @@
 
 ## ⚡ 关键规则 (Quick Reference)
 
-> **完整规则和示例请查看：[assets/objects/README.md](../../assets/objects/README.md)**
+> **完整规则请查看：[docs/object-system.md](../object-system.md)，AI 生成规则请查看：[docs/object-system-ai.md](../object-system-ai.md)**
 
 ### 核心原则
 
@@ -103,7 +103,8 @@ Vector3 ManifoldToEngine(x, y, z) {
 
 ## 📚 参考文档
 
-- **[assets/objects/README.md](../../assets/objects/README.md)** - 完整规则和实用示例 ⭐ 主要参考
+- **[docs/object-system.md](../object-system.md)** - Object system human-facing source of truth
+- **[docs/object-system-ai.md](../object-system-ai.md)** - Object generation rules for AI
 - [CSG 可组合物体系统](./csg-composable-object-system.md) - 蓝图系统架构
 - [ADR-0005: 坐标系统与矩阵约定](../adr-0005-coordinate-system-and-matrix-conventions.md) - 技术规范
 

@@ -122,6 +122,12 @@ export interface MassingPreset {
   file: string;
 }
 
+export interface AssetPreset {
+  id: string;
+  name: string;
+  file: string;
+}
+
 export interface MassingPromptResult {
   ruleJson: string;
   strategy: string;
@@ -191,6 +197,9 @@ export interface MoonEngineAPI {
   generateMassingFromPrompt(prompt: string, currentRuleJson?: string): Promise<MassingPromptResult>;
   previewMassing(ruleJson: string, options?: { focusCamera?: boolean }): Promise<MassingPreviewResult>;
   previewBuilding(buildingJson: string, options?: { focusCamera?: boolean }): Promise<MassingPreviewResult>;
+  listObjectPresets(): Promise<AssetPreset[]>;
+  loadObjectPreset(presetFile: string): Promise<string>;
+  previewObject(objectJson: string, options?: { focusCamera?: boolean }): Promise<MassingPreviewResult>;
   clearMassingPreview(): Promise<void>;
 
   // Environment

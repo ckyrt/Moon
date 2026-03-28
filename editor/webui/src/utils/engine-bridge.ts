@@ -10,6 +10,7 @@
  */
 
 import type {
+  AssetPreset,
   EnvironmentSettings,
   MassingPreset,
   MassingPreviewResult,
@@ -381,6 +382,97 @@ const createRealAPI = (): MoonEngineAPI => {
         const request = JSON.stringify({
           command: 'previewBuilding',
           buildingJson,
+          focusCamera: options?.focusCamera ?? false
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const parsed = JSON.parse(response) as MassingPreviewResult & { success?: boolean; error?: string };
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+              return;
+            }
+            resolve({
+              rootNodeId: parsed.rootNodeId ?? 0,
+              meshCount: parsed.meshCount,
+              warnings: parsed.warnings ?? []
+            });
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    listObjectPresets: wrapAsyncEngineCall('listObjectPresets', async (): Promise<AssetPreset[]> => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<AssetPreset[]>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'listObjectPresets'
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const parsed = JSON.parse(response) as { presets?: AssetPreset[]; error?: string };
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+              return;
+            }
+            resolve(parsed.presets ?? []);
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    loadObjectPreset: wrapAsyncEngineCall('loadObjectPreset', async (presetFile: string): Promise<string> => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<string>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'loadObjectPreset',
+          presetFile
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const parsed = JSON.parse(response) as { objectJson?: string; error?: string };
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+              return;
+            }
+            resolve(parsed.objectJson ?? '');
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    previewObject: wrapAsyncEngineCall('previewObject', async (
+      objectJson: string,
+      options?: { focusCamera?: boolean }
+    ): Promise<MassingPreviewResult> => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<MassingPreviewResult>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'previewObject',
+          objectJson,
           focusCamera: options?.focusCamera ?? false
         });
 

@@ -41,7 +41,8 @@
  * 8. Stair Generator - Generate stairs
  * 9. Facade Generator - Generate exterior elements
  * 
- * See assets/building/README.md for the current building specification
+ * See docs/building-system.md for the human-facing building spec
+ * and docs/building-system-ai.md for the AI generation guide.
  */
 
 // Core types

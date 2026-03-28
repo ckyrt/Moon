@@ -209,5 +209,5 @@ if ($LASTEXITCODE -eq 0) {
 ## 参考资料
 
 - [Google Test 文档](https://google.github.io/googletest/)
-- [Building System 规范](../../../assets/building/README.md)
-- [Building System README](../README.md)
+- [Building System Spec](../../../docs/building-system.md)
+- [Building System AI Guide](../../../docs/building-system-ai.md)

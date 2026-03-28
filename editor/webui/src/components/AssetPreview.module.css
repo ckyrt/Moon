@@ -1,0 +1,103 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(180deg, rgba(32, 36, 44, 0.96), rgba(24, 27, 34, 0.98));
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.clearButton,
+.kindButton,
+.previewButton {
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.clearButton:hover,
+.kindButton:hover,
+.previewButton:hover {
+  background: var(--bg-hover);
+}
+
+.clearButton {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.kindSwitch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.kindButton {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.kindButtonActive {
+  border-color: var(--accent-blue);
+  background: rgba(70, 120, 255, 0.18);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.select {
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.previewButton {
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+.status,
+.error {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.status {
+  color: var(--text-secondary);
+}
+
+.error {
+  color: #ff8f8f;
+}
+
+.jsonView {
+  min-height: 180px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: rgba(14, 16, 21, 0.95);
+  color: #d8deea;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
