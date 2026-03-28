@@ -53,7 +53,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSGOutput_HasRequiredFields) 
         << "object blueprint JSON 必须包含 root 节点";
     
     EXPECT_TRUE(csg["root"].is_object()) 
-        << "root 必须是对�?;
+        << "root must be an object";
 }
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSGRoot_HasCorrectStructure) {
@@ -213,7 +213,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Doors_ConvertedToCSG) {
     ASSERT_TRUE(pipeline.ProcessBuilding(inputJson, building, errorMsg));
     
     if (building.doors.size() == 0) {
-        GTEST_SKIP() << "测试建筑没有�?;
+        GTEST_SKIP() << "test building has no doors";
     }
     
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
@@ -264,7 +264,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Doors_ConvertedToCSG) {
     
     bool foundDoors = findDoors(csg["root"]);
     EXPECT_TRUE(foundDoors) 
-        << "CSG 输出应该包含门的开�?;
+        << "output should contain door openings";
 }
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, Windows_ConvertedToCSG) {
@@ -273,7 +273,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Windows_ConvertedToCSG) {
     std::string errorMsg;
     
     ASSERT_TRUE(pipeline.ProcessBuilding(inputJson, building, errorMsg));
-    ASSERT_GT(building.windows.size(), 0) << "测试建筑必须有窗�?;
+    ASSERT_GT(building.windows.size(), 0) << "test building must have windows";
     
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
@@ -311,7 +311,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Windows_ConvertedToCSG) {
     
     // 至少应该有一些窗户被转换
     EXPECT_GT(windowCount, 0) 
-        << "CSG 输出必须包含窗户开�?;
+        << "output must contain window openings";
 }
 
 // ========================================
@@ -466,7 +466,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSG_UsesSubtractOperation) {
     
     bool hasSubtract = findSubtract(csg["root"]);
     EXPECT_TRUE(hasSubtract) 
-        << "CSG 应该使用 subtract 操作创建开�?;
+        << "output should use subtract operations for openings";
 }
 
 // ========================================
@@ -482,15 +482,15 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CompleteConversion_AllCompone
     
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
-    EXPECT_FALSE(csgJson.empty()) << "CSG 输出不应该为�?;
-    EXPECT_TRUE(IsValidJSON(csgJson)) << "CSG 输出必须是有�?JSON";
+    EXPECT_FALSE(csgJson.empty()) << "output should not be empty";
+    EXPECT_TRUE(IsValidJSON(csgJson)) << "output must be valid JSON";
     
     json csg = ParseJSON(csgJson);
     
     // 验证 JSON 大小合理（有实际内容�?
     std::string csgStr = csg.dump();
     EXPECT_GT(csgStr.length(), 100) 
-        << "object blueprint JSON 应该有实质内�?;
+        << "object blueprint JSON should contain meaningful content";
 }
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, EmptyBuilding_ValidCSG) {
@@ -501,7 +501,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, EmptyBuilding_ValidCSG) {
     
     // 即使是空的，也应该生成有效的 CSG
     EXPECT_FALSE(csgJson.empty()) << "即使空建筑也应该生成 CSG";
-    EXPECT_TRUE(IsValidJSON(csgJson)) << "空建筑的 CSG 也应该是有效 JSON";
+    EXPECT_TRUE(IsValidJSON(csgJson)) << "output must be valid JSON";
 }
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, LargeBuilding_HandleCorrectly) {
@@ -579,7 +579,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, MultiFloor_CorrectHeightOffse
     std::string errorMsg;
     
     ASSERT_TRUE(pipeline.ProcessBuilding(inputJson, building, errorMsg));
-    ASSERT_GT(building.definition.floors.size(), 1) << "必须是多层建�?;
+    ASSERT_GT(building.definition.floors.size(), 1) << "building must have multiple floors";
     
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
@@ -629,5 +629,6 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, MultiFloor_CorrectHeightOffse
     EXPECT_GT(heights.size(), 1) 
         << "多层建筑应该有不同高度的几何";
 }
+
 
 
