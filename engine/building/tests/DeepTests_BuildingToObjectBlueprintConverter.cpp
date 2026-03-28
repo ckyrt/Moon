@@ -1,4 +1,4 @@
-// 深入测试 BuildingToObjectBlueprintConverter - 验证 CSG 转换
+﻿//  BuildingToObjectBlueprintConverter -  CSG 
 #include <gtest/gtest.h>
 #include <chrono>
 #include "building/BuildingToObjectBlueprintConverter.h"
@@ -30,7 +30,7 @@ protected:
 };
 
 // ========================================
-// 验证 object blueprint JSON 结构
+//  object blueprint JSON 
 // ========================================
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSGOutput_HasRequiredFields) {
@@ -42,15 +42,15 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSGOutput_HasRequiredFields) 
     
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
-    ASSERT_TRUE(IsValidJSON(csgJson)) << "输出必须是有效的 JSON";
+    ASSERT_TRUE(IsValidJSON(csgJson)) << " JSON";
     
     json csg = ParseJSON(csgJson);
     
-    // 验证必需字段
+    // 
     EXPECT_TRUE(csg.contains("schema_version")) 
-        << "object blueprint JSON 必须包含 schema_version";
+        << "object blueprint JSON  schema_version";
     EXPECT_TRUE(csg.contains("root")) 
-        << "object blueprint JSON 必须包含 root 节点";
+        << "object blueprint JSON  root ";
     
     EXPECT_TRUE(csg["root"].is_object()) 
         << "root must be an object";
@@ -70,25 +70,25 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSGRoot_HasCorrectStructure) 
     
     const auto& root = csg["root"];
     
-    // Root 应该�?type 字段
+    // Root ?type 
     EXPECT_TRUE(root.contains("type")) 
-        << "Root 节点必须�?type 字段";
+        << "Root ?type ";
     
     std::string rootType = root["type"];
     
-    // Root 应该�?group, csg, �?primitive
+    // Root ?group, csg, ?primitive
     EXPECT_TRUE(rootType == "group" || rootType == "csg" || rootType == "primitive") 
-        << "Root type 必须�?group/csg/primitive，实际是: " << rootType;
+        << "Root type ?group/csg/primitive: " << rootType;
     
-    // Group �?CSG 节点应该�?children
+    // Group ?CSG ?children
     if (rootType == "group" || rootType == "csg") {
         EXPECT_TRUE(root.contains("children") && root["children"].is_array()) 
-            << "Group/CSG 节点必须�?children 数组";
+            << "Group/CSG ?children ";
     }
 }
 
 // ========================================
-// 验证墙体转换
+// 
 // ========================================
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, Walls_ConvertedToCSG) {
@@ -97,15 +97,15 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Walls_ConvertedToCSG) {
     std::string errorMsg;
     
     ASSERT_TRUE(pipeline.ProcessBuilding(inputJson, building, errorMsg));
-    ASSERT_GT(building.walls.size(), 0) << "必须有墙";
+    ASSERT_GT(building.walls.size(), 0) << "";
     
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
     
-    // 墙应该在 CSG 树中的某个地�?
-    // 深度优先搜索查找墙相关的节点
+    //  CSG ?
+    // 
     std::function<bool(const json&)> findWalls = [&](const json& node) -> bool {
-        // 检查name字段是否包含"wall"
+        // ame"wall"
         if (node.contains("name")) {
             std::string name = node["name"];
             if (name.find("wall") != std::string::npos) {
@@ -113,7 +113,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Walls_ConvertedToCSG) {
             }
         }
         
-        // 检查primitive类型或reference类型
+        // rimitiveeference
         if (node.contains("type")) {
             std::string type = node["type"];
             if (type == "primitive" || type == "reference") {
@@ -132,7 +132,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Walls_ConvertedToCSG) {
             }
         }
         
-        // CSG节点检查左右子�?
+        // CSG?
         if (node.contains("left")) {
             if (findWalls(node["left"])) return true;
         }
@@ -145,7 +145,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Walls_ConvertedToCSG) {
     
     bool foundWalls = findWalls(csg["root"]);
     EXPECT_TRUE(foundWalls) 
-        << "CSG 输出必须包含墙体几何";
+        << "CSG ";
 }
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, Wall_HasCorrectDimensions) {
@@ -156,7 +156,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Wall_HasCorrectDimensions) {
     ASSERT_TRUE(pipeline.ProcessBuilding(inputJson, building, errorMsg));
     ASSERT_GT(building.walls.size(), 0);
     
-    // 记录原始墙的尺寸
+    // 
     const auto& firstWall = building.walls[0];
     float wallLength = static_cast<float>(std::sqrt(
         std::pow(firstWall.end[0] - firstWall.start[0], 2) +
@@ -166,16 +166,16 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Wall_HasCorrectDimensions) {
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
     
-    // 查找包含尺寸信息的节�?
+    // ?
     std::function<bool(const json&)> checkDimensions = [&](const json& node) -> bool {
         if (node.contains("size") && node["size"].is_array() && node["size"].size() == 3) {
-            // 验证尺寸合理
+            // 
             float x = node["size"][0];
             float y = node["size"][1];
             float z = node["size"][2];
             
             if (x > 0 && y > 0 && z > 0) {
-                // 至少一个维度应该接近墙的长度或高度
+                // 
                 bool hasReasonableSize = 
                     (std::abs(x - wallLength) < 1.0f) ||
                     (std::abs(y - wallLength) < 1.0f) ||
@@ -198,11 +198,11 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Wall_HasCorrectDimensions) {
         ? checkDimensions(csg["root"])
         : checkDimensions(csg);
     EXPECT_TRUE(hasValidDimensions) 
-        << "CSG 几何必须有合理的尺寸";
+        << "CSG ";
 }
 
 // ========================================
-// 验证门窗转换
+// 
 // ========================================
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, Doors_ConvertedToCSG) {
@@ -219,9 +219,9 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Doors_ConvertedToCSG) {
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
     
-    // 门应该作为reference节点或有door相关的name
+    // eferencedoorame
     std::function<bool(const json&)> findDoors = [&](const json& node) -> bool {
-        // 检查name字段
+        // ame
         if (node.contains("name")) {
             std::string name = node["name"];
             if (name.find("door") != std::string::npos) {
@@ -229,7 +229,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Doors_ConvertedToCSG) {
             }
         }
         
-        // 检查reference类型
+        // eference
         if (node.contains("ref")) {
             std::string ref = node["ref"];
             if (ref.find("door") != std::string::npos) {
@@ -237,7 +237,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Doors_ConvertedToCSG) {
             }
         }
         
-        // 检查opening（门窗开口）
+        // pening
         if (node.contains("ref")) {
             std::string ref = node["ref"];
             if (ref.find("opening") != std::string::npos) {
@@ -251,7 +251,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Doors_ConvertedToCSG) {
             }
         }
         
-        // CSG节点检查左右子�?
+        // CSG?
         if (node.contains("left")) {
             if (findDoors(node["left"])) return true;
         }
@@ -278,11 +278,11 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Windows_ConvertedToCSG) {
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
     
-    // 窗户应该作为reference节点或有window相关的name
+    // referencewindowame
     std::function<int(const json&)> countWindows = [&](const json& node) -> int {
         int count = 0;
         
-        // 检查name字段
+        // ame
         if (node.contains("name")) {
             std::string name = node["name"];
             if (name.find("window") != std::string::npos) {
@@ -290,7 +290,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Windows_ConvertedToCSG) {
             }
         }
         
-        // 检查reference类型
+        // eference
         if (node.contains("ref")) {
             std::string ref = node["ref"];
             if (ref.find("window") != std::string::npos) {
@@ -309,13 +309,13 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Windows_ConvertedToCSG) {
     
     int windowCount = countWindows(csg["root"]);
     
-    // 至少应该有一些窗户被转换
+    // 
     EXPECT_GT(windowCount, 0) 
         << "output must contain window openings";
 }
 
 // ========================================
-// 验证楼梯转换
+// 
 // ========================================
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, Stairs_ConvertedToCSG) {
@@ -326,15 +326,15 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Stairs_ConvertedToCSG) {
     ASSERT_TRUE(pipeline.ProcessBuilding(inputJson, building, errorMsg));
     
     if (building.stairs.size() == 0) {
-        GTEST_SKIP() << "测试建筑没有楼梯";
+        GTEST_SKIP() << "";
     }
     
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
     
-    // 楼梯应该�?CSG 中表�?
+    // ?CSG ?
     std::function<bool(const json&)> findStairs = [&](const json& node) -> bool {
-        // 检查name字段
+        // ame
         if (node.contains("name")) {
             std::string name = node["name"];
             if (name.find("stair") != std::string::npos) {
@@ -342,7 +342,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Stairs_ConvertedToCSG) {
             }
         }
         
-        // 检查reference类型
+        // eference
         if (node.contains("ref")) {
             std::string ref = node["ref"];
             if (ref.find("stair") != std::string::npos) {
@@ -356,7 +356,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Stairs_ConvertedToCSG) {
             }
         }
         
-        // CSG节点检查左右子�?
+        // CSG?
         if (node.contains("left")) {
             if (findStairs(node["left"])) return true;
         }
@@ -370,15 +370,15 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Stairs_ConvertedToCSG) {
     bool foundStairs = findStairs(csg["root"]);
     
     if (!foundStairs) {
-        GTEST_SKIP() << "楼梯转换功能尚未实现";
+        GTEST_SKIP() << "";
     }
     
     EXPECT_TRUE(foundStairs) 
-        << "CSG 输出应该包含楼梯几何";
+        << "CSG ";
 }
 
 // ========================================
-// 验证 CSG 操作
+//  CSG 
 // ========================================
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSG_UsesUnionOperation) {
@@ -391,12 +391,12 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSG_UsesUnionOperation) {
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
     
-    // 查找 union 操作�?group 节点（两者都能组合几何）
+    //  union ?group 
     std::function<bool(const json&)> findUnionOrGroup = [&](const json& node) -> bool {
         if (node.contains("type")) {
             std::string type = node["type"];
             if (type == "group") {
-                return true;  // group节点相当于并列输�?
+                return true;  // group?
             }
         }
         
@@ -425,7 +425,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSG_UsesUnionOperation) {
     
     bool hasUnionOrGroup = findUnionOrGroup(csg["root"]);
     EXPECT_TRUE(hasUnionOrGroup) 
-        << "CSG 应该使用 union �?group 节点组合几何";
+        << "CSG  union ?group ";
 }
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSG_UsesSubtractOperation) {
@@ -438,7 +438,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSG_UsesSubtractOperation) {
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
     
-    // 查找 subtract 操作（门窗开口）
+    //  subtract 
     std::function<bool(const json&)> findSubtract = [&](const json& node) -> bool {
         if (node.contains("operation")) {
             std::string op = node["operation"];
@@ -453,7 +453,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSG_UsesSubtractOperation) {
             }
         }
         
-        // CSG节点检查左右子�?
+        // CSG?
         if (node.contains("left")) {
             if (findSubtract(node["left"])) return true;
         }
@@ -470,7 +470,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CSG_UsesSubtractOperation) {
 }
 
 // ========================================
-// 验证完整转换
+// 
 // ========================================
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, CompleteConversion_AllComponents) {
@@ -487,7 +487,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CompleteConversion_AllCompone
     
     json csg = ParseJSON(csgJson);
     
-    // 验证 JSON 大小合理（有实际内容�?
+    //  JSON ?
     std::string csgStr = csg.dump();
     EXPECT_GT(csgStr.length(), 100) 
         << "object blueprint JSON should contain meaningful content";
@@ -495,12 +495,12 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, CompleteConversion_AllCompone
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, EmptyBuilding_ValidCSG) {
     GeneratedBuilding building;
-    // 空建筑（没有�?�?窗）
+    // ??
     
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     
-    // 即使是空的，也应该生成有效的 CSG
-    EXPECT_FALSE(csgJson.empty()) << "即使空建筑也应该生成 CSG";
+    //  CSG
+    EXPECT_FALSE(csgJson.empty()) << " CSG";
     EXPECT_TRUE(IsValidJSON(csgJson)) << "output must be valid JSON";
 }
 
@@ -518,15 +518,15 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, LargeBuilding_HandleCorrectly
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     
-    EXPECT_TRUE(IsValidJSON(csgJson)) << "大型建筑�?CSG 必须有效";
+    EXPECT_TRUE(IsValidJSON(csgJson)) << "?CSG ";
     
-    // 转换不应该太�?
+    // ?
     EXPECT_LT(duration.count(), 2000) 
-        << "CSG 转换时间过长: " << duration.count() << "ms";
+        << "CSG : " << duration.count() << "ms";
 }
 
 // ========================================
-// 验证几何变换
+// 
 // ========================================
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, Geometry_HasTransforms) {
@@ -539,16 +539,16 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Geometry_HasTransforms) {
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
     
-    // 几何应该有位置变�?
+    // ?
     std::function<bool(const json&)> findTransforms = [&](const json& node) -> bool {
-        // 直接包含这些字段
+        // 
         if (node.contains("position") || node.contains("translation") || node.contains("rotation")) {
             return true;
         }
         
-        // transform对象包含position
+        // transformposition
         if (node.contains("transform")) {
-            return true;  // 只要有transform字段就算通过
+            return true;  // ransform
         }
         
         if (node.contains("children") && node["children"].is_array()) {
@@ -557,7 +557,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Geometry_HasTransforms) {
             }
         }
         
-        // CSG节点检查左右子�?
+        // CSG?
         if (node.contains("left")) {
             if (findTransforms(node["left"])) return true;
         }
@@ -570,7 +570,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, Geometry_HasTransforms) {
     
     bool hasTransforms = findTransforms(csg["root"]);
     EXPECT_TRUE(hasTransforms) 
-        << "CSG 几何应该包含位置/变换信息";
+        << "CSG /";
 }
 
 TEST_F(BuildingToObjectBlueprintConverterDeepTest, MultiFloor_CorrectHeightOffsets) {
@@ -584,21 +584,21 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, MultiFloor_CorrectHeightOffse
     std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
     json csg = ParseJSON(csgJson);
     
-    // 多层建筑应该有不同高度的几何
+    // 
     std::function<std::set<float>(const json&)> collectHeights = [&](const json& node) -> std::set<float> {
         std::set<float> heights;
         
-        // 直接position字段
+        // position
         if (node.contains("position") && node["position"].is_array() && node["position"].size() >= 3) {
-            float y = node["position"][1];  // Y轴是高度，不是Z�?
+            float y = node["position"][1];  // Y?
             heights.insert(y);
         }
         
-        // transform.position字段
+        // transform.position
         if (node.contains("transform") && node["transform"].is_object()) {
             const auto& transform = node["transform"];
             if (transform.contains("position") && transform["position"].is_array() && transform["position"].size() >= 3) {
-                float y = transform["position"][1];  // Y轴是高度
+                float y = transform["position"][1];  // Y
                 heights.insert(y);
             }
         }
@@ -610,7 +610,7 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, MultiFloor_CorrectHeightOffse
             }
         }
         
-        // CSG节点检查左右子�?
+        // CSG?
         if (node.contains("left")) {
             auto leftHeights = collectHeights(node["left"]);
             heights.insert(leftHeights.begin(), leftHeights.end());
@@ -625,10 +625,11 @@ TEST_F(BuildingToObjectBlueprintConverterDeepTest, MultiFloor_CorrectHeightOffse
     
     auto heights = collectHeights(csg["root"]);
     
-    // 多层建筑应该有多个不同的高度�?
+    // ?
     EXPECT_GT(heights.size(), 1) 
-        << "多层建筑应该有不同高度的几何";
+        << "";
 }
+
 
 
 

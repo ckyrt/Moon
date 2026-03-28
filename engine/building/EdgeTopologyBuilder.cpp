@@ -41,9 +41,9 @@ std::vector<EdgeInfo> EdgeTopologyBuilder::ExtractEdges(const BuildingDefinition
                 GridPos2D topLeft = {rect.origin[0], rect.origin[1] + rect.size[1]};
                 
                 // Create 4 edges (bottom, right, top, left)
-                const float wallHeight = space.properties.ceilingHeight > 0.0f
-                    ? space.properties.ceilingHeight
-                    : 0.0f;
+                const float wallHeight = std::max(
+                    space.properties.ceilingHeight > 0.0f ? space.properties.ceilingHeight : 0.0f,
+                    floor.floorHeight > 0.0f ? floor.floorHeight : 0.0f);
                 EdgeInfo edges_arr[4] = {
                     {bottomLeft, bottomRight, space.spaceId, floor.level, wallHeight, space.properties.isOutdoor},
                     {bottomRight, topRight, space.spaceId, floor.level, wallHeight, space.properties.isOutdoor},

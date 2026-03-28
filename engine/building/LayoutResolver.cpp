@@ -12,6 +12,133 @@ using json = nlohmann::json;
 namespace Moon {
 namespace Building {
 
+namespace {
+
+constexpr float kTypicalOfficeFloorHeight = 3.8f;
+constexpr float kTypicalOfficeGroundFloorHeight = 4.5f;
+constexpr float kTypicalRetailFloorHeight = 4.5f;
+constexpr float kTypicalRetailGroundFloorHeight = 5.0f;
+constexpr float kTypicalResidentialFloorHeight = 3.0f;
+constexpr float kTypicalResidentialGroundFloorHeight = 3.5f;
+constexpr float kTypicalFallbackFloorHeight = 3.0f;
+
+const SemanticFloor* FindSemanticFloor(const SemanticBuilding& input, int floorLevel) {
+    for (const auto& floor : input.floors) {
+        if (floor.level == floorLevel) {
+            return &floor;
+        }
+    }
+    return nullptr;
+}
+
+float GetTypologyFloorHeight(const SemanticBuilding& input, int floorLevel) {
+    if (input.buildingType == "mall" || input.buildingType == "shopping_center" ||
+        input.buildingType == "retail_center") {
+        return floorLevel == 0 ? kTypicalRetailGroundFloorHeight : kTypicalRetailFloorHeight;
+    }
+    if (input.buildingType == "office" || input.buildingType == "office_tower") {
+        return floorLevel == 0 ? kTypicalOfficeGroundFloorHeight : kTypicalOfficeFloorHeight;
+    }
+    if (input.buildingType == "apartment" || input.buildingType == "cbd_residential") {
+        return floorLevel == 0 ? kTypicalResidentialGroundFloorHeight : kTypicalResidentialFloorHeight;
+    }
+
+    return kTypicalFallbackFloorHeight;
+}
+
+float GetReasonableMaxFloorHeight(const SemanticBuilding& input, int floorLevel) {
+    if (input.buildingType == "mall" || input.buildingType == "shopping_center" ||
+        input.buildingType == "retail_center") {
+        return floorLevel == 0 ? 8.0f : 6.5f;
+    }
+    if (input.buildingType == "office" || input.buildingType == "office_tower") {
+        return floorLevel <= 1 ? 7.5f : 5.5f;
+    }
+    if (input.buildingType == "apartment" || input.buildingType == "cbd_residential") {
+        return floorLevel == 0 ? 5.0f : 4.2f;
+    }
+
+    return 4.5f;
+}
+
+float GetProgramDrivenFloorHeight(const SemanticBuilding& input, int floorLevel) {
+    const SemanticFloor* semanticFloor = FindSemanticFloor(input, floorLevel);
+    const float typologyHeight = GetTypologyFloorHeight(input, floorLevel);
+    const float maxReasonableHeight = GetReasonableMaxFloorHeight(input, floorLevel);
+    if (semanticFloor == nullptr) {
+        return typologyHeight;
+    }
+
+    float maxCeilingHeight = 0.0f;
+    for (const auto& space : semanticFloor->spaces) {
+        maxCeilingHeight = std::max(maxCeilingHeight, space.constraints.ceilingHeight);
+    }
+
+    if (maxCeilingHeight <= 0.0f) {
+        return typologyHeight;
+    }
+
+    const bool tallProgram =
+        maxCeilingHeight >= 5.0f ||
+        floorLevel == 0 ||
+        input.buildingType == "mall" ||
+        input.buildingType == "shopping_center" ||
+        input.buildingType == "retail_center";
+    const float serviceAllowance = tallProgram ? 0.9f : 0.6f;
+    const float targetHeight = std::max(typologyHeight, maxCeilingHeight + serviceAllowance);
+    return std::min(targetHeight, maxReasonableHeight);
+}
+
+float DetermineStairRotationDegrees(const GridSize2D& size) {
+    return size[0] >= size[1] ? 90.0f : 0.0f;
+}
+
+StairType ParseStairType(const std::string& stairForm) {
+    if (stairForm == "u") {
+        return StairType::U;
+    }
+    if (stairForm == "l") {
+        return StairType::L;
+    }
+    if (stairForm == "spiral") {
+        return StairType::Spiral;
+    }
+    return StairType::Straight;
+}
+
+float EstimateStairRunLength(const SemanticBuilding& input, int fromLevel, int toLevel) {
+    if (toLevel <= fromLevel || input.mass.floors <= 0) {
+        return 0.0f;
+    }
+
+    float totalHeight = 0.0f;
+    for (int level = fromLevel; level < toLevel; ++level) {
+        totalHeight += GetProgramDrivenFloorHeight(input, level);
+    }
+    const int stepCount = static_cast<int>(std::ceil(totalHeight / 0.18f));
+    return std::max(0, stepCount) * 0.28f;
+}
+
+StairType DetermineStairType(const SemanticBuilding& input,
+                             int floorLevel,
+                             int connectToLevel,
+                             const GridSize2D& size) {
+    const float runLength = EstimateStairRunLength(input, floorLevel, connectToLevel);
+    const float availableRun = std::max(size[0], size[1]);
+    if (runLength <= std::max(0.0f, availableRun - 0.4f)) {
+        return StairType::Straight;
+    }
+
+    const float halfRun = runLength * 0.5f;
+    if (halfRun <= std::max(0.0f, availableRun - 0.4f)) {
+        return StairType::U;
+    }
+
+    return StairType::L;
+}
+
+} // namespace
+
 // ============================================================================
 // SemanticBuildingParser Implementation
 // ============================================================================
@@ -39,6 +166,7 @@ bool SemanticBuildingParser::ParseFromString(
 {
     try {
         json j = json::parse(jsonString);
+        building = SemanticBuilding();
         
         // Parse root fields
         building.schema = j.value("schema", "");
@@ -114,6 +242,58 @@ bool SemanticBuildingParser::ParseFromString(
                 }
                 
                 building.floors.push_back(floor);
+            }
+        }
+
+        if (j.contains("vertical_systems") && j["vertical_systems"].is_array()) {
+            for (auto& systemJson : j["vertical_systems"]) {
+                SemanticVerticalSystem system;
+                system.id = systemJson.value("id", "");
+                system.type = systemJson.value("type", "");
+                system.mode = systemJson.value("mode", "enclosed");
+                system.placement = systemJson.value("placement", "internal");
+                system.floorFrom = systemJson.value("floor_from", 0);
+                system.floorTo = systemJson.value("floor_to", system.floorFrom);
+                system.stairForm = systemJson.value("stair_form", "straight");
+
+                const bool hasShaftRect = systemJson.contains("shaft_rect") && systemJson["shaft_rect"].is_object();
+                const bool hasStairRect = systemJson.contains("stair_rect") && systemJson["stair_rect"].is_object();
+                const json* rectJson = nullptr;
+                if (hasShaftRect) {
+                    rectJson = &systemJson["shaft_rect"];
+                } else if (hasStairRect) {
+                    rectJson = &systemJson["stair_rect"];
+                }
+                if (rectJson) {
+                    system.shaftRect.origin = {
+                        (*rectJson).value("x", 0.0f),
+                        (*rectJson).value("y", 0.0f)
+                    };
+                    system.shaftRect.size = {
+                        (*rectJson).value("w", 0.0f),
+                        (*rectJson).value("d", 0.0f)
+                    };
+                    system.shaftRect.rectId = system.id;
+                }
+
+                if (systemJson.contains("access_doors") && systemJson["access_doors"].is_array()) {
+                    for (auto& accessJson : systemJson["access_doors"]) {
+                        SemanticVerticalAccess access;
+                        access.floor = accessJson.value("floor", 0);
+                        access.toSpace = accessJson.value("to_space", "");
+                        system.accessDoors.push_back(access);
+                    }
+                }
+                if (systemJson.contains("connects") && systemJson["connects"].is_array()) {
+                    for (auto& accessJson : systemJson["connects"]) {
+                        SemanticVerticalAccess access;
+                        access.floor = accessJson.value("floor", 0);
+                        access.toSpace = accessJson.value("to_space", "");
+                        system.accessDoors.push_back(access);
+                    }
+                }
+
+                building.verticalSystems.push_back(std::move(system));
             }
         }
         
@@ -790,6 +970,7 @@ void LayoutResolver::BuildOutput(BuildingDefinition& output, const SemanticBuild
     output.grid = m_gridSize;
     output.masses.clear();
     output.floors.clear();
+    output.verticalTransports.clear();
     
     // Copy style
     output.style.category = input.style.category;
@@ -806,6 +987,37 @@ void LayoutResolver::BuildOutput(BuildingDefinition& output, const SemanticBuild
     mass.floors = input.mass.floors;
     mass.massingRuleAsset = input.mass.massingRuleAsset;
     output.masses.push_back(mass);
+
+    for (const auto& semanticSystem : input.verticalSystems) {
+        VerticalTransport transport;
+        transport.transportId = semanticSystem.id;
+        transport.type = semanticSystem.type == "elevator"
+            ? VerticalTransportType::Elevator
+            : VerticalTransportType::Stair;
+        transport.shaftRect = semanticSystem.shaftRect;
+        transport.floorFrom = semanticSystem.floorFrom;
+        transport.floorTo = std::max(semanticSystem.floorFrom, semanticSystem.floorTo);
+        transport.sourceFloorLevel = semanticSystem.floorFrom;
+        transport.continuousShaft = transport.type == VerticalTransportType::Elevator ||
+                                    semanticSystem.type == "stairwell";
+        transport.enclosed = semanticSystem.mode != "open";
+        transport.external = semanticSystem.placement == "external";
+        transport.stairType = ParseStairType(semanticSystem.stairForm);
+        transport.width = std::min(semanticSystem.shaftRect.size[0], semanticSystem.shaftRect.size[1]);
+        transport.rotationDegrees = DetermineStairRotationDegrees(semanticSystem.shaftRect.size);
+        if (transport.type == VerticalTransportType::Elevator) {
+            transport.position = {
+                semanticSystem.shaftRect.origin[0] + semanticSystem.shaftRect.size[0] * 0.5f,
+                semanticSystem.shaftRect.origin[1] + semanticSystem.shaftRect.size[1] * 0.5f
+            };
+        } else {
+            transport.position = {
+                semanticSystem.shaftRect.origin[0] + semanticSystem.shaftRect.size[0] * 0.5f,
+                semanticSystem.shaftRect.origin[1] + input.grid * 0.5f
+            };
+        }
+        output.verticalTransports.push_back(std::move(transport));
+    }
     
     // Create floors and spaces
     int spaceIdCounter = 1;
@@ -896,13 +1108,18 @@ void LayoutResolver::BuildOutput(BuildingDefinition& output, const SemanticBuild
                 : floor.floorHeight;
 
             if (space.properties.hasStairs) {
-                space.stairsConfig.type = StairType::Straight;
+                space.stairsConfig.type = DetermineStairType(
+                    input,
+                    semanticFloor.level,
+                    semanticSpace.constraints.connectsToFloor,
+                    size);
                 space.stairsConfig.connectToLevel = semanticSpace.constraints.connectsToFloor;
                 space.stairsConfig.position = {
-                    origin[0] + size[0] * 0.5f,
-                    origin[1] + size[1] * 0.5f
+                    origin[0],
+                    origin[1]
                 };
                 space.stairsConfig.width = std::max(1.2f, std::min(size[0], size[1]));
+                space.stairsConfig.rotationDegrees = DetermineStairRotationDegrees(size);
             }
             
             floor.spaces.push_back(space);
@@ -1018,22 +1235,7 @@ float LayoutResolver::GetTargetAspectRatio(const SemanticBuilding& input, const 
 
 float LayoutResolver::GetDefaultFloorHeight(const SemanticBuilding& input, int floorLevel) const
 {
-    if (input.mass.totalHeight > 0.0f && input.mass.floors > 0) {
-        return input.mass.totalHeight / static_cast<float>(input.mass.floors);
-    }
-
-    if (input.buildingType == "mall" || input.buildingType == "shopping_center" ||
-        input.buildingType == "retail_center") {
-        return floorLevel == 0 ? 5.0f : 4.5f;
-    }
-    if (input.buildingType == "office" || input.buildingType == "office_tower") {
-        return floorLevel == 0 ? 4.5f : 3.8f;
-    }
-    if (input.buildingType == "apartment" || input.buildingType == "cbd_residential") {
-        return floorLevel == 0 ? 3.5f : 3.0f;
-    }
-
-    return 3.0f;
+    return GetProgramDrivenFloorHeight(input, floorLevel);
 }
 
 std::vector<const SemanticSpace*> LayoutResolver::BuildPlacementOrder(const SemanticBuilding& input,

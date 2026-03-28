@@ -4,6 +4,7 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <unordered_set>
 
 namespace {
 
@@ -153,6 +154,57 @@ Rect MergeCoreEnvelope(const std::vector<VerticalCore>& cores) {
     return merged;
 }
 
+float DetermineStairRotationDegrees(const Rect& rect) {
+    return rect.size[0] >= rect.size[1] ? 90.0f : 0.0f;
+}
+
+StairType ParseStairType(const std::string& stairForm) {
+    if (stairForm == "u") {
+        return StairType::U;
+    }
+    if (stairForm == "l") {
+        return StairType::L;
+    }
+    if (stairForm == "spiral") {
+        return StairType::Spiral;
+    }
+    return StairType::Straight;
+}
+
+float EstimateStairRunLength(const BuildingDefinition& definition, int fromLevel, int toLevel) {
+    if (toLevel <= fromLevel) {
+        return 0.0f;
+    }
+
+    float totalHeight = 0.0f;
+    for (const auto& floor : definition.floors) {
+        if (floor.level >= fromLevel && floor.level < toLevel) {
+            totalHeight += floor.floorHeight;
+        }
+    }
+
+    const int stepCount = static_cast<int>(std::ceil(totalHeight / 0.18f));
+    return std::max(0, stepCount) * 0.28f;
+}
+
+StairType DetermineStairType(const BuildingDefinition& definition,
+                             int floorLevel,
+                             int connectToLevel,
+                             const Rect& rect) {
+    const float runLength = EstimateStairRunLength(definition, floorLevel, connectToLevel);
+    const float availableRun = std::max(rect.size[0], rect.size[1]);
+    if (runLength <= std::max(0.0f, availableRun - 0.4f)) {
+        return StairType::Straight;
+    }
+
+    const float halfRun = runLength * 0.5f;
+    if (halfRun <= std::max(0.0f, availableRun - 0.4f)) {
+        return StairType::U;
+    }
+
+    return StairType::L;
+}
+
 ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
                                     SpaceUsage usage,
                                     const Rect& rect,
@@ -174,7 +226,59 @@ ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
     space.stairWidth = stairWidth > 0.0f ? stairWidth : rect.size[0];
     space.stairPosition = stairPosition;
     space.stairType = stairType;
+    space.stairRotationDegrees = DetermineStairRotationDegrees(rect);
     return space;
+}
+
+ResolvedVerticalTransportPlan MakeResolvedVerticalTransport(const std::string& transportId,
+                                                            VerticalTransportType type,
+                                                            const Rect& shaftRect,
+                                                            int floorFrom,
+                                                            int floorTo,
+                                                            float width,
+                                                            const GridPos2D& position,
+                                                            float rotationDegrees,
+                                                            StairType stairType = StairType::Straight) {
+    ResolvedVerticalTransportPlan transport;
+    transport.transportId = transportId;
+    transport.type = type;
+    transport.shaftRect = shaftRect;
+    transport.floorFrom = floorFrom;
+    transport.floorTo = floorTo;
+    transport.sourceFloorLevel = floorFrom;
+    transport.continuousShaft = type == VerticalTransportType::Elevator;
+    transport.stairType = stairType;
+    transport.width = width;
+    transport.position = position;
+    transport.rotationDegrees = rotationDegrees;
+    return transport;
+}
+
+ResolvedVerticalTransportPlan MakeResolvedVerticalTransportFromSemantic(const SemanticVerticalSystem& system) {
+    const VerticalTransportType type = system.type == "elevator"
+        ? VerticalTransportType::Elevator
+        : VerticalTransportType::Stair;
+    const float width = std::min(system.shaftRect.size[0], system.shaftRect.size[1]);
+    const float rotation = DetermineStairRotationDegrees(system.shaftRect);
+    const GridPos2D position = type == VerticalTransportType::Elevator
+        ? GridPos2D{system.shaftRect.origin[0] + system.shaftRect.size[0] * 0.5f,
+                    system.shaftRect.origin[1] + system.shaftRect.size[1] * 0.5f}
+        : GridPos2D{system.shaftRect.origin[0] + system.shaftRect.size[0] * 0.5f,
+                    system.shaftRect.origin[1] + 0.25f};
+    auto transport = MakeResolvedVerticalTransport(
+        system.id,
+        type,
+        system.shaftRect,
+        system.floorFrom,
+        system.floorTo,
+        width,
+        position,
+        rotation,
+        ParseStairType(system.stairForm));
+    transport.enclosed = system.mode != "open";
+    transport.external = system.placement == "external";
+    transport.continuousShaft = type == VerticalTransportType::Elevator || system.type == "stairwell";
+    return transport;
 }
 
 void AddDebugBlock(const ResolvedSpacePlan& space,
@@ -204,12 +308,15 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
                                             std::string& outError) const {
     outResolvedFloor.level = layoutInput.level;
     outResolvedFloor.spaces.clear();
+    outResolvedFloor.verticalTransports.clear();
     outResolvedFloor.debugBlocks.clear();
 
     const Rect combinedCore = MergeCoreEnvelope(floorCores);
     if (combinedCore.size[0] <= 0.0f || combinedCore.size[1] <= 0.0f) {
         outError = "Office floor layout requires a valid stair/elevator core envelope";
-        return false;
+        if (layoutInput.verticalSystems.empty()) {
+            return false;
+        }
     }
 
     const float corridorWidth = definition.style.category == "commercial" ? 2.5f : 2.0f;
@@ -261,9 +368,16 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
 
     size_t nextCorridorCandidate = 0;
     size_t nextPerimeterCandidate = 0;
+    std::unordered_set<std::string> emittedTransports;
+    for (const auto& semanticSystem : layoutInput.verticalSystems) {
+        if (!semanticSystem.id.empty() && emittedTransports.insert(semanticSystem.id).second) {
+            outResolvedFloor.verticalTransports.push_back(
+                MakeResolvedVerticalTransportFromSemantic(semanticSystem));
+        }
+    }
+
     for (const auto& semanticSpace : layoutInput.spaces) {
         if (IsCoreSemanticType(semanticSpace.type)) {
-            const auto usage = StringToSpaceUsage(semanticSpace.type);
             const VerticalCore* matchedCore = nullptr;
             if (semanticSpace.type == "elevator") {
                 auto it = std::find_if(floorCores.begin(), floorCores.end(),
@@ -286,18 +400,37 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
             if (matchedCore) {
                 const bool connectsUp = semanticSpace.constraints.connectsToFloor >= 0 &&
                     semanticSpace.constraints.connectsToFloor != layoutInput.level;
-                const bool shouldGenerateStair = semanticSpace.type == "core" || semanticSpace.type == "stairs";
-                outResolvedFloor.spaces.push_back(MakeResolvedSpace(
-                    semanticSpace.spaceId,
-                    usage,
-                    matchedCore->rect,
-                    semanticSpace.constraints.ceilingHeight,
-                    layoutInput.level,
-                    shouldGenerateStair && connectsUp,
-                    semanticSpace.constraints.connectsToFloor,
-                    matchedCore->rect.size[0],
-                    matchedCore->rect.origin,
-                    StairType::Straight));
+                if (semanticSpace.type == "elevator") {
+                    outResolvedFloor.verticalTransports.push_back(MakeResolvedVerticalTransport(
+                        semanticSpace.spaceId,
+                        VerticalTransportType::Elevator,
+                        matchedCore->rect,
+                        0,
+                        definition.floors.empty() ? 0 : definition.floors.back().level,
+                        matchedCore->rect.size[0],
+                        {matchedCore->rect.origin[0] + matchedCore->rect.size[0] * 0.5f,
+                         matchedCore->rect.origin[1] + matchedCore->rect.size[1] * 0.5f},
+                        DetermineStairRotationDegrees(matchedCore->rect)));
+                } else if ((semanticSpace.type == "core" || semanticSpace.type == "stairs") && connectsUp) {
+                    const float stairWidth = std::min(matchedCore->rect.size[0], matchedCore->rect.size[1]);
+                    const float stairRotation = DetermineStairRotationDegrees(matchedCore->rect);
+                    const StairType stairType = DetermineStairType(
+                        definition,
+                        layoutInput.level,
+                        semanticSpace.constraints.connectsToFloor,
+                        matchedCore->rect);
+                    outResolvedFloor.verticalTransports.push_back(MakeResolvedVerticalTransport(
+                        semanticSpace.spaceId,
+                        VerticalTransportType::Stair,
+                        matchedCore->rect,
+                        layoutInput.level,
+                        semanticSpace.constraints.connectsToFloor,
+                        stairWidth,
+                        {matchedCore->rect.origin[0] + matchedCore->rect.size[0] * 0.5f,
+                         matchedCore->rect.origin[1] + definition.grid * 0.5f},
+                        stairRotation,
+                        stairType));
+                }
             }
             continue;
         }

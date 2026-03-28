@@ -48,6 +48,60 @@
       "tags": ["preview", "demo", "office", "massing_rule"]
     },
     {
+      "id": "office_enclosed_core_demo",
+      "path": "office_enclosed_core_demo.json",
+      "category": "demo",
+      "building_type": "office_tower",
+      "floors": 10,
+      "footprint_area": 1000,
+      "tags": ["preview", "demo", "office", "stairwell", "elevator"]
+    },
+    {
+      "id": "office_dual_egress_tower_demo",
+      "path": "office_dual_egress_tower_demo.json",
+      "category": "demo",
+      "building_type": "office_tower",
+      "floors": 12,
+      "footprint_area": 1200,
+      "tags": ["preview", "demo", "office", "dual_stair", "elevator"]
+    },
+    {
+      "id": "apartment_single_stair_demo",
+      "path": "apartment_single_stair_demo.json",
+      "category": "demo",
+      "building_type": "apartment",
+      "floors": 5,
+      "footprint_area": 420,
+      "tags": ["preview", "demo", "apartment", "stairwell"]
+    },
+    {
+      "id": "villa_open_l_stair_demo",
+      "path": "villa_open_l_stair_demo.json",
+      "category": "demo",
+      "building_type": "villa",
+      "floors": 2,
+      "footprint_area": 180,
+      "tags": ["preview", "demo", "villa", "open_stair"]
+    },
+    {
+      "id": "villa_external_stair_demo",
+      "path": "villa_external_stair_demo.json",
+      "category": "demo",
+      "building_type": "villa",
+      "floors": 2,
+      "footprint_area": 160,
+      "tags": ["preview", "demo", "villa", "external_stair"]
+    },
+    {
+      "id": "townhouse_segmented_open_stair_demo",
+      "path": "townhouse_segmented_open_stair_demo.json",
+      "category": "demo",
+      "building_type": "villa",
+      "floors": 3,
+      "footprint_area": 140,
+      "tags": ["preview", "demo", "townhouse", "segmented_stair"]
+    },
+    {
       "id": "fixture_villa",
       "path": "fixtures/villa.json",
       "category": "fixture",

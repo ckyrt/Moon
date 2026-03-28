@@ -1,0 +1,76 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "villa",
+  "style": {
+    "category": "residential",
+    "facade": "plaster_wood",
+    "roof": "flat",
+    "window_style": "large",
+    "material": "plaster"
+  },
+  "mass": {
+    "footprint_area": 140,
+    "floors": 3,
+    "total_height": 10.8
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "entry_floor",
+        "spaces": [
+          { "space_id": "living_0", "type": "living", "zone": "public", "area_preferred": 36, "constraints": { "ceiling_height": 3.3, "min_width": 4.5 } },
+          { "space_id": "kitchen_0", "type": "kitchen", "zone": "public", "area_preferred": 18, "constraints": { "ceiling_height": 3.1, "min_width": 3.0 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "family_floor",
+        "spaces": [
+          { "space_id": "family_1", "type": "living", "zone": "public", "area_preferred": 28, "constraints": { "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "hall_1", "type": "corridor", "zone": "circulation", "area_preferred": 12, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "bedroom_floor",
+        "spaces": [
+          { "space_id": "bedroom_2", "type": "bedroom", "zone": "private", "area_preferred": 26, "constraints": { "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "hall_2", "type": "corridor", "zone": "circulation", "area_preferred": 10, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "terrace_2", "type": "terrace", "zone": "public", "area_preferred": 16, "constraints": { "ceiling_height": 3.0, "min_width": 2.5 } }
+        ]
+      }
+    ]
+  },
+  "vertical_systems": [
+    {
+      "id": "town_stair_0_1",
+      "type": "stair",
+      "mode": "open",
+      "placement": "internal",
+      "floor_from": 0,
+      "floor_to": 1,
+      "stair_form": "u",
+      "stair_rect": { "x": 4.0, "y": 3.0, "w": 3.0, "d": 5.5 },
+      "connects": [
+        { "floor": 0, "to_space": "living_0" },
+        { "floor": 1, "to_space": "hall_1" }
+      ]
+    },
+    {
+      "id": "town_stair_1_2",
+      "type": "stair",
+      "mode": "open",
+      "placement": "internal",
+      "floor_from": 1,
+      "floor_to": 2,
+      "stair_form": "u",
+      "stair_rect": { "x": 4.0, "y": 3.0, "w": 3.0, "d": 5.5 },
+      "connects": [
+        { "floor": 1, "to_space": "hall_1" },
+        { "floor": 2, "to_space": "hall_2" }
+      ]
+    }
+  ]
+}

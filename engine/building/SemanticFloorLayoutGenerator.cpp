@@ -36,6 +36,58 @@ std::vector<VerticalCore> CollectFloorCores(const std::vector<VerticalCore>& cor
     return result;
 }
 
+bool FloorRequestsCoreType(const FloorLayoutInput& floor, VerticalCoreType type) {
+    for (const auto& space : floor.spaces) {
+        if ((space.type == "core" || space.type == "stairs") && type == VerticalCoreType::Stair) {
+            return true;
+        }
+        if (space.type == "elevator" && type == VerticalCoreType::Elevator) {
+            return true;
+        }
+        if (space.type == "mechanical" && type == VerticalCoreType::Service) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool LayoutDeclaresTransportTypeForFloor(const BuildingLayoutInput* layoutInput,
+                                         int floorLevel,
+                                         VerticalCoreType type) {
+    if (!layoutInput) {
+        return false;
+    }
+
+    for (const auto& system : layoutInput->verticalSystems) {
+        if (floorLevel < system.floorFrom || floorLevel > system.floorTo) {
+            continue;
+        }
+        if (type == VerticalCoreType::Stair &&
+            (system.type == "stair" || system.type == "stairwell")) {
+            return true;
+        }
+        if (type == VerticalCoreType::Elevator && system.type == "elevator") {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+std::vector<VerticalCore> FilterFloorCoresForSemanticInput(const std::vector<VerticalCore>& cores,
+                                                           const FloorLayoutInput& floor,
+                                                           const BuildingLayoutInput* layoutInput,
+                                                           int floorLevel) {
+    std::vector<VerticalCore> filtered;
+    for (const auto& core : cores) {
+        if (FloorRequestsCoreType(floor, core.type) ||
+            LayoutDeclaresTransportTypeForFloor(layoutInput, floorLevel, core.type)) {
+            filtered.push_back(core);
+        }
+    }
+    return filtered;
+}
+
 bool FloorDeclaresCoreLikeSpaces(const FloorLayoutInput& floor) {
     for (const auto& space : floor.spaces) {
         if (space.type == "core" || space.type == "stairs" || space.type == "elevator" ||
@@ -119,14 +171,18 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
             continue;
         }
 
-        const std::vector<VerticalCore> floorCores = CollectFloorCores(verticalCores, floor.level);
+        std::vector<VerticalCore> floorCores = CollectFloorCores(verticalCores, floor.level);
+        floorCores = FilterFloorCoresForSemanticInput(floorCores, *semanticFloor, layoutInput, floor.level);
         const bool needsStructuredCoreLayout = typology == LayoutTypology::Office ||
             typology == LayoutTypology::Residential;
-        if (needsStructuredCoreLayout && floorCores.empty() && !FloorDeclaresCoreLikeSpaces(*semanticFloor)) {
+        if (needsStructuredCoreLayout && floorCores.empty() && !FloorDeclaresCoreLikeSpaces(*semanticFloor) &&
+            !LayoutDeclaresTransportTypeForFloor(layoutInput, floor.level, VerticalCoreType::Stair) &&
+            !LayoutDeclaresTransportTypeForFloor(layoutInput, floor.level, VerticalCoreType::Elevator)) {
             continue;
         }
 
         ResolvedFloorLayout resolvedFloor;
+        resolvedFloor.verticalTransports.clear();
         if (typology == LayoutTypology::Office) {
             if (!m_officeSolver.GenerateFloor(
                     definition,

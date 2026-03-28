@@ -421,9 +421,23 @@ TEST_F(StairGeneratorTest, StairGeometry_HasRotationField) {
     ASSERT_GT(stairs.size(), 0);
     const auto& stair = stairs[0];
     
-    // Rotation should be set
-    EXPECT_TRUE(stair.rotation != 0.0f || stair.rotation == 0.0f) 
-        << "Rotation field should be initialized";
+    EXPECT_FLOAT_EQ(stair.rotation, 0.0f)
+        << "Default square stair footprint should keep +Z orientation";
+}
+
+TEST_F(StairGeneratorTest, StraightStair_HonorsConfiguredRotation) {
+    CreateBuildingWithStairs(StairType::Straight);
+    definition.floors[0].spaces[0].stairsConfig.rotationDegrees = 90.0f;
+
+    stairGenerator.GenerateStairs(definition, stairs);
+
+    ASSERT_GT(stairs.size(), 0);
+    const auto& stair = stairs[0];
+    ASSERT_GE(stair.steps.size(), 2u);
+
+    EXPECT_FLOAT_EQ(stair.rotation, 90.0f);
+    EXPECT_NEAR(stair.steps[1].position[0] - stair.steps[0].position[0], stair.stepDepth, 0.02f);
+    EXPECT_NEAR(stair.steps[1].position[1] - stair.steps[0].position[1], 0.0f, 0.02f);
 }
 
 TEST_F(StairGeneratorTest, LandingPlatform_HasDetailedGeometry) {

@@ -4,6 +4,27 @@
 namespace Moon {
 namespace Building {
 
+namespace {
+
+constexpr float kPi = 3.14159265f;
+
+GridPos2D RotateOffset(const GridPos2D& offset, float rotationDegrees) {
+    const float radians = rotationDegrees * kPi / 180.0f;
+    const float cosTheta = std::cos(radians);
+    const float sinTheta = std::sin(radians);
+    return {
+        offset[0] * cosTheta - offset[1] * sinTheta,
+        offset[0] * sinTheta + offset[1] * cosTheta
+    };
+}
+
+GridPos2D TranslateRotated(const GridPos2D& origin, const GridPos2D& offset, float rotationDegrees) {
+    const GridPos2D rotated = RotateOffset(offset, rotationDegrees);
+    return {origin[0] + rotated[0], origin[1] + rotated[1]};
+}
+
+} // namespace
+
 StairGenerator::StairGenerator()
     : m_maxStepHeight(0.18f)    // 18cm max step height (building code standard)
     , m_minStepDepth(0.28f)     // 28cm min step depth (building code standard)
@@ -20,6 +41,64 @@ void StairGenerator::SetStepParameters(float maxStepHeight, float minStepDepth) 
 void StairGenerator::GenerateStairs(const BuildingDefinition& definition,
                                     std::vector<StairGeometry>& outStairs) {
     outStairs.clear();
+    auto appendTransportSegment = [&](const VerticalTransport& transport, int fromLevel, int toLevel) {
+        const float actualHeight = CalculateFloorHeightDifference(definition, fromLevel, toLevel);
+        if (actualHeight <= 0.0f) {
+            return;
+        }
+
+        StairConfig config;
+        config.type = transport.stairType;
+        config.connectToLevel = toLevel;
+        config.position = transport.position;
+        config.width = transport.width > 0.0f ? transport.width : transport.shaftRect.size[0];
+        config.rotationDegrees = transport.rotationDegrees;
+
+        StairGeometry geometry;
+        geometry.config = config;
+        geometry.position = config.position;
+        geometry.fromLevel = fromLevel;
+        geometry.toLevel = toLevel;
+        geometry.totalHeight = actualHeight;
+        geometry.rotation = config.rotationDegrees;
+        geometry.stairWidth = config.width;
+
+        switch (config.type) {
+            case StairType::Straight:
+                GenerateStraightStair(config, actualHeight, geometry);
+                break;
+            case StairType::L:
+                GenerateLStair(config, actualHeight, geometry);
+                break;
+            case StairType::U:
+                GenerateUStair(config, actualHeight, geometry);
+                break;
+            case StairType::Spiral:
+                GenerateSpiralStair(config, actualHeight, geometry);
+                break;
+        }
+
+        ValidateStairGeometry(geometry);
+        outStairs.push_back(std::move(geometry));
+    };
+
+    for (const auto& transport : definition.verticalTransports) {
+        if (transport.type != VerticalTransportType::Stair) {
+            continue;
+        }
+        if (transport.continuousShaft && transport.floorTo > transport.floorFrom) {
+            for (int level = transport.floorFrom; level < transport.floorTo; ++level) {
+                appendTransportSegment(transport, level, level + 1);
+            }
+            continue;
+        }
+
+        appendTransportSegment(transport, transport.floorFrom, transport.floorTo);
+    }
+
+    if (!outStairs.empty()) {
+        return;
+    }
     
     for (const auto& floor : definition.floors) {
         for (const auto& space : floor.spaces) {
@@ -42,7 +121,7 @@ void StairGenerator::GenerateStairs(const BuildingDefinition& definition,
             geometry.fromLevel = fromLevel;
             geometry.toLevel = toLevel;
             geometry.totalHeight = actualHeight;
-            geometry.rotation = 0.0f; // Default, could be from config
+            geometry.rotation = space.stairsConfig.rotationDegrees;
             geometry.stairWidth = space.stairsConfig.width;
             
             switch (space.stairsConfig.type) {
@@ -87,10 +166,9 @@ void StairGenerator::GenerateStraightStair(const StairConfig& config,
     outGeometry.steps.clear();
     for (int i = 0; i < numSteps; ++i) {
         StepData step;
-        step.position[0] = config.position[0];
-        step.position[1] = config.position[1] + i * stepDepth;
+        step.position = TranslateRotated(config.position, {0.0f, i * stepDepth}, config.rotationDegrees);
         step.height = i * stepHeight;
-        step.rotation = 0.0f;
+        step.rotation = config.rotationDegrees;
         outGeometry.steps.push_back(step);
     }
     
@@ -124,30 +202,30 @@ void StairGenerator::GenerateLStair(const StairConfig& config,
     outGeometry.steps.clear();
     for (int i = 0; i < stepsBeforeLanding; ++i) {
         StepData step;
-        step.position[0] = config.position[0];
-        step.position[1] = config.position[1] + i * stepDepth;
+        step.position = TranslateRotated(config.position, {0.0f, i * stepDepth}, config.rotationDegrees);
         step.height = i * stepHeight;
-        step.rotation = 0.0f;
+        step.rotation = config.rotationDegrees;
         outGeometry.steps.push_back(step);
     }
     
     // Add landing platform
     LandingPlatform landing;
-    landing.position[0] = config.position[0];
-    landing.position[1] = config.position[1] + firstRunLength;
+    landing.position = TranslateRotated(config.position, {0.0f, firstRunLength}, config.rotationDegrees);
     landing.width = config.width;
     landing.depth = config.width; // Square landing typically
     landing.height = landingHeight;
-    landing.rotation = 0.0f;
+    landing.rotation = config.rotationDegrees;
     outGeometry.landings.push_back(landing);
     
     // Generate steps for second run (perpendicular direction)
     for (int i = 0; i < stepsAfterLanding; ++i) {
         StepData step;
-        step.position[0] = config.position[0] + i * stepDepth; // Now along X
-        step.position[1] = config.position[1] + firstRunLength + config.width;
+        step.position = TranslateRotated(
+            config.position,
+            {i * stepDepth, firstRunLength + config.width},
+            config.rotationDegrees);
         step.height = landingHeight + i * stepHeight;
-        step.rotation = 90.0f; // Rotated 90 degrees
+        step.rotation = config.rotationDegrees + 90.0f;
         outGeometry.steps.push_back(step);
     }
 }
@@ -177,30 +255,30 @@ void StairGenerator::GenerateUStair(const StairConfig& config,
     outGeometry.steps.clear();
     for (int i = 0; i < stepsBeforeLanding; ++i) {
         StepData step;
-        step.position[0] = config.position[0];
-        step.position[1] = config.position[1] + i * stepDepth;
+        step.position = TranslateRotated(config.position, {0.0f, i * stepDepth}, config.rotationDegrees);
         step.height = i * stepHeight;
-        step.rotation = 0.0f;
+        step.rotation = config.rotationDegrees;
         outGeometry.steps.push_back(step);
     }
     
     // Add landing platform
     LandingPlatform landing;
-    landing.position[0] = config.position[0];
-    landing.position[1] = config.position[1] + firstRunLength;
+    landing.position = TranslateRotated(config.position, {0.0f, firstRunLength}, config.rotationDegrees);
     landing.width = config.width;
     landing.depth = config.width;
     landing.height = landingHeight;
-    landing.rotation = 0.0f;
+    landing.rotation = config.rotationDegrees;
     outGeometry.landings.push_back(landing);
     
     // Generate steps for second run (coming back parallel)
     for (int i = 0; i < stepsAfterLanding; ++i) {
         StepData step;
-        step.position[0] = config.position[0] + config.width; // Offset parallel
-        step.position[1] = config.position[1] + firstRunLength - i * stepDepth; // Going back
+        step.position = TranslateRotated(
+            config.position,
+            {config.width, firstRunLength - i * stepDepth},
+            config.rotationDegrees);
         step.height = landingHeight + i * stepHeight;
-        step.rotation = 180.0f; // Opposite direction
+        step.rotation = config.rotationDegrees + 180.0f;
         outGeometry.steps.push_back(step);
     }
 }
@@ -225,14 +303,13 @@ void StairGenerator::GenerateSpiralStair(const StairConfig& config,
     
     // Generate individual steps rotating around center
     outGeometry.steps.clear();
-    const float PI = 3.14159265f;
     for (int i = 0; i < numSteps; ++i) {
         StepData step;
-        float angle = i * degreesPerStep * PI / 180.0f;
+        float angle = (config.rotationDegrees + i * degreesPerStep) * kPi / 180.0f;
         step.position[0] = config.position[0] + radius * std::cos(angle);
         step.position[1] = config.position[1] + radius * std::sin(angle);
         step.height = i * stepHeight;
-        step.rotation = i * degreesPerStep;
+        step.rotation = config.rotationDegrees + i * degreesPerStep;
         outGeometry.steps.push_back(step);
     }
     

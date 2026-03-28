@@ -337,6 +337,32 @@ TEST_F(BuildingToObjectBlueprintConverterTest, StraightStairsEmitProceduralStair
     EXPECT_TRUE(foundProceduralStair) << "Expected building converter to emit procedural stair nodes";
 }
 
+TEST_F(BuildingToObjectBlueprintConverterTest, OutputDoesNotContainProgramPreviewBlocks) {
+    std::string inputJson = TestHelpers::CreateShoppingCenter();
+    GeneratedBuilding building;
+    std::string errorMsg;
+
+    bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
+    ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
+    ASSERT_GT(building.programBlocks.size(), 0u) << "Fixture should still generate debug program blocks upstream";
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    ASSERT_TRUE(j.contains("root"));
+    ASSERT_TRUE(j["root"].contains("children"));
+
+    for (const auto& child : j["root"]["children"]) {
+        if (!child.is_object() || !child.contains("name") || !child["name"].is_string()) {
+            continue;
+        }
+
+        const std::string name = child["name"].get<std::string>();
+        EXPECT_TRUE(name.rfind("program_", 0) != 0)
+            << "Final building output should not contain debug preview blocks: " << name;
+    }
+}
+
 // ========================================
 // Integration Tests
 // ========================================

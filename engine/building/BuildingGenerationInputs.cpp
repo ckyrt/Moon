@@ -1,5 +1,6 @@
 #include "BuildingGenerationInputs.h"
 #include "../../external/nlohmann/json.hpp"
+#include <unordered_map>
 
 using json = nlohmann::json;
 
@@ -32,8 +33,15 @@ BuildingLayoutInput ExtractBuildingLayoutInput(const SemanticBuilding& building)
         layoutFloor.level = floor.level;
         layoutFloor.name = floor.name;
         layoutFloor.spaces = floor.spaces;
+        for (const auto& system : building.verticalSystems) {
+            if (floor.level >= system.floorFrom && floor.level <= system.floorTo) {
+                layoutFloor.verticalSystems.push_back(system);
+            }
+        }
         input.floors.push_back(std::move(layoutFloor));
     }
+
+    input.verticalSystems = building.verticalSystems;
 
     return input;
 }
@@ -65,9 +73,58 @@ void BuildFloorSpacesFromResolvedLayout(const ResolvedFloorLayout& resolvedFloor
                 ? resolvedSpace.stairWidth
                 : rect.size[0];
             space.stairsConfig.position = resolvedSpace.stairPosition;
+            space.stairsConfig.rotationDegrees = resolvedSpace.stairRotationDegrees;
         }
 
         outSpaces.push_back(std::move(space));
+    }
+}
+
+void BuildVerticalTransportsFromResolvedLayout(const ResolvedBuildingLayout& resolvedLayout,
+                                               std::vector<VerticalTransport>& outVerticalTransports) {
+    outVerticalTransports.clear();
+    std::unordered_map<std::string, size_t> transportIndexByKey;
+
+    for (const auto& floor : resolvedLayout.floors) {
+        for (const auto& resolvedTransport : floor.verticalTransports) {
+            std::string key = resolvedTransport.transportId;
+            if (key.empty()) {
+                key = (resolvedTransport.type == VerticalTransportType::Elevator ? "elevator" : "stair") +
+                    std::string("_") + std::to_string(resolvedTransport.floorFrom) +
+                    "_" + std::to_string(resolvedTransport.floorTo);
+            }
+            if (!resolvedTransport.continuousShaft) {
+                key += "_segment_" + std::to_string(resolvedTransport.sourceFloorLevel);
+            }
+
+            auto existing = transportIndexByKey.find(key);
+            if (existing != transportIndexByKey.end()) {
+                auto& transport = outVerticalTransports[existing->second];
+                transport.floorFrom = std::min(transport.floorFrom, resolvedTransport.floorFrom);
+                transport.floorTo = std::max(transport.floorTo, resolvedTransport.floorTo);
+                transport.continuousShaft = transport.continuousShaft || resolvedTransport.continuousShaft;
+                transport.enclosed = transport.enclosed || resolvedTransport.enclosed;
+                transport.external = transport.external && resolvedTransport.external;
+                continue;
+            }
+
+            VerticalTransport transport;
+            transport.transportId = resolvedTransport.transportId;
+            transport.type = resolvedTransport.type;
+            transport.shaftRect = resolvedTransport.shaftRect;
+            transport.floorFrom = resolvedTransport.floorFrom;
+            transport.floorTo = resolvedTransport.floorTo;
+            transport.sourceFloorLevel = resolvedTransport.sourceFloorLevel;
+            transport.continuousShaft = resolvedTransport.continuousShaft;
+            transport.enclosed = resolvedTransport.enclosed;
+            transport.external = resolvedTransport.external;
+            transport.stairType = resolvedTransport.stairType;
+            transport.width = resolvedTransport.width;
+            transport.position = resolvedTransport.position;
+            transport.rotationDegrees = resolvedTransport.rotationDegrees;
+            outVerticalTransports.push_back(std::move(transport));
+            transportIndexByKey.emplace(std::move(key), outVerticalTransports.size() - 1);
+        }
     }
 }
 
@@ -85,6 +142,7 @@ bool SerializeResolvedBuildingLayout(const BuildingFormInput* formInput,
             json floorJson;
             floorJson["level"] = floor.level;
             floorJson["spaces"] = json::array();
+            floorJson["vertical_transports"] = json::array();
 
             for (const auto& space : floor.spaces) {
                 json spaceJson;
@@ -101,8 +159,37 @@ bool SerializeResolvedBuildingLayout(const BuildingFormInput* formInput,
                 if (space.hasStairs) {
                     spaceJson["has_stairs"] = true;
                     spaceJson["stair_connect_to_level"] = space.stairConnectToLevel;
+                    spaceJson["stair_rotation_degrees"] = space.stairRotationDegrees;
                 }
                 floorJson["spaces"].push_back(std::move(spaceJson));
+            }
+
+            for (const auto& transport : floor.verticalTransports) {
+                json transportJson;
+                transportJson["transport_id"] = transport.transportId;
+                transportJson["type"] = transport.type == VerticalTransportType::Elevator ? "elevator" : "stair";
+                transportJson["shaft_rect"] = {
+                    {"origin", {transport.shaftRect.origin[0], transport.shaftRect.origin[1]}},
+                    {"size", {transport.shaftRect.size[0], transport.shaftRect.size[1]}}
+                };
+                transportJson["floor_from"] = transport.floorFrom;
+                transportJson["floor_to"] = transport.floorTo;
+                transportJson["source_floor_level"] = transport.sourceFloorLevel;
+                transportJson["continuous_shaft"] = transport.continuousShaft;
+                transportJson["enclosed"] = transport.enclosed;
+                transportJson["external"] = transport.external;
+                transportJson["width"] = transport.width;
+                transportJson["position"] = {transport.position[0], transport.position[1]};
+                transportJson["rotation_degrees"] = transport.rotationDegrees;
+                if (transport.type == VerticalTransportType::Stair) {
+                    switch (transport.stairType) {
+                        case StairType::Straight: transportJson["stair_type"] = "straight"; break;
+                        case StairType::L: transportJson["stair_type"] = "l"; break;
+                        case StairType::U: transportJson["stair_type"] = "u"; break;
+                        case StairType::Spiral: transportJson["stair_type"] = "spiral"; break;
+                    }
+                }
+                floorJson["vertical_transports"].push_back(std::move(transportJson));
             }
 
             root["floors"].push_back(std::move(floorJson));

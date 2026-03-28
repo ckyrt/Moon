@@ -1,0 +1,55 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "villa",
+  "style": {
+    "category": "residential",
+    "facade": "stucco_stone",
+    "roof": "flat",
+    "window_style": "large",
+    "material": "stucco"
+  },
+  "mass": {
+    "footprint_area": 160,
+    "floors": 2,
+    "total_height": 7.0
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "garden_level",
+        "spaces": [
+          { "space_id": "living_0", "type": "living", "zone": "public", "area_preferred": 62, "constraints": { "ceiling_height": 3.3, "min_width": 4.5 } },
+          { "space_id": "kitchen_0", "type": "kitchen", "zone": "public", "area_preferred": 20, "constraints": { "ceiling_height": 3.1, "min_width": 3.0 } },
+          { "space_id": "terrace_0", "type": "terrace", "zone": "public", "area_preferred": 22, "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "balcony_level",
+        "spaces": [
+          { "space_id": "bedroom_1", "type": "bedroom", "zone": "private", "area_preferred": 34, "constraints": { "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "hall_1", "type": "corridor", "zone": "circulation", "area_preferred": 16, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } },
+          { "space_id": "balcony_1", "type": "balcony", "zone": "public", "area_preferred": 20, "constraints": { "ceiling_height": 3.0, "min_width": 2.5 } }
+        ]
+      }
+    ]
+  },
+  "vertical_systems": [
+    {
+      "id": "balcony_stair",
+      "type": "stair",
+      "mode": "open",
+      "placement": "external",
+      "floor_from": 0,
+      "floor_to": 1,
+      "stair_form": "straight",
+      "stair_rect": { "x": 14.5, "y": -2.5, "w": 1.8, "d": 5.0 },
+      "connects": [
+        { "floor": 0, "to_space": "terrace_0" },
+        { "floor": 1, "to_space": "balcony_1" }
+      ]
+    }
+  ]
+}

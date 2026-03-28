@@ -61,6 +61,23 @@ struct SemanticFloor {
     std::vector<SemanticSpace> spaces;
 };
 
+struct SemanticVerticalAccess {
+    int floor = 0;
+    std::string toSpace;
+};
+
+struct SemanticVerticalSystem {
+    std::string id;
+    std::string type;
+    std::string mode;
+    std::string placement;
+    int floorFrom = 0;
+    int floorTo = 0;
+    std::string stairForm;
+    Rect shaftRect;
+    std::vector<SemanticVerticalAccess> accessDoors;
+};
+
 struct MassConstraints {
     float footprintArea = 0.0f;
     int floors = 1;
@@ -75,6 +92,7 @@ struct SemanticBuilding {
     BuildingStyle style;  // 使用 BuildingTypes.h 中定义的
     MassConstraints mass;
     std::vector<SemanticFloor> floors;  // Parsed floors
+    std::vector<SemanticVerticalSystem> verticalSystems;
 };
 
 // ============================================================================

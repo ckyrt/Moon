@@ -1,0 +1,191 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "office_tower",
+  "style": {
+    "category": "commercial",
+    "facade": "glass_metal",
+    "roof": "flat",
+    "window_style": "full_height",
+    "material": "glass_metal"
+  },
+  "mass": {
+    "footprint_area": 1200,
+    "floors": 12,
+    "total_height": 54.0,
+    "massing_rule": "planned_vase_tower.json"
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "ground_lobby",
+        "spaces": [
+          { "space_id": "lobby_0", "type": "lobby", "zone": "circulation", "area_preferred": 220, "constraints": { "ceiling_height": 6.0, "min_width": 8.0 } },
+          { "space_id": "retail_0", "type": "shop", "zone": "public", "area_preferred": 140, "constraints": { "ceiling_height": 5.2, "min_width": 6.0 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "amenity_1",
+        "spaces": [
+          { "space_id": "corridor_1", "type": "corridor", "zone": "circulation", "area_preferred": 70, "constraints": { "ceiling_height": 4.2, "min_width": 3.0 } },
+          { "space_id": "meeting_1", "type": "meeting_room", "zone": "public", "area_preferred": 150, "constraints": { "ceiling_height": 4.6, "min_width": 6.0 } }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "office_2",
+        "spaces": [
+          { "space_id": "corridor_2", "type": "corridor", "zone": "circulation", "area_preferred": 58, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_2_main", "type": "office", "zone": "public", "area_preferred": 290, "constraints": { "ceiling_height": 4.0, "min_width": 8.0 } }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "office_3",
+        "spaces": [
+          { "space_id": "corridor_3", "type": "corridor", "zone": "circulation", "area_preferred": 58, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_3_main", "type": "office", "zone": "public", "area_preferred": 285, "constraints": { "ceiling_height": 4.0, "min_width": 8.0 } }
+        ]
+      },
+      {
+        "level": 4,
+        "name": "office_4",
+        "spaces": [
+          { "space_id": "corridor_4", "type": "corridor", "zone": "circulation", "area_preferred": 56, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_4_main", "type": "office", "zone": "public", "area_preferred": 280, "constraints": { "ceiling_height": 4.0, "min_width": 7.5 } }
+        ]
+      },
+      {
+        "level": 5,
+        "name": "office_5",
+        "spaces": [
+          { "space_id": "corridor_5", "type": "corridor", "zone": "circulation", "area_preferred": 54, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_5_main", "type": "office", "zone": "public", "area_preferred": 270, "constraints": { "ceiling_height": 4.0, "min_width": 7.5 } }
+        ]
+      },
+      {
+        "level": 6,
+        "name": "office_6",
+        "spaces": [
+          { "space_id": "corridor_6", "type": "corridor", "zone": "circulation", "area_preferred": 52, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_6_main", "type": "office", "zone": "public", "area_preferred": 260, "constraints": { "ceiling_height": 4.0, "min_width": 7.5 } }
+        ]
+      },
+      {
+        "level": 7,
+        "name": "office_7",
+        "spaces": [
+          { "space_id": "corridor_7", "type": "corridor", "zone": "circulation", "area_preferred": 50, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_7_main", "type": "office", "zone": "public", "area_preferred": 245, "constraints": { "ceiling_height": 4.0, "min_width": 7.0 } }
+        ]
+      },
+      {
+        "level": 8,
+        "name": "office_8",
+        "spaces": [
+          { "space_id": "corridor_8", "type": "corridor", "zone": "circulation", "area_preferred": 48, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_8_main", "type": "office", "zone": "public", "area_preferred": 235, "constraints": { "ceiling_height": 4.0, "min_width": 7.0 } }
+        ]
+      },
+      {
+        "level": 9,
+        "name": "office_9",
+        "spaces": [
+          { "space_id": "corridor_9", "type": "corridor", "zone": "circulation", "area_preferred": 46, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_9_main", "type": "office", "zone": "public", "area_preferred": 225, "constraints": { "ceiling_height": 4.0, "min_width": 7.0 } }
+        ]
+      },
+      {
+        "level": 10,
+        "name": "office_10",
+        "spaces": [
+          { "space_id": "corridor_10", "type": "corridor", "zone": "circulation", "area_preferred": 44, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_10_main", "type": "office", "zone": "public", "area_preferred": 210, "constraints": { "ceiling_height": 4.0, "min_width": 6.8 } }
+        ]
+      },
+      {
+        "level": 11,
+        "name": "office_11",
+        "spaces": [
+          { "space_id": "corridor_11", "type": "corridor", "zone": "circulation", "area_preferred": 42, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_11_main", "type": "office", "zone": "public", "area_preferred": 195, "constraints": { "ceiling_height": 4.0, "min_width": 6.5 } }
+        ]
+      }
+    ]
+  },
+  "vertical_systems": [
+    {
+      "id": "stair_west",
+      "type": "stairwell",
+      "mode": "enclosed",
+      "placement": "internal",
+      "floor_from": 0,
+      "floor_to": 11,
+      "stair_form": "u",
+      "shaft_rect": { "x": 6.0, "y": 5.0, "w": 4.0, "d": 8.0 },
+      "access_doors": [
+        { "floor": 0, "to_space": "lobby_0" },
+        { "floor": 1, "to_space": "corridor_1" },
+        { "floor": 2, "to_space": "corridor_2" },
+        { "floor": 3, "to_space": "corridor_3" },
+        { "floor": 4, "to_space": "corridor_4" },
+        { "floor": 5, "to_space": "corridor_5" },
+        { "floor": 6, "to_space": "corridor_6" },
+        { "floor": 7, "to_space": "corridor_7" },
+        { "floor": 8, "to_space": "corridor_8" },
+        { "floor": 9, "to_space": "corridor_9" },
+        { "floor": 10, "to_space": "corridor_10" },
+        { "floor": 11, "to_space": "corridor_11" }
+      ]
+    },
+    {
+      "id": "stair_east",
+      "type": "stairwell",
+      "mode": "enclosed",
+      "placement": "internal",
+      "floor_from": 0,
+      "floor_to": 11,
+      "stair_form": "u",
+      "shaft_rect": { "x": 16.5, "y": 5.0, "w": 4.0, "d": 8.0 },
+      "access_doors": [
+        { "floor": 0, "to_space": "lobby_0" },
+        { "floor": 1, "to_space": "corridor_1" },
+        { "floor": 2, "to_space": "corridor_2" },
+        { "floor": 3, "to_space": "corridor_3" },
+        { "floor": 4, "to_space": "corridor_4" },
+        { "floor": 5, "to_space": "corridor_5" },
+        { "floor": 6, "to_space": "corridor_6" },
+        { "floor": 7, "to_space": "corridor_7" },
+        { "floor": 8, "to_space": "corridor_8" },
+        { "floor": 9, "to_space": "corridor_9" },
+        { "floor": 10, "to_space": "corridor_10" },
+        { "floor": 11, "to_space": "corridor_11" }
+      ]
+    },
+    {
+      "id": "elevator_core",
+      "type": "elevator",
+      "mode": "enclosed",
+      "placement": "internal",
+      "floor_from": 0,
+      "floor_to": 11,
+      "shaft_rect": { "x": 11.2, "y": 7.2, "w": 3.0, "d": 3.0 },
+      "access_doors": [
+        { "floor": 0, "to_space": "lobby_0" },
+        { "floor": 1, "to_space": "corridor_1" },
+        { "floor": 2, "to_space": "corridor_2" },
+        { "floor": 3, "to_space": "corridor_3" },
+        { "floor": 4, "to_space": "corridor_4" },
+        { "floor": 5, "to_space": "corridor_5" },
+        { "floor": 6, "to_space": "corridor_6" },
+        { "floor": 7, "to_space": "corridor_7" },
+        { "floor": 8, "to_space": "corridor_8" },
+        { "floor": 9, "to_space": "corridor_9" },
+        { "floor": 10, "to_space": "corridor_10" },
+        { "floor": 11, "to_space": "corridor_11" }
+      ]
+    }
+  ]
+}

@@ -445,6 +445,14 @@ TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_GeneratesMassDri
 
     EXPECT_GE(officeSpaceCount, 8);
     EXPECT_GT(corridorSpaceCount, 4);
+
+    for (const auto& floor : building.definition.floors) {
+        EXPECT_LT(floor.floorHeight, 8.0f)
+            << "Resolved floor heights should follow per-floor program intent instead of raw total_height averaging";
+    }
+
+    EXPECT_LT(building.supportColumns.size(), 24u)
+        << "Mass-driven towers should not emit a dense full-plate interior column grid";
 }
 
 TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_AllResolvedSpacesStayInsideFloorPlates) {
@@ -456,6 +464,77 @@ TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_AllResolvedSpace
     ASSERT_TRUE(result) << "Error: " << errorMsg;
     ASSERT_FALSE(building.floorPlates.empty());
     ExpectAllSpacesInsideFloorPlates(building);
+}
+
+TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithVerticalSystems_UsesEnclosedStairAndElevator) {
+    const std::string json = TestHelpers::LoadFromFile("office_enclosed_core_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    const bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.verticalTransports.size(), 2u);
+    EXPECT_EQ(
+        std::count_if(building.verticalTransports.begin(), building.verticalTransports.end(),
+            [](const VerticalTransport& transport) { return transport.type == VerticalTransportType::Elevator; }),
+        1);
+    EXPECT_EQ(building.stairs.size(), 9u);
+    EXPECT_EQ(building.floorPlates.size(), 10u);
+}
+
+TEST_F(BuildingPipelineTest, ProcessVilla_OpenAndExternalStairCases_ParseVerticalSystems) {
+    for (const char* filename : {
+             "villa_open_l_stair_demo.json",
+             "villa_external_stair_demo.json",
+             "townhouse_segmented_open_stair_demo.json" }) {
+        const std::string json = TestHelpers::LoadFromFile(filename);
+        ASSERT_FALSE(json.empty());
+
+        GeneratedBuilding sampleBuilding;
+        std::string sampleError;
+        const bool result = pipeline.ProcessBuilding(json, sampleBuilding, sampleError);
+
+        ASSERT_TRUE(result) << filename << " error: " << sampleError;
+        EXPECT_GE(sampleBuilding.verticalTransports.size(), 1u);
+        EXPECT_GE(sampleBuilding.stairs.size(), 1u);
+    }
+}
+
+TEST_F(BuildingPipelineTest, ProcessOfficeTower_DualEgressVerticalSystems_KeepDistinctShafts) {
+    const std::string json = TestHelpers::LoadFromFile("office_dual_egress_tower_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    const bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(building.verticalTransports.size(), 3u);
+    EXPECT_EQ(
+        std::count_if(building.verticalTransports.begin(), building.verticalTransports.end(),
+            [](const VerticalTransport& transport) { return transport.type == VerticalTransportType::Stair; }),
+        2);
+    EXPECT_EQ(
+        std::count_if(building.verticalTransports.begin(), building.verticalTransports.end(),
+            [](const VerticalTransport& transport) { return transport.type == VerticalTransportType::Elevator; }),
+        1);
+    EXPECT_EQ(building.stairs.size(), 22u);
+}
+
+TEST_F(BuildingPipelineTest, ProcessApartment_SingleStairDemo_DoesNotInventElevator) {
+    const std::string json = TestHelpers::LoadFromFile("apartment_single_stair_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    const bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_EQ(
+        std::count_if(building.verticalTransports.begin(), building.verticalTransports.end(),
+            [](const VerticalTransport& transport) { return transport.type == VerticalTransportType::Elevator; }),
+        0);
+    EXPECT_EQ(
+        std::count_if(building.verticalTransports.begin(), building.verticalTransports.end(),
+            [](const VerticalTransport& transport) { return transport.type == VerticalTransportType::Stair; }),
+        1);
+    EXPECT_EQ(building.stairs.size(), 4u);
 }
 
 TEST_F(BuildingPipelineTest, ProcessOfficeTower_DistinctSemanticDemos_PreserveProgramIntent) {

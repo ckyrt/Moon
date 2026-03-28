@@ -1576,15 +1576,24 @@ namespace CommandHandlers {
             return CreateErrorResponse("Missing 'buildingJson' field");
         }
 
+        MOON_LOG_INFO("MoonEngineMessage", "HandlePreviewBuilding: starting pipeline");
         Moon::Building::GeneratedBuilding building;
         std::string pipelineError;
         Moon::Building::BuildingPipeline pipeline;
         if (!pipeline.ProcessBuilding(req["buildingJson"].get<std::string>(), building, pipelineError)) {
             return CreateErrorResponse("Failed to process building preview: " + pipelineError);
         }
+        MOON_LOG_INFO("MoonEngineMessage",
+                      "HandlePreviewBuilding: pipeline complete floors=%zu plates=%zu walls=%zu stairs=%zu transports=%zu",
+                      building.definition.floors.size(),
+                      building.floorPlates.size(),
+                      building.walls.size(),
+                      building.stairs.size(),
+                      building.verticalTransports.size());
 
         building.programBlocks.clear();
 
+        MOON_LOG_INFO("MoonEngineMessage", "HandlePreviewBuilding: converting to blueprint");
         std::string blueprintJson = Moon::Building::BuildingToObjectBlueprintConverter::Convert(building);
         std::string loadError;
         Moon::Object::BlueprintDatabase database;
@@ -1593,6 +1602,7 @@ namespace CommandHandlers {
             return CreateErrorResponse("Failed to load CSG index: " + loadError);
         }
 
+        MOON_LOG_INFO("MoonEngineMessage", "HandlePreviewBuilding: parsing generated blueprint");
         auto generatedBlueprint = Moon::Object::BlueprintLoader::ParseFromString(blueprintJson, loadError);
         if (!generatedBlueprint) {
             return CreateErrorResponse("Failed to parse building blueprint: " + loadError);
@@ -1601,10 +1611,12 @@ namespace CommandHandlers {
         Moon::CSG::CSGBuilder builder;
         builder.SetBlueprintDatabase(&database);
         std::unordered_map<std::string, float> params;
+        MOON_LOG_INFO("MoonEngineMessage", "HandlePreviewBuilding: building CSG meshes");
         Moon::CSG::BuildResult buildResult = builder.Build(generatedBlueprint.get(), params, loadError);
         if (buildResult.meshes.empty()) {
             return CreateErrorResponse("Failed to build building preview: " + loadError);
         }
+        MOON_LOG_INFO("MoonEngineMessage", "HandlePreviewBuilding: CSG build complete meshes=%zu", buildResult.meshes.size());
 
         ClearMassingPreviewNodes(scene);
         Moon::SceneNode* previewRoot = scene->CreateNode("__MassingPreview");
@@ -1638,7 +1650,6 @@ namespace CommandHandlers {
         response["programBlockCount"] = building.programBlocks.size();
         response["floorPlateCount"] = building.floorPlates.size();
         response["coreCount"] = building.verticalCores.size();
-        response["resolvedLayoutJson"] = building.resolvedLayoutJson;
         response["warnings"] = json::array();
         return response.dump();
     }

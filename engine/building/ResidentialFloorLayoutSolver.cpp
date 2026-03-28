@@ -5,6 +5,7 @@
 #include <cctype>
 #include <cmath>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace {
 
@@ -229,6 +230,118 @@ Rect FitRectToArea(const Rect& source, float targetArea, float minWidth) {
     return rect;
 }
 
+float DetermineStairRotationDegrees(const Rect& rect) {
+    return rect.size[0] >= rect.size[1] ? 90.0f : 0.0f;
+}
+
+float EstimateStairRunLength(const BuildingDefinition& definition, int fromLevel, int toLevel) {
+    if (toLevel <= fromLevel) {
+        return 0.0f;
+    }
+
+    float totalHeight = 0.0f;
+    for (const auto& floor : definition.floors) {
+        if (floor.level >= fromLevel && floor.level < toLevel) {
+            totalHeight += floor.floorHeight;
+        }
+    }
+
+    const int stepCount = static_cast<int>(std::ceil(totalHeight / 0.18f));
+    return std::max(0, stepCount) * 0.28f;
+}
+
+StairType DetermineStairType(const BuildingDefinition& definition,
+                             int floorLevel,
+                             int connectToLevel,
+                             const Rect& rect) {
+    const float runLength = EstimateStairRunLength(definition, floorLevel, connectToLevel);
+    const float availableRun = std::max(rect.size[0], rect.size[1]);
+    if (runLength <= std::max(0.0f, availableRun - 0.4f)) {
+        return StairType::Straight;
+    }
+
+    const float halfRun = runLength * 0.5f;
+    if (halfRun <= std::max(0.0f, availableRun - 0.4f)) {
+        return StairType::U;
+    }
+
+    return StairType::L;
+}
+
+StairType ParseStairType(const std::string& stairForm) {
+    if (stairForm == "u") {
+        return StairType::U;
+    }
+    if (stairForm == "l") {
+        return StairType::L;
+    }
+    if (stairForm == "spiral") {
+        return StairType::Spiral;
+    }
+    return StairType::Straight;
+}
+
+Rect MergeTransportEnvelope(const std::vector<SemanticVerticalSystem>& systems,
+                            bool includeExternal) {
+    Rect merged;
+    bool hasAny = false;
+    float minX = 0.0f;
+    float minY = 0.0f;
+    float maxX = 0.0f;
+    float maxY = 0.0f;
+
+    for (const auto& system : systems) {
+        if (!includeExternal && system.placement == "external") {
+            continue;
+        }
+        if (system.shaftRect.size[0] <= 0.0f || system.shaftRect.size[1] <= 0.0f) {
+            continue;
+        }
+        if (!hasAny) {
+            minX = system.shaftRect.origin[0];
+            minY = system.shaftRect.origin[1];
+            maxX = system.shaftRect.origin[0] + system.shaftRect.size[0];
+            maxY = system.shaftRect.origin[1] + system.shaftRect.size[1];
+            hasAny = true;
+        } else {
+            minX = std::min(minX, system.shaftRect.origin[0]);
+            minY = std::min(minY, system.shaftRect.origin[1]);
+            maxX = std::max(maxX, system.shaftRect.origin[0] + system.shaftRect.size[0]);
+            maxY = std::max(maxY, system.shaftRect.origin[1] + system.shaftRect.size[1]);
+        }
+    }
+
+    if (!hasAny) {
+        return merged;
+    }
+
+    merged.origin = {minX, minY};
+    merged.size = {maxX - minX, maxY - minY};
+    return merged;
+}
+
+ResolvedVerticalTransportPlan MakeResolvedVerticalTransport(const SemanticVerticalSystem& system) {
+    ResolvedVerticalTransportPlan transport;
+    transport.transportId = system.id;
+    transport.type = system.type == "elevator" ? VerticalTransportType::Elevator : VerticalTransportType::Stair;
+    transport.shaftRect = system.shaftRect;
+    transport.floorFrom = system.floorFrom;
+    transport.floorTo = system.floorTo;
+    transport.sourceFloorLevel = system.floorFrom;
+    transport.continuousShaft = transport.type == VerticalTransportType::Elevator || system.type == "stairwell";
+    transport.enclosed = system.mode != "open";
+    transport.external = system.placement == "external";
+    transport.stairType = ParseStairType(system.stairForm);
+    transport.width = std::min(system.shaftRect.size[0], system.shaftRect.size[1]);
+    transport.position = transport.type == VerticalTransportType::Elevator
+        ? GridPos2D{system.shaftRect.origin[0] + system.shaftRect.size[0] * 0.5f,
+                    system.shaftRect.origin[1] + system.shaftRect.size[1] * 0.5f}
+        : GridPos2D{system.shaftRect.origin[0] + system.shaftRect.size[0] * 0.5f,
+                    system.shaftRect.origin[1] + 0.25f};
+    transport.rotationDegrees = DetermineStairRotationDegrees(system.shaftRect);
+    return transport;
+}
+
 ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
                                     SpaceUsage usage,
                                     const Rect& rect,
@@ -250,6 +363,7 @@ ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
     space.stairWidth = stairWidth > 0.0f ? stairWidth : rect.size[0];
     space.stairPosition = stairPosition;
     space.stairType = stairType;
+    space.stairRotationDegrees = DetermineStairRotationDegrees(rect);
     return space;
 }
 
@@ -277,12 +391,33 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
                                                  std::string& outError) const {
     outResolvedFloor.level = layoutInput.level;
     outResolvedFloor.spaces.clear();
+    outResolvedFloor.verticalTransports.clear();
     outResolvedFloor.debugBlocks.clear();
 
-    const Rect combinedCore = MergeCoreEnvelope(floorCores);
+    std::unordered_set<std::string> emittedTransports;
+    for (const auto& system : layoutInput.verticalSystems) {
+        if (!system.id.empty() && emittedTransports.insert(system.id).second) {
+            outResolvedFloor.verticalTransports.push_back(MakeResolvedVerticalTransport(system));
+        }
+    }
+
+    Rect combinedCore = MergeCoreEnvelope(floorCores);
     if (combinedCore.size[0] <= 0.0f || combinedCore.size[1] <= 0.0f) {
-        outError = "Residential floor layout requires a valid stair/elevator core envelope";
-        return false;
+        combinedCore = MergeTransportEnvelope(layoutInput.verticalSystems, false);
+    }
+    if (combinedCore.size[0] <= 0.0f || combinedCore.size[1] <= 0.0f) {
+        const GridPos2D plateCenter = {
+            floorPlate.origin[0] + floorPlate.size[0] * 0.5f,
+            floorPlate.origin[1] + floorPlate.size[1] * 0.5f
+        };
+        combinedCore.origin = {
+            plateCenter[0] - std::max(1.2f, definition.grid * 2.0f),
+            plateCenter[1] - std::max(2.0f, definition.grid * 3.0f)
+        };
+        combinedCore.size = {
+            std::max(2.4f, definition.grid * 4.0f),
+            std::max(4.0f, definition.grid * 6.0f)
+        };
     }
 
     const float corridorWidth = std::max(1.8f, definition.grid * 3.0f);
@@ -380,7 +515,10 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
                     semanticSpace.constraints.connectsToFloor,
                     matchedCore->rect.size[0],
                     matchedCore->rect.origin,
-                    StairType::Straight));
+                    DetermineStairType(definition,
+                                       layoutInput.level,
+                                       semanticSpace.constraints.connectsToFloor,
+                                       matchedCore->rect)));
                 synthesizedAny = true;
             }
             continue;

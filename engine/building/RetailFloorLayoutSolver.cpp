@@ -360,6 +360,44 @@ std::vector<VerticalCore> ResolveUsableCores(const FloorPlate& floorPlate,
     return BuildFallbackCores(safeInterior, atriumVoid);
 }
 
+float DetermineStairRotationDegrees(const Rect& rect) {
+    return rect.size[0] >= rect.size[1] ? 90.0f : 0.0f;
+}
+
+float EstimateStairRunLength(const BuildingDefinition& definition, int fromLevel, int toLevel) {
+    if (toLevel <= fromLevel) {
+        return 0.0f;
+    }
+
+    float totalHeight = 0.0f;
+    for (const auto& floor : definition.floors) {
+        if (floor.level >= fromLevel && floor.level < toLevel) {
+            totalHeight += floor.floorHeight;
+        }
+    }
+
+    const int stepCount = static_cast<int>(std::ceil(totalHeight / 0.18f));
+    return std::max(0, stepCount) * 0.28f;
+}
+
+StairType DetermineStairType(const BuildingDefinition& definition,
+                             int floorLevel,
+                             int connectToLevel,
+                             const Rect& rect) {
+    const float runLength = EstimateStairRunLength(definition, floorLevel, connectToLevel);
+    const float availableRun = std::max(rect.size[0], rect.size[1]);
+    if (runLength <= std::max(0.0f, availableRun - 0.4f)) {
+        return StairType::Straight;
+    }
+
+    const float halfRun = runLength * 0.5f;
+    if (halfRun <= std::max(0.0f, availableRun - 0.4f)) {
+        return StairType::U;
+    }
+
+    return StairType::L;
+}
+
 ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
                                     SpaceUsage usage,
                                     const Rect& rect,
@@ -381,6 +419,7 @@ ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
     space.stairWidth = stairWidth > 0.0f ? stairWidth : rect.size[0];
     space.stairPosition = stairPosition;
     space.stairType = stairType;
+    space.stairRotationDegrees = DetermineStairRotationDegrees(rect);
     return space;
 }
 
@@ -585,7 +624,10 @@ bool RetailFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
                     semanticSpace.constraints.connectsToFloor,
                     matchedCore->rect.size[0],
                     matchedCore->rect.origin,
-                    StairType::Straight);
+                    DetermineStairType(definition,
+                                       layoutInput.level,
+                                       semanticSpace.constraints.connectsToFloor,
+                                       matchedCore->rect));
                 AddDebugBlock(space, layoutInput.level, outResolvedFloor.debugBlocks);
                 outResolvedFloor.spaces.push_back(std::move(space));
                 synthesizedAny = true;

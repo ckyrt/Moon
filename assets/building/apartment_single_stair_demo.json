@@ -1,0 +1,94 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "apartment",
+  "style": {
+    "category": "residential",
+    "facade": "brick_plaster",
+    "roof": "flat",
+    "window_style": "standard",
+    "material": "brick"
+  },
+  "mass": {
+    "footprint_area": 420,
+    "floors": 5,
+    "total_height": 17.5
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "entry_level",
+        "spaces": [
+          { "space_id": "lobby_0", "type": "lobby", "zone": "circulation", "area_preferred": 38, "constraints": { "ceiling_height": 3.8, "min_width": 4.0 } },
+          { "space_id": "corridor_0", "type": "corridor", "zone": "circulation", "area_preferred": 30, "constraints": { "ceiling_height": 3.2, "min_width": 2.2 } },
+          { "space_id": "apt0_living", "unit_id": "apt0_a", "type": "living", "zone": "private", "area_preferred": 28, "constraints": { "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "apt0_bed", "unit_id": "apt0_a", "type": "bedroom", "zone": "private", "area_preferred": 16, "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "residential_1",
+        "spaces": [
+          { "space_id": "corridor_1", "type": "corridor", "zone": "circulation", "area_preferred": 28, "constraints": { "ceiling_height": 3.0, "min_width": 2.2 } },
+          { "space_id": "apt1a_living", "unit_id": "apt1_a", "type": "living", "zone": "private", "area_preferred": 30, "constraints": { "ceiling_height": 3.0, "min_width": 4.2 } },
+          { "space_id": "apt1a_bed", "unit_id": "apt1_a", "type": "bedroom", "zone": "private", "area_preferred": 15, "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } },
+          { "space_id": "apt1b_living", "unit_id": "apt1_b", "type": "living", "zone": "private", "area_preferred": 29, "constraints": { "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "apt1b_bed", "unit_id": "apt1_b", "type": "bedroom", "zone": "private", "area_preferred": 15, "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "residential_2",
+        "spaces": [
+          { "space_id": "corridor_2", "type": "corridor", "zone": "circulation", "area_preferred": 28, "constraints": { "ceiling_height": 3.0, "min_width": 2.2 } },
+          { "space_id": "apt2a_living", "unit_id": "apt2_a", "type": "living", "zone": "private", "area_preferred": 30, "constraints": { "ceiling_height": 3.0, "min_width": 4.2 } },
+          { "space_id": "apt2a_bed", "unit_id": "apt2_a", "type": "bedroom", "zone": "private", "area_preferred": 15, "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } },
+          { "space_id": "apt2b_living", "unit_id": "apt2_b", "type": "living", "zone": "private", "area_preferred": 29, "constraints": { "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "apt2b_bed", "unit_id": "apt2_b", "type": "bedroom", "zone": "private", "area_preferred": 15, "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "residential_3",
+        "spaces": [
+          { "space_id": "corridor_3", "type": "corridor", "zone": "circulation", "area_preferred": 28, "constraints": { "ceiling_height": 3.0, "min_width": 2.2 } },
+          { "space_id": "apt3a_living", "unit_id": "apt3_a", "type": "living", "zone": "private", "area_preferred": 29, "constraints": { "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "apt3a_bed", "unit_id": "apt3_a", "type": "bedroom", "zone": "private", "area_preferred": 15, "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } },
+          { "space_id": "apt3b_living", "unit_id": "apt3_b", "type": "living", "zone": "private", "area_preferred": 28, "constraints": { "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "apt3b_bed", "unit_id": "apt3_b", "type": "bedroom", "zone": "private", "area_preferred": 15, "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } }
+        ]
+      },
+      {
+        "level": 4,
+        "name": "residential_4",
+        "spaces": [
+          { "space_id": "corridor_4", "type": "corridor", "zone": "circulation", "area_preferred": 26, "constraints": { "ceiling_height": 3.0, "min_width": 2.2 } },
+          { "space_id": "apt4a_living", "unit_id": "apt4_a", "type": "living", "zone": "private", "area_preferred": 28, "constraints": { "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "apt4a_bed", "unit_id": "apt4_a", "type": "bedroom", "zone": "private", "area_preferred": 14, "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } },
+          { "space_id": "apt4b_living", "unit_id": "apt4_b", "type": "living", "zone": "private", "area_preferred": 27, "constraints": { "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "apt4b_bed", "unit_id": "apt4_b", "type": "bedroom", "zone": "private", "area_preferred": 14, "constraints": { "ceiling_height": 3.0, "min_width": 3.0 } }
+        ]
+      }
+    ]
+  },
+  "vertical_systems": [
+    {
+      "id": "apartment_stair",
+      "type": "stairwell",
+      "mode": "enclosed",
+      "placement": "internal",
+      "floor_from": 0,
+      "floor_to": 4,
+      "stair_form": "u",
+      "shaft_rect": { "x": 8.0, "y": 5.0, "w": 3.5, "d": 7.0 },
+      "access_doors": [
+        { "floor": 0, "to_space": "lobby_0" },
+        { "floor": 1, "to_space": "corridor_1" },
+        { "floor": 2, "to_space": "corridor_2" },
+        { "floor": 3, "to_space": "corridor_3" },
+        { "floor": 4, "to_space": "corridor_4" }
+      ]
+    }
+  ]
+}

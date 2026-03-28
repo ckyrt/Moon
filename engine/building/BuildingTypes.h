@@ -71,6 +71,7 @@ struct StairConfig {
     int connectToLevel;         // Target floor level
     GridPos2D position;         // Position within space
     float width;                // Stair width (meters)
+    float rotationDegrees = 0.0f; // Base orientation in plan view. 0 = +Z, 90 = +X
 };
 
 /**
@@ -258,6 +259,27 @@ struct Floor {
     std::vector<Space> spaces;  // All spaces on this floor
 };
 
+enum class VerticalTransportType {
+    Stair,
+    Elevator
+};
+
+struct VerticalTransport {
+    std::string transportId;
+    VerticalTransportType type = VerticalTransportType::Stair;
+    Rect shaftRect;
+    int floorFrom = 0;
+    int floorTo = 0;
+    int sourceFloorLevel = 0;
+    bool continuousShaft = true;
+    bool enclosed = true;
+    bool external = false;
+    StairType stairType = StairType::Straight;
+    float width = 0.0f;
+    GridPos2D position = {0.0f, 0.0f};
+    float rotationDegrees = 0.0f;
+};
+
 /**
  * @brief Complete resolved geometric building definition
  * Internal representation generated from semantic building input
@@ -268,6 +290,7 @@ struct BuildingDefinition {
     BuildingStyle style;        // Architectural style
     std::vector<Mass> masses;   // Building volumes
     std::vector<Floor> floors;  // Floor definitions
+    std::vector<VerticalTransport> verticalTransports; // Vertical circulation/shaft systems
 };
 
 /**
@@ -386,6 +409,7 @@ struct GeneratedBuilding {
     std::string resolvedLayoutJson;
     std::vector<FloorPlate> floorPlates;
     std::vector<VerticalCore> verticalCores;
+    std::vector<VerticalTransport> verticalTransports;
     std::vector<SupportColumn> supportColumns;
     std::vector<ProgramBlock> programBlocks;
     std::vector<WallSegment> walls;

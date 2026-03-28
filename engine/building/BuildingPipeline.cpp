@@ -53,6 +53,20 @@ std::string DescribeSpaceType(const Moon::Building::Space& space) {
     return Moon::Building::SpaceUsageToString(space.properties.usage);
 }
 
+bool RectsMatch(const Moon::Building::Rect& a, const Moon::Building::Rect& b) {
+    return std::abs(a.origin[0] - b.origin[0]) < 0.001f &&
+           std::abs(a.origin[1] - b.origin[1]) < 0.001f &&
+           std::abs(a.size[0] - b.size[0]) < 0.001f &&
+           std::abs(a.size[1] - b.size[1]) < 0.001f;
+}
+
+bool RectContainsPoint(const Moon::Building::Rect& rect, const Moon::Building::GridPos2D& point) {
+    return point[0] > rect.origin[0] + 0.001f &&
+           point[0] < rect.origin[0] + rect.size[0] - 0.001f &&
+           point[1] > rect.origin[1] + 0.001f &&
+           point[1] < rect.origin[1] + rect.size[1] - 0.001f;
+}
+
 } // namespace
 
 namespace Moon {
@@ -169,6 +183,7 @@ bool BuildingPipeline::ProcessBuildingInternal(const BuildingDefinition& definit
     
     // Store definition
     outBuilding.definition = workingDefinition;
+    outBuilding.verticalTransports = workingDefinition.verticalTransports;
     
     // Step 3: Process masses and floors (implicit, data already in definition)
     if (!ProcessMassAndFloors(workingDefinition)) {
@@ -439,6 +454,41 @@ void BuildingPipeline::ApplyMassDrivenSemanticLayout(BuildingDefinition& definit
     if (!outError.empty()) {
         return;
     }
+
+    std::vector<VerticalTransport> resolvedVerticalTransports;
+    BuildVerticalTransportsFromResolvedLayout(resolvedLayout, resolvedVerticalTransports);
+    if (!resolvedVerticalTransports.empty()) {
+        definition.verticalTransports = std::move(resolvedVerticalTransports);
+    }
+    generated.verticalTransports = definition.verticalTransports;
+    for (auto& plate : generated.floorPlates) {
+        for (const auto& transport : generated.verticalTransports) {
+            if (plate.floorLevel < transport.floorFrom || plate.floorLevel > transport.floorTo) {
+                continue;
+            }
+
+            const auto existingVoid = std::find_if(plate.voids.begin(), plate.voids.end(),
+                [&](const Rect& voidRect) { return RectsMatch(voidRect, transport.shaftRect); });
+            if (existingVoid == plate.voids.end()) {
+                plate.voids.push_back(transport.shaftRect);
+            }
+        }
+    }
+    generated.supportColumns.erase(
+        std::remove_if(
+            generated.supportColumns.begin(),
+            generated.supportColumns.end(),
+            [&](const SupportColumn& column) {
+                return std::any_of(
+                    generated.verticalTransports.begin(),
+                    generated.verticalTransports.end(),
+                    [&](const VerticalTransport& transport) {
+                        return column.floorTo >= transport.floorFrom &&
+                               column.floorFrom <= transport.floorTo &&
+                               RectContainsPoint(transport.shaftRect, column.center);
+                    });
+            }),
+        generated.supportColumns.end());
 
     std::string resolvedLayoutJson;
     if (!SerializeResolvedBuildingLayout(formInput, resolvedLayout, resolvedLayoutJson, outError)) {

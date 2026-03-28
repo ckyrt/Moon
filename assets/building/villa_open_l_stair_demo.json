@@ -1,0 +1,55 @@
+{
+  "schema": "moon_building",
+  "grid": 0.5,
+  "building_type": "villa",
+  "style": {
+    "category": "residential",
+    "facade": "plaster_wood",
+    "roof": "flat",
+    "window_style": "large",
+    "material": "plaster"
+  },
+  "mass": {
+    "footprint_area": 180,
+    "floors": 2,
+    "total_height": 7.2
+  },
+  "program": {
+    "floors": [
+      {
+        "level": 0,
+        "name": "ground_floor",
+        "spaces": [
+          { "space_id": "living_0", "type": "living", "zone": "public", "area_preferred": 70, "constraints": { "ceiling_height": 3.4, "min_width": 5.0 } },
+          { "space_id": "dining_0", "type": "dining", "zone": "public", "area_preferred": 24, "constraints": { "ceiling_height": 3.2, "min_width": 3.5 } },
+          { "space_id": "kitchen_0", "type": "kitchen", "zone": "public", "area_preferred": 22, "constraints": { "ceiling_height": 3.2, "min_width": 3.0 } }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "upper_floor",
+        "spaces": [
+          { "space_id": "bedroom_1", "type": "bedroom", "zone": "private", "area_preferred": 36, "constraints": { "ceiling_height": 3.0, "min_width": 4.0 } },
+          { "space_id": "bedroom_2", "type": "bedroom", "zone": "private", "area_preferred": 30, "constraints": { "ceiling_height": 3.0, "min_width": 3.5 } },
+          { "space_id": "hall_1", "type": "corridor", "zone": "circulation", "area_preferred": 18, "constraints": { "ceiling_height": 3.0, "min_width": 2.0 } }
+        ]
+      }
+    ]
+  },
+  "vertical_systems": [
+    {
+      "id": "villa_open_stair",
+      "type": "stair",
+      "mode": "open",
+      "placement": "internal",
+      "floor_from": 0,
+      "floor_to": 1,
+      "stair_form": "l",
+      "stair_rect": { "x": 4.5, "y": 3.0, "w": 3.0, "d": 5.5 },
+      "connects": [
+        { "floor": 0, "to_space": "living_0" },
+        { "floor": 1, "to_space": "hall_1" }
+      ]
+    }
+  ]
+}

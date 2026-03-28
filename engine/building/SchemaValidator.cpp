@@ -858,6 +858,9 @@ bool SchemaValidator::ValidateTypology(const nlohmann::json& json, std::string& 
     const std::string buildingType = json["building_type"].get<std::string>();
     const int massFloors = json["mass"]["floors"].get<int>();
     const auto& floorsJson = json["program"]["floors"];
+    const auto& verticalSystemsJson = json.contains("vertical_systems") && json["vertical_systems"].is_array()
+        ? json["vertical_systems"]
+        : nlohmann::json::array();
 
     struct FloorStats {
         bool hasCore = false;
@@ -955,6 +958,22 @@ bool SchemaValidator::ValidateTypology(const nlohmann::json& json, std::string& 
             if (type == "shop" && stats.shopConnectedToCirculation) {
                 stats.shopConnectedToCirculation = shopHasCirculationAdjacency;
             }
+        }
+    }
+
+    for (const auto& systemJson : verticalSystemsJson) {
+        const std::string type = systemJson.value("type", "");
+        const int floorFrom = systemJson.value("floor_from", 0);
+        const int floorTo = std::max(floorFrom, systemJson.value("floor_to", floorFrom));
+        for (int level = floorFrom; level <= floorTo; ++level) {
+            auto& stats = perFloor[level];
+            if (type == "stairwell" || type == "stair" || type == "elevator") {
+                stats.hasCore = true;
+            }
+        }
+
+        if (type == "stairwell" || type == "stair" || type == "elevator") {
+            ++totalCoreCount;
         }
     }
 

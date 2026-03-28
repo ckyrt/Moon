@@ -173,6 +173,57 @@ bool RectFitsPlate(const FloorPlate& plate, const Rect& rect, float margin) {
     return true;
 }
 
+bool CandidateColumnAllowed(const FloorPlate& plate,
+                            const std::vector<Rect>& exclusionRects,
+                            const GridPos2D& center) {
+    for (const auto& exclusion : exclusionRects) {
+        if (RectContainsPoint(exclusion, center)) {
+            return false;
+        }
+    }
+
+    if (plate.outline.size() >= 3) {
+        return PointInOutline(plate.outline, center);
+    }
+
+    return center[0] > plate.origin[0] + 0.001f &&
+           center[0] < plate.origin[0] + plate.size[0] - 0.001f &&
+           center[1] > plate.origin[1] + 0.001f &&
+           center[1] < plate.origin[1] + plate.size[1] - 0.001f;
+}
+
+std::vector<GridPos2D> BuildMassingColumnCandidates(const FloorPlate& plate) {
+    const float insetX = std::min(std::max(0.9f, plate.size[0] * 0.08f), std::max(1.0f, plate.size[0] * 0.2f));
+    const float insetY = std::min(std::max(0.9f, plate.size[1] * 0.08f), std::max(1.0f, plate.size[1] * 0.2f));
+    const float minX = plate.origin[0] + insetX;
+    const float maxX = plate.origin[0] + plate.size[0] - insetX;
+    const float minY = plate.origin[1] + insetY;
+    const float maxY = plate.origin[1] + plate.size[1] - insetY;
+    const float centerX = plate.origin[0] + plate.size[0] * 0.5f;
+    const float centerY = plate.origin[1] + plate.size[1] * 0.5f;
+
+    std::vector<GridPos2D> candidates = {
+        {minX, minY},
+        {maxX, minY},
+        {minX, maxY},
+        {maxX, maxY}
+    };
+
+    if (plate.size[0] >= 18.0f) {
+        candidates.push_back({centerX, minY});
+        candidates.push_back({centerX, maxY});
+    }
+    if (plate.size[1] >= 18.0f) {
+        candidates.push_back({minX, centerY});
+        candidates.push_back({maxX, centerY});
+    }
+    if (plate.size[0] >= 24.0f && plate.size[1] >= 24.0f) {
+        candidates.push_back({centerX, centerY});
+    }
+
+    return candidates;
+}
+
 bool IsCommercialOrOfficeTower(const BuildingDefinition& definition) {
     return definition.style.category == "commercial" || definition.style.category == "retail";
 }
@@ -407,9 +458,9 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
     }
 
     const float spacing = (definition.style.category == "commercial" || definition.style.category == "retail")
-        ? 8.0f : 6.0f;
+        ? 12.0f : 8.0f;
     const float columnSize = (definition.style.category == "commercial" || definition.style.category == "retail")
-        ? 0.55f : 0.4f;
+        ? 0.45f : 0.35f;
 
     for (const auto& plan : pendingColumnPlans) {
         std::vector<Rect> exclusionRects = plan.exclusionRects;
@@ -419,44 +470,46 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
             }
         }
 
-        for (float x = plan.plate.origin[0] + spacing * 0.5f;
-             x < plan.plate.origin[0] + plan.plate.size[0] - spacing * 0.25f;
-             x += spacing) {
-            for (float y = plan.plate.origin[1] + spacing * 0.5f;
-                 y < plan.plate.origin[1] + plan.plate.size[1] - spacing * 0.25f;
-                 y += spacing) {
-                GridPos2D center = {x, y};
-                bool blocked = false;
-                for (const auto& exclusion : exclusionRects) {
-                    if (RectContainsPoint(exclusion, center)) {
-                        blocked = true;
-                        break;
-                    }
+        const bool useMassingColumnPattern = hasMassingRule;
+        std::vector<GridPos2D> candidates;
+        if (useMassingColumnPattern) {
+            candidates = BuildMassingColumnCandidates(plan.plate);
+        } else {
+            for (float x = plan.plate.origin[0] + spacing * 0.5f;
+                 x < plan.plate.origin[0] + plan.plate.size[0] - spacing * 0.25f;
+                 x += spacing) {
+                for (float y = plan.plate.origin[1] + spacing * 0.5f;
+                     y < plan.plate.origin[1] + plan.plate.size[1] - spacing * 0.25f;
+                     y += spacing) {
+                    candidates.push_back({x, y});
                 }
-                if (blocked) {
-                    continue;
-                }
-
-                const int keyX = static_cast<int>(std::round(center[0] * 100.0f));
-                const int keyY = static_cast<int>(std::round(center[1] * 100.0f));
-                const std::string columnId = "column_" + std::to_string(keyX) + "_" + std::to_string(keyY);
-                auto existing = std::find_if(outBuilding.supportColumns.begin(), outBuilding.supportColumns.end(),
-                    [&](const SupportColumn& column) { return column.columnId == columnId; });
-                if (existing != outBuilding.supportColumns.end()) {
-                    existing->floorFrom = std::min(existing->floorFrom, 0);
-                    existing->floorTo = std::max(existing->floorTo, plan.plate.floorLevel);
-                    continue;
-                }
-
-                SupportColumn column;
-                column.columnId = columnId;
-                column.center = center;
-                column.width = columnSize;
-                column.depth = columnSize;
-                column.floorFrom = 0;
-                column.floorTo = plan.plate.floorLevel;
-                outBuilding.supportColumns.push_back(column);
             }
+        }
+
+        for (const auto& center : candidates) {
+            if (!CandidateColumnAllowed(plan.plate, exclusionRects, center)) {
+                continue;
+            }
+
+            const int keyX = static_cast<int>(std::round(center[0] * 100.0f));
+            const int keyY = static_cast<int>(std::round(center[1] * 100.0f));
+            const std::string columnId = "column_" + std::to_string(keyX) + "_" + std::to_string(keyY);
+            auto existing = std::find_if(outBuilding.supportColumns.begin(), outBuilding.supportColumns.end(),
+                [&](const SupportColumn& column) { return column.columnId == columnId; });
+            if (existing != outBuilding.supportColumns.end()) {
+                existing->floorFrom = std::min(existing->floorFrom, 0);
+                existing->floorTo = std::max(existing->floorTo, plan.plate.floorLevel);
+                continue;
+            }
+
+            SupportColumn column;
+            column.columnId = columnId;
+            column.center = center;
+            column.width = columnSize;
+            column.depth = columnSize;
+            column.floorFrom = 0;
+            column.floorTo = plan.plate.floorLevel;
+            outBuilding.supportColumns.push_back(column);
         }
     }
 
