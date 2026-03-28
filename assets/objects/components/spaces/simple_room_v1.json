@@ -9,7 +9,8 @@
     "h":     350.0,
     "t":      20.0,
     "win_w": 150.0,
-    "win_h": 150.0
+    "win_h": 150.0,
+    "win_sill": 110.0
   },
   "anchors": {
     "bottom_center":   [0, 0, 0],
@@ -26,7 +27,7 @@
         "primitive": "cube",
         "params": { "size_x": "$w", "size_y": "$t", "size_z": "$d" },
         "transform": { "position": [0, "$t / 2", 0] },
-        "material": "carpet"
+        "material": "wood"
       },
       {
         "name": "wall_front",
@@ -78,7 +79,7 @@
             "size_z": "$t + 2" 
           },
           "transform": { 
-            "position": [0, "$t + $h * 0.6", "$d / 2 - $t / 2"] 
+            "position": [0, "$win_sill + $win_h / 2", "$d / 2 - $t / 2"] 
           }
         }
       },
@@ -105,8 +106,8 @@
         "comment": "Window on back wall. Centered horizontally, sill at 60% of wall height. Embedded in wall thickness (t matched to wall t).",
         "type": "reference",
         "ref": "window_v1",
-        "overrides": { "w": "$win_w", "h": "$win_h", "t": "$t" },
-        "transform": { "position": [0, "$t + $h * 0.6", "$d / 2 - $t / 2"] }
+        "overrides": { "w": "$win_w - 2.0", "h": "$win_h - 2.0", "t": "$t" },
+        "transform": { "position": [0, "$win_sill", "$d / 2 - $t / 2"] }
       },
       {
         "name": "door_front",

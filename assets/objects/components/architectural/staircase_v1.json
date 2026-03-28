@@ -10,6 +10,7 @@
     "step_h": 18.0,
     "step_t": 4.0,
     "stringer_t": 4.0,
+    "stringer_h": 12.0,
     "rail_h": 92.0
   },
   "anchors": {
@@ -24,16 +25,16 @@
       {
         "name": "stringer_left",
         "type": "reference",
-        "ref": "painted_panel_v1",
-        "overrides": { "w": "$stringer_t", "h": "$step_count * $step_h", "d": "$step_count * $tread_d + $tread_d" },
-        "transform": { "position": ["$w / 2 - $stringer_t / 2", "$step_count * $step_h / 2", "$step_count * $tread_d / 2"] }
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$stringer_t", "h": "$stringer_h", "d": "$step_count * $tread_d + $tread_d" },
+        "transform": { "position": ["$w / 2 - $stringer_t / 2", "$stringer_h / 2 + 2.0", "$step_count * $tread_d / 2"] }
       },
       {
         "name": "stringer_right",
         "type": "reference",
-        "ref": "painted_panel_v1",
-        "overrides": { "w": "$stringer_t", "h": "$step_count * $step_h", "d": "$step_count * $tread_d + $tread_d" },
-        "transform": { "position": ["-$w / 2 + $stringer_t / 2", "$step_count * $step_h / 2", "$step_count * $tread_d / 2"] }
+        "ref": "wood_panel_v1",
+        "overrides": { "w": "$stringer_t", "h": "$stringer_h", "d": "$step_count * $tread_d + $tread_d" },
+        "transform": { "position": ["-$w / 2 + $stringer_t / 2", "$stringer_h / 2 + 2.0", "$step_count * $tread_d / 2"] }
       },
       {
         "name": "step_1",

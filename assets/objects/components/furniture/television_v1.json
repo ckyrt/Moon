@@ -26,10 +26,11 @@
     "children": [
       {
         "name": "stand_base",
-        "type": "reference",
-        "ref": "painted_panel_v1",
-        "overrides": { "w": "$base_w", "h": "$base_h", "d": "$base_d" },
-        "transform": { "position": [0, "$base_h / 2", 0] }
+        "type": "primitive",
+        "primitive": "cube",
+        "params": { "size_x": "$base_w", "size_y": "$base_h", "size_z": "$base_d" },
+        "transform": { "position": [0, "$base_h / 2", 0] },
+        "material": "metal"
       },
       {
         "name": "stem",
@@ -40,10 +41,11 @@
       },
       {
         "name": "back_panel",
-        "type": "reference",
-        "ref": "painted_panel_v1",
-        "overrides": { "w": "$screen_w", "h": "$screen_h", "d": "$screen_t" },
-        "transform": { "position": [0, "$base_h + $stand_h + $screen_h / 2", "-$screen_t / 2"] }
+        "type": "primitive",
+        "primitive": "cube",
+        "params": { "size_x": "$screen_w", "size_y": "$screen_h", "size_z": "$screen_t" },
+        "transform": { "position": [0, "$base_h + $stand_h + $screen_h / 2", "-$screen_t / 2"] },
+        "material": "plastic"
       },
       {
         "name": "screen_face",

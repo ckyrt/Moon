@@ -87,6 +87,9 @@ BuildResult CSGBuilder::BuildNode(const Node* node, ParameterScope& scope, std::
         
         case NodeType::Reference:
             return BuildReference(node->data.ref, scope, outError);
+
+        case NodeType::Light:
+            return BuildLight(node->data.light, scope, outError);
         
         default:
             outError = "Unknown node type";
@@ -523,6 +526,22 @@ BuildResult CSGBuilder::BuildGroup(const GroupNode* group, ParameterScope& scope
             );
             meshItem.worldTransform.position = groupRotation * scaledChildPos + groupPosition;
         }
+
+        for (auto& lightItem : result.lights) {
+            lightItem.worldTransform.rotation = groupRotation * lightItem.worldTransform.rotation;
+            lightItem.worldTransform.scale = Vector3(
+                lightItem.worldTransform.scale.x * groupScale.x,
+                lightItem.worldTransform.scale.y * groupScale.y,
+                lightItem.worldTransform.scale.z * groupScale.z
+            );
+
+            Vector3 scaledChildPos = Vector3(
+                lightItem.worldTransform.position.x * groupScale.x,
+                lightItem.worldTransform.position.y * groupScale.y,
+                lightItem.worldTransform.position.z * groupScale.z
+            );
+            lightItem.worldTransform.position = groupRotation * scaledChildPos + groupPosition;
+        }
     }
     
     return result;
@@ -588,7 +607,66 @@ BuildResult CSGBuilder::BuildReference(const RefNode* ref, ParameterScope& scope
         meshItem.worldTransform.position = refRotation * scaledChildPos + refPosition;
     }
 
+    for (auto& lightItem : childResult.lights) {
+        lightItem.worldTransform.rotation = refRotation * lightItem.worldTransform.rotation;
+        lightItem.worldTransform.scale = Vector3(
+            lightItem.worldTransform.scale.x * refScale.x,
+            lightItem.worldTransform.scale.y * refScale.y,
+            lightItem.worldTransform.scale.z * refScale.z
+        );
+
+        Vector3 scaledChildPos = Vector3(
+            lightItem.worldTransform.position.x * refScale.x,
+            lightItem.worldTransform.position.y * refScale.y,
+            lightItem.worldTransform.position.z * refScale.z
+        );
+        lightItem.worldTransform.position = refRotation * scaledChildPos + refPosition;
+    }
+
     return childResult;
+}
+
+BuildResult CSGBuilder::BuildLight(const LightNode* light, ParameterScope& scope, std::string& outError) {
+    if (!light) {
+        outError = "LightNode is null";
+        return BuildResult();
+    }
+
+    Vector3 position, scale;
+    Quaternion rotation;
+    ResolveTransform(light->localTransform, scope, position, rotation, scale, outError);
+
+    LightItem item;
+    switch (light->type) {
+    case LightNode::Type::Directional:
+        item.type = LightItem::Type::Directional;
+        break;
+    case LightNode::Type::Point:
+        item.type = LightItem::Type::Point;
+        break;
+    case LightNode::Type::Spot:
+        item.type = LightItem::Type::Spot;
+        break;
+    }
+
+    item.color = Vector3(
+        ResolveValue(light->colorR, scope, outError),
+        ResolveValue(light->colorG, scope, outError),
+        ResolveValue(light->colorB, scope, outError));
+    item.intensity = ResolveValue(light->intensity, scope, outError);
+    item.range = ResolveValue(light->range, scope, outError) * 0.01f;
+    item.attenuation = Vector3(
+        ResolveValue(light->attenuationConstant, scope, outError),
+        ResolveValue(light->attenuationLinear, scope, outError),
+        ResolveValue(light->attenuationQuadratic, scope, outError));
+    item.spotInnerConeAngle = ResolveValue(light->spotInnerConeAngle, scope, outError);
+    item.spotOuterConeAngle = ResolveValue(light->spotOuterConeAngle, scope, outError);
+    item.castShadows = light->castShadows;
+    item.worldTransform = ResolvedTransform(position, rotation, scale);
+
+    BuildResult result;
+    result.AddLight(item);
+    return result;
 }
 
 std::unordered_map<std::string, Vector3> CSGBuilder::EvaluateAnchors(

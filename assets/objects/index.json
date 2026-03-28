@@ -363,13 +363,6 @@
       "description": "Warm point light source (yellowish white) for lamps and fixtures",
       "category": "lighting",
       "tags": ["level1", "lighting", "light", "point", "warm", "reusable"]
-    },
-    {
-      "id": "test_scene",
-      "path": "test_scene.json",
-      "description": "Test scene configuration",
-      "category": "scene",
-      "tags": ["scene", "test"]
     }
   ]
 }

@@ -33,7 +33,7 @@ struct Adjacency {
 };
 
 struct SpaceConstraints {
-    float aspectRatioMax = 3.0f;
+    float aspectRatioMax = 0.0f;
     std::string naturalLight = "none";  // "required", "preferred", "none"
     bool exteriorAccess = false;
     float ceilingHeight = 3.0f;
@@ -139,7 +139,7 @@ private:
     float GetDefaultAreaForSpaceType(const std::string& spaceType) const;
     float GetDefaultFloorHeight(const SemanticBuilding& input, int floorLevel) const;
     int GetPriorityWeight(const std::string& priority) const;
-    float GetTargetAspectRatio(const SemanticSpace& space) const;
+    float GetTargetAspectRatio(const SemanticBuilding& input, const SemanticSpace& space) const;
     bool IsCirculationSpace(const SemanticSpace& space) const;
     bool IsCoreSpace(const SemanticSpace& space) const;
     bool IsVoidSpace(const SemanticSpace& space) const;

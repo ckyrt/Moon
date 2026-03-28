@@ -82,6 +82,26 @@
           "gap": "$door_gap"
         },
         "transform": { "position": [0, "$leg_h + $h / 2", "$d / 2 - 0.9"] }
+      },
+      {
+        "name": "handle_left",
+        "type": "primitive",
+        "primitive": "sphere",
+        "params": { "radius": 1.8 },
+        "transform": {
+          "position": ["$w * 0.18", "$leg_h + $h / 2", "$d / 2 + 0.6"]
+        },
+        "material": "metal"
+      },
+      {
+        "name": "handle_right",
+        "type": "primitive",
+        "primitive": "sphere",
+        "params": { "radius": 1.8 },
+        "transform": {
+          "position": ["-$w * 0.18", "$leg_h + $h / 2", "$d / 2 + 0.6"]
+        },
+        "material": "metal"
       }
     ],
     "output": { "mode": "separate" }

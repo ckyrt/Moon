@@ -26,17 +26,19 @@
     "children": [
       {
         "name": "body",
-        "type": "reference",
-        "ref": "painted_panel_v1",
-        "overrides": { "w": "$w", "h": "$h", "d": "$d" },
-        "transform": { "position": [0, "$h / 2", 0] }
+        "type": "primitive",
+        "primitive": "cube",
+        "params": { "size_x": "$w", "size_y": "$h", "size_z": "$d" },
+        "transform": { "position": [0, "$h / 2", 0] },
+        "material": "plastic"
       },
       {
         "name": "toe_kick",
-        "type": "reference",
-        "ref": "painted_panel_v1",
-        "overrides": { "w": "$w - 8.0", "h": "$base_h", "d": "$d - 8.0" },
-        "transform": { "position": [0, "$base_h / 2", "$d / 2 - ($d - 8.0) / 2 - 4.0"] }
+        "type": "primitive",
+        "primitive": "cube",
+        "params": { "size_x": "$w - 8.0", "size_y": "$base_h", "size_z": "$d - 8.0" },
+        "transform": { "position": [0, "$base_h / 2", "$d / 2 - ($d - 8.0) / 2 - 4.0"] },
+        "material": "plastic"
       },
       {
         "name": "freezer_inset",

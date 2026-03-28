@@ -45,7 +45,7 @@
             "size_z": "$wall_t + 2"
           },
           "transform": {
-            "position": ["$window_x", "$window_y - $wall_h / 2", 0]
+            "position": ["$window_x", "$window_y + $window_h / 2 - $wall_h / 2", 0]
           }
         }
       },
@@ -55,8 +55,8 @@
         "type": "reference",
         "ref": "window_v1",
         "overrides": {
-          "w": "$window_w",
-          "h": "$window_h",
+          "w": "$window_w - 2.0",
+          "h": "$window_h - 2.0",
           "t": "$wall_t"
         },
         "transform": {

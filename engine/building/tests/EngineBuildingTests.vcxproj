@@ -92,6 +92,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AssetPresetTests.cpp" />
     <ClCompile Include="SchemaValidatorTests.cpp" />
     <ClCompile Include="LayoutValidatorTests.cpp" />
     <ClCompile Include="BuildingPipelineTests.cpp" />

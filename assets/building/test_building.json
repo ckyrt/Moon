@@ -21,78 +21,76 @@
         "name": "Ground Retail Floor",
         "spaces": [
           {
+            "space_id": "core_gf",
+            "type": "core",
+            "zone": "service",
+            "area_preferred": 72,
+            "priority": "high",
+            "constraints": {
+              "connects_to_floor": 1,
+              "ceiling_height": 5.5,
+              "min_width": 4.5
+            }
+          },
+          {
+            "space_id": "elevator_gf",
+            "type": "elevator",
+            "zone": "service",
+            "area_preferred": 12,
+            "priority": "high",
+            "constraints": {
+              "connects_to_floor": 1,
+              "ceiling_height": 5.5,
+              "min_width": 2.5
+            }
+          },
+          {
+            "space_id": "stairs_gf",
+            "type": "stairs",
+            "zone": "circulation",
+            "area_preferred": 18,
+            "priority": "high",
+            "constraints": {
+              "connects_to_floor": 1,
+              "ceiling_height": 5.5,
+              "min_width": 2.5
+            }
+          },
+          {
             "space_id": "atrium_gf",
             "type": "void",
             "zone": "public",
-            "area_preferred": 320,
-            "priority": "high"
+            "area_preferred": 260,
+            "priority": "high",
+            "constraints": {
+              "ceiling_height": 12.0,
+              "min_width": 10.0
+            }
           },
           {
             "space_id": "ring_corridor_gf",
             "type": "corridor",
             "zone": "circulation",
-            "area_preferred": 180,
+            "area_preferred": 220,
             "priority": "high",
             "adjacency": [
-              { "to": "atrium_gf", "relationship": "around", "importance": "required" },
-              { "to": "main_lobby_gf", "relationship": "connected", "importance": "required" },
-              { "to": "stairs_gf", "relationship": "connected", "importance": "required" },
-              { "to": "core_gf", "relationship": "connected", "importance": "preferred" }
+              { "to": "atrium_gf", "relationship": "around", "importance": "required" }
             ],
             "constraints": {
-              "min_width": 3.0
+              "ceiling_height": 5.5,
+              "min_width": 5.5
             }
           },
           {
             "space_id": "main_lobby_gf",
             "type": "lobby",
             "zone": "circulation",
-            "area_preferred": 70,
+            "area_preferred": 90,
             "priority": "high",
-            "adjacency": [
-              { "to": "entry_gf", "relationship": "connected", "importance": "required" },
-              { "to": "ring_corridor_gf", "relationship": "connected", "importance": "required" },
-              { "to": "core_gf", "relationship": "nearby", "importance": "preferred" }
-            ]
-          },
-          {
-            "space_id": "entry_gf",
-            "type": "entrance",
-            "zone": "circulation",
-            "area_preferred": 36,
-            "priority": "high",
-            "adjacency": [
-              { "to": "main_lobby_gf", "relationship": "connected", "importance": "required" }
-            ],
             "constraints": {
-              "min_width": 4.0,
-              "ceiling_height": 4.5
-            }
-          },
-          {
-            "space_id": "core_gf",
-            "type": "core",
-            "zone": "service",
-            "area_preferred": 64,
-            "priority": "high",
-            "adjacency": [
-              { "to": "ring_corridor_gf", "relationship": "connected", "importance": "preferred" },
-              { "to": "stairs_gf", "relationship": "connected", "importance": "required" }
-            ]
-          },
-          {
-            "space_id": "stairs_gf",
-            "type": "stairs",
-            "zone": "circulation",
-            "area_preferred": 16,
-            "priority": "high",
-            "adjacency": [
-              { "to": "ring_corridor_gf", "relationship": "connected", "importance": "required" },
-              { "to": "core_gf", "relationship": "connected", "importance": "required" }
-            ],
-            "constraints": {
-              "connects_to_floor": 1,
-              "min_width": 2.0
+              "natural_light": "preferred",
+              "ceiling_height": 5.5,
+              "min_width": 6.0
             }
           },
           {
@@ -100,56 +98,56 @@
             "unit_id": "anchor_shop_gf",
             "type": "shop",
             "zone": "public",
-            "area_preferred": 150,
+            "area_preferred": 140,
             "priority": "high",
             "adjacency": [
               { "to": "ring_corridor_gf", "relationship": "connected", "importance": "required" }
-            ]
+            ],
+            "constraints": {
+              "ceiling_height": 5.0,
+              "min_width": 7.0
+            }
           },
           {
             "space_id": "fashion_shop_gf",
             "unit_id": "fashion_shop_gf",
             "type": "shop",
             "zone": "public",
-            "area_preferred": 95,
+            "area_preferred": 100,
             "priority": "medium",
             "adjacency": [
               { "to": "ring_corridor_gf", "relationship": "connected", "importance": "required" }
-            ]
-          },
-          {
-            "space_id": "tech_shop_gf",
-            "unit_id": "tech_shop_gf",
-            "type": "shop",
-            "zone": "public",
-            "area_preferred": 90,
-            "priority": "medium",
-            "adjacency": [
-              { "to": "ring_corridor_gf", "relationship": "connected", "importance": "required" }
-            ]
-          },
-          {
-            "space_id": "lifestyle_shop_gf",
-            "unit_id": "lifestyle_shop_gf",
-            "type": "shop",
-            "zone": "public",
-            "area_preferred": 85,
-            "priority": "medium",
-            "adjacency": [
-              { "to": "ring_corridor_gf", "relationship": "connected", "importance": "required" }
-            ]
+            ],
+            "constraints": {
+              "ceiling_height": 5.0,
+              "min_width": 6.0
+            }
           },
           {
             "space_id": "cafe_gf",
             "unit_id": "cafe_gf",
             "type": "shop",
             "zone": "public",
-            "area_preferred": 110,
+            "area_preferred": 95,
             "priority": "medium",
             "adjacency": [
-              { "to": "ring_corridor_gf", "relationship": "connected", "importance": "required" },
-              { "to": "main_lobby_gf", "relationship": "nearby", "importance": "preferred" }
-            ]
+              { "to": "ring_corridor_gf", "relationship": "connected", "importance": "required" }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 6.0
+            }
+          },
+          {
+            "space_id": "wc_gf",
+            "type": "bathroom",
+            "zone": "service",
+            "area_preferred": 22,
+            "priority": "medium",
+            "constraints": {
+              "ceiling_height": 3.5,
+              "min_width": 2.5
+            }
           }
         ]
       },
@@ -158,97 +156,65 @@
         "name": "Upper Retail Floor",
         "spaces": [
           {
-            "space_id": "atrium_l1",
-            "type": "void",
-            "zone": "public",
-            "area_preferred": 320,
-            "priority": "high"
-          },
-          {
-            "space_id": "ring_corridor_l1",
-            "type": "corridor",
-            "zone": "circulation",
-            "area_preferred": 180,
-            "priority": "high",
-            "adjacency": [
-              { "to": "atrium_l1", "relationship": "around", "importance": "required" },
-              { "to": "stairs_l1", "relationship": "connected", "importance": "required" },
-              { "to": "sky_lobby_l1", "relationship": "connected", "importance": "required" },
-              { "to": "core_l1", "relationship": "connected", "importance": "preferred" }
-            ],
-            "constraints": {
-              "min_width": 3.0
-            }
-          },
-          {
-            "space_id": "sky_lobby_l1",
-            "type": "lobby",
-            "zone": "circulation",
-            "area_preferred": 54,
-            "priority": "high",
-            "adjacency": [
-              { "to": "ring_corridor_l1", "relationship": "connected", "importance": "required" },
-              { "to": "stairs_l1", "relationship": "connected", "importance": "required" }
-            ]
-          },
-          {
             "space_id": "core_l1",
             "type": "core",
             "zone": "service",
-            "area_preferred": 64,
+            "area_preferred": 70,
             "priority": "high",
-            "adjacency": [
-              { "to": "ring_corridor_l1", "relationship": "connected", "importance": "preferred" },
-              { "to": "stairs_l1", "relationship": "connected", "importance": "required" }
-            ]
+            "constraints": {
+              "connects_from_floor": 0,
+              "ceiling_height": 5.0,
+              "min_width": 4.5
+            }
+          },
+          {
+            "space_id": "elevator_l1",
+            "type": "elevator",
+            "zone": "service",
+            "area_preferred": 12,
+            "priority": "high",
+            "constraints": {
+              "connects_from_floor": 0,
+              "ceiling_height": 5.0,
+              "min_width": 2.5
+            }
           },
           {
             "space_id": "stairs_l1",
             "type": "stairs",
             "zone": "circulation",
-            "area_preferred": 16,
+            "area_preferred": 18,
             "priority": "high",
-            "adjacency": [
-              { "to": "ring_corridor_l1", "relationship": "connected", "importance": "required" },
-              { "to": "core_l1", "relationship": "connected", "importance": "required" }
-            ],
             "constraints": {
               "connects_from_floor": 0,
-              "min_width": 2.0
+              "ceiling_height": 5.0,
+              "min_width": 2.5
             }
           },
           {
-            "space_id": "bookstore_l1",
-            "unit_id": "bookstore_l1",
-            "type": "shop",
+            "space_id": "atrium_l1",
+            "type": "void",
             "zone": "public",
-            "area_preferred": 100,
-            "priority": "medium",
-            "adjacency": [
-              { "to": "ring_corridor_l1", "relationship": "connected", "importance": "required" }
-            ]
+            "area_preferred": 240,
+            "priority": "high",
+            "constraints": {
+              "ceiling_height": 6.0,
+              "min_width": 10.0
+            }
           },
           {
-            "space_id": "design_store_l1",
-            "unit_id": "design_store_l1",
-            "type": "shop",
-            "zone": "public",
-            "area_preferred": 90,
-            "priority": "medium",
+            "space_id": "ring_corridor_l1",
+            "type": "corridor",
+            "zone": "circulation",
+            "area_preferred": 210,
+            "priority": "high",
             "adjacency": [
-              { "to": "ring_corridor_l1", "relationship": "connected", "importance": "required" }
-            ]
-          },
-          {
-            "space_id": "kids_store_l1",
-            "unit_id": "kids_store_l1",
-            "type": "shop",
-            "zone": "public",
-            "area_preferred": 85,
-            "priority": "medium",
-            "adjacency": [
-              { "to": "ring_corridor_l1", "relationship": "connected", "importance": "required" }
-            ]
+              { "to": "atrium_l1", "relationship": "around", "importance": "required" }
+            ],
+            "constraints": {
+              "ceiling_height": 5.0,
+              "min_width": 5.0
+            }
           },
           {
             "space_id": "food_hall_l1",
@@ -258,9 +224,53 @@
             "area_preferred": 150,
             "priority": "high",
             "adjacency": [
-              { "to": "ring_corridor_l1", "relationship": "connected", "importance": "required" },
-              { "to": "sky_lobby_l1", "relationship": "nearby", "importance": "preferred" }
-            ]
+              { "to": "ring_corridor_l1", "relationship": "connected", "importance": "required" }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 6.5
+            }
+          },
+          {
+            "space_id": "bookstore_l1",
+            "unit_id": "bookstore_l1",
+            "type": "shop",
+            "zone": "public",
+            "area_preferred": 110,
+            "priority": "medium",
+            "adjacency": [
+              { "to": "ring_corridor_l1", "relationship": "connected", "importance": "required" }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 6.0
+            }
+          },
+          {
+            "space_id": "design_store_l1",
+            "unit_id": "design_store_l1",
+            "type": "shop",
+            "zone": "public",
+            "area_preferred": 96,
+            "priority": "medium",
+            "adjacency": [
+              { "to": "ring_corridor_l1", "relationship": "connected", "importance": "required" }
+            ],
+            "constraints": {
+              "ceiling_height": 4.8,
+              "min_width": 6.0
+            }
+          },
+          {
+            "space_id": "wc_l1",
+            "type": "bathroom",
+            "zone": "service",
+            "area_preferred": 22,
+            "priority": "medium",
+            "constraints": {
+              "ceiling_height": 3.5,
+              "min_width": 2.5
+            }
           }
         ]
       }

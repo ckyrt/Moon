@@ -19,6 +19,7 @@
 #include "../../../engine/core/CSG/CSGBuilder.h"
 #include "../../../engine/core/Object/Blueprint.h"
 #include "../../../engine/core/Mesh/Mesh.h"
+#include "../../../engine/core/Geometry/MeshGenerator.h"
 #include "../../../external/nlohmann/json.hpp"
 #include <algorithm>
 #include <cctype>
@@ -464,6 +465,15 @@ namespace {
             }
         }
 
+        return bounds;
+    }
+
+    Bounds3 ComputeObjectPreviewBounds(const Moon::CSG::BuildResult& buildResult) {
+        Bounds3 bounds = ComputePreviewBounds(buildResult);
+        for (const auto& light : buildResult.lights) {
+            ExpandBounds(bounds, light.worldTransform.position + Moon::Vector3(-0.25f, -0.25f, -0.25f));
+            ExpandBounds(bounds, light.worldTransform.position + Moon::Vector3(0.25f, 0.25f, 0.25f));
+        }
         return bounds;
     }
 
@@ -1677,7 +1687,7 @@ namespace CommandHandlers {
         builder.SetBlueprintDatabase(&database);
         std::unordered_map<std::string, float> params;
         Moon::CSG::BuildResult buildResult = builder.Build(blueprint.get(), params, loadError);
-        if (buildResult.meshes.empty()) {
+        if (buildResult.meshes.empty() && buildResult.lights.empty()) {
             return CreateErrorResponse("Failed to build object preview: " + loadError);
         }
 
@@ -1698,15 +1708,57 @@ namespace CommandHandlers {
             AddPreviewMaterial(childNode, item.material);
         }
 
+        for (size_t i = 0; i < buildResult.lights.size(); ++i) {
+            const auto& item = buildResult.lights[i];
+            const std::string childName = "ObjectLight_" + std::to_string(i);
+            Moon::SceneNode* childNode = scene->CreateNode(childName);
+            childNode->SetParent(previewRoot, false);
+            childNode->GetTransform()->SetLocalPosition(item.worldTransform.position);
+            childNode->GetTransform()->SetLocalRotation(item.worldTransform.rotation);
+            childNode->GetTransform()->SetLocalScale(item.worldTransform.scale);
+
+            Moon::Light* light = childNode->AddComponent<Moon::Light>();
+            switch (item.type) {
+            case Moon::CSG::LightItem::Type::Directional:
+                light->SetType(Moon::Light::Type::Directional);
+                break;
+            case Moon::CSG::LightItem::Type::Point:
+                light->SetType(Moon::Light::Type::Point);
+                break;
+            case Moon::CSG::LightItem::Type::Spot:
+                light->SetType(Moon::Light::Type::Spot);
+                break;
+            }
+            light->SetColor(item.color);
+            light->SetIntensity(item.intensity);
+            if (item.type == Moon::CSG::LightItem::Type::Point ||
+                item.type == Moon::CSG::LightItem::Type::Spot) {
+                light->SetRange(item.range);
+                light->SetAttenuation(item.attenuation.x, item.attenuation.y, item.attenuation.z);
+            }
+            if (item.type == Moon::CSG::LightItem::Type::Spot) {
+                light->SetSpotAngles(item.spotInnerConeAngle, item.spotOuterConeAngle);
+            }
+            light->SetCastShadows(item.castShadows);
+
+            std::shared_ptr<Moon::Mesh> markerMesh(Moon::MeshGenerator::CreateSphere(0.08f, 12, 8, item.color));
+            if (markerMesh && markerMesh->IsValid()) {
+                Moon::MeshRenderer* renderer = childNode->AddComponent<Moon::MeshRenderer>();
+                renderer->SetMesh(markerMesh);
+                AddDefaultMaterial(childNode, item.color);
+            }
+        }
+
         const bool focusCamera = req.value("focusCamera", false);
         if (focusCamera) {
-            FrameCameraToBounds(handler, ComputePreviewBounds(buildResult));
+            FrameCameraToBounds(handler, ComputeObjectPreviewBounds(buildResult));
         }
 
         json response;
         response["success"] = true;
         response["rootNodeId"] = previewRoot->GetID();
         response["meshCount"] = buildResult.meshes.size();
+        response["lightCount"] = buildResult.lights.size();
         response["warnings"] = json::array();
         return response.dump();
     }

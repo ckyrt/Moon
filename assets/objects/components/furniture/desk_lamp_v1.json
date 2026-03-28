@@ -12,7 +12,7 @@
     "arm_len": 20.0,
     "shade_r":  7.0,
     "shade_thickness": 1.2,
-    "bulb_r":   2.5,
+    "bulb_r":   1.8,
     "light_color_r": 1.0,
     "light_color_g": 0.8,
     "light_color_b": 0.6
@@ -57,7 +57,7 @@
         "params": { "radius": "$arm_r", "height": "$arm_len" },
         "transform": {
           "position": ["$arm_len / 2", "$base_h + $pole_h", 0],
-          "rotation_euler": [0, -90, 0]
+          "rotation_euler": [0, 0, 90]
         },
         "material": "metal"
       },
@@ -71,7 +71,7 @@
           "thickness": "$shade_thickness"
         },
         "transform": {
-          "position": ["$arm_len", "$base_h + $pole_h", 0],
+          "position": ["$arm_len", "$base_h + $pole_h - 1.0", 0],
           "rotation_euler": [0, 0, 180]
         },
         "material": "metal"
@@ -83,7 +83,7 @@
         "primitive": "sphere",
         "params": { "radius": "$bulb_r" },
         "transform": {
-          "position": ["$arm_len", "$base_h + $pole_h - $shade_r / 2", 0]
+          "position": ["$arm_len", "$base_h + $pole_h - $shade_r + $bulb_r + 0.3", 0]
         },
         "material": "emissive"
       },
@@ -100,7 +100,7 @@
           "range": 180.0
         },
         "transform": {
-          "position": ["$arm_len", "$base_h + $pole_h - $shade_r / 2", 0]
+          "position": ["$arm_len", "$base_h + $pole_h - $shade_r + $bulb_r + 0.3", 0]
         }
       }
     ],

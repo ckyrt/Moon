@@ -90,6 +90,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AssetPresetTests.cpp" />
     <ClCompile Include="MassMeshBuilderTests.cpp" />
   </ItemGroup>
   <ItemGroup>

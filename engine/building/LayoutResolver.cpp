@@ -100,7 +100,7 @@ bool SemanticBuildingParser::ParseFromString(
                         // Parse constraints
                         if (spaceJson.contains("constraints")) {
                             auto& constr = spaceJson["constraints"];
-                            space.constraints.aspectRatioMax = constr.value("aspect_ratio_max", 3.0f);
+                            space.constraints.aspectRatioMax = constr.value("aspect_ratio_max", 0.0f);
                             space.constraints.naturalLight = constr.value("natural_light", "none");
                             space.constraints.exteriorAccess = constr.value("exterior_access", false);
                             space.constraints.ceilingHeight = constr.value("ceiling_height", 3.0f);
@@ -507,7 +507,7 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
                     allocated.area = space.areaMax;
                 }
 
-                float aspectRatio = GetTargetAspectRatio(space);
+                float aspectRatio = GetTargetAspectRatio(input, space);
                 GridSize2D dims = CalculateOptimalDimensions(allocated.area, aspectRatio);
 
                 if (dims[0] < space.constraints.minWidth) {
@@ -615,7 +615,7 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
                     allocated.area = space.areaMax;
                 }
 
-                float aspectRatio = GetTargetAspectRatio(space);
+                float aspectRatio = GetTargetAspectRatio(input, space);
                 GridSize2D dims = CalculateOptimalDimensions(allocated.area, aspectRatio);
 
                 if (dims[0] < space.constraints.minWidth) {
@@ -977,9 +977,10 @@ int LayoutResolver::GetZoneWeight(const SemanticSpace& space) const
     return 0;
 }
 
-float LayoutResolver::GetTargetAspectRatio(const SemanticSpace& space) const
+float LayoutResolver::GetTargetAspectRatio(const SemanticBuilding& input, const SemanticSpace& space) const
 {
     float target = 1.5f;
+    const LayoutStrategy strategy = GetLayoutStrategy(input);
 
     if (space.type == "corridor") {
         target = 4.0f;
@@ -999,6 +1000,13 @@ float LayoutResolver::GetTargetAspectRatio(const SemanticSpace& space) const
         target = 1.4f;
     } else if (space.type == "entrance") {
         target = 1.3f;
+    }
+
+    if (strategy == LayoutStrategy::Mall && space.type == "void") {
+        const float footprintAspect =
+            m_footprint[1] > 0.001f ? (m_footprint[0] / m_footprint[1]) : 1.0f;
+        // Retail atriums often become elongated gallerias on shallow floor plates.
+        target = std::max(target, std::min(12.0f, std::max(4.0f, footprintAspect * 3.0f)));
     }
 
     if (space.constraints.aspectRatioMax > 0.0f) {
@@ -1100,14 +1108,23 @@ std::vector<const SemanticSpace*> LayoutResolver::BuildPlacementOrder(const Sema
             if (space.type == "void") {
                 score += 11300.0f;
             }
-            if (space.type == "corridor" || space.type == "lobby") {
-                score += space.type == "corridor" ? 8650.0f : 7650.0f;
+            if (space.type == "corridor") {
+                score += 8650.0f;
             }
             if (space.type == "shop") {
-                score += 4260.0f;
+                score += 8450.0f;
+            }
+            if (space.type == "stairs") {
+                score += 7800.0f;
+            }
+            if (space.type == "lobby") {
+                score += 5200.0f;
+            }
+            if (space.type == "entrance") {
+                score += 4700.0f;
             }
             if (IsCoreSpace(space)) {
-                score += 2100.0f;
+                score += 7900.0f;
             }
         } else if (strategy == LayoutStrategy::Apartment) {
             if (space.type == "corridor" || space.type == "lobby") {
@@ -1511,20 +1528,27 @@ bool LayoutResolver::TryPlaceInMallRetailBand(const SemanticBuilding& input,
 
     const float band = ComputeMallRingBand(corridorAnchor->area, *voidAnchor);
     std::vector<GridPos2D> candidates;
+    const float requiredOverlap = std::max(1.0f, m_gridSize);
 
     const float topY = std::max(0.0f, voidAnchor->position[1] - band - size[1]);
     const float bottomY = std::min(m_footprint[1] - size[1], voidAnchor->position[1] + voidAnchor->size[1] + band);
     const float leftX = std::max(0.0f, voidAnchor->position[0] - band - size[0]);
     const float rightX = std::min(m_footprint[0] - size[0], voidAnchor->position[0] + voidAnchor->size[0] + band);
 
-    for (float x = std::max(0.0f, voidAnchor->position[0] - band);
-         x <= std::min(m_footprint[0] - size[0], voidAnchor->position[0] + voidAnchor->size[0] + band - size[0]) + 0.001f;
+    const float corridorMinX = std::max(0.0f, voidAnchor->position[0] - band);
+    const float corridorMaxX = std::min(m_footprint[0], voidAnchor->position[0] + voidAnchor->size[0] + band);
+    const float corridorMinY = std::max(0.0f, voidAnchor->position[1] - band);
+    const float corridorMaxY = std::min(m_footprint[1], voidAnchor->position[1] + voidAnchor->size[1] + band);
+
+    for (float x = std::max(0.0f, corridorMinX - size[0] + requiredOverlap);
+         x <= std::min(m_footprint[0] - size[0], corridorMaxX - requiredOverlap) + 0.001f;
          x += m_gridSize) {
         candidates.push_back(SnapToGrid({x, topY}));
         candidates.push_back(SnapToGrid({x, bottomY}));
     }
-    for (float y = voidAnchor->position[1];
-         y <= std::min(m_footprint[1] - size[1], voidAnchor->position[1] + voidAnchor->size[1] - size[1]) + 0.001f;
+
+    for (float y = std::max(0.0f, corridorMinY - size[1] + requiredOverlap);
+         y <= std::min(m_footprint[1] - size[1], corridorMaxY - requiredOverlap) + 0.001f;
          y += m_gridSize) {
         candidates.push_back(SnapToGrid({leftX, y}));
         candidates.push_back(SnapToGrid({rightX, y}));
