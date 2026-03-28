@@ -514,7 +514,7 @@ namespace {
         return id;
     }
 
-    void AddPreviewMaterial(Moon::SceneNode* node, const std::string& materialName) {
+    Moon::Material* AddPreviewMaterial(Moon::SceneNode* node, const std::string& materialName) {
         Moon::Material* material = node->AddComponent<Moon::Material>();
         material->SetMetallic(0.0f);
         material->SetRoughness(0.72f);
@@ -526,6 +526,7 @@ namespace {
         if (preset == Moon::MaterialPreset::None) {
             material->SetBaseColor(Moon::Vector3(0.76f, 0.76f, 0.76f));
         }
+        return material;
     }
 }
 
@@ -1582,20 +1583,7 @@ namespace CommandHandlers {
             return CreateErrorResponse("Failed to process building preview: " + pipelineError);
         }
 
-        building.walls.clear();
-        building.doors.clear();
-        building.windows.clear();
-        building.stairs.clear();
-        building.supportColumns.clear();
-        const bool hasMassDrivenEnvelope = std::any_of(
-            building.definition.masses.begin(),
-            building.definition.masses.end(),
-            [](const Moon::Building::Mass& mass) { return !mass.massingRuleAsset.empty(); });
-
-        if (hasMassDrivenEnvelope) {
-            building.verticalCores.clear();
-            building.programBlocks.clear();
-        }
+        building.programBlocks.clear();
 
         std::string blueprintJson = Moon::Building::BuildingToObjectBlueprintConverter::Convert(building);
         std::string loadError;
@@ -1632,20 +1620,9 @@ namespace CommandHandlers {
 
             Moon::MeshRenderer* renderer = childNode->AddComponent<Moon::MeshRenderer>();
             renderer->SetMesh(item.mesh);
-            AddPreviewMaterial(childNode, item.material);
-        }
-
-        const size_t contourPlateMeshCount = AppendFloorPlateContourPreview(scene, previewRoot, building);
-
-        std::vector<std::string> previewWarnings;
-        if (hasMassDrivenEnvelope) {
-            for (const auto& mass : building.definition.masses) {
-                if (mass.massingRuleAsset.empty()) {
-                    continue;
-                }
-                if (!AppendMassingEnvelopePreview(scene, previewRoot, mass.massingRuleAsset, previewWarnings, loadError)) {
-                    return CreateErrorResponse(loadError);
-                }
+            Moon::Material* material = AddPreviewMaterial(childNode, item.material);
+            if (item.material == "brick" || item.material == "glass") {
+                material->SetOpacity(0.42f);
             }
         }
 
@@ -1657,12 +1634,12 @@ namespace CommandHandlers {
         json response;
         response["success"] = true;
         response["rootNodeId"] = previewRoot->GetID();
-        response["meshCount"] = buildResult.meshes.size() + contourPlateMeshCount;
+        response["meshCount"] = buildResult.meshes.size();
         response["programBlockCount"] = building.programBlocks.size();
         response["floorPlateCount"] = building.floorPlates.size();
         response["coreCount"] = building.verticalCores.size();
         response["resolvedLayoutJson"] = building.resolvedLayoutJson;
-        response["warnings"] = previewWarnings;
+        response["warnings"] = json::array();
         return response.dump();
     }
 

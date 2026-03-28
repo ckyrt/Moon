@@ -13,8 +13,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{7B8C9D0E-1F2A-3B4C-5D6E-7F8A9B0C1D2E}</ProjectGuid>
-    <RootNamespace>EngineBuilding</RootNamespace>
+    <ProjectGuid>{2C8D4A5E-6F71-4820-93AB-4C5D6E7F8A90}</ProjectGuid>
+    <RootNamespace>EngineObjects</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -34,10 +34,8 @@
     <LanguageStandard>stdcpp20</LanguageStandard>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -60,18 +58,11 @@
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)external\nlohmann;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)external\manifold\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <ProgramDataBaseFileName>$(OutDir)$(TargetName).pdb</ProgramDataBaseFileName>
-      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
-    <Link>
-      <SubSystem>
-      </SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -82,79 +73,35 @@
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)external\nlohmann;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)external\manifold\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <ProgramDataBaseFileName>$(OutDir)$(TargetName).pdb</ProgramDataBaseFileName>
-      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
-    <Link>
-      <SubSystem>
-      </SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Building.h" />
-    <ClInclude Include="BuildingGenerationInputs.h" />
-    <ClInclude Include="BuildingTypes.h" />
-    <ClInclude Include="BuildingPipeline.h" />
-    <ClInclude Include="SchemaValidator.h" />
-    <ClInclude Include="LayoutValidator.h" />
-    <ClInclude Include="SpaceGraphBuilder.h" />
-    <ClInclude Include="WallGenerator.h" />
-    <ClInclude Include="DoorGenerator.h" />
-    <ClInclude Include="StairGenerator.h" />
-    <ClInclude Include="FacadeGenerator.h" />
-    <ClInclude Include="BuildingToObjectBlueprintConverter.h" />
-    <ClInclude Include="EdgeTopologyBuilder.h" />
-    <ClInclude Include="BuildingIndex.h" />
-    <ClInclude Include="GridCoord.h" />
-    <ClInclude Include="LayoutResolver.h" />
-    <ClInclude Include="MassFloorPlateGenerator.h" />
-    <ClInclude Include="OfficeFloorLayoutSolver.h" />
-    <ClInclude Include="ResidentialFloorLayoutSolver.h" />
-    <ClInclude Include="RetailFloorLayoutSolver.h" />
-    <ClInclude Include="SemanticFloorLayoutGenerator.h" />
-    <ClInclude Include="StructuralPlanGenerator.h" />
+    <ClInclude Include="..\core\CSG\CSGBuilder.h" />
+    <ClInclude Include="..\core\Object\Blueprint.h" />
+    <ClInclude Include="..\core\Object\BlueprintLoader.h" />
+    <ClInclude Include="..\core\Object\BlueprintTypes.h" />
+    <ClInclude Include="..\core\Object\ObjectFactory.h" />
+    <ClInclude Include="..\core\Object\ObjectLibrary.h" />
+    <ClInclude Include="..\core\Object\ObjectTypes.h" />
+    <ClInclude Include="Stairs\StairMeshGenerator.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="BuildingPipeline.cpp" />
-    <ClCompile Include="BuildingGenerationInputs.cpp" />
-    <ClCompile Include="SchemaValidator.cpp" />
-    <ClCompile Include="LayoutValidator.cpp" />
-    <ClCompile Include="SpaceGraphBuilder.cpp" />
-    <ClCompile Include="WallGenerator.cpp" />
-    <ClCompile Include="DoorGenerator.cpp" />
-    <ClCompile Include="EdgeTopologyBuilder.cpp" />
-    <ClCompile Include="BuildingIndex.cpp" />
-    <ClCompile Include="StairGenerator.cpp" />
-    <ClCompile Include="FacadeGenerator.cpp" />
-    <ClCompile Include="BuildingToObjectBlueprintConverter.cpp" />
-    <ClCompile Include="LayoutResolver.cpp" />
-    <ClCompile Include="MassFloorPlateGenerator.cpp" />
-    <ClCompile Include="OfficeFloorLayoutSolver.cpp" />
-    <ClCompile Include="ResidentialFloorLayoutSolver.cpp" />
-    <ClCompile Include="RetailFloorLayoutSolver.cpp" />
-    <ClCompile Include="SemanticFloorLayoutGenerator.cpp" />
-    <ClCompile Include="StructuralPlanGenerator.cpp" />
+    <ClCompile Include="..\core\CSG\CSGBuilder.cpp" />
+    <ClCompile Include="..\core\Object\Blueprint.cpp" />
+    <ClCompile Include="..\core\Object\BlueprintLoader.cpp" />
+    <ClCompile Include="..\core\Object\ObjectFactory.cpp" />
+    <ClCompile Include="..\core\Object\ObjectLibrary.cpp" />
+    <ClCompile Include="Stairs\StairMeshGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\core\EngineCore.vcxproj">
       <Project>{C4E6F6F1-0A2B-4E3C-9D8E-1F2A3B4C5D6E}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\objects\EngineObjects.vcxproj">
-      <Project>{2C8D4A5E-6F71-4820-93AB-4C5D6E7F8A90}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\massing\EngineMassing.vcxproj">
-      <Project>{B6D7E8F9-1A2B-4C3D-8E9F-1029384756AB}</Project>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>
-

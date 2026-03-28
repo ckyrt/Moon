@@ -1,6 +1,9 @@
 #include "CSGBuilder.h"
 #include "CSGOperations.h"
+#include "../Geometry/PathMeshBuilder.h"
 #include "../Logging/Logger.h"
+#include "../../objects/Stairs/StairMeshGenerator.h"
+#include <algorithm>
 #include <cmath>
 #include <functional>
 #include <cctype>
@@ -9,6 +12,7 @@ namespace Moon {
 namespace CSG {
 
 using namespace Moon::Object;
+using namespace Moon::Geometry;
 
 CSGBuilder::CSGBuilder() 
     : m_database(nullptr) {
@@ -54,11 +58,13 @@ BuildResult CSGBuilder::Build(const Blueprint* blueprint,
     // 最终输出：仅在最外层 Build 将所有 mesh 转换为 FlatShading
     // 内层递归 Build（来自 reference）已经做过 FlatShading，不可重复
     if (m_buildDepth == 0) {
-        for (auto& meshItem : result.meshes) {
-            if (meshItem.mesh && meshItem.mesh->IsValid()) {
+        for (size_t meshIndex = 0; meshIndex < result.meshes.size(); ++meshIndex) {
+            auto& meshItem = result.meshes[meshIndex];
+            if (meshItem.requiresFlatShading && meshItem.mesh && meshItem.mesh->IsValid()) {
                 meshItem.mesh = ConvertToFlatShading(meshItem.mesh.get());
                 if (!meshItem.mesh) {
-                    outError = "Failed to convert mesh to FlatShading";
+                    outError = "Failed to convert mesh to FlatShading at mesh #" +
+                        std::to_string(meshIndex) + " material=" + meshItem.material;
                     MOON_LOG_ERROR("CSGBuilder", "%s", outError.c_str());
                     return BuildResult();
                 }
@@ -90,6 +96,9 @@ BuildResult CSGBuilder::BuildNode(const Node* node, ParameterScope& scope, std::
 
         case NodeType::Light:
             return BuildLight(node->data.light, scope, outError);
+
+        case NodeType::Stair:
+            return BuildStair(node->data.stair, scope, outError);
         
         default:
             outError = "Unknown node type";
@@ -669,6 +678,77 @@ BuildResult CSGBuilder::BuildLight(const LightNode* light, ParameterScope& scope
     return result;
 }
 
+BuildResult CSGBuilder::BuildStair(const StairNode* stair, ParameterScope& scope, std::string& outError) {
+    if (!stair) {
+        outError = "StairNode is null";
+        return BuildResult();
+    }
+
+    auto resolveParam = [&](const char* name, float fallback) -> float {
+        auto it = stair->params.find(name);
+        return it != stair->params.end() ? ResolveValue(it->second, scope, outError) : fallback;
+    };
+
+    const float widthCm = resolveParam("w", 120.0f);
+    const int stepCount = std::max(1, static_cast<int>(std::round(resolveParam("step_count", 10.0f))));
+    const float treadDepthCm = resolveParam("tread_d", 28.0f);
+    const float stepHeightCm = resolveParam("step_h", 18.0f);
+    const float treadThicknessCm = resolveParam("step_t", 4.0f);
+    const float stringerThicknessCm = resolveParam("stringer_t", 4.0f);
+    const float stringerHeightCm = resolveParam("stringer_h", 18.0f);
+    const float railHeightCm = resolveParam("rail_h", 92.0f);
+    const float railOffsetCm = resolveParam("rail_offset", 3.0f);
+    const float postSpacingCm = resolveParam("post_spacing", 95.0f);
+    const float postWidthCm = resolveParam("post_w", 4.0f);
+    const float handrailWidthCm = resolveParam("handrail_w", 4.0f);
+    const float handrailHeightCm = resolveParam("handrail_t", 4.0f);
+
+    static constexpr float CM_TO_M = 0.01f;
+    const float width = widthCm * CM_TO_M;
+    const float treadDepth = treadDepthCm * CM_TO_M;
+    const float stepHeight = stepHeightCm * CM_TO_M;
+    const float treadThickness = treadThicknessCm * CM_TO_M;
+    const float stringerThickness = stringerThicknessCm * CM_TO_M;
+    const float stringerHeight = stringerHeightCm * CM_TO_M;
+    const float railHeight = railHeightCm * CM_TO_M;
+    const float railOffset = railOffsetCm * CM_TO_M;
+    const float postSpacing = std::max(postSpacingCm * CM_TO_M, 0.15f);
+    const float postWidth = postWidthCm * CM_TO_M;
+    const float handrailWidth = handrailWidthCm * CM_TO_M;
+    const float handrailHeight = handrailHeightCm * CM_TO_M;
+
+    Object::StairBuildParams params;
+    params.width = width;
+    params.stepCount = stepCount;
+    params.treadDepth = treadDepth;
+    params.stepHeight = stepHeight;
+    params.treadThickness = treadThickness;
+    params.stringerThickness = stringerThickness;
+    params.stringerHeight = stringerHeight;
+    params.railHeight = railHeight;
+    params.railOffset = railOffset;
+    params.postSpacing = postSpacing;
+    params.postWidth = postWidth;
+    params.handrailWidth = handrailWidth;
+    params.handrailHeight = handrailHeight;
+    params.leftRail = stair->leftRail;
+    params.rightRail = stair->rightRail;
+    params.treadMaterial = stair->treadMaterial;
+    params.stringerMaterial = stair->stringerMaterial;
+    params.railMaterial = stair->railMaterial;
+
+    BuildResult result = Object::StairMeshGenerator::BuildStraightStair(params, outError);
+    if (!outError.empty()) {
+        return BuildResult();
+    }
+
+    Vector3 position, scale;
+    Quaternion rotation;
+    ResolveTransform(stair->localTransform, scope, position, rotation, scale, outError);
+    ApplyTransform(result, ResolvedTransform(position, rotation, scale));
+    return result;
+}
+
 std::unordered_map<std::string, Vector3> CSGBuilder::EvaluateAnchors(
     const Blueprint* blueprint, ParameterScope& scope, std::string& outError)
 {
@@ -888,6 +968,48 @@ void CSGBuilder::ResolveTransform(const TransformTRS& transformExpr, ParameterSc
     float sy = ResolveValue(transformExpr.scaleY, scope, outError);
     float sz = ResolveValue(transformExpr.scaleZ, scope, outError);
     outScale = Vector3(sx, sy, sz);
+}
+
+void CSGBuilder::ApplyTransform(BuildResult& result, const ResolvedTransform& transform) const {
+    const Quaternion identity = Quaternion::Identity();
+    const bool hasTransform =
+        transform.position != Vector3(0, 0, 0) ||
+        transform.rotation.x != identity.x ||
+        transform.rotation.y != identity.y ||
+        transform.rotation.z != identity.z ||
+        transform.rotation.w != identity.w ||
+        transform.scale != Vector3(1, 1, 1);
+    if (!hasTransform) {
+        return;
+    }
+
+    for (auto& meshItem : result.meshes) {
+        meshItem.worldTransform.rotation = transform.rotation * meshItem.worldTransform.rotation;
+        meshItem.worldTransform.scale = Vector3(
+            meshItem.worldTransform.scale.x * transform.scale.x,
+            meshItem.worldTransform.scale.y * transform.scale.y,
+            meshItem.worldTransform.scale.z * transform.scale.z);
+
+        const Vector3 scaledPos(
+            meshItem.worldTransform.position.x * transform.scale.x,
+            meshItem.worldTransform.position.y * transform.scale.y,
+            meshItem.worldTransform.position.z * transform.scale.z);
+        meshItem.worldTransform.position = transform.rotation * scaledPos + transform.position;
+    }
+
+    for (auto& lightItem : result.lights) {
+        lightItem.worldTransform.rotation = transform.rotation * lightItem.worldTransform.rotation;
+        lightItem.worldTransform.scale = Vector3(
+            lightItem.worldTransform.scale.x * transform.scale.x,
+            lightItem.worldTransform.scale.y * transform.scale.y,
+            lightItem.worldTransform.scale.z * transform.scale.z);
+
+        const Vector3 scaledPos(
+            lightItem.worldTransform.position.x * transform.scale.x,
+            lightItem.worldTransform.position.y * transform.scale.y,
+            lightItem.worldTransform.position.z * transform.scale.z);
+        lightItem.worldTransform.position = transform.rotation * scaledPos + transform.position;
+    }
 }
 
 } // namespace CSG

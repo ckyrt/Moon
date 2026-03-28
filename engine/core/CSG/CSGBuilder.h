@@ -1,53 +1,40 @@
 #pragma once
 
-#include "../Object/BlueprintTypes.h"
-#include "../Object/Blueprint.h"
+#include "../Geometry/Path.h"
 #include "../Mesh/Mesh.h"
-#include <string>
-#include <vector>
-#include <unordered_map>
+#include "../Object/Blueprint.h"
+#include "../Object/BlueprintTypes.h"
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace Moon {
 namespace CSG {
 
-/**
- * @brief 参数作用域 - 管理参数值的层级查找
- */
 class ParameterScope {
 public:
-    ParameterScope() : m_parent(nullptr) {}
-    explicit ParameterScope(ParameterScope* parent) : m_parent(parent) {}
+    ParameterScope()
+        : m_parent(nullptr) {
+    }
 
-    /**
-     * @brief 设置参数值
-     */
+    explicit ParameterScope(ParameterScope* parent)
+        : m_parent(parent) {
+    }
+
     void SetValue(const std::string& name, float value) {
         m_values[name] = value;
     }
 
-    /**
-     * @brief 查找参数值（支持向父作用域查找）
-     * @return 找到返回 true，值存入 outValue
-     */
     bool GetValue(const std::string& name, float& outValue) const {
         auto it = m_values.find(name);
         if (it != m_values.end()) {
             outValue = it->second;
             return true;
         }
-        
-        // 向父作用域查找
-        if (m_parent) {
-            return m_parent->GetValue(name, outValue);
-        }
-        
-        return false;
+        return m_parent ? m_parent->GetValue(name, outValue) : false;
     }
 
-    /**
-     * @brief 创建子作用域
-     */
     ParameterScope CreateChild() {
         return ParameterScope(this);
     }
@@ -57,9 +44,6 @@ private:
     std::unordered_map<std::string, float> m_values;
 };
 
-/**
- * @brief 解析后的 Transform (实际的 position/rotation/scale 值)
- */
 struct ResolvedTransform {
     Vector3 position;
     Quaternion rotation;
@@ -68,30 +52,32 @@ struct ResolvedTransform {
     ResolvedTransform()
         : position(0, 0, 0)
         , rotation(Quaternion::Identity())
-        , scale(1, 1, 1)
-    {}
+        , scale(1, 1, 1) {
+    }
 
     ResolvedTransform(const Vector3& pos, const Quaternion& rot, const Vector3& scl)
-        : position(pos), rotation(rot), scale(scl)
-    {}
+        : position(pos)
+        , rotation(rot)
+        , scale(scl) {
+    }
 };
 
-/**
- * @brief 构建结果 - 单个 Mesh 项
- */
 struct MeshItem {
     std::shared_ptr<Mesh> mesh;
     std::string material;
     ResolvedTransform worldTransform;
+    bool requiresFlatShading = true;
 
     MeshItem() = default;
-    MeshItem(std::shared_ptr<Mesh> m, const std::string& mat, const ResolvedTransform& trans)
-        : mesh(m), material(mat), worldTransform(trans) {}
+    MeshItem(std::shared_ptr<Mesh> m, const std::string& mat, const ResolvedTransform& trans,
+             bool flatShade = true)
+        : mesh(m)
+        , material(mat)
+        , worldTransform(trans)
+        , requiresFlatShading(flatShade) {
+    }
 };
 
-/**
- * @brief CSG 构建结果 - Light 项
- */
 struct LightItem {
     enum class Type {
         Directional,
@@ -102,18 +88,14 @@ struct LightItem {
     Type type = Type::Point;
     Vector3 color = Vector3(1, 1, 1);
     float intensity = 1.0f;
-    float range = 0.0f; // meters, for point/spot
+    float range = 0.0f;
     Vector3 attenuation = Vector3(1.0f, 0.0f, 0.0f);
     float spotInnerConeAngle = 15.0f;
     float spotOuterConeAngle = 30.0f;
     bool castShadows = false;
-
     ResolvedTransform worldTransform;
 };
 
-/**
- * @brief 构建结果 - 可包含多个 Mesh
- */
 struct BuildResult {
     std::vector<MeshItem> meshes;
     std::vector<LightItem> lights;
@@ -127,85 +109,48 @@ struct BuildResult {
     }
 
     void Merge(BuildResult&& other) {
-        meshes.insert(meshes.end(), 
+        meshes.insert(meshes.end(),
             std::make_move_iterator(other.meshes.begin()),
             std::make_move_iterator(other.meshes.end()));
-
         lights.insert(lights.end(),
             std::make_move_iterator(other.lights.begin()),
             std::make_move_iterator(other.lights.end()));
     }
 };
 
-/**
- * @brief CSG Builder - 根据 Blueprint 构建 Mesh
- */
 class CSGBuilder {
 public:
     CSGBuilder();
     ~CSGBuilder();
 
-    /**
-     * @brief 设置 Blueprint 数据库（用于 Reference 节点）
-     */
     void SetBlueprintDatabase(Object::BlueprintDatabase* db) {
         m_database = db;
     }
 
-    /**
-     * @brief 构建 Blueprint
-     * @param blueprint Blueprint 对象
-     * @param parameterOverrides 参数覆盖值
-     * @param outError 错误信息
-     * @return 构建结果
-     */
     BuildResult Build(const Object::Blueprint* blueprint,
                       const std::unordered_map<std::string, float>& parameterOverrides,
                       std::string& outError);
 
 private:
-    // 构建单个节点
     BuildResult BuildNode(const Object::Node* node, ParameterScope& scope, std::string& outError);
-
-    // 构建基础几何体
     BuildResult BuildPrimitive(const Object::PrimitiveNode* prim, ParameterScope& scope, std::string& outError);
-
-    // 执行 CSG 运算
     BuildResult BuildCSG(const Object::CsgNode* csg, ParameterScope& scope, std::string& outError);
-
-    // 构建 Group
     BuildResult BuildGroup(const Object::GroupNode* group, ParameterScope& scope, std::string& outError);
-
-    // 构建 Reference（内部版本，返回结果 + 求值后的 anchor 坐标）
     BuildResult BuildReference(const Object::RefNode* ref, ParameterScope& scope, std::string& outError);
-
-    // 构建 Light
     BuildResult BuildLight(const Object::LightNode* light, ParameterScope& scope, std::string& outError);
+    BuildResult BuildStair(const Object::StairNode* stair, ParameterScope& scope, std::string& outError);
 
-    // 对 blueprint 的 anchors 用指定 scope 求值，返回 name -> Vector3
-    // CM_TO_M 会在此处应用（anchors 坐标单位为 cm）
     std::unordered_map<std::string, Vector3> EvaluateAnchors(
         const Object::Blueprint* blueprint, ParameterScope& scope, std::string& outError);
-
-    // 解析单个表达式字符串（用于 anchor 坐标）
     float EvaluateStringExpr(const std::string& exprStr, ParameterScope& scope, std::string& outError);
-
-    // 解析值表达式
     float ResolveValue(const Object::ValueExpr& expr, ParameterScope& scope, std::string& outError);
-
-    // 计算表达式字符串（支持 +, -, *, / 和 $param 引用）
     float EvaluateExpression(const std::string& exprStr, ParameterScope& scope, std::string& outError);
-
-    // 解析 Transform（将 ValueExpr 转换为实际值）
     void ResolveTransform(const Object::TransformTRS& transformExpr, ParameterScope& scope,
                           Vector3& outPosition, Quaternion& outRotation, Vector3& outScale,
                           std::string& outError);
+    void ApplyTransform(BuildResult& result, const ResolvedTransform& transform) const;
 
-    // Blueprint 数据库（用于 Reference）
     Object::BlueprintDatabase* m_database;
-
-    // 递归构建深度计数（0 = 最外层，>0 = 被 reference 调用）
-    // 用于避免对已经 FlatShading 的 mesh 重复转换
     int m_buildDepth = 0;
 };
 

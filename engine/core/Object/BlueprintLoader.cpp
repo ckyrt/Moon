@@ -204,6 +204,8 @@ std::unique_ptr<Node> BlueprintLoader::ParseNode(const void* jsonPtr, std::strin
         nodeType = NodeType::Reference;
     } else if (typeStr == "light") {
         nodeType = NodeType::Light;
+    } else if (typeStr == "stair") {
+        nodeType = NodeType::Stair;
     } else {
         outError = "Unknown node type: " + typeStr;
         return nullptr;
@@ -436,6 +438,45 @@ std::unique_ptr<Node> BlueprintLoader::ParseNode(const void* jsonPtr, std::strin
             // cast shadows
             if (lj.contains("cast_shadows")) {
                 light->castShadows = lj["cast_shadows"].get<bool>();
+            }
+
+            break;
+        }
+
+        case NodeType::Stair: {
+            StairNode* stair = node->AsStair();
+
+            if (j.contains("params")) {
+                for (auto it = j["params"].begin(); it != j["params"].end(); ++it) {
+                    stair->params[it.key()] = ParseValueExpr(&it.value(), outError);
+                }
+            }
+
+            if (j.contains("transform")) {
+                ParseTransform(&j["transform"], stair->localTransform, outError);
+            }
+
+            if (j.contains("materials") && j["materials"].is_object()) {
+                const json& materials = j["materials"];
+                if (materials.contains("tread")) {
+                    stair->treadMaterial = materials["tread"].get<std::string>();
+                }
+                if (materials.contains("stringer")) {
+                    stair->stringerMaterial = materials["stringer"].get<std::string>();
+                }
+                if (materials.contains("rail")) {
+                    stair->railMaterial = materials["rail"].get<std::string>();
+                }
+            }
+
+            if (j.contains("rails") && j["rails"].is_object()) {
+                const json& rails = j["rails"];
+                if (rails.contains("left")) {
+                    stair->leftRail = rails["left"].get<bool>();
+                }
+                if (rails.contains("right")) {
+                    stair->rightRail = rails["right"].get<bool>();
+                }
             }
 
             break;

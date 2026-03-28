@@ -121,17 +121,12 @@
     <ClInclude Include="Scene\Skybox.h" />
     <ClInclude Include="Mesh\Mesh.h" />
     <ClInclude Include="Geometry\MeshGenerator.h" />
+    <ClInclude Include="Geometry\Path.h" />
+    <ClInclude Include="Geometry\PathMeshBuilder.h" />
     <ClInclude Include="Assets\MeshManager.h" />
     <ClInclude Include="Texture\TextureManager.h" />
     <ClInclude Include="CSG\CSGOperations.h" />
     <ClInclude Include="CSG\CSGComponent.h" />
-    <ClInclude Include="CSG\CSGBuilder.h" />
-    <ClInclude Include="Object\BlueprintTypes.h" />
-    <ClInclude Include="Object\Blueprint.h" />
-    <ClInclude Include="Object\BlueprintLoader.h" />
-    <ClInclude Include="Object\ObjectFactory.h" />
-    <ClInclude Include="Object\ObjectLibrary.h" />
-    <ClInclude Include="Object\ObjectTypes.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineCore.cpp" />
@@ -153,15 +148,12 @@
     <ClCompile Include="Scene\Skybox.cpp" />
     <ClCompile Include="Mesh\Mesh.cpp" />
     <ClCompile Include="Geometry\MeshGenerator.cpp" />
+    <ClCompile Include="Geometry\Path.cpp" />
+    <ClCompile Include="Geometry\PathMeshBuilder.cpp" />
     <ClCompile Include="Assets\MeshManager.cpp" />
     <ClCompile Include="Texture\TextureManager.cpp" />
     <ClCompile Include="CSG\CSGComponent.cpp" />
-    <ClCompile Include="CSG\CSGBuilder.cpp" />
     <ClCompile Include="CSG\CSGOperations.cpp" />
-    <ClCompile Include="Object\BlueprintLoader.cpp" />
-    <ClCompile Include="Object\Blueprint.cpp" />
-    <ClCompile Include="Object\ObjectFactory.cpp" />
-    <ClCompile Include="Object\ObjectLibrary.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\thirdparty\manifold\Manifold.vcxproj">
