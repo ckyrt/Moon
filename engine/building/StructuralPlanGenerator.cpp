@@ -334,6 +334,13 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
         maxFloorLevel = std::max(maxFloorLevel, floor.level);
     }
 
+    struct PendingColumnPlan {
+        FloorPlate plate;
+        std::vector<Rect> exclusionRects;
+    };
+
+    std::vector<PendingColumnPlan> pendingColumnPlans;
+
     for (const auto& floor : definition.floors) {
         const Mass* mass = nullptr;
         for (const auto& candidate : definition.masses) {
@@ -392,17 +399,31 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
         }
 
         outBuilding.floorPlates.push_back(plate);
+        pendingColumnPlans.push_back({plate, exclusionRects});
+    }
 
-        const float spacing = (definition.style.category == "commercial" || definition.style.category == "retail")
-            ? 8.0f : 6.0f;
-        const float columnSize = (definition.style.category == "commercial" || definition.style.category == "retail")
-            ? 0.55f : 0.4f;
+    if (hasMassingRule) {
+        AddMassDrivenCoreIfNeeded(definition, maxFloorLevel, outBuilding);
+    }
 
-        for (float x = plate.origin[0] + spacing * 0.5f;
-             x < plate.origin[0] + plate.size[0] - spacing * 0.25f;
+    const float spacing = (definition.style.category == "commercial" || definition.style.category == "retail")
+        ? 8.0f : 6.0f;
+    const float columnSize = (definition.style.category == "commercial" || definition.style.category == "retail")
+        ? 0.55f : 0.4f;
+
+    for (const auto& plan : pendingColumnPlans) {
+        std::vector<Rect> exclusionRects = plan.exclusionRects;
+        for (const auto& core : outBuilding.verticalCores) {
+            if (core.floorFrom <= plan.plate.floorLevel && core.floorTo >= plan.plate.floorLevel) {
+                exclusionRects.push_back(core.rect);
+            }
+        }
+
+        for (float x = plan.plate.origin[0] + spacing * 0.5f;
+             x < plan.plate.origin[0] + plan.plate.size[0] - spacing * 0.25f;
              x += spacing) {
-            for (float y = plate.origin[1] + spacing * 0.5f;
-                 y < plate.origin[1] + plate.size[1] - spacing * 0.25f;
+            for (float y = plan.plate.origin[1] + spacing * 0.5f;
+                 y < plan.plate.origin[1] + plan.plate.size[1] - spacing * 0.25f;
                  y += spacing) {
                 GridPos2D center = {x, y};
                 bool blocked = false;
@@ -423,7 +444,7 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
                     [&](const SupportColumn& column) { return column.columnId == columnId; });
                 if (existing != outBuilding.supportColumns.end()) {
                     existing->floorFrom = std::min(existing->floorFrom, 0);
-                    existing->floorTo = std::max(existing->floorTo, floor.level);
+                    existing->floorTo = std::max(existing->floorTo, plan.plate.floorLevel);
                     continue;
                 }
 
@@ -433,14 +454,10 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
                 column.width = columnSize;
                 column.depth = columnSize;
                 column.floorFrom = 0;
-                column.floorTo = floor.level;
+                column.floorTo = plan.plate.floorLevel;
                 outBuilding.supportColumns.push_back(column);
             }
         }
-    }
-
-    if (hasMassingRule) {
-        AddMassDrivenCoreIfNeeded(definition, maxFloorLevel, outBuilding);
     }
 
     if (outBuilding.floorPlates.empty()) {

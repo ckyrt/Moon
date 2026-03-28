@@ -40,6 +40,17 @@ protected:
     }
 };
 
+namespace {
+
+bool PointInsideRect(const GridPos2D& point, const Rect& rect) {
+    return point[0] > rect.origin[0] &&
+           point[0] < rect.origin[0] + rect.size[0] &&
+           point[1] > rect.origin[1] &&
+           point[1] < rect.origin[1] + rect.size[1];
+}
+
+} // namespace
+
 // ========================================
 // Basic Conversion Tests
 // ========================================
@@ -277,6 +288,53 @@ TEST_F(BuildingToObjectBlueprintConverterTest, ComplexShoppingMall_EmitsPlannedC
     }
 
     EXPECT_TRUE(foundSupportColumn) << "Expected planned support columns for shopping mall";
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, MassDrivenBuilding_DoesNotPlaceSupportColumnsInsideVerticalCores) {
+    std::string inputJson = TestHelpers::CreateShoppingCenter();
+    GeneratedBuilding building;
+    std::string errorMsg;
+
+    bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
+    ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
+    ASSERT_FALSE(building.verticalCores.empty()) << "Expected vertical cores";
+
+    for (const auto& column : building.supportColumns) {
+        for (const auto& core : building.verticalCores) {
+            EXPECT_FALSE(PointInsideRect(column.center, core.rect))
+                << "Support column '" << column.columnId << "' overlaps vertical core '"
+                << core.coreId << "'";
+        }
+    }
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, StraightStairsEmitProceduralStairNodes) {
+    std::string inputJson = TestHelpers::CreateShoppingCenter();
+    GeneratedBuilding building;
+    std::string errorMsg;
+
+    bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
+    ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
+    ASSERT_FALSE(building.stairs.empty()) << "Expected generated stairs";
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    ASSERT_TRUE(j.contains("root"));
+    ASSERT_TRUE(j["root"].contains("children"));
+
+    bool foundProceduralStair = false;
+    for (const auto& child : j["root"]["children"]) {
+        if (!child.is_object() || !child.contains("type")) {
+            continue;
+        }
+        if (child["type"] == "stair") {
+            foundProceduralStair = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(foundProceduralStair) << "Expected building converter to emit procedural stair nodes";
 }
 
 // ========================================

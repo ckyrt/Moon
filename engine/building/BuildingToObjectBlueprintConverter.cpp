@@ -1,4 +1,4 @@
-#include "BuildingToObjectBlueprintConverter.h"
+ï»¿#include "BuildingToObjectBlueprintConverter.h"
 #include "../../external/nlohmann/json.hpp"
 #include <cmath>
 #include <sstream>
@@ -13,7 +13,7 @@ namespace Building {
 // Unit helpers
 // ---------------------------------------------------------------------------
 
-// Meters â†?centimetres (CSG blueprint uses cm)
+// Meters to centimetres (CSG blueprint uses cm)
 static inline float m2cm(float meters) { return meters * 100.0f; }
 
 static inline json pos3(float x, float y, float z)
@@ -50,6 +50,13 @@ static inline bool IsQuarterTurn(float rotationDegrees)
 {
     const float normalized = NormalizeRotation(rotationDegrees);
     return std::abs(normalized - 90.0f) < 1.0f || std::abs(normalized - 270.0f) < 1.0f;
+}
+
+static inline bool IsStraightRotation(float rotationDegrees)
+{
+    const float normalized = NormalizeRotation(rotationDegrees);
+    return std::abs(normalized - 0.0f) < 1.0f ||
+           std::abs(normalized - 180.0f) < 1.0f;
 }
 
 static json CreateCubeNode(const std::string& name,
@@ -135,7 +142,7 @@ static const char* GetProgramMaterial(SpaceUsage usage)
 // Wall / window / door association helpers
 // ---------------------------------------------------------------------------
 
-// Returns the parameter t âˆ?[0,1] of the closest point on the wall to 'pt',
+// Returns the parameter t in [0,1] of the closest point on the wall to 'pt',
 // and sets perpDist to the perpendicular distance from pt to the wall line.
 // Returns false if the wall is degenerate.
 static bool ProjectOntoWall(const GridPos2D& pt, const WallSegment& wall,
@@ -158,7 +165,7 @@ static bool ProjectOntoWall(const GridPos2D& pt, const WallSegment& wall,
     return true;
 }
 
-// Window belongs to a wall if: same spaceId, same floor, t âˆ?[0.02,0.98],
+// Window belongs to a wall if: same spaceId, same floor, t in [0.02,0.98],0.98],
 // perpendicular distance < 50 cm.
 static bool IsWindowOnWall(const Window& window, const WallSegment& wall)
 {
@@ -171,7 +178,7 @@ static bool IsWindowOnWall(const Window& window, const WallSegment& wall)
 }
 
 // Door belongs to a wall if: door.spaceA or spaceB matches wall.spaceId,
-// same floor, t âˆ?[0.02,0.98], perpendicular distance < 50 cm.
+// same floor, t in [0.02,0.98], perpendicular distance < 50 cm.
 static bool IsDoorOnWall(const Door& door, const WallSegment& wall)
 {
     if (wall.spaceId != door.spaceA && wall.spaceId != door.spaceB) return false;
@@ -212,7 +219,7 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
     const float wallThickness = 0.2f; // 20 cm walls
 
     // -----------------------------------------------------------------------
-    // 0. Structural floor plates and vertical cores
+    // 0. Structural floor plates
     // -----------------------------------------------------------------------
     if (!building.floorPlates.empty()) {
         for (const auto& plate : building.floorPlates) {
@@ -227,28 +234,6 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
                 0.18f,
                 "concrete_floor"));
         }
-    }
-
-    for (const auto& core : building.verticalCores) {
-        const float baseHeight = GetFloorBaseHeight(building.definition, core.floorFrom);
-        const float topHeight = GetTopOfFloor(building.definition, core.floorTo);
-        const float height = std::max(0.1f, topHeight - baseHeight);
-        const char* material = "concrete_floor";
-        if (core.type == VerticalCoreType::Elevator) {
-            material = "metal";
-        } else if (core.type == VerticalCoreType::Stair) {
-            material = "plaster";
-        }
-
-        children.push_back(CreateCubeNode(
-            "vertical_core_" + core.coreId,
-            core.rect.origin[0] + core.rect.size[0] * 0.5f,
-            baseHeight + height * 0.5f,
-            core.rect.origin[1] + core.rect.size[1] * 0.5f,
-            core.rect.size[0],
-            height,
-            core.rect.size[1],
-            material));
     }
 
     // -----------------------------------------------------------------------
@@ -547,55 +532,101 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
     }
 
     // -----------------------------------------------------------------------
-    // 5. Stair geometry (steps + landings)
+    // 5. Stair geometry
     // -----------------------------------------------------------------------
     int stairIdx = 0;
     for (const auto& stair : building.stairs) {
-        json stairGroup;
-        stairGroup["name"] = "stair_" + std::to_string(stairIdx);
-        stairGroup["type"] = "group";
-        stairGroup["children"] = json::array();
-
         const float stepHeight = std::max(0.05f, stair.stepHeight);
         const float treadDepth = std::max(0.1f, stair.stepDepth);
         const float stairWidth = std::max(0.8f, stair.stairWidth);
         const float baseHeight = GetFloorBaseHeight(building.definition, stair.fromLevel);
+        const bool useProceduralStraightStair =
+            stair.config.type == StairType::Straight &&
+            !stair.steps.empty() &&
+            IsStraightRotation(stair.rotation);
 
-        for (size_t stepIndex = 0; stepIndex < stair.steps.size(); ++stepIndex) {
-            const auto& step = stair.steps[stepIndex];
-            const bool quarterTurn = IsQuarterTurn(step.rotation);
-            const float sizeX = quarterTurn ? treadDepth : stairWidth;
-            const float sizeZ = quarterTurn ? stairWidth : treadDepth;
+        if (useProceduralStraightStair) {
+            const auto& firstStep = stair.steps.front();
 
-            stairGroup["children"].push_back(CreateCubeNode(
-                "stair_" + std::to_string(stairIdx) + "_step_" + std::to_string(stepIndex),
-                step.position[0],
-                baseHeight + step.height + stepHeight * 0.5f,
-                step.position[1],
-                sizeX,
-                stepHeight,
-                sizeZ,
-                "concrete_floor"));
+            json stairNode;
+            stairNode["name"] = "stair_" + std::to_string(stairIdx);
+            stairNode["type"] = "stair";
+            stairNode["params"] = {
+                {"w", m2cm(stairWidth)},
+                {"step_count", static_cast<float>(stair.numSteps)},
+                {"tread_d", m2cm(treadDepth)},
+                {"step_h", m2cm(stepHeight)},
+                {"step_t", 4.0f},
+                {"stringer_t", 4.0f},
+                {"stringer_h", 12.0f},
+                {"rail_h", 92.0f},
+                {"rail_offset", 3.0f},
+                {"post_spacing", 95.0f},
+                {"post_w", 4.0f},
+                {"handrail_w", 4.0f},
+                {"handrail_t", 4.0f}
+            };
+            stairNode["materials"] = {
+                {"tread", "concrete_floor"},
+                {"stringer", "concrete_floor"},
+                {"rail", "metal_black"}
+            };
+            stairNode["rails"] = {
+                {"left", true},
+                {"right", true}
+            };
+            stairNode["transform"] = {
+                {"position", pos3(
+                    m2cm(firstStep.position[0]),
+                    m2cm(baseHeight),
+                    m2cm(firstStep.position[1] - treadDepth * 0.5f)
+                )},
+                {"rotation_euler", pos3(0.0f, stair.rotation, 0.0f)}
+            };
+
+            children.push_back(stairNode);
+        } else {
+            json stairGroup;
+            stairGroup["name"] = "stair_" + std::to_string(stairIdx);
+            stairGroup["type"] = "group";
+            stairGroup["children"] = json::array();
+
+            for (size_t stepIndex = 0; stepIndex < stair.steps.size(); ++stepIndex) {
+                const auto& step = stair.steps[stepIndex];
+                const bool quarterTurn = IsQuarterTurn(step.rotation);
+                const float sizeX = quarterTurn ? treadDepth : stairWidth;
+                const float sizeZ = quarterTurn ? stairWidth : treadDepth;
+
+                stairGroup["children"].push_back(CreateCubeNode(
+                    "stair_" + std::to_string(stairIdx) + "_step_" + std::to_string(stepIndex),
+                    step.position[0],
+                    baseHeight + step.height + stepHeight * 0.5f,
+                    step.position[1],
+                    sizeX,
+                    stepHeight,
+                    sizeZ,
+                    "concrete_floor"));
+            }
+
+            for (size_t landingIndex = 0; landingIndex < stair.landings.size(); ++landingIndex) {
+                const auto& landing = stair.landings[landingIndex];
+                const bool quarterTurn = IsQuarterTurn(landing.rotation);
+                const float sizeX = quarterTurn ? landing.depth : landing.width;
+                const float sizeZ = quarterTurn ? landing.width : landing.depth;
+
+                stairGroup["children"].push_back(CreateCubeNode(
+                    "stair_" + std::to_string(stairIdx) + "_landing_" + std::to_string(landingIndex),
+                    landing.position[0],
+                    baseHeight + landing.height + stepHeight * 0.5f,
+                    landing.position[1],
+                    sizeX,
+                    stepHeight,
+                    sizeZ,
+                    "concrete_floor"));
+            }
+
+            children.push_back(stairGroup);
         }
-
-        for (size_t landingIndex = 0; landingIndex < stair.landings.size(); ++landingIndex) {
-            const auto& landing = stair.landings[landingIndex];
-            const bool quarterTurn = IsQuarterTurn(landing.rotation);
-            const float sizeX = quarterTurn ? landing.depth : landing.width;
-            const float sizeZ = quarterTurn ? landing.width : landing.depth;
-
-            stairGroup["children"].push_back(CreateCubeNode(
-                "stair_" + std::to_string(stairIdx) + "_landing_" + std::to_string(landingIndex),
-                landing.position[0],
-                baseHeight + landing.height + stepHeight * 0.5f,
-                landing.position[1],
-                sizeX,
-                stepHeight,
-                sizeZ,
-                "concrete_floor"));
-        }
-
-        children.push_back(stairGroup);
         ++stairIdx;
     }
 
@@ -619,5 +650,6 @@ bool BuildingToObjectBlueprintConverter::IsWindowOnWall(const Window& window, co
 
 } // namespace Building
 } // namespace Moon
+
 
 
