@@ -9,8 +9,11 @@
 #include "DiligentRenderer.h"
 #include "DiligentRendererUtils.h"
 #include "../../core/Assets/AssetPaths.h"
+#include "../../core/Mesh/Mesh.h"
 
 #include <algorithm>
+#include <cmath>
+#include <vector>
 
 // Diligent includes
 #include "Graphics/GraphicsEngine/interface/RenderDevice.h"
@@ -26,6 +29,29 @@
 #include "../stb_image.h"
 
 using namespace Diligent;
+
+namespace {
+
+constexpr uint32_t kPrecipitationMaxParticles = 1200;
+
+float Hash11(uint32_t x)
+{
+    x ^= x >> 17;
+    x *= 0xed5ad4bbU;
+    x ^= x >> 11;
+    x *= 0xac4c1b51U;
+    x ^= x >> 15;
+    x *= 0x31848babU;
+    x ^= x >> 14;
+    return static_cast<float>(x & 0x00ffffffU) / static_cast<float>(0x01000000U);
+}
+
+Moon::Vector3 PrecipitationTint(bool snow)
+{
+    return snow ? Moon::Vector3(0.96f, 0.97f, 1.00f) : Moon::Vector3(0.74f, 0.82f, 0.92f);
+}
+
+} // namespace
 
 // ======= Skybox 渲染管线 =======
 void DiligentRenderer::CreateSkyboxPass()
@@ -231,15 +257,23 @@ float4 main(in PSInput i) : SV_Target {
     if (g_UseProceduralSky > 0.5) {
         float3 dir = normalize(i.TexCoord);
         float horizonFactor = saturate(dir.y * 0.5 + 0.5);
-        float zenithCurve = pow(horizonFactor, 0.55);
+        float cloudiness = saturate(g_CloudCoverage);
+        float clearSky = 1.0 - cloudiness;
+        float overcast = saturate((cloudiness - 0.35) / 0.55);
+        float zenithCurve = pow(horizonFactor, lerp(0.62, 0.48, clearSky));
         float3 gradient = lerp(g_SkyHorizonColor, g_SkyZenithColor, zenithCurve);
         float horizonGlow = pow(1.0 - saturate(abs(dir.y - 0.05)), 6.0);
         float horizonHaze = pow(1.0 - saturate(abs(dir.y) * 1.6), 3.2);
         float sunAltitude = saturate(g_SunDirection.y * 0.5 + 0.5);
         float sunsetWeight = 1.0 - sunAltitude;
         float3 aerialHazeColor = lerp(float3(0.82, 0.90, 1.00), float3(1.00, 0.72, 0.46), sunsetWeight);
-        gradient = lerp(gradient, aerialHazeColor, horizonHaze * 0.18);
-        gradient += g_SunColor * horizonGlow * (0.08 + sunsetWeight * 0.06);
+        float3 clearZenithBoost = float3(0.06, 0.10, 0.18) * clearSky;
+        float3 clearHorizonBoost = float3(0.04, 0.05, 0.06) * clearSky;
+        float3 overcastTint = float3(0.90, 0.93, 0.98);
+        gradient = lerp(gradient + clearHorizonBoost, gradient * overcastTint, overcast * 0.28);
+        gradient += clearZenithBoost * pow(horizonFactor, 1.3);
+        gradient = lerp(gradient, aerialHazeColor, horizonHaze * lerp(0.10, 0.22, overcast));
+        gradient += g_SunColor * horizonGlow * (0.09 + sunsetWeight * 0.08) * (0.65 + clearSky * 0.45);
 
         float sunAmount = saturate(dot(dir, normalize(g_SunDirection)));
         float forwardScatter = HenyeyGreenstein(sunAmount, 0.72) * (0.65 + sunAltitude * 0.35);
@@ -247,24 +281,24 @@ float4 main(in PSInput i) : SV_Target {
         float3 rayleighColor = float3(0.34, 0.55, 1.00);
         float3 mieColor = lerp(float3(1.00, 0.92, 0.82), float3(1.00, 0.68, 0.48), sunsetWeight);
         float aerialPerspective = pow(1.0 - horizonFactor, 1.7);
-        gradient += rayleighColor * backScatter * (0.10 + sunAltitude * 0.06);
-        gradient += mieColor * forwardScatter * (0.65 + sunsetWeight * 0.85) * (0.25 + aerialPerspective * 0.75);
+        gradient += rayleighColor * backScatter * (0.08 + clearSky * 0.10 + sunAltitude * 0.04);
+        gradient += mieColor * forwardScatter * (0.42 + clearSky * 0.52 + sunsetWeight * 0.65) * (0.22 + aerialPerspective * 0.68);
 
         float sunDisc = smoothstep(g_SunDiscSize, 1.0, sunAmount);
-        float sunGlow = pow(sunAmount, 96.0);
-        float sunHalo = pow(sunAmount, 18.0);
-        float sunBloom = pow(sunAmount, 8.0) * (0.10 + sunsetWeight * 0.16);
+        float sunGlow = pow(sunAmount, lerp(88.0, 128.0, clearSky));
+        float sunHalo = pow(sunAmount, lerp(14.0, 22.0, clearSky));
+        float sunBloom = pow(sunAmount, 8.0) * (0.08 + sunsetWeight * 0.14 + clearSky * 0.10);
 
         float moonAmount = saturate(dot(dir, normalize(g_MoonDirection)));
-        float moonDisc = smoothstep(0.99945, 1.0, moonAmount);
-        float moonGlow = pow(moonAmount, 72.0) * g_MoonIntensity;
-        float moonHalo = pow(moonAmount, 20.0) * g_MoonIntensity;
+        float moonDisc = smoothstep(0.99935, 1.0, moonAmount);
+        float moonGlow = pow(moonAmount, 64.0) * g_MoonIntensity * (0.55 + clearSky * 0.45);
+        float moonHalo = pow(moonAmount, 18.0) * g_MoonIntensity * (0.45 + clearSky * 0.40);
 
         float3 starCell = floor(dir * 240.0);
         float starNoise = Hash31(starCell);
         float starMask = step(0.9975, starNoise);
         float starTwinkle = 0.65 + 0.35 * Hash31(starCell + 13.37);
-        float stars = starMask * starTwinkle * g_StarIntensity;
+        float stars = starMask * starTwinkle * g_StarIntensity * (0.35 + clearSky * 0.65);
 
         float2 highWind = float2(0.0035, -0.0018) * g_TimeSeconds;
         float2 lowWind = float2(0.0065, 0.0022) * g_TimeSeconds;
@@ -282,13 +316,13 @@ float4 main(in PSInput i) : SV_Target {
 
         float lowCloudHeightMask = smoothstep(-0.12, 0.28, dir.y) * (1.0 - smoothstep(0.58, 0.92, dir.y));
         float highCloudHeightMask = smoothstep(0.10, 0.42, dir.y) * (1.0 - smoothstep(0.76, 0.98, dir.y));
-        float cloudThreshold = lerp(0.68, 0.34, saturate(g_CloudCoverage));
+        float cloudThreshold = lerp(0.74, 0.38, cloudiness);
         float lowCloudMask = smoothstep(cloudThreshold, cloudThreshold + 0.16, lowLayerShape) * lowCloudHeightMask;
         float lowCloudSoftShadow = smoothstep(cloudThreshold - 0.10, cloudThreshold + 0.02, lowLayerShape) * lowCloudHeightMask;
         float lowCloudCore = smoothstep(cloudThreshold + 0.02, cloudThreshold + 0.22, lowLayerShape) * lowCloudHeightMask;
         float lowCloudRim = saturate(lowCloudMask - lowCloudCore) * (0.65 + 0.35 * horizonHaze);
         float lowCloudDepth = saturate((lowLayerShape - sunCloudProbe) * 1.8 + 0.5) * lowCloudMask;
-        float highCoverage = saturate(g_CloudCoverage * 0.78 + 0.14);
+        float highCoverage = saturate(cloudiness * 0.78 + 0.10);
         float highThreshold = lerp(0.70, 0.46, highCoverage);
         float highCloudMask = smoothstep(highThreshold, highThreshold + 0.16, highLayerShape) * highCloudHeightMask * 0.72;
         float highCloudRim = saturate(highCloudMask - smoothstep(highThreshold + 0.03, highThreshold + 0.20, highLayerShape) * highCloudHeightMask) * 0.75;
@@ -298,26 +332,27 @@ float4 main(in PSInput i) : SV_Target {
         float sunForward = saturate(dot(normalize(g_SunDirection), dir) * 0.5 + 0.5);
         float warmScatter = pow(sunForward, 3.0);
         float coolScatter = pow(1.0 - sunForward, 2.0);
-        float3 cloudLitColor = lerp(float3(0.92, 0.94, 0.98), float3(1.00, 0.76, 0.58), warmScatter);
-        float3 cloudShadowColor = lerp(g_SkyZenithColor, g_SkyHorizonColor, 0.35) * lerp(0.78, 0.68, sunsetWeight);
+        float3 cloudLitColor = lerp(float3(0.94, 0.96, 0.99), float3(1.00, 0.76, 0.58), warmScatter);
+        float3 cloudShadowColor = lerp(g_SkyZenithColor, g_SkyHorizonColor, 0.32) * lerp(0.82, 0.72, sunsetWeight);
         float3 lowCloudColor = lerp(cloudShadowColor, cloudLitColor, saturate(0.30 + warmScatter * 0.95 - coolScatter * 0.15));
         lowCloudColor = lerp(lowCloudColor, float3(1.00, 0.70, 0.52), horizonHaze * sunsetWeight * 0.22);
         float3 highCloudColor = lerp(float3(0.86, 0.90, 0.95), float3(1.00, 0.82, 0.70), warmScatter * 0.7 + sunsetWeight * 0.2);
         float3 cloudRimColor = lerp(float3(1.00, 0.98, 0.94), float3(1.00, 0.74, 0.58), sunsetWeight);
         lowCloudColor = lerp(lowCloudColor * 0.82, lowCloudColor, lowCloudDepth);
         float3 cloudColor = lerp(lowCloudColor, highCloudColor, saturate(highCloudMask * 0.8));
+        cloudColor = lerp(cloudColor, float3(0.85, 0.88, 0.93), overcast * 0.38);
 
         float3 color = gradient * g_SkyIntensity;
-        color += g_SunColor * (sunDisc * 7.0 + sunGlow * 0.45 + sunHalo * 0.14 + sunBloom * 0.22);
+        color += g_SunColor * (sunDisc * (5.8 + clearSky * 4.2) + sunGlow * (0.24 + clearSky * 0.34) + sunHalo * (0.08 + clearSky * 0.10) + sunBloom * 0.18) * (1.0 - overcast * 0.70);
         color += g_MoonColor * (moonDisc * 2.5 + moonGlow * 0.20 + moonHalo * 0.08);
         color += float3(stars, stars, stars);
-        color = lerp(color, color * 0.96, cloudMask * 0.12);
-        color = lerp(color, cloudColor, cloudMask);
-        color = lerp(color, color * 0.92, cloudSoftShadow * 0.22);
+        color = lerp(color, color * 0.97, cloudMask * 0.08);
+        color = lerp(color, cloudColor, cloudMask * lerp(0.84, 1.0, overcast));
+        color = lerp(color, color * 0.94, cloudSoftShadow * 0.18);
         color += cloudRimColor * lowCloudRim * (0.05 + warmScatter * 0.12 + sunsetWeight * 0.08);
         color += cloudRimColor * highCloudRim * (0.03 + warmScatter * 0.06 + sunsetWeight * 0.05);
-        color = lerp(color, aerialHazeColor, horizonHaze * (0.04 + sunsetWeight * 0.10));
-        float exposure = lerp(1.18, 0.92, sunAltitude);
+        color = lerp(color, aerialHazeColor, horizonHaze * lerp(0.03, 0.12, sunsetWeight + overcast * 0.35));
+        float exposure = lerp(1.16, 0.94, sunAltitude) + clearSky * 0.05;
         color = AcesApprox(color * exposure);
         return float4(color, 1.0);
     }
@@ -427,6 +462,99 @@ float4 main(in PSInput i) : SV_Target {
     MOON_LOG_INFO("DiligentRenderer", "Skybox pass created successfully!");
 }
 
+void DiligentRenderer::CreatePrecipitationVolumePass()
+{
+    RefCntAutoPtr<IShader> vs = CreateShaderFromFile(
+        "PrecipitationVolume.vs.hlsl",
+        SHADER_TYPE_VERTEX,
+        "Precipitation Volume VS");
+    RefCntAutoPtr<IShader> ps = CreateShaderFromFile(
+        "PrecipitationVolume.ps.hlsl",
+        SHADER_TYPE_PIXEL,
+        "Precipitation Volume PS");
+
+    if (!vs || !ps) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create precipitation volume shaders");
+        return;
+    }
+
+    LayoutElement layout[4];
+    Uint32 numElements = 0;
+    DiligentRendererUtils::GetVertexLayout(layout, numElements);
+
+    GraphicsPipelineStateCreateInfo pci{};
+    pci.PSODesc.Name = "Precipitation Volume PSO";
+    pci.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
+    pci.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
+    pci.GraphicsPipeline.NumRenderTargets = 1;
+    pci.GraphicsPipeline.RTVFormats[0] = m_pSwapChain->GetDesc().ColorBufferFormat;
+    pci.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
+    pci.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    pci.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
+    pci.GraphicsPipeline.DepthStencilDesc.DepthWriteEnable = False;
+    pci.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_NONE;
+    pci.GraphicsPipeline.InputLayout.LayoutElements = layout;
+    pci.GraphicsPipeline.InputLayout.NumElements = numElements;
+    auto& blend = pci.GraphicsPipeline.BlendDesc.RenderTargets[0];
+    blend.BlendEnable = True;
+    blend.SrcBlend = BLEND_FACTOR_SRC_ALPHA;
+    blend.DestBlend = BLEND_FACTOR_INV_SRC_ALPHA;
+    blend.BlendOp = BLEND_OPERATION_ADD;
+    blend.SrcBlendAlpha = BLEND_FACTOR_ONE;
+    blend.DestBlendAlpha = BLEND_FACTOR_INV_SRC_ALPHA;
+    blend.BlendOpAlpha = BLEND_OPERATION_ADD;
+    pci.pVS = vs;
+    pci.pPS = ps;
+
+    m_pPrecipitationVolumePSO.Release();
+    m_pDevice->CreateGraphicsPipelineState(pci, &m_pPrecipitationVolumePSO);
+    if (!m_pPrecipitationVolumePSO) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create precipitation volume PSO");
+        return;
+    }
+
+    BindStaticBuffer(
+        m_pPrecipitationVolumePSO,
+        SHADER_TYPE_VERTEX,
+        "Constants",
+        m_pVSConstants,
+        "Precipitation Volume PSO");
+    BindStaticBuffer(
+        m_pPrecipitationVolumePSO,
+        SHADER_TYPE_PIXEL,
+        "SceneConstants",
+        m_pPSSceneConstants,
+        "Precipitation Volume PSO");
+
+    m_pPrecipitationVolumeSRB.Release();
+    m_pPrecipitationVolumePSO->CreateShaderResourceBinding(&m_pPrecipitationVolumeSRB, true);
+    if (!m_pPrecipitationVolumeSRB) {
+        MOON_LOG_ERROR("DiligentRenderer", "Failed to create precipitation volume SRB");
+        return;
+    }
+
+    MOON_LOG_INFO("DiligentRenderer", "Precipitation volume pass created");
+}
+
+void DiligentRenderer::CreatePrecipitationVolumeBuffers()
+{
+    BufferDesc vbDesc{};
+    vbDesc.Name = "Precipitation VB";
+    vbDesc.BindFlags = BIND_VERTEX_BUFFER;
+    vbDesc.Usage = USAGE_DYNAMIC;
+    vbDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
+    vbDesc.Size = static_cast<Uint32>(kPrecipitationMaxParticles * 4 * sizeof(Moon::Vertex));
+    m_pDevice->CreateBuffer(vbDesc, nullptr, &m_pPrecipitationVB);
+
+    BufferDesc ibDesc{};
+    ibDesc.Name = "Precipitation IB";
+    ibDesc.BindFlags = BIND_INDEX_BUFFER;
+    ibDesc.Usage = USAGE_DYNAMIC;
+    ibDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
+    ibDesc.Size = static_cast<Uint32>(kPrecipitationMaxParticles * 6 * sizeof(uint32_t));
+    m_pDevice->CreateBuffer(ibDesc, nullptr, &m_pPrecipitationIB);
+}
+
 void DiligentRenderer::RenderSkybox()
 {
     if (!m_pSkyboxPSO || !m_pSkyboxSRB) return;
@@ -471,6 +599,122 @@ void DiligentRenderer::RenderSkybox()
     drawAttrs.NumIndices = 36; // 6 faces * 2 triangles * 3 vertices
     drawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
     
+    m_pImmediateContext->DrawIndexed(drawAttrs);
+}
+
+void DiligentRenderer::RenderPrecipitationVolume()
+{
+    if (!m_pPrecipitationVolumePSO || !m_pPrecipitationVolumeSRB || !m_pPrecipitationVB || !m_pPrecipitationIB) {
+        return;
+    }
+    if (m_SceneDataCache.precipitationIntensity <= 0.02f) {
+        return;
+    }
+
+    const bool snow = m_SceneDataCache.snowAmount >= 0.5f;
+    const uint32_t particleCount = snow ? 520u : 900u;
+    const float intensity = std::max(0.35f, m_SceneDataCache.precipitationIntensity);
+    const float timeSeconds = m_SceneDataCache.timeSeconds;
+    const Moon::Vector3 cameraPos = m_SceneDataCache.cameraPosition;
+    const Moon::Vector3 right = m_CameraRight.Normalized();
+    const Moon::Vector3 up = m_CameraUp.Normalized();
+    const Moon::Vector3 tint = PrecipitationTint(snow);
+
+    std::vector<Moon::Vertex> vertices;
+    std::vector<uint32_t> indices;
+    vertices.reserve(particleCount * 4);
+    indices.reserve(particleCount * 6);
+
+    const int cellsPerAxis = snow ? 18 : 24;
+    const float cellSize = snow ? 6.0f : 4.5f;
+    const float speed = snow ? (3.5f + intensity * 2.0f) : (24.0f + intensity * 8.0f);
+    const float topHeight = snow ? 26.0f : 34.0f;
+    const float bottomHeight = snow ? -10.0f : -6.0f;
+    const float fallHeight = topHeight - bottomHeight;
+    const Moon::Vector3 streakDir = snow
+        ? Moon::Vector3(0.18f, -1.0f, 0.10f).Normalized()
+        : Moon::Vector3(0.22f + m_SceneDataCache.windStrength * 0.22f, -1.0f, 0.08f).Normalized();
+
+    uint32_t particleIndex = 0;
+    const int baseCellX = static_cast<int>(std::floor(cameraPos.x / cellSize)) - cellsPerAxis / 2;
+    const int baseCellZ = static_cast<int>(std::floor(cameraPos.z / cellSize)) - cellsPerAxis / 2;
+
+    for (int z = 0; z < cellsPerAxis && particleIndex < particleCount; ++z) {
+        for (int x = 0; x < cellsPerAxis && particleIndex < particleCount; ++x) {
+            const uint32_t seed = static_cast<uint32_t>((baseCellX + x) * 73856093 ^ (baseCellZ + z) * 19349663);
+            const float occupancy = Hash11(seed + 17u);
+            if ((!snow && occupancy < 0.38f) || (snow && occupancy < 0.52f)) {
+                continue;
+            }
+
+            const float randX = Hash11(seed + 101u);
+            const float randZ = Hash11(seed + 211u);
+            const float randY = Hash11(seed + 307u);
+            const float randSize = Hash11(seed + 401u);
+            const float randAlpha = Hash11(seed + 503u);
+
+            Moon::Vector3 center;
+            center.x = (static_cast<float>(baseCellX + x) + randX) * cellSize;
+            center.z = (static_cast<float>(baseCellZ + z) + randZ) * cellSize;
+
+            const float cycle = std::fmod(timeSeconds * speed * (0.75f + randSize * 0.6f) + randY * fallHeight, fallHeight);
+            center.y = cameraPos.y + topHeight - cycle;
+
+            const float alpha = snow ? (0.26f + randAlpha * 0.24f) : (0.16f + randAlpha * 0.12f);
+            const float width = snow ? (0.20f + randSize * 0.18f) : (0.018f + randSize * 0.020f);
+            const float height = snow ? (0.20f + randSize * 0.24f) : (0.75f + randSize * 1.20f);
+
+            Moon::Vector3 axisA = right * width;
+            Moon::Vector3 axisB = snow ? (up * height) : (streakDir * height);
+            const uint32_t baseVertex = static_cast<uint32_t>(vertices.size());
+            vertices.emplace_back(center - axisA - axisB, Moon::Vector3(0.0f, 1.0f, 0.0f), tint, alpha, Moon::Vector2(0.0f, 1.0f));
+            vertices.emplace_back(center + axisA - axisB, Moon::Vector3(0.0f, 1.0f, 0.0f), tint, alpha, Moon::Vector2(1.0f, 1.0f));
+            vertices.emplace_back(center + axisA + axisB, Moon::Vector3(0.0f, 1.0f, 0.0f), tint, alpha, Moon::Vector2(1.0f, 0.0f));
+            vertices.emplace_back(center - axisA + axisB, Moon::Vector3(0.0f, 1.0f, 0.0f), tint, alpha, Moon::Vector2(0.0f, 0.0f));
+
+            indices.push_back(baseVertex + 0);
+            indices.push_back(baseVertex + 1);
+            indices.push_back(baseVertex + 2);
+            indices.push_back(baseVertex + 0);
+            indices.push_back(baseVertex + 2);
+            indices.push_back(baseVertex + 3);
+            ++particleIndex;
+        }
+    }
+
+    if (indices.empty()) {
+        return;
+    }
+
+    {
+        void* data = nullptr;
+        m_pImmediateContext->MapBuffer(m_pPrecipitationVB, MAP_WRITE, MAP_FLAG_DISCARD, data);
+        std::memcpy(data, vertices.data(), vertices.size() * sizeof(Moon::Vertex));
+        m_pImmediateContext->UnmapBuffer(m_pPrecipitationVB, MAP_WRITE);
+    }
+    {
+        void* data = nullptr;
+        m_pImmediateContext->MapBuffer(m_pPrecipitationIB, MAP_WRITE, MAP_FLAG_DISCARD, data);
+        std::memcpy(data, indices.data(), indices.size() * sizeof(uint32_t));
+        m_pImmediateContext->UnmapBuffer(m_pPrecipitationIB, MAP_WRITE);
+    }
+
+    VSConstantsCPU cbuf{};
+    cbuf.WorldViewProjT = DiligentRendererUtils::Transpose(m_ViewProj);
+    cbuf.WorldT = DiligentRendererUtils::Transpose(Moon::Matrix4x4());
+    UpdateCB(m_pVSConstants, cbuf);
+
+    Uint64 offset = 0;
+    IBuffer* vbs[] = { m_pPrecipitationVB };
+    m_pImmediateContext->SetPipelineState(m_pPrecipitationVolumePSO);
+    m_pImmediateContext->CommitShaderResources(m_pPrecipitationVolumeSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    m_pImmediateContext->SetVertexBuffers(0, 1, vbs, &offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
+    m_pImmediateContext->SetIndexBuffer(m_pPrecipitationIB, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+    DrawIndexedAttribs drawAttrs{};
+    drawAttrs.IndexType = VT_UINT32;
+    drawAttrs.NumIndices = static_cast<Uint32>(indices.size());
+    drawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
     m_pImmediateContext->DrawIndexed(drawAttrs);
 }
 

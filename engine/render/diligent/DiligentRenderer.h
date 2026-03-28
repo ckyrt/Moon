@@ -50,6 +50,7 @@ public:
     void SetViewProjectionMatrix(const float* viewProj16) override;
     void SetMaterialParameters(Moon::Material* material);
     void SetCameraPosition(const Moon::Vector3& position);
+    void SetCameraBasis(const Moon::Vector3& right, const Moon::Vector3& up);
     void UpdateSceneLights(Moon::Scene* scene);
     void SetEnvironmentState(const Moon::EnvironmentState* environmentState);
     void SetRenderingTransparent(bool transparent);
@@ -64,6 +65,7 @@ public:
 
     void UpdateSceneSkybox(Moon::Scene* scene);
     void RenderSkybox();
+    void RenderPrecipitationVolume();
 
     void RenderShadowMap(Moon::Scene* scene, Moon::Camera* camera);
     void RenderPointShadowMap(Moon::Scene* scene);
@@ -136,6 +138,10 @@ private:
         float wetness = 0.0f;
         float windStrength = 0.0f;
         float timeSeconds = 0.0f;
+        float precipitationIntensity = 0.0f;
+        float snowAmount = 0.0f;
+        float scenePadding0 = 0.0f;
+        float scenePadding1 = 0.0f;
     };
 
     struct SkyboxConstantsCPU {
@@ -231,6 +237,10 @@ private:
     Diligent::RefCntAutoPtr<Diligent::IBuffer> m_pSkyboxVSConstants;
     Diligent::RefCntAutoPtr<Diligent::IPipelineState> m_pSkyboxPSO;
     Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pSkyboxSRB;
+    Diligent::RefCntAutoPtr<Diligent::IPipelineState> m_pPrecipitationVolumePSO;
+    Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> m_pPrecipitationVolumeSRB;
+    Diligent::RefCntAutoPtr<Diligent::IBuffer> m_pPrecipitationVB;
+    Diligent::RefCntAutoPtr<Diligent::IBuffer> m_pPrecipitationIB;
 
     Diligent::RefCntAutoPtr<Diligent::ITexture> m_pBRDF_LUT;
     Diligent::RefCntAutoPtr<Diligent::ITextureView> m_pBRDF_LUT_SRV;
@@ -270,6 +280,8 @@ private:
 
     Moon::Matrix4x4 m_ViewProj;
     PSSceneCPU m_SceneDataCache;
+    Moon::Vector3 m_CameraRight = Moon::Vector3(1.0f, 0.0f, 0.0f);
+    Moon::Vector3 m_CameraUp = Moon::Vector3(0.0f, 1.0f, 0.0f);
 
     bool m_IsRenderingTransparent = false;
     MaterialPipeline m_ActiveMaterialPipeline = MaterialPipeline::DefaultLit;
@@ -288,6 +300,8 @@ private:
     void CreatePointShadowPass();
     void CreatePointShadowMapResources();
     void CreateSkyboxPass();
+    void CreatePrecipitationVolumePass();
+    void CreatePrecipitationVolumeBuffers();
     void PrecomputeIBL();
     void LoadEnvironmentMap(const char* filepath);
     void ConvertEquirectangularToCubemap(Diligent::ITexture* pEquirectangularMap);

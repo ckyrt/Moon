@@ -37,6 +37,10 @@ cbuffer SceneConstants {
     float g_Wetness;
     float g_WindStrength;
     float g_TimeSeconds;
+    float g_PrecipitationIntensity;
+    float g_SnowAmount;
+    float g_ScenePadding0;
+    float g_ScenePadding1;
 };
 
 #endif // SURFACE_SHARED_HLSL

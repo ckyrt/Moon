@@ -41,6 +41,7 @@ struct TerrainGenerationSettings {
 struct TerrainGenerationResult {
     TerrainData terrainData;
     std::vector<std::vector<float>> riverPolylines;
+    std::vector<std::vector<float>> riverWidthProfiles;
     float riverWidth = 0.0f;
     float riverDepth = 0.0f;
     float seaLevelWorldY = 0.0f;

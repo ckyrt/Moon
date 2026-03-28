@@ -104,7 +104,7 @@ struct WorldBuildSurfaceSettings {
 struct WorldBuildAtmosphereSettings {
     std::string timeOfDay = "morning";
     std::string weather = "clear";
-    float fog = 0.18f;
+    float fog = 0.10f;
     float wind = 0.42f;
 };
 

@@ -84,21 +84,21 @@ void ApplyClimateDefaults(WorldBuildSpec& build, const std::string& climate)
     if (climate == "tropical") {
         build.vegetation.grassDensity = 0.84f;
         build.vegetation.treeDensity = 0.52f;
-        build.atmosphere.fog = 0.26f;
+        build.atmosphere.fog = 0.16f;
     } else if (climate == "temperate") {
         build.vegetation.grassDensity = 0.72f;
         build.vegetation.treeDensity = 0.36f;
-        build.atmosphere.fog = 0.18f;
+        build.atmosphere.fog = 0.10f;
     } else if (climate == "cold") {
         build.vegetation.grassDensity = 0.38f;
         build.vegetation.treeDensity = 0.22f;
         build.surface.snowLine = 0.72f;
-        build.atmosphere.fog = 0.22f;
+        build.atmosphere.fog = 0.14f;
     } else if (climate == "arid") {
         build.vegetation.grassDensity = 0.18f;
         build.vegetation.treeDensity = 0.06f;
         build.surface.sandNearWater = 0.72f;
-        build.atmosphere.fog = 0.08f;
+        build.atmosphere.fog = 0.03f;
     }
 }
 

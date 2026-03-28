@@ -57,6 +57,7 @@ void PrepareRender(DiligentRenderer* renderer, Scene* scene, Camera* camera, con
     
     // 2. 设置相机位置（用于PBR高光计算）
     renderer->SetCameraPosition(camera->GetPosition());
+    renderer->SetCameraBasis(camera->GetRight(), camera->GetUp());
     
     // 3. 更新场景光源（从场景中查找 Light 组件）
     renderer->UpdateSceneLights(scene);
@@ -247,6 +248,7 @@ void RenderScene(DiligentRenderer* renderer, Scene* scene, Camera* camera, const
     // 4. 渲染所有透明物体（Pass 2）
     renderer->SetRenderingTransparent(true);
     RenderTransparentMeshes(renderer, scene);
+    renderer->RenderPrecipitationVolume();
 }
 
 } // namespace SceneRendererUtils

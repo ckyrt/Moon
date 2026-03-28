@@ -9,6 +9,7 @@ enum class WeatherType {
     Clear,
     Cloudy,
     Rain,
+    Snow,
     Fog,
     Storm
 };

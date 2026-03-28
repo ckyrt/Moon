@@ -56,6 +56,13 @@ struct TerrainSurfaceSample {
     float wetnessMask = 0.0f;
 };
 
+struct RiverChannelSample {
+    float distance = 999999.0f;
+    float width = 0.0f;
+    float longitudinalT = 0.0f;
+    bool valid = false;
+};
+
 float SampleHeight(const Heightmap& heightmap, float x, float z, const TerrainGenerationSettings& settings)
 {
     const float normalizedX = Clamp01((x / settings.worldWidth) + 0.5f);
@@ -126,6 +133,57 @@ float ComputeRiverDistance(const Vector2& point, const std::vector<std::vector<f
     return minDistance;
 }
 
+RiverChannelSample ComputeRiverChannelSample(
+    const Vector2& point,
+    const std::vector<float>& polyline,
+    const std::vector<float>& widthProfile)
+{
+    RiverChannelSample best;
+    if (polyline.size() < 6 || widthProfile.empty()) {
+        return best;
+    }
+
+    const size_t count = polyline.size() / 3;
+    for (size_t i = 0; i + 1 < count; ++i) {
+        const Vector2 a(polyline[i * 3 + 0], polyline[i * 3 + 2]);
+        const Vector2 b(polyline[(i + 1) * 3 + 0], polyline[(i + 1) * 3 + 2]);
+        const Vector2 ab = b - a;
+        const float lengthSq = Vector2::Dot(ab, ab);
+        const float segmentT = lengthSq > 0.0001f ? Clamp01(Vector2::Dot(point - a, ab) / lengthSq) : 0.0f;
+        const Vector2 projection = a + ab * segmentT;
+        const float distance = (point - projection).Length();
+        if (distance < best.distance) {
+            const float widthA = widthProfile[std::min(i, widthProfile.size() - 1)];
+            const float widthB = widthProfile[std::min(i + 1, widthProfile.size() - 1)];
+            best.distance = distance;
+            best.width = Lerp(widthA, widthB, segmentT);
+            best.longitudinalT = count > 1
+                ? (static_cast<float>(i) + segmentT) / static_cast<float>(count - 1)
+                : 0.0f;
+            best.valid = true;
+        }
+    }
+
+    return best;
+}
+
+RiverChannelSample ComputeRiverChannelSample(
+    const Vector2& point,
+    const TerrainGenerationResult& generation)
+{
+    RiverChannelSample best;
+    for (size_t i = 0; i < generation.riverPolylines.size(); ++i) {
+        const std::vector<float>& polyline = generation.riverPolylines[i];
+        const std::vector<float>& widthProfile =
+            i < generation.riverWidthProfiles.size() ? generation.riverWidthProfiles[i] : std::vector<float>{};
+        const RiverChannelSample sample = ComputeRiverChannelSample(point, polyline, widthProfile);
+        if (sample.valid && sample.distance < best.distance) {
+            best = sample;
+        }
+    }
+    return best;
+}
+
 TerrainSurfaceSample ComputeTerrainSurfaceSample(
     const Vector3& worldPosition,
     const Heightmap& heightmap,
@@ -135,7 +193,7 @@ TerrainSurfaceSample ComputeTerrainSurfaceSample(
     const float normalizedHeight = Clamp01(worldPosition.y / std::max(0.001f, settings.heightScale));
     const float slopeScore = ComputeSlopeScore(heightmap, worldPosition.x, worldPosition.z, settings);
     const float slope01 = SmoothStep(3.0f, 18.0f, slopeScore);
-    const float riverDistance = ComputeRiverDistance(Vector2(worldPosition.x, worldPosition.z), generation.riverPolylines);
+    const RiverChannelSample riverSample = ComputeRiverChannelSample(Vector2(worldPosition.x, worldPosition.z), generation);
     const float beachProximity = settings.hasOcean
         ? 1.0f - SmoothStep(
             generation.seaLevelWorldY + settings.heightScale * 0.006f,
@@ -144,7 +202,10 @@ TerrainSurfaceSample ComputeTerrainSurfaceSample(
         : 0.0f;
     const float underwater = settings.hasOcean && worldPosition.y <= generation.seaLevelWorldY ? 1.0f : 0.0f;
 
-    const float riverWetness = 1.0f - SmoothStep(settings.riverWidth * 0.75f, settings.riverWidth * 2.6f, riverDistance);
+    const float riverInfluenceWidth = riverSample.valid ? std::max(settings.riverWidth * 0.45f, riverSample.width) : settings.riverWidth;
+    const float riverWetness = riverSample.valid
+        ? 1.0f - SmoothStep(riverInfluenceWidth * 0.72f, riverInfluenceWidth * 2.45f, riverSample.distance)
+        : 0.0f;
     const float shorelineWetness = settings.hasOcean
         ? 1.0f - SmoothStep(
             generation.seaLevelWorldY + settings.heightScale * 0.004f,
@@ -231,6 +292,54 @@ void AppendGrassBlade(
     indices.push_back(baseIndex + 2);
 }
 
+void AppendPrecipitationQuad(
+    std::vector<Vertex>& vertices,
+    std::vector<uint32_t>& indices,
+    const Vector3& center,
+    float yawRadians,
+    const Vector3& randomData,
+    float layerAlpha)
+{
+    const uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+    const Vector3 encodedNormal0(-1.0f, -1.0f, yawRadians);
+    const Vector3 encodedNormal1(1.0f, -1.0f, yawRadians);
+    const Vector3 encodedNormal2(1.0f, 1.0f, yawRadians);
+    const Vector3 encodedNormal3(-1.0f, 1.0f, yawRadians);
+    const Vector3 encodedColor(randomData.x, randomData.y, randomData.z);
+
+    Vertex v0(center, encodedNormal0, encodedColor, layerAlpha, Vector2(0.0f, 1.0f));
+    Vertex v1(center, encodedNormal1, encodedColor, layerAlpha, Vector2(1.0f, 1.0f));
+    Vertex v2(center, encodedNormal2, encodedColor, layerAlpha, Vector2(1.0f, 0.0f));
+    Vertex v3(center, encodedNormal3, encodedColor, layerAlpha, Vector2(0.0f, 0.0f));
+
+    v0.position.y = center.y;
+    v1.position.y = center.y;
+    v2.position.y = center.y;
+    v3.position.y = center.y;
+    v0.colorA = layerAlpha;
+    v1.colorA = layerAlpha;
+    v2.colorA = layerAlpha;
+    v3.colorA = layerAlpha;
+
+    vertices.push_back(v0);
+    vertices.push_back(v1);
+    vertices.push_back(v2);
+    vertices.push_back(v3);
+
+    indices.push_back(baseIndex + 0);
+    indices.push_back(baseIndex + 1);
+    indices.push_back(baseIndex + 2);
+    indices.push_back(baseIndex + 0);
+    indices.push_back(baseIndex + 2);
+    indices.push_back(baseIndex + 3);
+    indices.push_back(baseIndex + 0);
+    indices.push_back(baseIndex + 2);
+    indices.push_back(baseIndex + 1);
+    indices.push_back(baseIndex + 0);
+    indices.push_back(baseIndex + 3);
+    indices.push_back(baseIndex + 2);
+}
+
 } // namespace
 
 std::shared_ptr<Mesh> TerrainVisualBuilder::BuildTerrainMesh(const TerrainGenerationResult& generation, const TerrainGenerationSettings& settings)
@@ -274,18 +383,27 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildRiverMesh(const TerrainGenerati
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
-    for (const std::vector<float>& riverPolyline : generation.riverPolylines) {
+    for (size_t riverIndex = 0; riverIndex < generation.riverPolylines.size(); ++riverIndex) {
+        const std::vector<float>& riverPolyline = generation.riverPolylines[riverIndex];
         const size_t pointCount = riverPolyline.size() / 3;
         if (pointCount < 2) {
             continue;
         }
 
         const uint32_t indexOffset = static_cast<uint32_t>(vertices.size());
-        const float halfWidth = generation.riverWidth * 0.5f;
+        const std::vector<float>& widthProfile =
+            riverIndex < generation.riverWidthProfiles.size()
+            ? generation.riverWidthProfiles[riverIndex]
+            : std::vector<float>{};
+        size_t builtPointCount = 0;
 
         for (size_t pointIndex = 0; pointIndex < pointCount; ++pointIndex) {
             const size_t base = pointIndex * 3;
             const Vector3 p(riverPolyline[base + 0], riverPolyline[base + 1], riverPolyline[base + 2]);
+            const float localWidth = !widthProfile.empty()
+                ? widthProfile[std::min(pointIndex, widthProfile.size() - 1)]
+                : generation.riverWidth;
+            const float halfWidth = localWidth * 0.5f;
 
             Vector3 dir;
             if (pointIndex == 0) {
@@ -314,13 +432,23 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildRiverMesh(const TerrainGenerati
             Vector3 right = NormalizeSafe(Vector3::Cross(Vector3(0.0f, 1.0f, 0.0f), dir), Vector3(1.0f, 0.0f, 0.0f));
 
             const float centerHeight = SampleHeight(generation.terrainData.heightmap, p.x, p.z, settings);
-            const float bankInset = halfWidth * 0.78f;
+            const float bankInset = halfWidth * 0.82f;
             const float leftHeight = SampleHeight(generation.terrainData.heightmap, p.x - right.x * bankInset, p.z - right.z * bankInset, settings);
             const float rightHeight = SampleHeight(generation.terrainData.heightmap, p.x + right.x * bankInset, p.z + right.z * bankInset, settings);
             const float bankHeight = std::min(leftHeight, rightHeight);
-            const float desiredSurface = centerHeight + generation.riverDepth;
-            const float minSurface = centerHeight + generation.riverDepth * 0.35f;
-            const float maxSurface = bankHeight - generation.riverDepth * 0.12f;
+            const float widthRatio = localWidth / std::max(1.0f, generation.riverWidth);
+            const float depthScale = Lerp(0.82f, 1.18f, pointCount > 1 ? static_cast<float>(pointIndex) / static_cast<float>(pointCount - 1) : 0.0f)
+                * std::sqrt(std::max(0.55f, widthRatio));
+            const float localDepth = generation.riverDepth * depthScale;
+            if (settings.hasOcean && pointIndex > 0) {
+                const float oceanStopHeight = generation.seaLevelWorldY + localDepth * 0.10f;
+                if (centerHeight <= oceanStopHeight) {
+                    break;
+                }
+            }
+            const float desiredSurface = centerHeight + localDepth;
+            const float minSurface = centerHeight + localDepth * 0.30f;
+            const float maxSurface = bankHeight - localDepth * 0.10f;
             const float waterSurfaceY = std::max(minSurface, std::min(desiredSurface, maxSurface));
 
             Vertex leftVertex(
@@ -335,9 +463,15 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildRiverMesh(const TerrainGenerati
 
             vertices.push_back(leftVertex);
             vertices.push_back(rightVertex);
+            ++builtPointCount;
         }
 
-        for (size_t segmentIndex = 0; segmentIndex + 1 < pointCount; ++segmentIndex) {
+        if (builtPointCount < 2) {
+            vertices.resize(indexOffset);
+            continue;
+        }
+
+        for (size_t segmentIndex = 0; segmentIndex + 1 < builtPointCount; ++segmentIndex) {
             const uint32_t i0 = indexOffset + static_cast<uint32_t>(segmentIndex * 2 + 0);
             const uint32_t i1 = indexOffset + static_cast<uint32_t>(segmentIndex * 2 + 1);
             const uint32_t i2 = indexOffset + static_cast<uint32_t>((segmentIndex + 1) * 2 + 0);
@@ -525,6 +659,43 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildShrubMesh(const TerrainData& te
 
             ++clusterCount;
         }
+    }
+
+    std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>();
+    mesh->SetVertices(std::move(vertices));
+    mesh->SetIndices(std::move(indices));
+    return mesh;
+}
+
+std::shared_ptr<Mesh> TerrainVisualBuilder::BuildPrecipitationMesh()
+{
+    constexpr uint32_t kParticleCount = 4200;
+    constexpr float kSpawnRadius = 160.0f;
+    constexpr float kSpawnHeight = 84.0f;
+
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    vertices.reserve(static_cast<size_t>(kParticleCount) * 8);
+    indices.reserve(static_cast<size_t>(kParticleCount) * 12);
+
+    for (uint32_t i = 0; i < kParticleCount; ++i) {
+        const float fi = static_cast<float>(i);
+        const float angle = std::fmod(fi * 2.3999632f, kPi * 2.0f);
+        const float radius = std::sqrt((fi + 0.5f) / static_cast<float>(kParticleCount)) * kSpawnRadius;
+        const float centerX = std::cos(angle) * radius;
+        const float centerZ = std::sin(angle) * radius;
+        const float centerY = std::fmod(fi * 7.173f, 1.0f) * kSpawnHeight;
+        const float random0 = std::fmod(fi * 0.6180339f, 1.0f);
+        const float random1 = std::fmod(fi * 0.4142135f + 0.17f, 1.0f);
+        const float random2 = std::fmod(fi * 0.7320508f + 0.31f, 1.0f);
+        const float yawA = angle;
+        const float yawB = angle + kPi * 0.5f;
+        const Vector3 center(centerX, centerY, centerZ);
+        const Vector3 randomData(random0, random1, random2);
+
+        AppendPrecipitationQuad(vertices, indices, center, yawA, randomData, 1.0f);
+        AppendPrecipitationQuad(vertices, indices, center, yawB, randomData, 0.92f);
+        AppendPrecipitationQuad(vertices, indices, center, yawA + kPi * 0.25f, randomData, 0.84f);
     }
 
     std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>();

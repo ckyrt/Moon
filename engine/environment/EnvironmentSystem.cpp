@@ -27,23 +27,23 @@ WeatherVisualPreset MakeWeatherPreset(WeatherType weather, const EnvironmentProf
     switch (weather) {
     case WeatherType::Clear:
         return {
-            Vector3(1.00f, 1.00f, 1.00f),
-            Vector3(1.00f, 1.00f, 1.00f),
-            Vector3(1.00f, 1.00f, 1.00f),
-            1.00f,
+            Vector3(1.08f, 1.10f, 1.18f),
+            Vector3(1.04f, 1.02f, 1.00f),
+            Vector3(1.02f, 1.00f, 0.96f),
+            1.08f,
             profile.clearFogDensity,
-            0.28f + 0.12f * duskBlend,
+            0.06f + 0.05f * duskBlend,
             1.00f,
             1.00f,
             1.00f
         };
     case WeatherType::Cloudy:
         return {
-            Vector3(0.72f, 0.78f, 0.84f),
-            Vector3(0.85f, 0.87f, 0.90f),
-            Vector3(0.92f, 0.94f, 0.96f),
-            0.72f,
-            profile.clearFogDensity * 1.8f,
+            Vector3(0.88f, 0.92f, 1.00f),
+            Vector3(0.95f, 0.97f, 1.00f),
+            Vector3(0.97f, 0.98f, 1.00f),
+            0.82f,
+            profile.clearFogDensity * 1.28f,
             profile.cloudyCloudCoverage,
             1.20f,
             1.25f,
@@ -51,15 +51,27 @@ WeatherVisualPreset MakeWeatherPreset(WeatherType weather, const EnvironmentProf
         };
     case WeatherType::Rain:
         return {
-            Vector3(0.46f, 0.52f, 0.60f),
-            Vector3(0.58f, 0.61f, 0.66f),
-            Vector3(0.80f, 0.84f, 0.90f),
-            0.42f,
-            profile.clearFogDensity * 3.0f,
+            Vector3(0.62f, 0.68f, 0.79f),
+            Vector3(0.74f, 0.78f, 0.84f),
+            Vector3(0.86f, 0.90f, 0.95f),
+            0.52f,
+            profile.clearFogDensity * 1.95f,
             profile.rainCloudCoverage,
             1.45f,
             1.60f,
             1.45f
+        };
+    case WeatherType::Snow:
+        return {
+            Vector3(0.82f, 0.88f, 0.98f),
+            Vector3(0.93f, 0.95f, 1.00f),
+            Vector3(0.94f, 0.96f, 1.00f),
+            0.62f,
+            profile.clearFogDensity * 1.55f,
+            0.78f,
+            1.05f,
+            1.10f,
+            1.05f
         };
     case WeatherType::Fog:
         return {
@@ -223,12 +235,12 @@ void EnvironmentSystem::UpdateAtmosphere() {
     m_state.atmosphere.sunIntensity =
         m_profile.minSunIntensity + (m_profile.maxSunIntensity - m_profile.minSunIntensity) * daylight;
 
-    const Vector3 dawnZenith(0.15f, 0.21f, 0.43f);
-    const Vector3 dayZenith(0.08f, 0.34f, 0.86f);
+    const Vector3 dawnZenith(0.20f, 0.30f, 0.58f);
+    const Vector3 dayZenith(0.06f, 0.34f, 0.96f);
     const Vector3 nightZenith(0.01f, 0.02f, 0.06f);
-    const Vector3 dawnHorizon(1.00f, 0.52f, 0.22f);
-    const Vector3 dayHorizon(0.72f, 0.86f, 1.00f);
-    const Vector3 nightHorizon(0.02f, 0.03f, 0.06f);
+    const Vector3 dawnHorizon(1.00f, 0.68f, 0.40f);
+    const Vector3 dayHorizon(0.86f, 0.94f, 1.00f);
+    const Vector3 nightHorizon(0.03f, 0.04f, 0.08f);
 
     const float duskBlend = Clamp01(1.0f - std::abs(0.5f - daylight) * 2.0f);
     const bool isNight = daylight <= 0.05f;
@@ -241,7 +253,7 @@ void EnvironmentSystem::UpdateAtmosphere() {
     m_state.atmosphere.skyHorizonColor = isNight
         ? nightHorizon
         : Lerp(dawnHorizon, dayHorizon, horizonBlend);
-    m_state.atmosphere.sunColor = Lerp(Vector3(1.0f, 0.50f, 0.26f), Vector3(1.0f, 0.97f, 0.90f), std::pow(daylight, 0.52f));
+    m_state.atmosphere.sunColor = Lerp(Vector3(1.0f, 0.60f, 0.32f), Vector3(1.0f, 0.98f, 0.93f), std::pow(daylight, 0.52f));
 
     const WeatherVisualPreset currentPreset = MakeWeatherPreset(m_state.weather.current, m_profile, duskBlend);
     const WeatherVisualPreset targetPreset = MakeWeatherPreset(m_state.weather.target, m_profile, duskBlend);

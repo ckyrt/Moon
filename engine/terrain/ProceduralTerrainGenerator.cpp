@@ -200,13 +200,92 @@ float ComputeRiverDistance(const Vector2& point, const std::vector<float>& polyl
     return minDistance;
 }
 
-float ComputeRiverDistance(const Vector2& point, const std::vector<std::vector<float>>& polylines)
+struct RiverChannelSample {
+    float distance = 999999.0f;
+    float width = 0.0f;
+    float longitudinalT = 0.0f;
+    bool valid = false;
+};
+
+std::vector<float> BuildRiverWidthProfile(
+    const TerrainGenerationSettings& settings,
+    const std::vector<float>& polyline,
+    uint32_t riverIndex)
 {
-    float minDistance = 999999.0f;
-    for (const std::vector<float>& polyline : polylines) {
-        minDistance = std::min(minDistance, ComputeRiverDistance(point, polyline));
+    const size_t pointCount = polyline.size() / 3;
+    std::vector<float> widths(pointCount, settings.riverWidth);
+    if (pointCount == 0) {
+        return widths;
     }
-    return minDistance;
+
+    const float riverSpread = settings.riverCount > 1
+        ? static_cast<float>(riverIndex) / static_cast<float>(settings.riverCount - 1)
+        : 0.5f;
+    const float riverBias = 0.90f + (riverSpread - 0.5f) * 0.18f;
+
+    for (size_t i = 0; i < pointCount; ++i) {
+        const float t = pointCount > 1 ? static_cast<float>(i) / static_cast<float>(pointCount - 1) : 0.0f;
+        const float downstreamGrowth = Lerp(0.62f, 1.28f, std::pow(t, 0.82f));
+        const float valleyPulse = 1.0f + std::sin(t * kPi * (2.2f + settings.riverMeander * 1.8f) + riverIndex * 0.9f) * 0.10f;
+        const float localVariation = 1.0f + std::sin(t * kPi * 7.0f + riverIndex * 1.7f) * 0.05f;
+        widths[i] = std::max(
+            settings.riverWidth * 0.45f,
+            settings.riverWidth * downstreamGrowth * valleyPulse * localVariation * riverBias);
+    }
+
+    return widths;
+}
+
+RiverChannelSample ComputeRiverChannelSample(
+    const Vector2& point,
+    const std::vector<float>& polyline,
+    const std::vector<float>& widthProfile)
+{
+    RiverChannelSample best;
+    if (polyline.size() < 6 || widthProfile.empty()) {
+        return best;
+    }
+
+    const size_t pointCount = polyline.size() / 3;
+    for (size_t i = 0; i + 1 < pointCount; ++i) {
+        const Vector2 a(polyline[i * 3 + 0], polyline[i * 3 + 2]);
+        const Vector2 b(polyline[(i + 1) * 3 + 0], polyline[(i + 1) * 3 + 2]);
+        const Vector2 ab = b - a;
+        const float lengthSq = Vector2::Dot(ab, ab);
+        const float segmentT = lengthSq > 0.0001f ? Clamp01(Vector2::Dot(point - a, ab) / lengthSq) : 0.0f;
+        const Vector2 projection = a + ab * segmentT;
+        const float distance = (point - projection).Length();
+
+        if (distance < best.distance) {
+            const float widthA = widthProfile[std::min(i, widthProfile.size() - 1)];
+            const float widthB = widthProfile[std::min(i + 1, widthProfile.size() - 1)];
+            best.distance = distance;
+            best.width = Lerp(widthA, widthB, segmentT);
+            best.longitudinalT = pointCount > 1
+                ? (static_cast<float>(i) + segmentT) / static_cast<float>(pointCount - 1)
+                : 0.0f;
+            best.valid = true;
+        }
+    }
+
+    return best;
+}
+
+RiverChannelSample ComputeRiverChannelSample(
+    const Vector2& point,
+    const std::vector<std::vector<float>>& polylines,
+    const std::vector<std::vector<float>>& widthProfiles)
+{
+    RiverChannelSample best;
+    for (size_t i = 0; i < polylines.size(); ++i) {
+        const std::vector<float>& polyline = polylines[i];
+        const std::vector<float>& widthProfile = i < widthProfiles.size() ? widthProfiles[i] : std::vector<float>{};
+        const RiverChannelSample sample = ComputeRiverChannelSample(point, polyline, widthProfile);
+        if (sample.valid && sample.distance < best.distance) {
+            best = sample;
+        }
+    }
+    return best;
 }
 
 } // namespace
@@ -262,8 +341,11 @@ TerrainGenerationResult ProceduralTerrainGenerator::CreateOpenWorldLandscape(con
 
     if (settings.riverCount > 0) {
         result.riverPolylines.reserve(settings.riverCount);
+        result.riverWidthProfiles.reserve(settings.riverCount);
         for (uint32_t riverIndex = 0; riverIndex < settings.riverCount; ++riverIndex) {
-            result.riverPolylines.push_back(BuildRiverPolyline(settings, riverIndex));
+            std::vector<float> polyline = BuildRiverPolyline(settings, riverIndex);
+            result.riverWidthProfiles.push_back(BuildRiverWidthProfile(settings, polyline, riverIndex));
+            result.riverPolylines.push_back(std::move(polyline));
         }
     }
 
@@ -310,12 +392,22 @@ TerrainGenerationResult ProceduralTerrainGenerator::CreateOpenWorldLandscape(con
             height01 = Lerp(height01, SmoothStep(0.0f, 1.0f, height01), settings.erosionStrength * 0.12f);
 
             if (!result.riverPolylines.empty()) {
-                const float riverDistance = ComputeRiverDistance(Vector2(worldX, worldZ), result.riverPolylines);
-                const float riverDepth01 = settings.riverDepth / std::max(1.0f, settings.heightScale);
-                const float channelCore = 1.0f - SmoothStep(settings.riverWidth * 0.38f, settings.riverWidth * 0.92f, riverDistance);
-                const float channelBank = 1.0f - SmoothStep(settings.riverWidth * 0.92f, settings.riverWidth * (1.9f + settings.riverMeander * 0.4f), riverDistance);
-                height01 -= channelCore * (riverDepth01 * 1.65f + 0.012f);
-                height01 -= channelBank * (riverDepth01 * 0.55f + 0.010f);
+                const RiverChannelSample riverSample = ComputeRiverChannelSample(
+                    Vector2(worldX, worldZ),
+                    result.riverPolylines,
+                    result.riverWidthProfiles);
+                if (riverSample.valid) {
+                    const float localWidth = std::max(settings.riverWidth * 0.45f, riverSample.width);
+                    const float widthRatio = localWidth / std::max(1.0f, settings.riverWidth);
+                    const float depthScale = Lerp(0.82f, 1.18f, riverSample.longitudinalT) * std::sqrt(std::max(0.55f, widthRatio));
+                    const float riverDepth01 = (settings.riverDepth * depthScale) / std::max(1.0f, settings.heightScale);
+                    const float channelCore = 1.0f - SmoothStep(localWidth * 0.26f, localWidth * 0.84f, riverSample.distance);
+                    const float channelBank = 1.0f - SmoothStep(localWidth * 0.84f, localWidth * 1.75f, riverSample.distance);
+                    const float floodplain = 1.0f - SmoothStep(localWidth * 1.75f, localWidth * 2.65f, riverSample.distance);
+                    height01 -= channelCore * (riverDepth01 * 1.95f + 0.016f);
+                    height01 -= channelBank * (riverDepth01 * 0.72f + 0.012f);
+                    height01 -= floodplain * (riverDepth01 * 0.10f + 0.003f);
+                }
             }
 
             if (settings.hasOcean) {

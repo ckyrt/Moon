@@ -83,6 +83,29 @@ void InputSystem::Update() {
     m_currentButtons.clear();
     m_previousMousePosition = m_mousePosition;
 #ifdef _WIN32
+    for (int vk = 0; vk <= 0xFF; ++vk) {
+        if ((GetAsyncKeyState(vk) & 0x8000) != 0) {
+            m_currentKeys.insert(vk);
+        }
+    }
+
+    const struct {
+        int vk;
+        MouseButton button;
+    } mouseButtons[] = {
+        {VK_LBUTTON, MouseButton::Left},
+        {VK_RBUTTON, MouseButton::Right},
+        {VK_MBUTTON, MouseButton::Middle},
+        {VK_XBUTTON1, MouseButton::X1},
+        {VK_XBUTTON2, MouseButton::X2}
+    };
+
+    for (const auto& entry : mouseButtons) {
+        if ((GetAsyncKeyState(entry.vk) & 0x8000) != 0) {
+            m_currentButtons.insert(static_cast<int>(entry.button));
+        }
+    }
+
     POINT p;
     if (GetCursorPos(&p)) {
         // Convert screen coordinates to client area coordinates if window handle is set

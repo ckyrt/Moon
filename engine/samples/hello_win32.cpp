@@ -16,6 +16,8 @@
 #include "../core/Scene/Scene.h"
 #include "../core/Scene/SceneNode.h"
 #include "../core/Scene/Skybox.h"
+#include "../environment/EnvironmentComponent.h"
+#include "../environment/EnvironmentTypes.h"
 #include "../render/diligent/DiligentRenderer.h"
 #include "../render/IRenderer.h"
 #include "../render/RenderCommon.h"
@@ -24,9 +26,92 @@
 #include "TestScenes.h"
 
 static const wchar_t* kWndClass = L"UGC_Editor_WndClass";
-
 static IRenderer* g_pRenderer = nullptr;
 static Moon::PerspectiveCamera* g_pCamera = nullptr;
+
+namespace {
+
+Moon::EnvironmentComponent* FindEnvironmentComponent(Moon::Scene* scene)
+{
+    if (!scene) {
+        return nullptr;
+    }
+
+    Moon::SceneNode* environmentNode = scene->FindNodeByName("Terrain Environment");
+    if (!environmentNode) {
+        return nullptr;
+    }
+
+    return environmentNode->GetComponent<Moon::EnvironmentComponent>();
+}
+
+const wchar_t* WeatherLabel(Moon::WeatherType weather)
+{
+    switch (weather) {
+    case Moon::WeatherType::Clear:
+        return L"Clear";
+    case Moon::WeatherType::Cloudy:
+        return L"Cloudy";
+    case Moon::WeatherType::Rain:
+        return L"Rain";
+    case Moon::WeatherType::Snow:
+        return L"Snow";
+    case Moon::WeatherType::Fog:
+        return L"Fog";
+    case Moon::WeatherType::Storm:
+        return L"Storm";
+    }
+
+    return L"Unknown";
+}
+
+const wchar_t* TimeLabel(float hours)
+{
+    if (hours < 6.0f) {
+        return L"Night";
+    }
+    if (hours < 8.0f) {
+        return L"Dawn";
+    }
+    if (hours < 16.5f) {
+        return L"Day";
+    }
+    if (hours < 19.5f) {
+        return L"Sunset";
+    }
+    return L"Night";
+}
+
+void SetWeatherPreset(Moon::EnvironmentComponent* environment, Moon::WeatherType weather)
+{
+    if (!environment) {
+        return;
+    }
+
+    environment->SetWeather(weather, 1.25f);
+    MOON_LOG_INFO("HelloEngine", "Weather preset requested: %ls", WeatherLabel(weather));
+}
+
+void SetFixedTimePreset(Moon::EnvironmentComponent* environment, float hours)
+{
+    if (!environment) {
+        return;
+    }
+
+    Moon::EnvironmentProfile profile = environment->GetProfile();
+    profile.lockToFixedTime = true;
+    profile.enableDayNightCycle = false;
+    profile.fixedTimeHours = hours;
+    environment->SetProfile(profile);
+    environment->SetTimeOfDay(hours);
+
+    Moon::EnvironmentState state = environment->GetState();
+    state.timeOfDay.paused = true;
+    state.timeOfDay.timeScale = 0.0f;
+    environment->GetSystem().SetState(state);
+}
+
+} // namespace
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (HelloEngineImGui::HandleWin32Message(hWnd, msg, wParam, lParam)) {
@@ -132,6 +217,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
 
     Moon::Scene* scene = engine.GetScene();
     Moon::SceneNode* mainLightNode = scene ? scene->FindNodeByName("Environment Sun") : nullptr;
+    Moon::EnvironmentComponent* environment = FindEnvironmentComponent(scene);
 
     constexpr float kLightYawDegPerSec = 60.0f;
 
@@ -161,11 +247,18 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         auto timeSinceUpdate = std::chrono::duration<double>(now - lastTitleUpdate).count();
         if (timeSinceUpdate >= 0.5) {
             wchar_t title[256];
+            const Moon::EnvironmentState* environmentState = environment ? &environment->GetState() : nullptr;
+            const wchar_t* weatherText =
+                environmentState ? WeatherLabel(environmentState->weather.target) : L"NoEnv";
+            const wchar_t* timeText =
+                environmentState ? TimeLabel(environmentState->timeOfDay.timeOfDayHours) : L"NoEnv";
             swprintf_s(
                 title,
-                L"Moon Engine - HelloEngine | FPS: %.1f | Frame Time: %.2f ms",
+                L"Moon Engine - HelloEngine | FPS: %.1f | Frame Time: %.2f ms | 1-6 Weather | 7-0 Time | %ls | %ls",
                 fpsCounter.GetFPS(),
-                fpsCounter.GetFrameTimeMs());
+                fpsCounter.GetFrameTimeMs(),
+                weatherText,
+                timeText);
             SetWindowTextW(hwnd, title);
             lastTitleUpdate = now;
         }
@@ -174,6 +267,39 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow)
         cameraController.Update(static_cast<float>(dt));
 
         if (inputSystem && mainLightNode) {
+            if (environment) {
+                if (inputSystem->IsKeyPressed(Moon::KeyCode::D1)) {
+                    SetWeatherPreset(environment, Moon::WeatherType::Clear);
+                }
+                if (inputSystem->IsKeyPressed(Moon::KeyCode::D2)) {
+                    SetWeatherPreset(environment, Moon::WeatherType::Cloudy);
+                }
+                if (inputSystem->IsKeyPressed(Moon::KeyCode::D3)) {
+                    SetWeatherPreset(environment, Moon::WeatherType::Rain);
+                }
+                if (inputSystem->IsKeyPressed(Moon::KeyCode::D4)) {
+                    SetWeatherPreset(environment, Moon::WeatherType::Snow);
+                }
+                if (inputSystem->IsKeyPressed(Moon::KeyCode::D5)) {
+                    SetWeatherPreset(environment, Moon::WeatherType::Fog);
+                }
+                if (inputSystem->IsKeyPressed(Moon::KeyCode::D6)) {
+                    SetWeatherPreset(environment, Moon::WeatherType::Storm);
+                }
+                if (inputSystem->IsKeyPressed(Moon::KeyCode::D7)) {
+                    SetFixedTimePreset(environment, 6.1f);
+                }
+                if (inputSystem->IsKeyPressed(Moon::KeyCode::D8)) {
+                    SetFixedTimePreset(environment, 11.8f);
+                }
+                if (inputSystem->IsKeyPressed(Moon::KeyCode::D9)) {
+                    SetFixedTimePreset(environment, 18.1f);
+                }
+                if (inputSystem->IsKeyPressed(Moon::KeyCode::D0)) {
+                    SetFixedTimePreset(environment, 22.2f);
+                }
+            }
+
             float yawDelta = 0.0f;
             if (inputSystem->IsKeyDown(Moon::KeyCode::Left)) {
                 yawDelta -= kLightYawDegPerSec * static_cast<float>(dt);

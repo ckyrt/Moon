@@ -64,6 +64,9 @@ Moon::WeatherType ResolveWeatherType(const std::string& weather)
     if (weather == "rain" || weather == "drizzle") {
         return Moon::WeatherType::Rain;
     }
+    if (weather == "snow" || weather == "sleet" || weather == "blizzard") {
+        return Moon::WeatherType::Snow;
+    }
     if (weather == "fog" || weather == "mist") {
         return Moon::WeatherType::Fog;
     }
@@ -116,10 +119,11 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
         environmentProfile.enableWind = true;
         environmentProfile.lockToFixedTime = true;
         environmentProfile.enableDayNightCycle = false;
+        environmentProfile.fixedTimeHours = ResolveTimeOfDayHours(buildSpec.atmosphere.timeOfDay);
         environmentProfile.maxSunIntensity = 1.85f;
-        environmentProfile.clearFogDensity = 0.00022f + buildSpec.atmosphere.fog * 0.00075f;
-        environmentProfile.fogWeatherDensity = 0.0018f + buildSpec.atmosphere.fog * 0.0085f;
-        environmentProfile.cloudyCloudCoverage = 0.18f;
+        environmentProfile.clearFogDensity = 0.00008f + buildSpec.atmosphere.fog * 0.00038f;
+        environmentProfile.fogWeatherDensity = 0.0010f + buildSpec.atmosphere.fog * 0.0065f;
+        environmentProfile.cloudyCloudCoverage = 0.42f;
         environmentProfile.baseWindSpeed = 1.4f + buildSpec.atmosphere.wind * 5.2f;
         environmentProfile.baseWindGustStrength = 0.08f + buildSpec.atmosphere.wind * 0.24f;
         environmentProfile.baseWindTurbulence = 0.03f + buildSpec.atmosphere.wind * 0.11f;
@@ -221,6 +225,7 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
     shrubMaterial->SetMetallic(0.0f);
     shrubMaterial->SetRoughness(0.92f);
     shrubMaterial->SetUseVertexColorTint(true);
+
 }
 
 } // namespace Moon

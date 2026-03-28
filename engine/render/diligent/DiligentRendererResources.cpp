@@ -147,9 +147,11 @@ void DiligentRenderer::BindAlbedoTexture(const std::string& texturePath)
     // 根据当前渲染状态选择SRB
     auto* srb = m_pSRB.RawPtr();
     if (m_IsRenderingTransparent) {
-        srb = m_ActiveMaterialPipeline == MaterialPipeline::Water
-            ? m_pWaterTransparentSRB.RawPtr()
-            : m_pTransparentSRB.RawPtr();
+        if (m_ActiveMaterialPipeline == MaterialPipeline::Water) {
+            srb = m_pWaterTransparentSRB.RawPtr();
+        } else {
+            srb = m_pTransparentSRB.RawPtr();
+        }
     }
     
     if (texturePath.empty() || !srb) {
@@ -182,9 +184,11 @@ void DiligentRenderer::BindAOTexture(const std::string& texturePath)
 {
     auto* srb = m_pSRB.RawPtr();
     if (m_IsRenderingTransparent) {
-        srb = m_ActiveMaterialPipeline == MaterialPipeline::Water
-            ? m_pWaterTransparentSRB.RawPtr()
-            : m_pTransparentSRB.RawPtr();
+        if (m_ActiveMaterialPipeline == MaterialPipeline::Water) {
+            srb = m_pWaterTransparentSRB.RawPtr();
+        } else {
+            srb = m_pTransparentSRB.RawPtr();
+        }
     }
     
     if (texturePath.empty() || !srb) {
@@ -217,9 +221,11 @@ void DiligentRenderer::BindRoughnessTexture(const std::string& texturePath)
 {
     auto* srb = m_pSRB.RawPtr();
     if (m_IsRenderingTransparent) {
-        srb = m_ActiveMaterialPipeline == MaterialPipeline::Water
-            ? m_pWaterTransparentSRB.RawPtr()
-            : m_pTransparentSRB.RawPtr();
+        if (m_ActiveMaterialPipeline == MaterialPipeline::Water) {
+            srb = m_pWaterTransparentSRB.RawPtr();
+        } else {
+            srb = m_pTransparentSRB.RawPtr();
+        }
     }
     
     if (texturePath.empty() || !srb) {
@@ -252,9 +258,11 @@ void DiligentRenderer::BindMetalnessTexture(const std::string& texturePath)
 {
     auto* srb = m_pSRB.RawPtr();
     if (m_IsRenderingTransparent) {
-        srb = m_ActiveMaterialPipeline == MaterialPipeline::Water
-            ? m_pWaterTransparentSRB.RawPtr()
-            : m_pTransparentSRB.RawPtr();
+        if (m_ActiveMaterialPipeline == MaterialPipeline::Water) {
+            srb = m_pWaterTransparentSRB.RawPtr();
+        } else {
+            srb = m_pTransparentSRB.RawPtr();
+        }
     }
     
     if (texturePath.empty() || !srb) {
@@ -287,9 +295,11 @@ void DiligentRenderer::BindNormalTexture(const std::string& texturePath)
 {
     auto* srb = m_pSRB.RawPtr();
     if (m_IsRenderingTransparent) {
-        srb = m_ActiveMaterialPipeline == MaterialPipeline::Water
-            ? m_pWaterTransparentSRB.RawPtr()
-            : m_pTransparentSRB.RawPtr();
+        if (m_ActiveMaterialPipeline == MaterialPipeline::Water) {
+            srb = m_pWaterTransparentSRB.RawPtr();
+        } else {
+            srb = m_pTransparentSRB.RawPtr();
+        }
     }
     
     if (texturePath.empty() || !srb) {

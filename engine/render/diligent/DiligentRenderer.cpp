@@ -348,14 +348,19 @@ bool DiligentRenderer::Initialize(const RenderInitParams& params)
         CreateMainPass();  // 主渲染管线（用于正常场景渲染，不透明物体）
         CreateTransparentPass();  // 透明物体渲染管线（Alpha Blending）
         CreateWaterTransparentPass();  // 水体专用透明渲染管线
-        if (!m_pPSO || !m_pSRB || !m_pTransparentPSO || !m_pTransparentSRB || !m_pWaterTransparentPSO || !m_pWaterTransparentSRB) {
+        CreateSkyboxPass(); // Skybox 渲染管线
+        CreatePrecipitationVolumePass();
+        CreatePrecipitationVolumeBuffers();
+        if (!m_pPSO || !m_pSRB || !m_pTransparentPSO || !m_pTransparentSRB || !m_pWaterTransparentPSO ||
+            !m_pWaterTransparentSRB || !m_pSkyboxPSO || !m_pSkyboxSRB ||
+            !m_pPrecipitationVolumePSO || !m_pPrecipitationVolumeSRB ||
+            !m_pPrecipitationVB || !m_pPrecipitationIB) {
             MOON_LOG_ERROR("DiligentRenderer", "Failed to initialize one or more surface passes");
             return false;
         }
 
         CreateShadowMapResources();  // Shadow map texture + bind to SRBs
         CreatePointShadowMapResources();
-        CreateSkyboxPass(); // Skybox 渲染管线
         PrecomputeIBL();    // 预计算 IBL 资源
         
         BindSharedSurfaceTextures(m_pSRB, "Main PSO");
@@ -642,10 +647,14 @@ void DiligentRenderer::SetMaterialParameters(Moon::Material* material)
     mat.opacity = material->GetOpacity();
     mat.useVertexColorTint = material->GetUseVertexColorTint() ? 1.0f : 0.0f;
     mat.transmissionColor = material->GetTransmissionColor();
-    m_ActiveMaterialPipeline =
-        material->GetShadingModel() == Moon::ShadingModel::Water
-            ? MaterialPipeline::Water
-            : MaterialPipeline::DefaultLit;
+    switch (material->GetShadingModel()) {
+    case Moon::ShadingModel::Water:
+        m_ActiveMaterialPipeline = MaterialPipeline::Water;
+        break;
+    default:
+        m_ActiveMaterialPipeline = MaterialPipeline::DefaultLit;
+        break;
+    }
     
     UpdateCB(m_pPSMaterialConstants, mat);
 }
@@ -662,6 +671,12 @@ void DiligentRenderer::SetCameraPosition(const Moon::Vector3& position)
     UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
 }
 
+void DiligentRenderer::SetCameraBasis(const Moon::Vector3& right, const Moon::Vector3& up)
+{
+    m_CameraRight = right.Normalized();
+    m_CameraUp = up.Normalized();
+}
+
 void DiligentRenderer::SetEnvironmentState(const Moon::EnvironmentState* environmentState)
 {
     m_HasEnvironmentState = (environmentState != nullptr && environmentState->enabled);
@@ -670,13 +685,15 @@ void DiligentRenderer::SetEnvironmentState(const Moon::EnvironmentState* environ
     if (!m_HasEnvironmentState) {
         m_SceneDataCache.fogColor = Moon::Vector3(0.65f, 0.75f, 0.90f);
         m_SceneDataCache.fogDensity = 0.0f;
-        m_SceneDataCache.skyColor = Moon::Vector3(0.20f, 0.40f, 0.60f);
+        m_SceneDataCache.skyColor = Moon::Vector3(0.18f, 0.35f, 0.75f);
         m_SceneDataCache.fogEnabled = 0.0f;
         m_SceneDataCache.cloudCoverage = 0.0f;
         m_SceneDataCache.wetness = 0.0f;
         m_SceneDataCache.windStrength = 0.0f;
         m_SceneDataCache.timeSeconds =
             std::chrono::duration<float>(std::chrono::steady_clock::now() - m_SkyStartTime).count();
+        m_SceneDataCache.precipitationIntensity = 0.0f;
+        m_SceneDataCache.snowAmount = 0.0f;
         UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
         return;
     }
@@ -684,27 +701,47 @@ void DiligentRenderer::SetEnvironmentState(const Moon::EnvironmentState* environ
     m_SceneDataCache.lightDirection = environmentState->atmosphere.sunDirection;
     m_SceneDataCache.lightColor = environmentState->atmosphere.sunColor;
     m_SceneDataCache.lightIntensity = environmentState->atmosphere.sunIntensity;
-    m_SceneDataCache.fogColor = environmentState->atmosphere.skyHorizonColor;
+    const Moon::Vector3 horizonColor = environmentState->atmosphere.skyHorizonColor;
+    const Moon::Vector3 zenithColor = environmentState->atmosphere.skyZenithColor;
+    m_SceneDataCache.fogColor = horizonColor * 0.78f + zenithColor * 0.22f;
     m_SceneDataCache.fogDensity = environmentState->atmosphere.fogDensity;
-    m_SceneDataCache.skyColor =
-        (environmentState->atmosphere.skyZenithColor + environmentState->atmosphere.skyHorizonColor) * 0.5f;
+    m_SceneDataCache.skyColor = zenithColor;
     m_SceneDataCache.fogEnabled = environmentState->atmosphere.fogDensity > 0.0f ? 1.0f : 0.0f;
     m_SceneDataCache.cloudCoverage = environmentState->atmosphere.cloudCoverage;
     const float currentWetness =
         environmentState->weather.current == Moon::WeatherType::Rain ||
             environmentState->weather.current == Moon::WeatherType::Storm
             ? 1.0f
+            : (environmentState->weather.current == Moon::WeatherType::Snow
+                   ? 0.18f
             : (environmentState->weather.current == Moon::WeatherType::Fog
                    ? 0.7f
-                   : (environmentState->weather.current == Moon::WeatherType::Cloudy ? 0.28f : 0.0f));
+                   : (environmentState->weather.current == Moon::WeatherType::Cloudy ? 0.28f : 0.0f)));
     const float targetWetness =
         environmentState->weather.target == Moon::WeatherType::Rain ||
             environmentState->weather.target == Moon::WeatherType::Storm
             ? 1.0f
+            : (environmentState->weather.target == Moon::WeatherType::Snow
+                   ? 0.18f
             : (environmentState->weather.target == Moon::WeatherType::Fog
                    ? 0.7f
-                   : (environmentState->weather.target == Moon::WeatherType::Cloudy ? 0.28f : 0.0f));
+                   : (environmentState->weather.target == Moon::WeatherType::Cloudy ? 0.28f : 0.0f)));
     const float weatherBlend = std::clamp(environmentState->weather.transitionAlpha, 0.0f, 1.0f);
+    const auto precipitationStrengthForWeather = [](Moon::WeatherType weather) {
+        switch (weather) {
+        case Moon::WeatherType::Rain:
+            return 0.80f;
+        case Moon::WeatherType::Snow:
+            return 0.72f;
+        case Moon::WeatherType::Storm:
+            return 1.00f;
+        default:
+            return 0.0f;
+        }
+    };
+    const auto snowAmountForWeather = [](Moon::WeatherType weather) {
+        return weather == Moon::WeatherType::Snow ? 1.0f : 0.0f;
+    };
     m_SceneDataCache.wetness = std::min(
         1.0f,
         (1.0f - weatherBlend) * currentWetness +
@@ -717,6 +754,26 @@ void DiligentRenderer::SetEnvironmentState(const Moon::EnvironmentState* environ
             environmentState->wind.turbulence * 2.5f);
     m_SceneDataCache.timeSeconds =
         std::chrono::duration<float>(std::chrono::steady_clock::now() - m_SkyStartTime).count();
+    m_SceneDataCache.precipitationIntensity =
+        (1.0f - weatherBlend) * precipitationStrengthForWeather(environmentState->weather.current) +
+        weatherBlend * precipitationStrengthForWeather(environmentState->weather.target);
+    m_SceneDataCache.snowAmount =
+        (1.0f - weatherBlend) * snowAmountForWeather(environmentState->weather.current) +
+        weatherBlend * snowAmountForWeather(environmentState->weather.target);
+    static float s_lastLoggedPrecipitation = -1.0f;
+    static float s_lastLoggedSnowAmount = -1.0f;
+    if (std::abs(m_SceneDataCache.precipitationIntensity - s_lastLoggedPrecipitation) > 0.05f ||
+        std::abs(m_SceneDataCache.snowAmount - s_lastLoggedSnowAmount) > 0.05f) {
+        MOON_LOG_INFO(
+            "DiligentRenderer",
+            "Environment precipitation updated: intensity=%.2f snow=%.2f cloud=%.2f weatherBlend=%.2f",
+            m_SceneDataCache.precipitationIntensity,
+            m_SceneDataCache.snowAmount,
+            m_SceneDataCache.cloudCoverage,
+            weatherBlend);
+        s_lastLoggedPrecipitation = m_SceneDataCache.precipitationIntensity;
+        s_lastLoggedSnowAmount = m_SceneDataCache.snowAmount;
+    }
     m_RenderProceduralSky = true;
 
     UpdateCB(m_pPSSceneConstants, m_SceneDataCache);
@@ -881,9 +938,13 @@ void DiligentRenderer::DrawMesh(Moon::Mesh* mesh, const Moon::Matrix4x4& world)
         auto* pso = m_pPSO.RawPtr();
         auto* srb = m_pSRB.RawPtr();
         if (m_IsRenderingTransparent) {
-            const bool useWaterPipeline = m_ActiveMaterialPipeline == MaterialPipeline::Water;
-            pso = useWaterPipeline ? m_pWaterTransparentPSO.RawPtr() : m_pTransparentPSO.RawPtr();
-            srb = useWaterPipeline ? m_pWaterTransparentSRB.RawPtr() : m_pTransparentSRB.RawPtr();
+            if (m_ActiveMaterialPipeline == MaterialPipeline::Water) {
+                pso = m_pWaterTransparentPSO.RawPtr();
+                srb = m_pWaterTransparentSRB.RawPtr();
+            } else {
+                pso = m_pTransparentPSO.RawPtr();
+                srb = m_pTransparentSRB.RawPtr();
+            }
         }
 
         // 设置管线状态
@@ -1306,8 +1367,14 @@ void DiligentRenderer::Shutdown()
     // 主渲染管线
     m_pSRB.Release();
     m_pPSO.Release();
+    m_pTransparentSRB.Release();
+    m_pTransparentPSO.Release();
     m_pWaterTransparentSRB.Release();
     m_pWaterTransparentPSO.Release();
+    m_pPrecipitationVolumeSRB.Release();
+    m_pPrecipitationVolumePSO.Release();
+    m_pPrecipitationVB.Release();
+    m_pPrecipitationIB.Release();
     m_pVSConstants.Release();
     m_pPSMaterialConstants.Release();
     m_pPSSceneConstants.Release();
