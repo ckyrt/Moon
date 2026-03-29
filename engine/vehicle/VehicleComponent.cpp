@@ -3,7 +3,9 @@
 #include "../core/Logging/Logger.h"
 #include "../physics/PhysicsSystem.h"
 #include "../physics/RigidBody.h"
+#include "../terrain/TerrainComponent.h"
 #include "core/Math/Quaternion.h"
+#include "core/Scene/Scene.h"
 #include "core/Scene/SceneNode.h"
 #include "core/Scene/Transform.h"
 
@@ -201,7 +203,7 @@ float VehicleComponent::ResolveForwardInput(float forwardSpeed) const
     return -m_inputState.brake;
 }
 
-void VehicleComponent::Update(float)
+void VehicleComponent::Update(float deltaTime)
 {
     if (!m_vehicleConstraint) {
         return;
@@ -217,8 +219,10 @@ void VehicleComponent::Update(float)
         return;
     }
 
+    const Vector3 bodyPosition = rigidBody->GetPosition();
+    const Vector3 linearVelocity = rigidBody->GetLinearVelocity();
     const Vector3 worldForward = transform->GetForward().Normalized();
-    const float forwardSpeed = Vector3::Dot(rigidBody->GetLinearVelocity(), worldForward);
+    const float forwardSpeed = Vector3::Dot(linearVelocity, worldForward);
     m_currentSpeed = forwardSpeed;
 
     VehicleInputState input = m_inputState;
@@ -243,12 +247,91 @@ void VehicleComponent::Update(float)
             m_physicsSystem->ActivateBody(rigidBody->GetBodyID());
         }
     }
+
+    LogPhysicsState(deltaTime, bodyPosition, linearVelocity);
 }
 
 bool VehicleComponent::ConfigureControllerRuntime()
 {
     m_controllerRuntimeConfigured = true;
     return true;
+}
+
+bool VehicleComponent::TrySampleTerrainHeight(const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const
+{
+    if (!m_owner || !m_owner->GetScene()) {
+        return false;
+    }
+
+    bool found = false;
+    m_owner->GetScene()->TraverseActive([&](SceneNode* node) {
+        if (found || !node) {
+            return;
+        }
+
+        if (TerrainComponent* terrain = node->GetComponent<TerrainComponent>()) {
+            found = terrain->SampleWorldHeightAndNormal(worldPosition, outHeight, outNormal);
+        }
+    });
+    return found;
+}
+
+void VehicleComponent::LogPhysicsState(float deltaTime, const Vector3& bodyPosition, const Vector3& linearVelocity)
+{
+    m_logAccumulator += deltaTime;
+    if (m_logAccumulator < 0.5f) {
+        return;
+    }
+    m_logAccumulator = 0.0f;
+
+    int groundedCount = 0;
+    for (const WheelRuntimeState& runtime : m_wheelRuntime) {
+        if (runtime.grounded) {
+            ++groundedCount;
+        }
+    }
+
+    float terrainHeight = 0.0f;
+    Vector3 terrainNormal(0.0f, 1.0f, 0.0f);
+    const bool hasTerrainSample = TrySampleTerrainHeight(bodyPosition, terrainHeight, terrainNormal);
+
+    MOON_LOG_INFO(
+        "VehicleDebug",
+        "chassis pos=(%.2f, %.2f, %.2f) vel=(%.2f, %.2f, %.2f) speed=%.2f grounded=%d/%zu terrainY=%s%.2f deltaY=%s%.2f",
+        bodyPosition.x,
+        bodyPosition.y,
+        bodyPosition.z,
+        linearVelocity.x,
+        linearVelocity.y,
+        linearVelocity.z,
+        m_currentSpeed,
+        groundedCount,
+        m_wheelRuntime.size(),
+        hasTerrainSample ? "" : "n/a ",
+        hasTerrainSample ? terrainHeight : 0.0f,
+        hasTerrainSample ? "" : "n/a ",
+        hasTerrainSample ? bodyPosition.y - terrainHeight : 0.0f);
+
+    for (size_t i = 0; i < m_wheelRuntime.size(); ++i) {
+        const WheelRuntimeState& runtime = m_wheelRuntime[i];
+        MOON_LOG_INFO(
+            "VehicleDebug",
+            "wheel[%zu] grounded=%d compression=%.3f steer=%.2f spin=%.2f suspensionLambda=%.3f longitudinalLambda=%.3f lateralLambda=%.3f contact=(%.2f, %.2f, %.2f) normal=(%.2f, %.2f, %.2f)",
+            i,
+            runtime.grounded ? 1 : 0,
+            runtime.compression,
+            runtime.steerAngleDegrees,
+            runtime.spinAngleDegrees,
+            runtime.lastSuspensionForce,
+            runtime.lastDriveForce,
+            runtime.lastLateralSpeed,
+            runtime.contactPoint.x,
+            runtime.contactPoint.y,
+            runtime.contactPoint.z,
+            runtime.contactNormal.x,
+            runtime.contactNormal.y,
+            runtime.contactNormal.z);
+    }
 }
 
 void VehicleComponent::PostPhysicsSync()
@@ -279,6 +362,9 @@ void VehicleComponent::UpdateWheelRuntimeFromJolt()
         if (wheel->HasContact()) {
             runtime.contactPoint = ToMoonRVec3(wheel->GetContactPosition());
             runtime.contactNormal = ToMoonVec3(wheel->GetContactNormal());
+        } else {
+            runtime.contactPoint = Vector3(0.0f, 0.0f, 0.0f);
+            runtime.contactNormal = Vector3(0.0f, 1.0f, 0.0f);
         }
     }
 }

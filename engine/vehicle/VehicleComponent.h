@@ -48,6 +48,8 @@ public:
 
 private:
     bool ConfigureControllerRuntime();
+    bool TrySampleTerrainHeight(const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const;
+    void LogPhysicsState(float deltaTime, const Vector3& bodyPosition, const Vector3& linearVelocity);
     void UpdateWheelRuntimeFromJolt();
     void UpdateWheelVisualsFromJolt();
     float ResolveForwardInput(float forwardSpeed) const;
@@ -62,6 +64,7 @@ private:
     bool m_controllerRuntimeConfigured = false;
     float m_currentSpeed = 0.0f;
     bool m_driverOccupied = false;
+    float m_logAccumulator = 0.0f;
 };
 
 } // namespace Moon

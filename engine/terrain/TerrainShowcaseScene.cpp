@@ -163,18 +163,26 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
         Moon::TerrainProfile terrainProfile;
         terrainProfile.name = "OpenWorldTerrain";
         terrainProfile.chunkResolutionQuads = 32;
-        terrainProfile.chunkWorldSize = 175.0f;
+        const uint32_t terrainSamples = generation.terrainData.heightmap.GetWidth();
+        const uint32_t terrainQuads = terrainSamples > 0 ? terrainSamples - 1 : 0;
+        const uint32_t chunkCount = std::max(1u, (terrainQuads + terrainProfile.chunkResolutionQuads - 1) / terrainProfile.chunkResolutionQuads);
+        terrainProfile.chunkWorldSize = generationSettings.worldWidth / static_cast<float>(chunkCount);
+        terrainProfile.worldWidth = generationSettings.worldWidth;
+        terrainProfile.worldDepth = generationSettings.worldDepth;
         terrainProfile.heightScale = generationSettings.heightScale;
         terrain->SetProfile(terrainProfile);
         terrain->SetData(generation.terrainData);
 
         MOON_LOG_INFO(
             "TerrainShowcaseScene",
-            "Open-world terrain ready: %u x %u samples, %u x %u chunks, river points=%zu",
+            "Open-world terrain ready: %u x %u samples, %u x %u chunks, world=(%.2f x %.2f), chunkSize=%.2f, river points=%zu",
             terrain->GetData().heightmap.GetWidth(),
             terrain->GetData().heightmap.GetHeight(),
             terrain->GetRuntimeState().chunkCountX,
             terrain->GetRuntimeState().chunkCountZ,
+            terrainProfile.worldWidth,
+            terrainProfile.worldDepth,
+            terrainProfile.chunkWorldSize,
             generation.riverPolylines.empty() ? 0 : generation.riverPolylines.front().size() / 3);
 
         if (!scene->FindNodeByName(kTerrainCollisionNodeName)) {
@@ -187,6 +195,27 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
                     0.0f,
                     -generationSettings.worldDepth * 0.5f);
                 const Vector3 scale(scaleX, generationSettings.heightScale, scaleZ);
+                const std::vector<float>& samples = generation.terrainData.heightmap.GetSamples();
+                float minSample = 0.0f;
+                float maxSample = 0.0f;
+                if (!samples.empty()) {
+                    minSample = *std::min_element(samples.begin(), samples.end());
+                    maxSample = *std::max_element(samples.begin(), samples.end());
+                }
+                MOON_LOG_INFO(
+                    "TerrainShowcaseScene",
+                    "Creating terrain heightfield samples=%u offset=(%.2f, %.2f, %.2f) scale=(%.3f, %.3f, %.3f) normalizedHeightRange=(%.3f, %.3f) worldHeightRange=(%.2f, %.2f)",
+                    sampleCount,
+                    offset.x,
+                    offset.y,
+                    offset.z,
+                    scale.x,
+                    scale.y,
+                    scale.z,
+                    minSample,
+                    maxSample,
+                    minSample * generationSettings.heightScale,
+                    maxSample * generationSettings.heightScale);
                 const JPH::BodyID terrainBody = physicsSystem->CreateStaticHeightField(
                     generation.terrainData.heightmap.GetSamples().data(),
                     sampleCount,

@@ -69,8 +69,12 @@ bool TerrainComponent::SampleWorldHeightAndNormal(const Vector3& worldPosition, 
     Transform* terrainTransform = m_owner ? m_owner->GetTransform() : nullptr;
     const Vector3 terrainOrigin = terrainTransform ? terrainTransform->GetWorldPosition() : Vector3(0.0f, 0.0f, 0.0f);
 
-    const float worldWidth = static_cast<float>(runtimeState.chunkCountX) * profile.chunkWorldSize;
-    const float worldDepth = static_cast<float>(runtimeState.chunkCountZ) * profile.chunkWorldSize;
+    const float worldWidth = profile.worldWidth > 0.0f
+        ? profile.worldWidth
+        : static_cast<float>(runtimeState.chunkCountX) * profile.chunkWorldSize;
+    const float worldDepth = profile.worldDepth > 0.0f
+        ? profile.worldDepth
+        : static_cast<float>(runtimeState.chunkCountZ) * profile.chunkWorldSize;
     if (worldWidth <= 0.0f || worldDepth <= 0.0f) {
         return false;
     }

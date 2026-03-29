@@ -46,6 +46,8 @@ struct TerrainProfile {
     std::string name = "DefaultTerrain";
     uint32_t chunkResolutionQuads = 63;
     float chunkWorldSize = 64.0f;
+    float worldWidth = 0.0f;
+    float worldDepth = 0.0f;
     float heightScale = 512.0f;
     float defaultNormalizedHeight = 0.5f;
     bool enableRuntimeEditing = true;

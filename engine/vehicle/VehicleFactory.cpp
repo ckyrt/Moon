@@ -166,12 +166,15 @@ SceneNode* VehicleFactory::CreateBuggy(Scene* scene, PhysicsSystem* physicsSyste
             rigidBody->SetAngularVelocity(Vector3(0.0f, 0.0f, 0.0f));
             MOON_LOG_INFO(
                 "VehicleFactory",
-                "Vehicle spawn height=%.2f normal=(%.2f, %.2f, %.2f) lift=%.2f",
+                "Vehicle spawn terrainY=%.2f normal=(%.2f, %.2f, %.2f) lift=%.2f finalBodyPos=(%.2f, %.2f, %.2f)",
                 groundHeight,
                 groundNormal.x,
                 groundNormal.y,
                 groundNormal.z,
-                spawnLift);
+                spawnLift,
+                rigidBody->GetPosition().x,
+                rigidBody->GetPosition().y,
+                rigidBody->GetPosition().z);
         }
     });
 
