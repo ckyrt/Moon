@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../core/Scene/Component.h"
+#include "../core/Math/Vector3.h"
 #include "TerrainSystem.h"
 
 namespace Moon {
@@ -19,6 +20,7 @@ public:
     void ResizeHeightmap(uint32_t width, uint32_t height, float fillValue);
     float GetHeightSample(uint32_t x, uint32_t y) const;
     bool SetHeightSample(uint32_t x, uint32_t y, float value);
+    bool SampleWorldHeightAndNormal(const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const;
 
     const TerrainRuntimeState& GetRuntimeState() const;
     const std::vector<TerrainChunkState>& GetChunks() const;

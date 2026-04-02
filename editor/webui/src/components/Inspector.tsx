@@ -9,7 +9,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { eulerToQuaternion } from '@/utils/math';
 import { getUndoManager } from '@/undo';
 import { engine } from '@/utils/engine-bridge';
-import { 
+import {
   SetPositionCommand, 
   SetRotationCommand, 
   SetScaleCommand,
@@ -29,8 +29,9 @@ import {
   SetMaterialBaseColorCommand,
   SetMaterialPresetCommand
 } from '@/undo';
-import type { EnvironmentSettings, Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent, MaterialComponent, MassingPreset } from '@/types/engine';
+import type { AssetPreset, EnvironmentSettings, Vector3, Component, MeshRendererComponent, RigidBodyComponent, LightComponent, SkyboxComponent, MaterialComponent, MassingPreset } from '@/types/engine';
 import styles from './Inspector.module.css';
+import { AIChatPanel } from './AIChatPanel';
 
 const DEFAULT_MASSING_RULE_JSON = `{
   "version": 1,
@@ -184,7 +185,8 @@ export const Inspector: React.FC = () => {
             onTimeChange={handleEnvironmentTimeChange}
             onWeatherChange={handleEnvironmentWeatherChange}
           />
-          <MassingPreviewSection />
+          <AIChatPanel />
+          <ScenePreviewSection />
         </div>
       </div>
     );
@@ -200,6 +202,7 @@ export const Inspector: React.FC = () => {
           onTimeChange={handleEnvironmentTimeChange}
           onWeatherChange={handleEnvironmentWeatherChange}
         />
+        <AIChatPanel />
         
         {/* 节点信息 */}
         <div className={styles.section}>
@@ -269,7 +272,7 @@ export const Inspector: React.FC = () => {
           </div>
         )}
 
-        <MassingPreviewSection />
+        <ScenePreviewSection />
       </div>
     </div>
   );
@@ -568,6 +571,200 @@ const MassingPreviewSection: React.FC = () => {
       </div>
       {status && <div className={styles.massingStatus}>{status}</div>}
       {error && <div className={styles.massingError}>{error}</div>}
+    </div>
+  );
+};
+
+type PreviewKind = 'object' | 'building' | 'massing';
+
+interface PreviewBuckets {
+  object: AssetPreset[];
+  building: AssetPreset[];
+  massing: AssetPreset[];
+}
+
+const EMPTY_PREVIEW_BUCKETS: PreviewBuckets = {
+  object: [],
+  building: [],
+  massing: [],
+};
+
+const ScenePreviewSection: React.FC = () => {
+  const [previewKind, setPreviewKind] = useState<PreviewKind>('object');
+  const [presetBuckets, setPresetBuckets] = useState<PreviewBuckets>(EMPTY_PREVIEW_BUCKETS);
+  const [selectedPresetFile, setSelectedPresetFile] = useState('');
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
+  const requestIdRef = React.useRef(0);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadPresets = async () => {
+      try {
+        const [objectPresets, scenePresets] = await Promise.all([
+          engine.listObjectPresets(),
+          engine.listMassingPresets(),
+        ]);
+        if (disposed) {
+          return;
+        }
+
+        setPresetBuckets({
+          object: objectPresets,
+          building: scenePresets.filter((preset) => preset.file.startsWith('building/')),
+          massing: scenePresets.filter((preset) => preset.file.startsWith('massing/')),
+        });
+      } catch (presetError) {
+        if (disposed) {
+          return;
+        }
+
+        const message = presetError instanceof Error ? presetError.message : 'Failed to load preview assets';
+        logger.error('Inspector', `Preview asset load failed: ${message}`);
+        setError(message);
+      }
+    };
+
+    void loadPresets();
+
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  const refreshScene = async () => {
+    const scene = await engine.getScene();
+    useEditorStore.getState().updateScene(scene);
+  };
+
+  const activePresets = presetBuckets[previewKind];
+
+  const handlePreview = async (preset: AssetPreset) => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+
+    setIsBusy(true);
+    setError('');
+    setSelectedPresetFile(preset.file);
+    setStatus(`Loading ${preset.name}...`);
+
+    try {
+      if (previewKind === 'object') {
+        const objectJson = await engine.loadObjectPreset(preset.file);
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        await engine.previewObject(objectJson, { focusCamera: true });
+      } else if (previewKind === 'building') {
+        const buildingJson = await engine.loadMassingPreset(preset.file);
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        await engine.previewBuilding(buildingJson, { focusCamera: true });
+      } else {
+        const ruleJson = await engine.loadMassingPreset(preset.file);
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        await engine.previewMassing(ruleJson, { focusCamera: true });
+      }
+
+      await refreshScene();
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      setStatus(`Rendered ${preset.name}.`);
+    } catch (previewError) {
+      const message = previewError instanceof Error ? previewError.message : 'Failed to preview asset';
+      logger.error('Inspector', `Preview render failed: ${message}`);
+      setError(message);
+      setStatus('');
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setIsBusy(false);
+      }
+    }
+  };
+
+  const handleClear = async () => {
+    setIsBusy(true);
+    setError('');
+
+    try {
+      await engine.clearMassingPreview();
+      await refreshScene();
+      setSelectedPresetFile('');
+      setStatus('Preview cleared');
+    } catch (clearError) {
+      const message = clearError instanceof Error ? clearError.message : 'Failed to clear preview';
+      logger.error('Inspector', `Preview clear failed: ${message}`);
+      setError(message);
+      setStatus('');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  return (
+    <div className={styles.section}>
+      <div className={styles.sectionTitle}>Scene Preview</div>
+      <div className={styles.previewHint}>
+        Objects, buildings, and massing all end up rendered into the same preview scene root. Click an asset once to render it.
+      </div>
+      <div className={styles.previewTabs}>
+        <button
+          type="button"
+          className={`${styles.previewTab} ${previewKind === 'object' ? styles.previewTabActive : ''}`}
+          onClick={() => setPreviewKind('object')}
+        >
+          Objects
+        </button>
+        <button
+          type="button"
+          className={`${styles.previewTab} ${previewKind === 'building' ? styles.previewTabActive : ''}`}
+          onClick={() => setPreviewKind('building')}
+        >
+          Buildings
+        </button>
+        <button
+          type="button"
+          className={`${styles.previewTab} ${previewKind === 'massing' ? styles.previewTabActive : ''}`}
+          onClick={() => setPreviewKind('massing')}
+        >
+          Massing
+        </button>
+      </div>
+      <div className={styles.previewList}>
+        {activePresets.length === 0 ? (
+          <div className={styles.previewEmpty}>No {previewKind} assets found.</div>
+        ) : (
+          activePresets.map((preset) => (
+            <button
+              key={preset.file}
+              type="button"
+              className={`${styles.previewItem} ${selectedPresetFile === preset.file ? styles.previewItemActive : ''}`}
+              onClick={() => {
+                void handlePreview(preset);
+              }}
+              disabled={isBusy}
+            >
+              <span className={styles.previewItemName}>{preset.name}</span>
+              <span className={styles.previewItemPath}>{preset.file}</span>
+            </button>
+          ))
+        )}
+      </div>
+      <div className={styles.previewActions}>
+        <button type="button" onClick={handleClear} disabled={isBusy}>
+          Clear
+        </button>
+      </div>
+      {status && <div className={styles.previewStatus}>{status}</div>}
+      {error && <div className={styles.previewError}>{error}</div>}
     </div>
   );
 };

@@ -135,6 +135,33 @@ export interface MassingPromptResult {
   notes: string[];
 }
 
+export interface AssetPromptResult {
+  strategy: string;
+  hiddenContextSummary: string;
+  notes: string[];
+  model?: string;
+  responseId?: string;
+}
+
+export interface ScenePreviewResult {
+  rootNodeId: number;
+  meshCount: number;
+  lightCount: number;
+  warnings: string[];
+  buildingInstanceCount: number;
+  objectInstanceCount: number;
+  sceneJson: string;
+}
+
+export interface SceneOpsPromptResult {
+  opsJson: string;
+  strategy: string;
+  hiddenContextSummary: string;
+  notes: string[];
+  model?: string;
+  responseId?: string;
+}
+
 export interface EnvironmentSettings {
   timeOfDayHours: number;
   weatherType: 'Clear' | 'Cloudy' | 'Rain' | 'Fog' | 'Storm';
@@ -195,6 +222,11 @@ export interface MoonEngineAPI {
   listMassingPresets(): Promise<MassingPreset[]>;
   loadMassingPreset(presetFile: string): Promise<string>;
   generateMassingFromPrompt(prompt: string, currentRuleJson?: string): Promise<MassingPromptResult>;
+  generateBuildingFromPrompt(prompt: string, currentBuildingJson?: string): Promise<AssetPromptResult & { buildingJson: string }>;
+  generateObjectFromPrompt(prompt: string, currentObjectJson?: string): Promise<AssetPromptResult & { objectJson: string }>;
+  generateSceneOperationsFromPrompt(prompt: string, currentSceneJson: string): Promise<SceneOpsPromptResult>;
+  applySceneOperations(sceneJson: string, opsJson: string): Promise<{ sceneJson: string }>;
+  previewScene(sceneJson: string, options?: { focusCamera?: boolean }): Promise<ScenePreviewResult>;
   previewMassing(ruleJson: string, options?: { focusCamera?: boolean }): Promise<MassingPreviewResult>;
   previewBuilding(buildingJson: string, options?: { focusCamera?: boolean }): Promise<MassingPreviewResult>;
   listObjectPresets(): Promise<AssetPreset[]>;

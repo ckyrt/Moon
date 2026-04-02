@@ -1,5 +1,7 @@
 #include "MoonEngineMessageHandler.h"
 #include "../../app/SceneSerializer.h"
+#include "../ai/OpenAIAssetGenerator.h"
+#include "../scene/SceneDesign.h"
 #include "../../../engine/core/EngineCore.h"
 #include "../../../engine/core/Logging/Logger.h"
 #include "../../../engine/core/Assets/AssetPaths.h"
@@ -18,6 +20,7 @@
 #include "../../../engine/core/Object/BlueprintLoader.h"
 #include "../../../engine/core/CSG/CSGBuilder.h"
 #include "../../../engine/core/Object/Blueprint.h"
+#include "../../../engine/core/Object/ObjectLibrary.h"
 #include "../../../engine/core/Mesh/Mesh.h"
 #include "../../../engine/core/Geometry/MeshGenerator.h"
 #include "../../../external/nlohmann/json.hpp"
@@ -527,6 +530,218 @@ namespace {
             material->SetBaseColor(Moon::Vector3(0.76f, 0.76f, 0.76f));
         }
         return material;
+    }
+
+    bool LoadObjectDatabase(Moon::Object::BlueprintDatabase& database, std::string& outError) {
+        return database.LoadIndex(Moon::Assets::BuildObjectPath("index.json"), outError);
+    }
+
+    bool BuildBuildingPreviewResult(const std::string& buildingJson,
+                                    Moon::CSG::BuildResult& outBuildResult,
+                                    std::string& outError) {
+        Moon::Building::GeneratedBuilding building;
+        Moon::Building::BuildingPipeline pipeline;
+        if (!pipeline.ProcessBuilding(buildingJson, building, outError)) {
+            return false;
+        }
+
+        building.programBlocks.clear();
+        const std::string blueprintJson = Moon::Building::BuildingToObjectBlueprintConverter::Convert(building);
+
+        Moon::Object::BlueprintDatabase database;
+        if (!LoadObjectDatabase(database, outError)) {
+            outError = "Failed to load CSG index: " + outError;
+            return false;
+        }
+
+        auto generatedBlueprint = Moon::Object::BlueprintLoader::ParseFromString(blueprintJson, outError);
+        if (!generatedBlueprint) {
+            outError = "Failed to parse building blueprint: " + outError;
+            return false;
+        }
+
+        Moon::CSG::CSGBuilder builder;
+        builder.SetBlueprintDatabase(&database);
+        std::unordered_map<std::string, float> params;
+        outBuildResult = builder.Build(generatedBlueprint.get(), params, outError);
+        if (outBuildResult.meshes.empty()) {
+            if (outError.empty()) {
+                outError = "Failed to build building preview";
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    bool BuildInlineObjectPreviewResult(const std::string& objectJson,
+                                        Moon::CSG::BuildResult& outBuildResult,
+                                        std::string& outError) {
+        Moon::Object::BlueprintDatabase database;
+        if (!LoadObjectDatabase(database, outError)) {
+            outError = "Failed to load object index: " + outError;
+            return false;
+        }
+
+        auto blueprint = Moon::Object::BlueprintLoader::ParseFromString(objectJson, outError);
+        if (!blueprint) {
+            outError = "Failed to parse object preview: " + outError;
+            return false;
+        }
+
+        Moon::CSG::CSGBuilder builder;
+        builder.SetBlueprintDatabase(&database);
+        std::unordered_map<std::string, float> params;
+        outBuildResult = builder.Build(blueprint.get(), params, outError);
+        if (outBuildResult.meshes.empty() && outBuildResult.lights.empty()) {
+            if (outError.empty()) {
+                outError = "Failed to build object preview";
+            }
+            return false;
+        }
+        return true;
+    }
+
+    bool BuildRegisteredObjectPreviewResult(const std::string& assetId,
+                                            const std::unordered_map<std::string, float>& parameterOverrides,
+                                            Moon::CSG::BuildResult& outBuildResult,
+                                            std::string& outError) {
+        Moon::Object::ObjectLibrary objectLibrary;
+        if (!objectLibrary.InitializeDefaults(outError)) {
+            return false;
+        }
+
+        Moon::Object::ObjectBuildRequest request;
+        request.objectId = assetId;
+        request.parameterOverrides = parameterOverrides;
+        Moon::Object::GeneratedObject generatedObject = objectLibrary.BuildObject(request, outError);
+        if (!outError.empty()) {
+            return false;
+        }
+
+        outBuildResult = std::move(generatedObject.buildResult);
+        if (outBuildResult.meshes.empty() && outBuildResult.lights.empty()) {
+            outError = "Registered object asset did not build any meshes or lights";
+            return false;
+        }
+        return true;
+    }
+
+    std::unordered_map<std::string, float> ParseParameterOverrides(const json& overridesJson) {
+        std::unordered_map<std::string, float> overrides;
+        if (!overridesJson.is_object()) {
+            return overrides;
+        }
+
+        for (auto it = overridesJson.begin(); it != overridesJson.end(); ++it) {
+            if (it.value().is_number()) {
+                overrides[it.key()] = it.value().get<float>();
+            }
+        }
+
+        return overrides;
+    }
+
+    void ApplyTransformJsonToNode(Moon::SceneNode* node, const json& transformJson) {
+        if (!node || !transformJson.is_object()) {
+            return;
+        }
+
+        if (transformJson.contains("position") && transformJson["position"].is_array() && transformJson["position"].size() == 3) {
+            node->GetTransform()->SetLocalPosition(Moon::Vector3(
+                transformJson["position"][0].get<float>(),
+                transformJson["position"][1].get<float>(),
+                transformJson["position"][2].get<float>()));
+        }
+
+        if (transformJson.contains("rotation_euler") && transformJson["rotation_euler"].is_array() && transformJson["rotation_euler"].size() == 3) {
+            node->GetTransform()->SetLocalRotation(Moon::Quaternion::Euler(Moon::Vector3(
+                transformJson["rotation_euler"][0].get<float>(),
+                transformJson["rotation_euler"][1].get<float>(),
+                transformJson["rotation_euler"][2].get<float>())));
+        }
+
+        if (transformJson.contains("scale") && transformJson["scale"].is_array() && transformJson["scale"].size() == 3) {
+            node->GetTransform()->SetLocalScale(Moon::Vector3(
+                transformJson["scale"][0].get<float>(),
+                transformJson["scale"][1].get<float>(),
+                transformJson["scale"][2].get<float>()));
+        }
+    }
+
+    size_t SpawnMeshPreviewNodes(Moon::Scene* scene,
+                                 Moon::SceneNode* parentNode,
+                                 const Moon::CSG::BuildResult& buildResult,
+                                 const std::string& namePrefix,
+                                 bool translucentBrickGlass) {
+        size_t meshCount = 0;
+        for (size_t i = 0; i < buildResult.meshes.size(); ++i) {
+            const auto& item = buildResult.meshes[i];
+            Moon::SceneNode* childNode = scene->CreateNode(namePrefix + std::to_string(i));
+            childNode->SetParent(parentNode, false);
+            childNode->GetTransform()->SetLocalPosition(item.worldTransform.position);
+            childNode->GetTransform()->SetLocalRotation(item.worldTransform.rotation);
+            childNode->GetTransform()->SetLocalScale(item.worldTransform.scale);
+
+            Moon::MeshRenderer* renderer = childNode->AddComponent<Moon::MeshRenderer>();
+            renderer->SetMesh(item.mesh);
+            Moon::Material* material = AddPreviewMaterial(childNode, item.material);
+            if (translucentBrickGlass && (item.material == "brick" || item.material == "glass")) {
+                material->SetOpacity(0.42f);
+            }
+            ++meshCount;
+        }
+
+        return meshCount;
+    }
+
+    size_t SpawnLightPreviewNodes(Moon::Scene* scene,
+                                  Moon::SceneNode* parentNode,
+                                  const Moon::CSG::BuildResult& buildResult,
+                                  const std::string& namePrefix) {
+        size_t lightCount = 0;
+        for (size_t i = 0; i < buildResult.lights.size(); ++i) {
+            const auto& item = buildResult.lights[i];
+            Moon::SceneNode* childNode = scene->CreateNode(namePrefix + std::to_string(i));
+            childNode->SetParent(parentNode, false);
+            childNode->GetTransform()->SetLocalPosition(item.worldTransform.position);
+            childNode->GetTransform()->SetLocalRotation(item.worldTransform.rotation);
+            childNode->GetTransform()->SetLocalScale(item.worldTransform.scale);
+
+            Moon::Light* light = childNode->AddComponent<Moon::Light>();
+            switch (item.type) {
+            case Moon::CSG::LightItem::Type::Directional:
+                light->SetType(Moon::Light::Type::Directional);
+                break;
+            case Moon::CSG::LightItem::Type::Point:
+                light->SetType(Moon::Light::Type::Point);
+                break;
+            case Moon::CSG::LightItem::Type::Spot:
+                light->SetType(Moon::Light::Type::Spot);
+                break;
+            }
+            light->SetColor(item.color);
+            light->SetIntensity(item.intensity);
+            if (item.type == Moon::CSG::LightItem::Type::Point ||
+                item.type == Moon::CSG::LightItem::Type::Spot) {
+                light->SetRange(item.range);
+                light->SetAttenuation(item.attenuation.x, item.attenuation.y, item.attenuation.z);
+            }
+            if (item.type == Moon::CSG::LightItem::Type::Spot) {
+                light->SetSpotAngles(item.spotInnerConeAngle, item.spotOuterConeAngle);
+            }
+            light->SetCastShadows(item.castShadows);
+
+            std::shared_ptr<Moon::Mesh> markerMesh(Moon::MeshGenerator::CreateSphere(0.08f, 12, 8, item.color));
+            if (markerMesh && markerMesh->IsValid()) {
+                Moon::MeshRenderer* renderer = childNode->AddComponent<Moon::MeshRenderer>();
+                renderer->SetMesh(markerMesh);
+                AddDefaultMaterial(childNode, item.color);
+            }
+            ++lightCount;
+        }
+
+        return lightCount;
     }
 }
 
@@ -1807,6 +2022,218 @@ namespace CommandHandlers {
         return response.dump();
     }
 
+    std::string HandleGenerateBuildingFromPrompt(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)scene;
+
+        if (!req.contains("prompt")) {
+            return CreateErrorResponse("Missing 'prompt' field");
+        }
+
+        Moon::Editor::AI::AssetGenerationResult result;
+        std::string generationError;
+        if (!Moon::Editor::AI::OpenAIAssetGenerator::GenerateBuildingFromPrompt(
+                req["prompt"].get<std::string>(),
+                req.value("currentBuildingJson", std::string()),
+                result,
+                generationError)) {
+            return CreateErrorResponse("Failed to generate building from prompt: " + generationError);
+        }
+
+        json response;
+        response["success"] = true;
+        response["buildingJson"] = result.assetJson;
+        response["strategy"] = result.strategy;
+        response["hiddenContextSummary"] = result.hiddenContextSummary;
+        response["notes"] = result.notes;
+        response["model"] = result.model;
+        response["responseId"] = result.responseId;
+        return response.dump();
+    }
+
+    std::string HandleGenerateObjectFromPrompt(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)scene;
+
+        if (!req.contains("prompt")) {
+            return CreateErrorResponse("Missing 'prompt' field");
+        }
+
+        Moon::Editor::AI::AssetGenerationResult result;
+        std::string generationError;
+        if (!Moon::Editor::AI::OpenAIAssetGenerator::GenerateObjectFromPrompt(
+                req["prompt"].get<std::string>(),
+                req.value("currentObjectJson", std::string()),
+                result,
+                generationError)) {
+            return CreateErrorResponse("Failed to generate object from prompt: " + generationError);
+        }
+
+        json response;
+        response["success"] = true;
+        response["objectJson"] = result.assetJson;
+        response["strategy"] = result.strategy;
+        response["hiddenContextSummary"] = result.hiddenContextSummary;
+        response["notes"] = result.notes;
+        response["model"] = result.model;
+        response["responseId"] = result.responseId;
+        return response.dump();
+    }
+
+    std::string HandleGenerateSceneOperationsFromPrompt(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)scene;
+
+        if (!req.contains("prompt")) {
+            return CreateErrorResponse("Missing 'prompt' field");
+        }
+        if (!req.contains("currentSceneJson")) {
+            return CreateErrorResponse("Missing 'currentSceneJson' field");
+        }
+
+        Moon::Editor::AI::SceneOperationGenerationResult result;
+        std::string generationError;
+        if (!Moon::Editor::AI::OpenAIAssetGenerator::GenerateSceneOperationsFromPrompt(
+                req["prompt"].get<std::string>(),
+                req["currentSceneJson"].get<std::string>(),
+                result,
+                generationError)) {
+            return CreateErrorResponse("Failed to generate scene operations from prompt: " + generationError);
+        }
+
+        json response;
+        response["success"] = true;
+        response["opsJson"] = result.opsJson;
+        response["strategy"] = result.strategy;
+        response["hiddenContextSummary"] = result.hiddenContextSummary;
+        response["notes"] = result.notes;
+        response["model"] = result.model;
+        response["responseId"] = result.responseId;
+        return response.dump();
+    }
+
+    std::string HandleApplySceneOperations(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        (void)handler;
+        (void)scene;
+
+        if (!req.contains("sceneJson")) {
+            return CreateErrorResponse("Missing 'sceneJson' field");
+        }
+        if (!req.contains("opsJson")) {
+            return CreateErrorResponse("Missing 'opsJson' field");
+        }
+
+        std::string nextSceneJson;
+        std::string applyError;
+        if (!Moon::Editor::SceneDesign::ApplySceneOperations(
+                req["sceneJson"].get<std::string>(),
+                req["opsJson"].get<std::string>(),
+                nextSceneJson,
+                applyError)) {
+            return CreateErrorResponse("Failed to apply scene operations: " + applyError);
+        }
+
+        json response;
+        response["success"] = true;
+        response["sceneJson"] = nextSceneJson;
+        return response.dump();
+    }
+
+    std::string HandlePreviewScene(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        if (!req.contains("sceneJson")) {
+            return CreateErrorResponse("Missing 'sceneJson' field");
+        }
+
+        json sceneDesign;
+        std::string parseError;
+        if (!Moon::Editor::SceneDesign::ParseSceneDesign(req["sceneJson"].get<std::string>(), sceneDesign, parseError)) {
+            return CreateErrorResponse("Failed to parse scene design: " + parseError);
+        }
+
+        ClearMassingPreviewNodes(scene);
+        Moon::SceneNode* previewRoot = scene->CreateNode("__MassingPreview");
+
+        size_t meshCount = 0;
+        size_t lightCount = 0;
+        std::vector<std::string> warnings;
+        Bounds3 sceneBounds;
+
+        for (const auto& instance : sceneDesign["building_instances"]) {
+            Moon::CSG::BuildResult buildResult;
+            std::string buildError;
+            if (!BuildBuildingPreviewResult(instance["building_json"].get<std::string>(), buildResult, buildError)) {
+                return CreateErrorResponse("Failed to preview building instance '" +
+                    instance.value("instance_id", std::string()) + "': " + buildError);
+            }
+
+            Moon::SceneNode* instanceRoot = scene->CreateNode(instance.value("name", instance.value("instance_id", "BuildingInstance")));
+            instanceRoot->SetParent(previewRoot, false);
+            ApplyTransformJsonToNode(instanceRoot, instance["transform"]);
+
+            meshCount += SpawnMeshPreviewNodes(scene, instanceRoot, buildResult, "BuildingPart_", true);
+
+            Bounds3 localBounds = ComputePreviewBounds(buildResult);
+            if (localBounds.valid) {
+                const auto& position = instance["transform"]["position"];
+                const Moon::Vector3 offset(position[0].get<float>(), position[1].get<float>(), position[2].get<float>());
+                ExpandBounds(sceneBounds, localBounds.min + offset);
+                ExpandBounds(sceneBounds, localBounds.max + offset);
+            }
+        }
+
+        for (const auto& instance : sceneDesign["object_instances"]) {
+            Moon::CSG::BuildResult buildResult;
+            std::string buildError;
+            if (instance.contains("object_json") && instance["object_json"].is_string() &&
+                !instance["object_json"].get<std::string>().empty()) {
+                if (!BuildInlineObjectPreviewResult(instance["object_json"].get<std::string>(), buildResult, buildError)) {
+                    return CreateErrorResponse("Failed to preview object instance '" +
+                        instance.value("instance_id", std::string()) + "': " + buildError);
+                }
+            } else {
+                if (!BuildRegisteredObjectPreviewResult(
+                        instance["asset_id"].get<std::string>(),
+                        ParseParameterOverrides(instance.value("parameter_overrides", json::object())),
+                        buildResult,
+                        buildError)) {
+                    return CreateErrorResponse("Failed to preview object instance '" +
+                        instance.value("instance_id", std::string()) + "': " + buildError);
+                }
+            }
+
+            Moon::SceneNode* instanceRoot = scene->CreateNode(instance.value("name", instance.value("instance_id", "ObjectInstance")));
+            instanceRoot->SetParent(previewRoot, false);
+            ApplyTransformJsonToNode(instanceRoot, instance["transform"]);
+
+            meshCount += SpawnMeshPreviewNodes(scene, instanceRoot, buildResult, "ObjectPart_", false);
+            lightCount += SpawnLightPreviewNodes(scene, instanceRoot, buildResult, "ObjectLight_");
+
+            Bounds3 localBounds = ComputeObjectPreviewBounds(buildResult);
+            if (localBounds.valid) {
+                const auto& position = instance["transform"]["position"];
+                const Moon::Vector3 offset(position[0].get<float>(), position[1].get<float>(), position[2].get<float>());
+                ExpandBounds(sceneBounds, localBounds.min + offset);
+                ExpandBounds(sceneBounds, localBounds.max + offset);
+            }
+        }
+
+        const bool focusCamera = req.value("focusCamera", false);
+        if (focusCamera) {
+            FrameCameraToBounds(handler, sceneBounds);
+        }
+
+        json response;
+        response["success"] = true;
+        response["rootNodeId"] = previewRoot->GetID();
+        response["meshCount"] = meshCount;
+        response["lightCount"] = lightCount;
+        response["warnings"] = warnings;
+        response["buildingInstanceCount"] = sceneDesign["building_instances"].size();
+        response["objectInstanceCount"] = sceneDesign["object_instances"].size();
+        response["sceneJson"] = sceneDesign.dump(2);
+        return response.dump();
+    }
+
     std::string HandleClearMassingPreview(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         ClearMassingPreviewNodes(scene);
         return CreateSuccessResponse();
@@ -2044,8 +2471,13 @@ static const std::unordered_map<std::string, CommandHandler> s_commandHandlers =
     {"createNodeWithId",         CommandHandlers::HandleCreateNodeWithId},
     {"planBuildingMassing",      CommandHandlers::HandlePlanBuildingMassing},
     {"generateMassingFromPrompt", CommandHandlers::HandleGenerateMassingFromPrompt},
+    {"generateBuildingFromPrompt", CommandHandlers::HandleGenerateBuildingFromPrompt},
+    {"generateObjectFromPrompt", CommandHandlers::HandleGenerateObjectFromPrompt},
+    {"generateSceneOperationsFromPrompt", CommandHandlers::HandleGenerateSceneOperationsFromPrompt},
+    {"applySceneOperations",     CommandHandlers::HandleApplySceneOperations},
     {"previewMassing",           CommandHandlers::HandlePreviewMassing},
     {"previewBuilding",          CommandHandlers::HandlePreviewBuilding},
+    {"previewScene",             CommandHandlers::HandlePreviewScene},
     {"clearMassingPreview",      CommandHandlers::HandleClearMassingPreview},
     {"listMassingPresets",       CommandHandlers::HandleListMassingPresets},
     {"loadMassingPreset",        CommandHandlers::HandleLoadMassingPreset},

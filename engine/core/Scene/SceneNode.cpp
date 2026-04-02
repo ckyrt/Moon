@@ -34,8 +34,8 @@ SceneNode::SceneNode(uint32_t id, const std::string& name)
 
 SceneNode::~SceneNode() {
     // 清理所有组件
-    for (Component* comp : m_components) {
-        delete comp;
+    for (auto it = m_components.rbegin(); it != m_components.rend(); ++it) {
+        delete *it;
     }
     m_components.clear();
     

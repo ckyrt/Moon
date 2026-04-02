@@ -8,6 +8,7 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Body/BodyLockInterface.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <cassert>
@@ -290,6 +291,37 @@ namespace Moon {
         return m_BodyInterface->CreateAndAddBody(settings, JPH::EActivation::Activate);
     }
 
+    JPH::BodyID PhysicsSystem::CreateStaticHeightField(
+        const float* samples,
+        uint32_t sampleCount,
+        const Vector3& offset,
+        const Vector3& scale
+    ) {
+        if (!samples || sampleCount == 0) {
+            return JPH::BodyID();
+        }
+
+        JPH::HeightFieldShapeSettings shapeSettings(
+            samples,
+            JPH::Vec3(offset.x, offset.y, offset.z),
+            JPH::Vec3(scale.x, scale.y, scale.z),
+            sampleCount);
+
+        auto shapeResult = shapeSettings.Create();
+        if (shapeResult.HasError()) {
+            return JPH::BodyID();
+        }
+
+        JPH::BodyCreationSettings settings(
+            shapeResult.Get(),
+            JPH::RVec3::sZero(),
+            JPH::Quat::sIdentity(),
+            JPH::EMotionType::Static,
+            LAYER_STATIC);
+
+        return m_BodyInterface->CreateAndAddBody(settings, JPH::EActivation::DontActivate);
+    }
+
     // ======================================================
     // 激活/停用
     // ======================================================
@@ -306,6 +338,13 @@ namespace Moon {
     // ======================================================
     void PhysicsSystem::AddForce(JPH::BodyID id, const Vector3& force) {
         m_BodyInterface->AddForce(id, JPH::Vec3(force.x, force.y, force.z));
+    }
+
+    void PhysicsSystem::AddForceAtPosition(JPH::BodyID id, const Vector3& force, const Vector3& position) {
+        m_BodyInterface->AddForce(
+            id,
+            JPH::Vec3(force.x, force.y, force.z),
+            JPH::RVec3(position.x, position.y, position.z));
     }
 
     void PhysicsSystem::AddImpulse(JPH::BodyID id, const Vector3& impulse) {
@@ -331,6 +370,56 @@ namespace Moon {
     Vector3 PhysicsSystem::GetAngularVelocity(JPH::BodyID id) const {
         JPH::Vec3 vel = m_BodyInterface->GetAngularVelocity(id);
         return Vector3(vel.GetX(), vel.GetY(), vel.GetZ());
+    }
+
+    Vector3 PhysicsSystem::GetPosition(JPH::BodyID id) const {
+        const JPH::RVec3 pos = m_BodyInterface->GetPosition(id);
+        return Vector3(pos.GetX(), pos.GetY(), pos.GetZ());
+    }
+
+    Quaternion PhysicsSystem::GetRotation(JPH::BodyID id) const {
+        const JPH::Quat rot = m_BodyInterface->GetRotation(id);
+        return Quaternion(rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW());
+    }
+
+    void PhysicsSystem::SetPositionRotation(JPH::BodyID id, const Vector3& position, const Quaternion& rotation) {
+        m_BodyInterface->SetPositionAndRotation(
+            id,
+            JPH::RVec3(position.x, position.y, position.z),
+            JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
+            JPH::EActivation::Activate);
+    }
+
+    JPH::Body* PhysicsSystem::TryGetBody(JPH::BodyID id) {
+        return m_Physics.GetBodyLockInterfaceNoLock().TryGetBody(id);
+    }
+
+    const JPH::Body* PhysicsSystem::TryGetBody(JPH::BodyID id) const {
+        return m_Physics.GetBodyLockInterfaceNoLock().TryGetBody(id);
+    }
+
+    void PhysicsSystem::AddConstraint(JPH::Constraint* constraint) {
+        if (constraint) {
+            m_Physics.AddConstraint(constraint);
+        }
+    }
+
+    void PhysicsSystem::RemoveConstraint(JPH::Constraint* constraint) {
+        if (constraint) {
+            m_Physics.RemoveConstraint(constraint);
+        }
+    }
+
+    void PhysicsSystem::AddStepListener(JPH::PhysicsStepListener* listener) {
+        if (listener) {
+            m_Physics.AddStepListener(listener);
+        }
+    }
+
+    void PhysicsSystem::RemoveStepListener(JPH::PhysicsStepListener* listener) {
+        if (listener) {
+            m_Physics.RemoveStepListener(listener);
+        }
     }
 
     // ======================================================

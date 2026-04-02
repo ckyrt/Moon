@@ -95,6 +95,7 @@ public:
      * @param force 力向量
      */
     void AddForce(const Vector3& force);
+    void AddForceAtPosition(const Vector3& force, const Vector3& position);
     
     /**
      * @brief 施加冲量
@@ -123,6 +124,10 @@ public:
      * @brief 获取角速度
      */
     Vector3 GetAngularVelocity() const;
+    Vector3 GetPosition() const;
+    Quaternion GetRotation() const;
+    void SetPositionRotation(const Vector3& position, const Quaternion& rotation);
+    void SyncFromPhysics();
 
     // === 组件生命周期 ===
     
