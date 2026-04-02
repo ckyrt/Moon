@@ -56,6 +56,15 @@ struct TerrainSurfaceSample {
     float wetnessMask = 0.0f;
 };
 
+struct AtlasRect {
+    float u0;
+    float v0;
+    float u1;
+    float v1;
+    float contentAspect;
+    float pivotX;
+};
+
 float Hash01(float x, float y)
 {
     const float h = std::sin(x * 127.1f + y * 311.7f) * 43758.5453123f;
@@ -260,47 +269,87 @@ void AppendGrassBlade(
     float yawRadians,
     float width,
     float height,
-    const Vector3& color)
+    const Vector3& color,
+    const AtlasRect& uvRect)
 {
-    const float halfWidth = width * 0.5f;
-    const Vector3 right(std::cos(yawRadians), 0.0f, std::sin(yawRadians));
-    const Vector3 up(0.0f, 1.0f, 0.0f);
+    // Create cross-billboard (两个垂直相交的面片) for more realistic look
+    const int quadCount = 2; // Two perpendicular quads
+    
+    for (int quadIndex = 0; quadIndex < quadCount; ++quadIndex) {
+        const float angleOffset = quadIndex * (kPi * 0.5f); // 90度旋转
+        const float currentYaw = yawRadians + angleOffset;
+        
+        const Vector3 right(std::cos(currentYaw), 0.0f, std::sin(currentYaw));
+        const Vector3 up(0.0f, 1.0f, 0.0f);
+        const float leftExtent = width * std::max(0.0f, std::min(1.0f, uvRect.pivotX));
+        const float rightExtent = width - leftExtent;
 
-    const Vector3 bottomLeft = center - right * halfWidth;
-    const Vector3 bottomRight = center + right * halfWidth;
-    const Vector3 topLeft = bottomLeft + up * height;
-    const Vector3 topRight = bottomRight + up * height;
-    const Vector3 normal = NormalizeSafe(Vector3::Cross(up, right), Vector3(0.0f, 0.0f, 1.0f));
+        const Vector3 bottomLeft = center - right * leftExtent;
+        const Vector3 bottomRight = center + right * rightExtent;
+        const Vector3 topLeft = bottomLeft + up * height;
+        const Vector3 topRight = bottomRight + up * height;
+        const Vector3 normal = NormalizeSafe(Vector3::Cross(up, right), Vector3(0.0f, 0.0f, 1.0f));
 
-    const uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+        const uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
 
-    Vertex v0(bottomLeft, normal, color, 1.0f, Vector2(0.0f, 1.0f));
-    Vertex v1(bottomRight, normal, color, 1.0f, Vector2(1.0f, 1.0f));
-    Vertex v2(topRight, normal, color, 1.0f, Vector2(1.0f, 0.0f));
-    Vertex v3(topLeft, normal, color, 1.0f, Vector2(0.0f, 0.0f));
-    v0.colorA = 0.0f;
-    v1.colorA = 0.0f;
-    v2.colorA = 1.0f;
-    v3.colorA = 1.0f;
+        Vertex v0(bottomLeft, normal, color, 1.0f, Vector2(uvRect.u0, uvRect.v1));
+        Vertex v1(bottomRight, normal, color, 1.0f, Vector2(uvRect.u1, uvRect.v1));
+        Vertex v2(topRight, normal, color, 1.0f, Vector2(uvRect.u1, uvRect.v0));
+        Vertex v3(topLeft, normal, color, 1.0f, Vector2(uvRect.u0, uvRect.v0));
+        v0.colorA = 0.0f;
+        v1.colorA = 0.0f;
+        v2.colorA = 1.0f;
+        v3.colorA = 1.0f;
 
-    vertices.push_back(v0);
-    vertices.push_back(v1);
-    vertices.push_back(v2);
-    vertices.push_back(v3);
+        vertices.push_back(v0);
+        vertices.push_back(v1);
+        vertices.push_back(v2);
+        vertices.push_back(v3);
 
-    indices.push_back(baseIndex + 0);
-    indices.push_back(baseIndex + 1);
-    indices.push_back(baseIndex + 2);
-    indices.push_back(baseIndex + 0);
-    indices.push_back(baseIndex + 2);
-    indices.push_back(baseIndex + 3);
+        // Double-sided rendering
+        indices.push_back(baseIndex + 0);
+        indices.push_back(baseIndex + 1);
+        indices.push_back(baseIndex + 2);
+        indices.push_back(baseIndex + 0);
+        indices.push_back(baseIndex + 2);
+        indices.push_back(baseIndex + 3);
 
-    indices.push_back(baseIndex + 0);
-    indices.push_back(baseIndex + 2);
-    indices.push_back(baseIndex + 1);
-    indices.push_back(baseIndex + 0);
-    indices.push_back(baseIndex + 3);
-    indices.push_back(baseIndex + 2);
+        indices.push_back(baseIndex + 0);
+        indices.push_back(baseIndex + 2);
+        indices.push_back(baseIndex + 1);
+        indices.push_back(baseIndex + 0);
+        indices.push_back(baseIndex + 3);
+        indices.push_back(baseIndex + 2);
+    }
+}
+
+AtlasRect PickGrassAtlasRect(float seedX, float seedZ)
+{
+    // Use full texture for each grass blade (tiling grass texture)
+    // Each blade can use a slightly different portion for variety
+    static const AtlasRect kGrassRects[] = {
+        {0.0f, 0.0f, 1.0f, 1.0f, 0.5f, 0.50f},   // Full texture - variant 1
+        {0.0f, 0.0f, 1.0f, 1.0f, 0.6f, 0.50f},   // Full texture - variant 2
+        {0.0f, 0.0f, 1.0f, 1.0f, 0.55f, 0.50f},  // Full texture - variant 3
+        {0.0f, 0.0f, 1.0f, 1.0f, 0.65f, 0.50f}   // Full texture - variant 4
+    };
+
+    const int index = static_cast<int>(Hash01(seedX * 0.37f, seedZ * 0.41f) * 3.99f);
+    return kGrassRects[std::max(0, std::min(index, 3))];
+}
+
+AtlasRect PickShrubAtlasRect(float seedX, float seedZ)
+{
+    // Use full texture for each shrub blade (tiling grass texture)
+    static const AtlasRect kShrubRects[] = {
+        {0.0f, 0.0f, 1.0f, 1.0f, 0.4f, 0.50f},   // Full texture - variant 1
+        {0.0f, 0.0f, 1.0f, 1.0f, 0.5f, 0.50f},   // Full texture - variant 2
+        {0.0f, 0.0f, 1.0f, 1.0f, 0.45f, 0.50f},  // Full texture - variant 3
+        {0.0f, 0.0f, 1.0f, 1.0f, 0.55f, 0.50f}   // Full texture - variant 4
+    };
+
+    const int index = static_cast<int>(Hash01(seedX * 0.29f + 7.0f, seedZ * 0.33f + 3.0f) * 3.99f);
+    return kShrubRects[std::max(0, std::min(index, 3))];
 }
 
 void AppendGrassCluster(
@@ -313,7 +362,8 @@ void AppendGrassCluster(
     float baseWidth,
     float baseHeight,
     const Vector3& baseColor,
-    int bladeCount)
+    int bladeCount,
+    bool tallAtlas)
 {
     for (int bladeIndex = 0; bladeIndex < bladeCount; ++bladeIndex) {
         const float fi = static_cast<float>(bladeIndex);
@@ -329,7 +379,12 @@ void AppendGrassCluster(
             Clamp01((baseColor.x + hueShift * 0.55f) * shade),
             Clamp01((baseColor.y + hueShift) * shade),
             Clamp01((baseColor.z - hueShift * 0.35f) * shade));
-        AppendGrassBlade(vertices, indices, center + offset, yaw, width, height, color);
+        const AtlasRect atlasRect = tallAtlas
+            ? PickShrubAtlasRect(seedX + fi * 0.7f, seedZ + fi * 0.9f)
+            : PickGrassAtlasRect(seedX + fi * 0.7f, seedZ + fi * 0.9f);
+        const float silhouetteScale = tallAtlas ? 0.92f : 0.42f;
+        const float tunedWidth = height * atlasRect.contentAspect * width * silhouetteScale;
+        AppendGrassBlade(vertices, indices, center + offset, yaw, tunedWidth, height, color, atlasRect);
     }
 }
 
@@ -565,8 +620,9 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildGrassMesh(const TerrainData& te
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
-    vertices.reserve(static_cast<size_t>(settings.grassClusterBudget) * 40);
-    indices.reserve(static_cast<size_t>(settings.grassClusterBudget) * 120);
+    // Increased reservation for cross-billboard (2 quads per blade)
+    vertices.reserve(static_cast<size_t>(settings.grassClusterBudget) * 80);
+    indices.reserve(static_cast<size_t>(settings.grassClusterBudget) * 240);
 
     const Heightmap& heightmap = terrainData.heightmap;
     const uint32_t grid = static_cast<uint32_t>(std::sqrt(static_cast<float>(settings.grassClusterBudget)) * 1.6f);
@@ -607,15 +663,15 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildGrassMesh(const TerrainData& te
                 const float coverage = slopeMask * riverMask * lowlandMask * highlandMask * wetnessMask;
                 const float density = coverage * Lerp(0.72f, 1.18f, macroNoise) + patchNoise * 0.18f;
 
-                if (nearBeach || density < 0.50f) {
+                if (nearBeach || density < 0.42f) {
                     continue;
                 }
 
                 const Vector3 center(worldX, baseY + 0.05f, worldZ);
-                const float patchHeight = (0.55f + settings.grassHeight * 1.45f) * Lerp(0.82f, 1.30f, macroNoise);
-                const float patchWidth = Lerp(0.12f, 0.22f, patchNoise);
-                const float clusterRadius = std::min(cellWidth, cellDepth) * Lerp(0.10f, 0.22f, macroNoise);
-                const int bladeCount = density > 0.88f ? 6 : (density > 0.70f ? 5 : 4);
+                const float patchHeight = (0.46f + settings.grassHeight * 1.10f) * Lerp(0.84f, 1.16f, macroNoise);
+                const float patchWidth = Lerp(0.72f, 1.02f, patchNoise);
+                const float clusterRadius = std::min(cellWidth, cellDepth) * Lerp(0.16f, 0.30f, macroNoise);
+                const int bladeCount = density > 0.85f ? 7 : (density > 0.62f ? 6 : 5);
                 const Vector3 grassColor(
                     Clamp01(surfaceSample.tint.x * 0.72f + 0.05f),
                     Clamp01(surfaceSample.tint.y * 1.12f + 0.14f),
@@ -631,7 +687,8 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildGrassMesh(const TerrainData& te
                     patchWidth,
                     patchHeight,
                     grassColor,
-                    bladeCount);
+                    bladeCount,
+                    false);
 
                 ++clusterCount;
             }
@@ -711,10 +768,11 @@ std::shared_ptr<Mesh> TerrainVisualBuilder::BuildShrubMesh(const TerrainData& te
                 worldX * 0.7f,
                 worldZ * 0.7f,
                 patchWidth * 0.32f,
-                patchWidth * 0.85f,
+                patchWidth * 0.38f,
                 patchHeight,
                 shrubColor,
-                5);
+                5,
+                true);
 
             ++clusterCount;
         }

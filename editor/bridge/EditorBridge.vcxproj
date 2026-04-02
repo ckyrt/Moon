@@ -111,19 +111,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ai\OpenAIAssetGenerator.h" />
     <ClInclude Include="EditorBridge.h" />
     <ClInclude Include="cef\CefApp.h" />
     <ClInclude Include="cef\CefClient.h" />
     <ClInclude Include="cef\CefRenderHandler.h" />
     <ClInclude Include="cef\MoonEngineV8Handler.h" />
     <ClInclude Include="cef\MoonEngineMessageHandler.h" />
+    <ClInclude Include="scene\SceneDesign.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ai\OpenAIAssetGenerator.cpp" />
     <ClCompile Include="EditorBridge.cpp" />
     <ClCompile Include="cef\CefClient.cpp" />
     <ClCompile Include="cef\CefRenderHandler.cpp" />
     <ClCompile Include="cef\MoonEngineV8Handler.cpp" />
     <ClCompile Include="cef\MoonEngineMessageHandler.cpp" />
+    <ClCompile Include="scene\SceneDesign.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\engine\objects\EngineObjects.vcxproj">

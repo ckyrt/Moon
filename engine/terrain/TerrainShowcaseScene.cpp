@@ -31,6 +31,7 @@ constexpr const char* kGrassNodeName = "Terrain Grass";
 constexpr const char* kShrubNodeName = "Terrain Shrubs";
 constexpr const char* kTerrainCollisionNodeName = "Terrain Collision";
 constexpr const char* kGrassTextureBasePath = "materials/GrassMedium01_2K-PNG/";
+constexpr const char* kGrassAtlasTextureBasePath = "materials/GrassMedium01_2K-PNG/textures/";
 
 float ResolveTimeOfDayHours(const std::string& timeOfDay)
 {
@@ -270,31 +271,31 @@ void TerrainShowcaseScene::BuildOpenWorldScene(EngineCore* engine, const WorldBu
     Moon::MeshRenderer* grassRenderer = grassNode->AddComponent<Moon::MeshRenderer>();
     Moon::Material* grassMaterial = grassNode->AddComponent<Moon::Material>();
     grassRenderer->SetMesh(Moon::TerrainVisualBuilder::BuildGrassMesh(generation.terrainData, generation, generationSettings));
-    grassMaterial->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
+    grassMaterial->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f)); // Pure white to show texture colors accurately
     grassMaterial->SetMetallic(0.0f);
     grassMaterial->SetRoughness(1.0f);
     grassMaterial->SetMappingMode(Moon::MappingMode::UV);
-    grassMaterial->SetAlbedoMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_Color.png");
-    grassMaterial->SetAOMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_AmbientOcclusion.png");
-    grassMaterial->SetNormalMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_NormalDX.png");
-    grassMaterial->SetRoughnessMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_Roughness.png");
+    grassMaterial->SetAlbedoMap(std::string(kGrassAtlasTextureBasePath) + "grass_medium_01_diff_2k.png");
+    grassMaterial->SetAOMap(std::string(kGrassAtlasTextureBasePath) + "grass_medium_01_ao_2k.png");
+    grassMaterial->SetNormalMap(std::string(kGrassAtlasTextureBasePath) + "grass_medium_01_nor_dx_2k.png");
+    grassMaterial->SetRoughnessMap(std::string(kGrassAtlasTextureBasePath) + "grass_medium_01_rough_2k.png");
     grassMaterial->SetUseVertexColorTint(true);
-    grassMaterial->SetAlphaCutoff(0.35f);
+    grassMaterial->SetAlphaCutoff(0.35f); // Increased for cleaner grass blade edges
 
     Moon::SceneNode* shrubNode = scene->CreateNode(kShrubNodeName);
     Moon::MeshRenderer* shrubRenderer = shrubNode->AddComponent<Moon::MeshRenderer>();
     Moon::Material* shrubMaterial = shrubNode->AddComponent<Moon::Material>();
     shrubRenderer->SetMesh(Moon::TerrainVisualBuilder::BuildShrubMesh(generation.terrainData, generation, generationSettings));
-    shrubMaterial->SetBaseColor(Moon::Vector3(1.0f, 1.0f, 1.0f));
+    shrubMaterial->SetBaseColor(Moon::Vector3(1.03f, 1.08f, 1.02f));
     shrubMaterial->SetMetallic(0.0f);
     shrubMaterial->SetRoughness(1.0f);
     shrubMaterial->SetMappingMode(Moon::MappingMode::UV);
-    shrubMaterial->SetAlbedoMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_Color.png");
-    shrubMaterial->SetAOMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_AmbientOcclusion.png");
-    shrubMaterial->SetNormalMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_NormalDX.png");
-    shrubMaterial->SetRoughnessMap(std::string(kGrassTextureBasePath) + "GrassMedium01_2K-PNG_Roughness.png");
+    shrubMaterial->SetAlbedoMap(std::string(kGrassAtlasTextureBasePath) + "grass_medium_01_diff_2k.png");
+    shrubMaterial->SetAOMap(std::string(kGrassAtlasTextureBasePath) + "grass_medium_01_ao_2k.png");
+    shrubMaterial->SetNormalMap(std::string(kGrassAtlasTextureBasePath) + "grass_medium_01_nor_dx_2k.png");
+    shrubMaterial->SetRoughnessMap(std::string(kGrassAtlasTextureBasePath) + "grass_medium_01_rough_2k.png");
     shrubMaterial->SetUseVertexColorTint(true);
-    shrubMaterial->SetAlphaCutoff(0.42f);
+    shrubMaterial->SetAlphaCutoff(0.26f);
 
 }
 

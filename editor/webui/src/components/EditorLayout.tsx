@@ -3,7 +3,6 @@
  */
 
 import React from 'react';
-import { AssetPreview } from './AssetPreview';
 import { Toolbar } from './Toolbar';
 import { Hierarchy } from './Hierarchy';
 import { Inspector } from './Inspector';
@@ -18,7 +17,6 @@ export const EditorLayout: React.FC = () => {
       </div>
       <div className={styles.mainArea}>
         <div className={styles.leftPanel}>
-          <AssetPreview />
           <Hierarchy />
         </div>
         <div className={styles.viewport}>

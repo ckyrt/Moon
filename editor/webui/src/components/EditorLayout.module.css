@@ -23,11 +23,9 @@
 .leftPanel {
   width: 280px;
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
   background: var(--bg-primary);
   border-right: 1px solid var(--border-color);
-  overflow: hidden;
+  overflow: auto;
 }
 
 .viewport {

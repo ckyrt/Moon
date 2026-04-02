@@ -10,6 +10,7 @@
  */
 
 import type {
+  AssetPromptResult,
   AssetPreset,
   EnvironmentSettings,
   MassingPreset,
@@ -17,6 +18,8 @@ import type {
   MassingPromptResult,
   MoonEngineAPI,
   SceneNode,
+  SceneOpsPromptResult,
+  ScenePreviewResult,
   Transform,
   Vector3,
   Quaternion
@@ -588,6 +591,192 @@ const createRealAPI = (): MoonEngineAPI => {
         });
       }
     ),
+
+    generateBuildingFromPrompt: wrapAsyncEngineCall(
+      'generateBuildingFromPrompt',
+      async (prompt: string, currentBuildingJson?: string): Promise<AssetPromptResult & { buildingJson: string }> => {
+        if (!window.cefQuery) {
+          throw new Error('cefQuery not available');
+        }
+
+        return new Promise((resolve, reject) => {
+          const request = JSON.stringify({
+            command: 'generateBuildingFromPrompt',
+            prompt,
+            currentBuildingJson: currentBuildingJson ?? ''
+          });
+
+          window.cefQuery!({
+            request,
+            onSuccess: (response: string) => {
+              const parsed = JSON.parse(response) as (AssetPromptResult & { buildingJson?: string; error?: string });
+              if (parsed.error) {
+                reject(new Error(parsed.error));
+                return;
+              }
+              resolve({
+                buildingJson: parsed.buildingJson ?? '',
+                strategy: parsed.strategy ?? 'openai_generated',
+                hiddenContextSummary: parsed.hiddenContextSummary ?? '',
+                notes: parsed.notes ?? [],
+                model: parsed.model,
+                responseId: parsed.responseId
+              });
+            },
+            onFailure: (_errorCode: number, errorMessage: string) => {
+              reject(new Error(errorMessage));
+            }
+          });
+        });
+      }
+    ),
+
+    generateObjectFromPrompt: wrapAsyncEngineCall(
+      'generateObjectFromPrompt',
+      async (prompt: string, currentObjectJson?: string): Promise<AssetPromptResult & { objectJson: string }> => {
+        if (!window.cefQuery) {
+          throw new Error('cefQuery not available');
+        }
+
+        return new Promise((resolve, reject) => {
+          const request = JSON.stringify({
+            command: 'generateObjectFromPrompt',
+            prompt,
+            currentObjectJson: currentObjectJson ?? ''
+          });
+
+          window.cefQuery!({
+            request,
+            onSuccess: (response: string) => {
+              const parsed = JSON.parse(response) as (AssetPromptResult & { objectJson?: string; error?: string });
+              if (parsed.error) {
+                reject(new Error(parsed.error));
+                return;
+              }
+              resolve({
+                objectJson: parsed.objectJson ?? '',
+                strategy: parsed.strategy ?? 'openai_generated',
+                hiddenContextSummary: parsed.hiddenContextSummary ?? '',
+                notes: parsed.notes ?? [],
+                model: parsed.model,
+                responseId: parsed.responseId
+              });
+            },
+            onFailure: (_errorCode: number, errorMessage: string) => {
+              reject(new Error(errorMessage));
+            }
+          });
+        });
+      }
+    ),
+
+    generateSceneOperationsFromPrompt: wrapAsyncEngineCall(
+      'generateSceneOperationsFromPrompt',
+      async (prompt: string, currentSceneJson: string): Promise<SceneOpsPromptResult> => {
+        if (!window.cefQuery) {
+          throw new Error('cefQuery not available');
+        }
+
+        return new Promise<SceneOpsPromptResult>((resolve, reject) => {
+          const request = JSON.stringify({
+            command: 'generateSceneOperationsFromPrompt',
+            prompt,
+            currentSceneJson
+          });
+
+          window.cefQuery!({
+            request,
+            onSuccess: (response: string) => {
+              const parsed = JSON.parse(response) as SceneOpsPromptResult & { error?: string };
+              if (parsed.error) {
+                reject(new Error(parsed.error));
+                return;
+              }
+              resolve({
+                opsJson: parsed.opsJson ?? '',
+                strategy: parsed.strategy ?? 'unknown',
+                hiddenContextSummary: parsed.hiddenContextSummary ?? '',
+                notes: parsed.notes ?? [],
+                model: parsed.model,
+                responseId: parsed.responseId
+              });
+            },
+            onFailure: (_errorCode: number, errorMessage: string) => {
+              reject(new Error(errorMessage));
+            }
+          });
+        });
+      }
+    ),
+
+    applySceneOperations: wrapAsyncEngineCall('applySceneOperations', async (sceneJson: string, opsJson: string) => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<{ sceneJson: string }>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'applySceneOperations',
+          sceneJson,
+          opsJson
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const parsed = JSON.parse(response) as { sceneJson?: string; error?: string };
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+              return;
+            }
+            resolve({ sceneJson: parsed.sceneJson ?? '' });
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
+
+    previewScene: wrapAsyncEngineCall('previewScene', async (
+      sceneJson: string,
+      options?: { focusCamera?: boolean }
+    ): Promise<ScenePreviewResult> => {
+      if (!window.cefQuery) {
+        throw new Error('cefQuery not available');
+      }
+
+      return new Promise<ScenePreviewResult>((resolve, reject) => {
+        const request = JSON.stringify({
+          command: 'previewScene',
+          sceneJson,
+          focusCamera: options?.focusCamera ?? false
+        });
+
+        window.cefQuery!({
+          request,
+          onSuccess: (response: string) => {
+            const parsed = JSON.parse(response) as (ScenePreviewResult & { error?: string });
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+              return;
+            }
+            resolve({
+              rootNodeId: parsed.rootNodeId ?? 0,
+              meshCount: parsed.meshCount ?? 0,
+              lightCount: parsed.lightCount ?? 0,
+              warnings: parsed.warnings ?? [],
+              buildingInstanceCount: parsed.buildingInstanceCount ?? 0,
+              objectInstanceCount: parsed.objectInstanceCount ?? 0,
+              sceneJson: parsed.sceneJson ?? sceneJson
+            });
+          },
+          onFailure: (_errorCode: number, errorMessage: string) => {
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+    }),
 
     clearMassingPreview: wrapAsyncEngineCall('clearMassingPreview', async () => {
       if (!window.cefQuery) {
