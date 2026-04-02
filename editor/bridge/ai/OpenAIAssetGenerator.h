@@ -11,6 +11,8 @@ struct AssetGenerationResult {
     std::string assetJson;
     std::string strategy;
     std::string hiddenContextSummary;
+    std::string debugContext;
+    std::string rawModelOutput;
     std::vector<std::string> notes;
     std::string model;
     std::string responseId;
@@ -20,6 +22,8 @@ struct SceneOperationGenerationResult {
     std::string opsJson;
     std::string strategy;
     std::string hiddenContextSummary;
+    std::string debugContext;
+    std::string rawModelOutput;
     std::vector<std::string> notes;
     std::string model;
     std::string responseId;

@@ -91,6 +91,50 @@ Register it in:
 - keep transforms simple and readable
 - prefer `group.output.mode = "separate"` unless merge behavior is required
 
+## Expression Rules
+
+- only use plain numbers or simple `$parameter_name` references in transform values
+- do not use array indexing expressions such as `$anchor[0]`, `$anchor[1]`, or `$anchor[2]`
+- do not invent expression syntax that is not already shown in the provided examples
+- if you define `anchors`, treat them as metadata or whole positions; do not index into them inside expressions
+
+Correct:
+
+```json
+{
+  "transform": {
+    "position": [40, 0, 0]
+  }
+}
+```
+
+Also correct:
+
+```json
+{
+  "parameters": {
+    "wheel_x": 40,
+    "wheel_y": 0
+  },
+  "transform": {
+    "position": ["$wheel_x", "$wheel_y", 0]
+  }
+}
+```
+
+Wrong:
+
+```json
+{
+  "anchors": {
+    "wheel_center": [40, 0, 0]
+  },
+  "transform": {
+    "position": ["$wheel_center[0]", "$wheel_center[1]", 0]
+  }
+}
+```
+
 ## Material Rules
 
 Use only materials already allowed by:

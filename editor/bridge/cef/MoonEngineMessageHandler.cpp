@@ -24,6 +24,8 @@
 #include "../../../engine/core/Mesh/Mesh.h"
 #include "../../../engine/core/Geometry/MeshGenerator.h"
 #include "../../../external/nlohmann/json.hpp"
+#include "include/cef_task.h"
+#include "include/wrapper/cef_helpers.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -31,6 +33,7 @@
 #include <functional>
 #include <unordered_map>
 #include <fstream>
+#include <thread>
 
 using json = nlohmann::json;
 
@@ -44,6 +47,32 @@ extern void SetGizmoMode(const std::string& mode);  //  World/Local ?
 // JSON ?
 // ============================================================================
 namespace {
+    class QuerySuccessTask : public CefTask {
+    public:
+        QuerySuccessTask(CefRefPtr<CefMessageRouterBrowserSide::Handler::Callback> callback,
+                         std::string response)
+            : callback_(callback), response_(std::move(response)) {
+        }
+
+        void Execute() override {
+            if (callback_) {
+                callback_->Success(response_);
+            }
+        }
+
+    private:
+        CefRefPtr<CefMessageRouterBrowserSide::Handler::Callback> callback_;
+        std::string response_;
+
+        IMPLEMENT_REFCOUNTING(QuerySuccessTask);
+    };
+
+    bool IsAsyncCommand(const std::string& command) {
+        return command == "generateBuildingFromPrompt" ||
+            command == "generateObjectFromPrompt" ||
+            command == "generateSceneOperationsFromPrompt";
+    }
+
     // ?
     std::string CreateSuccessResponse() {
         json result;
@@ -2045,6 +2074,8 @@ namespace CommandHandlers {
         response["buildingJson"] = result.assetJson;
         response["strategy"] = result.strategy;
         response["hiddenContextSummary"] = result.hiddenContextSummary;
+        response["debugContext"] = result.debugContext;
+        response["rawModelOutput"] = result.rawModelOutput;
         response["notes"] = result.notes;
         response["model"] = result.model;
         response["responseId"] = result.responseId;
@@ -2074,6 +2105,8 @@ namespace CommandHandlers {
         response["objectJson"] = result.assetJson;
         response["strategy"] = result.strategy;
         response["hiddenContextSummary"] = result.hiddenContextSummary;
+        response["debugContext"] = result.debugContext;
+        response["rawModelOutput"] = result.rawModelOutput;
         response["notes"] = result.notes;
         response["model"] = result.model;
         response["responseId"] = result.responseId;
@@ -2106,6 +2139,8 @@ namespace CommandHandlers {
         response["opsJson"] = result.opsJson;
         response["strategy"] = result.strategy;
         response["hiddenContextSummary"] = result.hiddenContextSummary;
+        response["debugContext"] = result.debugContext;
+        response["rawModelOutput"] = result.rawModelOutput;
         response["notes"] = result.notes;
         response["model"] = result.model;
         response["responseId"] = result.responseId;
@@ -2505,7 +2540,27 @@ bool MoonEngineMessageHandler::OnQuery(CefRefPtr<CefBrowser> browser,
     std::string requestStr = request.ToString();
     
     MOON_LOG_INFO("MoonEngineMessage", "OnQuery called with request: %s", requestStr.c_str());
-    
+
+    try {
+        json req = json::parse(requestStr);
+        if (req.contains("command")) {
+            const std::string command = req["command"].get<std::string>();
+            if (IsAsyncCommand(command)) {
+                CefRefPtr<Callback> asyncCallback = callback;
+                MoonEngineMessageHandler* self = this;
+                std::thread([self, requestStr, asyncCallback]() {
+                    const std::string response = self->ProcessRequest(requestStr);
+                    MOON_LOG_INFO("MoonEngineMessage", "Response: %s", response.c_str());
+                    CefPostTask(TID_UI, new QuerySuccessTask(asyncCallback, response));
+                }).detach();
+                return true;
+            }
+        }
+    }
+    catch (const std::exception&) {
+        // Fall back to the normal synchronous path so ProcessRequest can return a JSON error payload.
+    }
+
     // ?
     std::string response = ProcessRequest(requestStr);
     

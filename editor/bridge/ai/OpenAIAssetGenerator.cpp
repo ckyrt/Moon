@@ -3,6 +3,7 @@
 #include "../../../engine/building/BuildingPipeline.h"
 #include "../../../engine/core/Assets/AssetPaths.h"
 #include "../../../engine/core/CSG/CSGBuilder.h"
+#include "../../../engine/core/Logging/Logger.h"
 #include "../../../engine/core/Object/BlueprintLoader.h"
 #include "../scene/SceneDesign.h"
 #include "../../../external/nlohmann/json.hpp"
@@ -13,13 +14,18 @@
 #include <windows.h>
 #include <winhttp.h>
 
+#include <cctype>
+#include <filesystem>
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <iterator>
 #include <initializer_list>
+#include <set>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #pragma comment(lib, "winhttp.lib")
@@ -40,10 +46,23 @@ enum class AssetKind {
     Object
 };
 
+bool GenerateAsset(AssetKind kind,
+                   const std::string& userPrompt,
+                   const std::string& currentAssetJson,
+                   AssetGenerationResult& outResult,
+                   std::string& outError);
+
 struct OpenAIResponsePayload {
     json resultJson;
     std::string model;
     std::string responseId;
+    std::string rawText;
+};
+
+struct RetrievedContextItem {
+    std::string label;
+    std::string body;
+    int score = 0;
 };
 
 std::wstring Utf8ToWide(const std::string& value) {
@@ -103,6 +122,8 @@ std::vector<std::string> GetModelCandidates() {
     }
 
     return {
+        "gpt-5-mini",
+        "gpt-5",
         "gpt-4.1-mini",
         "gpt-4.1",
         "gpt-4o-mini"
@@ -224,7 +245,554 @@ bool ValidateObjectJson(const std::string& objectJson, std::string& outError) {
     return true;
 }
 
-bool BuildHiddenContext(AssetKind kind, std::string& outContext, std::string& outError) {
+bool IsPrimitiveKeyword(const std::string& value) {
+    return value == "cube" || value == "sphere" || value == "cylinder" ||
+           value == "capsule" || value == "cone" || value == "torus";
+}
+
+std::string ToLowerCopy(const std::string& value) {
+    std::string result = value;
+    for (char& ch : result) {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    return result;
+}
+
+std::string TruncateForPrompt(const std::string& value, size_t maxChars) {
+    if (value.size() <= maxChars) {
+        return value;
+    }
+    return value.substr(0, maxChars) + "\n... [truncated]";
+}
+
+std::string ExpandRetrievalQuery(const std::string& text) {
+    std::string expanded = text;
+    const std::string lower = ToLowerCopy(text);
+    const std::vector<std::pair<std::string, std::string>> aliases = {
+        {"\xE8\x87\xAA\xE8\xA1\x8C\xE8\xBD\xA6", " bicycle bike wheel frame handlebar pedal seat chain tire "},
+        {"\xE5\x8D\x95\xE8\xBD\xA6", " bicycle bike wheel frame handlebar pedal seat chain tire "},
+        {"bike", " bicycle wheel frame handlebar pedal seat chain tire "},
+        {"bicycle", " bike wheel frame handlebar pedal seat chain tire "},
+        {"\xE6\xA1\x8C\xE5\xAD\x90", " table desk furniture tabletop leg "},
+        {"\xE4\xB9\xA6\xE6\xA1\x8C", " desk table furniture leg top "},
+        {"\xE6\xA4\x85\xE5\xAD\x90", " chair furniture seat backrest leg "},
+        {"\xE6\xB2\x99\xE5\x8F\x91", " sofa couch furniture seating cushion armrest "},
+        {"\xE5\x86\xB0\xE7\xAE\xB1", " fridge refrigerator appliance kitchen handle door "},
+        {"\xE7\x94\xB5\xE8\xA7\x86", " television tv screen stand furniture "},
+        {"\xE7\x81\xAF", " lamp light lighting shade bulb point light "},
+        {"\xE5\x8F\xB0\xE7\x81\xAF", " desk lamp light lighting shade bulb point light "},
+        {"\xE5\xBA\x8A", " bed furniture mattress frame headboard "},
+        {"\xE6\x9F\x9C", " cabinet shelf bookshelf storage door panel "},
+        {"\xE4\xB9\xA6\xE6\x9E\xB6", " bookshelf shelf storage furniture panel "},
+        {"\xE9\x97\xA8", " door frame panel opening architectural "},
+        {"\xE7\xAA\x97", " window glass frame architectural opening "},
+        {"\xE5\xA2\x99", " wall panel architectural "},
+        {"\xE6\x88\xBF\xE9\x97\xB4", " room shell wall floor roof architectural "},
+        {"\xE6\xA5\xBC\xE6\xA2\xAF", " stair staircase step railing architectural "},
+        {"\xE8\xBD\xAE", " wheel tire rim mechanical vehicle "},
+        {"\xE8\xBD\xAE\xE8\x83\x8E", " wheel tire rubber mechanical vehicle "},
+        {"\xE6\x9C\xBA\xE6\xA2\xB0", " mechanical vehicle wheel metal frame "},
+        {"\xE5\xAE\xB6\xE5\x85\xB7", " furniture chair table sofa bed cabinet shelf "},
+        {"\xE5\xAE\xB9\xE5\x99\xA8", " container bowl cup bottle vessel "},
+        {"\xE7\xA2\x97", " bowl container vessel "},
+        {"\xE6\x9D\xAF", " cup mug container vessel "},
+        {"\xE7\x93\xB6", " bottle container vessel "},
+        {"\xE9\x87\x91\xE5\xB1\x9E", " metal steel aluminum chrome "},
+        {"\xE6\x9C\xA8", " wood wooden painted wood polished wood "},
+        {"\xE7\x8E\xBB\xE7\x92\x83", " glass frosted glass tinted glass "},
+        {"\xE5\xA1\x91\xE6\x96\x99", " plastic polymer "},
+        {"\xE6\xA9\xA1\xE8\x83\xB6", " rubber tire "}
+    };
+    for (const auto& alias : aliases) {
+        if (lower.find(alias.first) != std::string::npos) {
+            expanded += alias.second;
+        }
+    }
+    return expanded;
+}
+
+std::unordered_set<std::string> TokenizeWords(const std::string& text) {
+    std::unordered_set<std::string> tokens;
+    std::string current;
+    const std::string lower = ToLowerCopy(text);
+    const std::unordered_set<std::string> stopWords = {
+        "the","and","for","with","from","that","this","into","only","json","asset","object",
+        "moon","editor","components","component","using","used","have","has","are","was","were",
+        "your","will","just","than","then","when","what","where","which","there","their","about"
+    };
+
+    auto flush = [&]() {
+        if (current.size() >= 2 && !stopWords.count(current)) {
+            tokens.insert(current);
+        }
+        current.clear();
+    };
+
+    for (unsigned char ch : lower) {
+        if (std::isalnum(ch) || ch == '_') {
+            current.push_back(static_cast<char>(ch));
+        } else {
+            flush();
+        }
+    }
+    flush();
+    return tokens;
+}
+
+int CountTokenOverlap(const std::unordered_set<std::string>& queryTokens,
+                      const std::unordered_set<std::string>& candidateTokens) {
+    int score = 0;
+    for (const std::string& token : queryTokens) {
+        if (candidateTokens.count(token)) {
+            score += static_cast<int>(token.size() >= 6 ? 4 : 2);
+        }
+    }
+    return score;
+}
+
+std::string JoinStrings(const std::vector<std::string>& values, const std::string& separator) {
+    std::ostringstream out;
+    for (size_t i = 0; i < values.size(); ++i) {
+        if (i > 0) {
+            out << separator;
+        }
+        out << values[i];
+    }
+    return out.str();
+}
+
+std::string ExtractJsonStringArray(const json& value) {
+    if (!value.is_array()) {
+        return {};
+    }
+    std::vector<std::string> parts;
+    for (const json& item : value) {
+        if (item.is_string()) {
+            parts.push_back(item.get<std::string>());
+        }
+    }
+    return JoinStrings(parts, ", ");
+}
+
+std::string BuildBlueprintMetadataSummary(const json& parsed, const std::string& relativePath) {
+    std::vector<std::string> lines;
+    lines.push_back("path: " + relativePath);
+    if (parsed.contains("id") && parsed["id"].is_string()) {
+        lines.push_back("id: " + parsed["id"].get<std::string>());
+    }
+    if (parsed.contains("name") && parsed["name"].is_string()) {
+        lines.push_back("name: " + parsed["name"].get<std::string>());
+    }
+    if (parsed.contains("description") && parsed["description"].is_string()) {
+        lines.push_back("description: " + parsed["description"].get<std::string>());
+    }
+    if (parsed.contains("category") && parsed["category"].is_string()) {
+        lines.push_back("category: " + parsed["category"].get<std::string>());
+    }
+    if (parsed.contains("tags")) {
+        const std::string tags = ExtractJsonStringArray(parsed["tags"]);
+        if (!tags.empty()) {
+            lines.push_back("tags: " + tags);
+        }
+    }
+    if (parsed.contains("parameters") && parsed["parameters"].is_object()) {
+        std::vector<std::string> keys;
+        for (auto it = parsed["parameters"].begin(); it != parsed["parameters"].end(); ++it) {
+            keys.push_back(it.key());
+        }
+        std::sort(keys.begin(), keys.end());
+        if (!keys.empty()) {
+            lines.push_back("parameters: " + JoinStrings(keys, ", "));
+        }
+    }
+    if (parsed.contains("root") && parsed["root"].is_object()) {
+        const json& root = parsed["root"];
+        if (root.contains("type") && root["type"].is_string()) {
+            lines.push_back("root_type: " + root["type"].get<std::string>());
+        }
+        std::set<std::string> refs;
+        std::set<std::string> materials;
+        std::set<std::string> primitives;
+        std::vector<const json*> stack = { &root };
+        while (!stack.empty()) {
+            const json* node = stack.back();
+            stack.pop_back();
+            if (!node->is_object()) {
+                continue;
+            }
+            if (node->contains("ref") && (*node)["ref"].is_string()) {
+                refs.insert((*node)["ref"].get<std::string>());
+            }
+            if (node->contains("material") && (*node)["material"].is_string()) {
+                materials.insert((*node)["material"].get<std::string>());
+            }
+            if (node->contains("primitive") && (*node)["primitive"].is_string()) {
+                primitives.insert((*node)["primitive"].get<std::string>());
+            }
+            if (node->contains("children") && (*node)["children"].is_array()) {
+                for (const json& child : (*node)["children"]) {
+                    stack.push_back(&child);
+                }
+            }
+            if (node->contains("left")) {
+                stack.push_back(&(*node)["left"]);
+            }
+            if (node->contains("right")) {
+                stack.push_back(&(*node)["right"]);
+            }
+        }
+        if (!refs.empty()) {
+            lines.push_back("refs: " + JoinStrings(std::vector<std::string>(refs.begin(), refs.end()), ", "));
+        }
+        if (!materials.empty()) {
+            lines.push_back("materials: " + JoinStrings(std::vector<std::string>(materials.begin(), materials.end()), ", "));
+        }
+        if (!primitives.empty()) {
+            lines.push_back("primitives: " + JoinStrings(std::vector<std::string>(primitives.begin(), primitives.end()), ", "));
+        }
+    }
+    return JoinStrings(lines, "\n");
+}
+
+bool LooksLikeBlueprintNodeObject(const json& parsed) {
+    return parsed.is_object() &&
+           parsed.contains("type") &&
+           parsed["type"].is_string() &&
+           !parsed.contains("root");
+}
+
+void RepairObjectNode(json& node) {
+    if (!node.is_object()) {
+        return;
+    }
+
+    if (node.contains("type") && node["type"].is_string()) {
+        const std::string typeValue = ToLowerCopy(node["type"].get<std::string>());
+        node["type"] = typeValue;
+        if (typeValue == "box") {
+            node["type"] = "primitive";
+            node["primitive"] = "cube";
+        } else if (IsPrimitiveKeyword(typeValue)) {
+            node["type"] = "primitive";
+            if (!node.contains("primitive") || !node["primitive"].is_string()) {
+                node["primitive"] = typeValue;
+            }
+        } else if (typeValue == "primitive" && node.contains("primitive") && node["primitive"].is_string()) {
+            const std::string primitiveValue = ToLowerCopy(node["primitive"].get<std::string>());
+            node["primitive"] = primitiveValue;
+            if (primitiveValue == "box") {
+                node["primitive"] = "cube";
+            }
+        }
+    }
+
+    if (node.contains("children") && node["children"].is_array()) {
+        for (json& child : node["children"]) {
+            RepairObjectNode(child);
+        }
+    }
+
+    if (node.contains("left")) {
+        RepairObjectNode(node["left"]);
+    }
+    if (node.contains("right")) {
+        RepairObjectNode(node["right"]);
+    }
+}
+
+bool NormalizeGeneratedObjectJson(std::string& objectJson, std::string& outError) {
+    json parsed = json::parse(objectJson, nullptr, false);
+    if (parsed.is_discarded() || !parsed.is_object()) {
+        return true;
+    }
+
+    if (parsed.contains("root")) {
+        RepairObjectNode(parsed["root"]);
+    } else if (LooksLikeBlueprintNodeObject(parsed)) {
+        parsed = {
+            {"schema_version", 1},
+            {"id", "generated_object"},
+            {"name", "generated_object"},
+            {"root", parsed}
+        };
+        RepairObjectNode(parsed["root"]);
+    }
+
+    objectJson = parsed.dump();
+    return true;
+}
+
+std::string BuildSceneBuildingGenerationPrompt(const std::string& userPrompt,
+                                               const json& operation,
+                                               const json& instance) {
+    std::ostringstream prompt;
+    prompt << "Generate a complete Moon building asset JSON for this scene request.\n"
+           << "This building will be placed into the scene by scene operations, so the building JSON itself must be fully valid.\n"
+           << "User request: " << userPrompt << "\n";
+
+    if (instance.contains("name") && instance["name"].is_string()) {
+        prompt << "Requested building instance name: " << instance["name"].get<std::string>() << "\n";
+    }
+    if (instance.contains("instance_id") && instance["instance_id"].is_string()) {
+        prompt << "Requested building instance id: " << instance["instance_id"].get<std::string>() << "\n";
+    }
+    if (operation.contains("op") && operation["op"].is_string()) {
+        prompt << "Scene operation type: " << operation["op"].get<std::string>() << "\n";
+    }
+    prompt << "Return a complete moon_building JSON with all required style and mass fields filled.\n";
+    return prompt.str();
+}
+
+bool RepairSceneBuildingOperation(const std::string& userPrompt,
+                                  json& operation,
+                                  std::vector<std::string>& ioNotes,
+                                  std::string& outError) {
+    if (!operation.is_object() || !operation.contains("op") || !operation["op"].is_string()) {
+        return true;
+    }
+
+    const std::string opType = operation["op"].get<std::string>();
+    if (opType != "place_building" && opType != "replace_instance_asset") {
+        return true;
+    }
+
+    if (!operation.contains("instance") || !operation["instance"].is_object()) {
+        return true;
+    }
+
+    json& instance = operation["instance"];
+    const std::string currentBuildingJson =
+        (instance.contains("building_json") && instance["building_json"].is_string())
+            ? instance["building_json"].get<std::string>()
+            : std::string();
+
+    std::string validationError;
+    if (!currentBuildingJson.empty() && ValidateBuildingJson(currentBuildingJson, validationError)) {
+        return true;
+    }
+
+    AssetGenerationResult buildingResult;
+    const std::string buildingPrompt = BuildSceneBuildingGenerationPrompt(userPrompt, operation, instance);
+    if (!GenerateAsset(AssetKind::Building, buildingPrompt, currentBuildingJson, buildingResult, outError)) {
+        outError = "Failed to generate complete building asset for scene operation: " + outError;
+        return false;
+    }
+
+    instance["building_json"] = buildingResult.assetJson;
+    ioNotes.push_back("Upgraded scene building operation to use a fully generated building asset JSON.");
+    return true;
+}
+
+bool RepairSceneOperations(const std::string& userPrompt,
+                           json& ioParsedOps,
+                           std::vector<std::string>& ioNotes,
+                           std::string& outError) {
+    if (!ioParsedOps.is_object() ||
+        !ioParsedOps.contains("operations") ||
+        !ioParsedOps["operations"].is_array()) {
+        return true;
+    }
+
+    for (json& operation : ioParsedOps["operations"]) {
+        if (!RepairSceneBuildingOperation(userPrompt, operation, ioNotes, outError)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool TryExtractGeneratedAssetJson(AssetKind kind,
+                                  const json& resultJson,
+                                  std::string& outAssetJson) {
+    outAssetJson.clear();
+
+    if (resultJson.contains("asset_root") && resultJson["asset_root"].is_object()) {
+        outAssetJson = resultJson["asset_root"].dump();
+        return true;
+    }
+
+    if (resultJson.contains("asset_json") && resultJson["asset_json"].is_string()) {
+        outAssetJson = resultJson["asset_json"].get<std::string>();
+        return !outAssetJson.empty();
+    }
+
+    if (!resultJson.is_object()) {
+        return false;
+    }
+
+    if (kind == AssetKind::Building) {
+        if (resultJson.contains("schema") || resultJson.contains("building_type") || resultJson.contains("floors")) {
+            outAssetJson = resultJson.dump();
+            return true;
+        }
+    } else {
+        if (resultJson.contains("root") || LooksLikeBlueprintNodeObject(resultJson)) {
+            outAssetJson = resultJson.dump();
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool BuildObjectRetrievedContext(const std::string& userPrompt,
+                                 const std::string& currentAssetJson,
+                                 std::string& outContext,
+                                 std::string& outError) {
+    const std::filesystem::path objectRoot(Moon::Assets::BuildObjectPath(""));
+    const std::string indexPath = Moon::Assets::BuildObjectPath("index.json");
+    const std::string objectGuidePath = ProjectPath("docs/object-system-ai.md");
+    const std::string objectSystemPath = ProjectPath("docs/object-system.md");
+
+    const std::string objectGuide = ReadUtf8TextFile(objectGuidePath);
+    const std::string objectSystem = ReadUtf8TextFile(objectSystemPath);
+    const std::string indexText = ReadUtf8TextFile(indexPath);
+    if (objectGuide.empty() || objectSystem.empty() || indexText.empty()) {
+        outError = "Failed to load object retrieval context files";
+        return false;
+    }
+
+    std::ostringstream context;
+    context << "\n=== core_rulebook ===\n"
+            << TruncateForPrompt(objectGuide, 4000) << "\n"
+            << "\n=== object_system_source_of_truth ===\n"
+            << TruncateForPrompt(objectSystem, 2500) << "\n";
+
+    const std::string expandedQuery = ExpandRetrievalQuery(userPrompt + "\n" + currentAssetJson);
+    const std::unordered_set<std::string> queryTokens = TokenizeWords(expandedQuery);
+
+    json indexJson = json::parse(indexText, nullptr, false);
+    if (!indexJson.is_discarded() && indexJson.is_object()) {
+        std::vector<RetrievedContextItem> registryMatches;
+        if (indexJson.contains("materials") &&
+            indexJson["materials"].contains("allowed") &&
+            indexJson["materials"]["allowed"].is_array()) {
+            std::vector<std::string> allowedMaterials;
+            for (const json& item : indexJson["materials"]["allowed"]) {
+                if (item.is_string()) {
+                    allowedMaterials.push_back(item.get<std::string>());
+                }
+            }
+            context << "\n=== allowed_materials ===\n"
+                    << JoinStrings(allowedMaterials, ", ") << "\n";
+        }
+
+        if (indexJson.contains("items") && indexJson["items"].is_array()) {
+            for (const json& item : indexJson["items"]) {
+                if (!item.is_object()) {
+                    continue;
+                }
+                std::ostringstream summary;
+                if (item.contains("id") && item["id"].is_string()) {
+                    summary << "id: " << item["id"].get<std::string>() << "\n";
+                }
+                if (item.contains("path") && item["path"].is_string()) {
+                    summary << "path: " << item["path"].get<std::string>() << "\n";
+                }
+                if (item.contains("description") && item["description"].is_string()) {
+                    summary << "description: " << item["description"].get<std::string>() << "\n";
+                }
+                if (item.contains("category") && item["category"].is_string()) {
+                    summary << "category: " << item["category"].get<std::string>() << "\n";
+                }
+                if (item.contains("tags")) {
+                    const std::string tags = ExtractJsonStringArray(item["tags"]);
+                    if (!tags.empty()) {
+                        summary << "tags: " << tags << "\n";
+                    }
+                }
+                const std::string summaryText = summary.str();
+                const int score = CountTokenOverlap(queryTokens, TokenizeWords(summaryText));
+                if (score > 0) {
+                    registryMatches.push_back({"registry_match", summaryText, score});
+                }
+            }
+        }
+
+        std::sort(registryMatches.begin(), registryMatches.end(), [](const RetrievedContextItem& a, const RetrievedContextItem& b) {
+            return a.score > b.score;
+        });
+        if (!registryMatches.empty()) {
+            context << "\n=== matching_registry_entries ===\n";
+            const size_t registryCount = std::min<size_t>(6, registryMatches.size());
+            for (size_t i = 0; i < registryCount; ++i) {
+                context << registryMatches[i].body << "\n";
+            }
+        }
+    }
+
+    std::vector<RetrievedContextItem> examples;
+    if (std::filesystem::exists(objectRoot)) {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(objectRoot)) {
+            if (!entry.is_regular_file() || entry.path().extension() != ".json") {
+                continue;
+            }
+            const std::string filename = entry.path().filename().string();
+            if (filename == "index.json" || filename == "catalog.json") {
+                continue;
+            }
+
+            const std::string contents = ReadUtf8TextFile(entry.path().string());
+            if (contents.empty()) {
+                continue;
+            }
+
+            const std::string relativePath = Moon::Assets::NormalizeSlashes(std::filesystem::relative(entry.path(), objectRoot).string());
+            json parsed = json::parse(contents, nullptr, false);
+            std::string searchCorpus = relativePath + "\n" + contents;
+            std::string summary = "path: " + relativePath + "\n";
+            if (!parsed.is_discarded() && parsed.is_object()) {
+                summary = BuildBlueprintMetadataSummary(parsed, relativePath);
+                searchCorpus = summary + "\n" + contents;
+            }
+
+            int score = CountTokenOverlap(queryTokens, TokenizeWords(searchCorpus));
+            if (relativePath.find("components/") != std::string::npos) {
+                score += 2;
+            }
+            if (relativePath.find("parts/") != std::string::npos) {
+                score += 1;
+            }
+            if (score <= 0) {
+                continue;
+            }
+
+            std::ostringstream body;
+            body << "summary:\n" << summary << "\n"
+                 << "json:\n" << TruncateForPrompt(contents, 4500) << "\n";
+            examples.push_back({relativePath, body.str(), score});
+        }
+    }
+
+    std::sort(examples.begin(), examples.end(), [](const RetrievedContextItem& a, const RetrievedContextItem& b) {
+        if (a.score != b.score) {
+            return a.score > b.score;
+        }
+        return a.label < b.label;
+    });
+
+    if (examples.empty()) {
+        outError = "Object retrieval did not find any relevant examples";
+        return false;
+    }
+
+    context << "\n=== retrieved_object_examples ===\n";
+    const size_t exampleCount = std::min<size_t>(5, examples.size());
+    for (size_t i = 0; i < exampleCount; ++i) {
+        context << "\n--- example: " << examples[i].label << " (score=" << examples[i].score << ") ---\n"
+                << examples[i].body;
+    }
+
+    outContext = context.str();
+    return true;
+}
+
+bool BuildHiddenContext(AssetKind kind,
+                        const std::string& userPrompt,
+                        const std::string& currentAssetJson,
+                        std::string& outContext,
+                        std::string& outError) {
     std::vector<std::string> hiddenFiles;
     if (kind == AssetKind::Building) {
         hiddenFiles = {
@@ -235,14 +803,7 @@ bool BuildHiddenContext(AssetKind kind, std::string& outContext, std::string& ou
             Moon::Assets::BuildBuildingPath("reference/corporate_office_tower.json")
         };
     } else {
-        hiddenFiles = {
-            ProjectPath("docs/object-system-ai.md"),
-            ProjectPath("docs/object-system.md"),
-            Moon::Assets::BuildObjectPath("index.json"),
-            Moon::Assets::BuildObjectPath("components/furniture/table_v1.json"),
-            Moon::Assets::BuildObjectPath("components/furniture/chair_v1.json"),
-            Moon::Assets::BuildObjectPath("test_room.json")
-        };
+        return BuildObjectRetrievedContext(userPrompt, currentAssetJson, outContext, outError);
     }
 
     std::ostringstream combined;
@@ -264,6 +825,7 @@ bool ExecuteStructuredResponseRequest(const std::string& model,
                                      const std::string& userText,
                                      const std::string& schemaName,
                                      const json& schema,
+                                     bool strictSchema,
                                      OpenAIResponsePayload& outPayload,
                                      std::string& outError) {
     json requestBody = {
@@ -285,7 +847,7 @@ bool ExecuteStructuredResponseRequest(const std::string& model,
             {"format", {
                 {"type", "json_schema"},
                 {"name", schemaName},
-                {"strict", true},
+                {"strict", strictSchema},
                 {"schema", schema}
             }}
         }}
@@ -417,6 +979,7 @@ bool ExecuteStructuredResponseRequest(const std::string& model,
 
     outPayload.model = responseJson.value("model", model);
     outPayload.responseId = responseJson.value("id", std::string());
+    outPayload.rawText = resultText;
     return true;
 }
 
@@ -424,6 +987,7 @@ bool ExecuteStructuredResponseRequestWithFallback(const std::string& instruction
                                                   const std::string& userText,
                                                   const std::string& schemaName,
                                                   const json& schema,
+                                                  bool strictSchema,
                                                   OpenAIResponsePayload& outPayload,
                                                   std::string& outSelectedModel,
                                                   std::string& outError) {
@@ -436,6 +1000,7 @@ bool ExecuteStructuredResponseRequestWithFallback(const std::string& instruction
                                              userText,
                                              schemaName,
                                              schema,
+                                             strictSchema,
                                              outPayload,
                                              attemptError)) {
             outSelectedModel = model;
@@ -475,94 +1040,163 @@ bool GenerateAsset(AssetKind kind,
     }
 
     std::string hiddenContext;
-    if (!BuildHiddenContext(kind, hiddenContext, outError)) {
+    if (!BuildHiddenContext(kind, userPrompt, currentAssetJson, hiddenContext, outError)) {
         return false;
     }
 
     const std::string assetLabel = (kind == AssetKind::Building) ? "building" : "object";
+    std::string previousAttemptJson;
+    std::string previousValidationError;
+    std::string lastRawModelOutput;
 
-    std::ostringstream instructions;
-    instructions
-        << "You are generating " << assetLabel << " asset JSON for the Moon editor.\n"
-        << "Return a structured result whose asset_json field is itself valid JSON text.\n"
-        << "Prefer editing the current asset when one is provided instead of throwing it away.\n"
-        << "Do not wrap JSON in markdown fences.\n";
-    if (kind == AssetKind::Building) {
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        std::ostringstream instructions;
         instructions
-            << "Generate semantic moon_building JSON only.\n"
-            << "Keep circulation, floors, spaces, and typology validator-friendly.\n";
-    } else {
-        instructions
-            << "Generate object blueprint JSON only.\n"
-            << "Reuse existing references and supported materials from the object index.\n";
-    }
-    instructions << "\nHidden context follows:\n" << hiddenContext;
+            << "You are generating " << assetLabel << " asset JSON for the Moon editor.\n"
+            << "Return a structured result whose asset_root field is a JSON object.\n"
+            << "Prefer editing the current asset when one is provided instead of throwing it away.\n"
+            << "Do not wrap JSON in markdown fences.\n";
+        if (kind == AssetKind::Building) {
+            instructions
+                << "Generate semantic moon_building JSON only.\n"
+                << "Keep circulation, floors, spaces, and typology validator-friendly.\n"
+                << "For adjacency.importance use only 'required' or 'preferred'. Never use 'high', 'medium', 'low', or 'optional'.\n"
+                << "Before answering, self-check that the building JSON matches the Moon building schema exactly.\n";
+        } else {
+            instructions
+                << "Generate object blueprint JSON only.\n"
+                << "The top-level asset_root must be a full blueprint object with schema_version plus root, and an id or name.\n"
+                << "Reuse existing references and supported materials from the object index.\n"
+                << "Use only supported node types: primitive, group, reference, csg, light, stair.\n"
+                << "For primitive nodes, use only schema keywords such as 'cube', 'sphere', 'cylinder', 'capsule', 'cone', or 'torus'. Never use 'box'.\n"
+                << "Primitive nodes must use type='primitive' and primitive='cube'|'sphere'|'cylinder' etc. Never use type='cube' or type='box'.\n"
+                << "In transforms and overrides, use only plain numbers or simple $parameter_name references that already exist.\n"
+                << "Never use array indexing or invented expression syntax such as $anchor[0], $anchor[1], $anchor[2], foo.bar, or nested lookup syntax.\n"
+                << "If you need a wheel center or similar point, either write explicit numeric positions or define separate scalar parameters like front_wheel_x and front_wheel_y.\n"
+                << "Do not index into anchors. If anchors exist, they must not be referenced with bracket syntax.\n"
+                << "Prefer matching existing object asset conventions from the provided examples.\n";
+            if (attempt > 0) {
+                instructions
+                    << "Your previous attempt failed Moon validation. Repair it conservatively so it passes the blueprint parser and builder.\n"
+                    << "Keep the intended design, but change unsupported fields, node types, primitive declarations, expression syntax, or materials as needed.\n";
+            }
+        }
+        instructions << "\nHidden context follows:\n" << hiddenContext;
 
-    std::ostringstream userInput;
-    userInput
-        << "User prompt:\n" << userPrompt << "\n\n"
-        << "Current " << assetLabel << " asset JSON:\n";
-    if (currentAssetJson.empty()) {
-        userInput << "(none)\n";
-    } else {
-        userInput << currentAssetJson << "\n";
-    }
+        std::ostringstream userInput;
+        userInput
+            << "User prompt:\n" << userPrompt << "\n\n"
+            << "Current " << assetLabel << " asset JSON:\n";
+        if (currentAssetJson.empty()) {
+            userInput << "(none)\n";
+        } else {
+            userInput << currentAssetJson << "\n";
+        }
+        if (attempt > 0 && !previousAttemptJson.empty()) {
+            userInput
+                << "\nPrevious invalid generated JSON:\n" << previousAttemptJson << "\n"
+                << "\nMoon validation error:\n" << previousValidationError << "\n"
+                << "\nReturn repaired full JSON only.\n";
+        }
 
-    OpenAIResponsePayload payload;
-    std::string selectedModel;
-    if (!ExecuteStructuredResponseRequestWithFallback(
-            instructions.str(),
-            userInput.str(),
-            std::string(assetLabel) + "_generation_result",
-            {
-                {"type", "object"},
-                {"properties", {
-                    {"asset_json", {
-                        {"type", "string"},
-                        {"description", "The generated Moon asset JSON as a single string."}
+        OpenAIResponsePayload payload;
+        std::string selectedModel;
+        if (!ExecuteStructuredResponseRequestWithFallback(
+                instructions.str(),
+                userInput.str(),
+                std::string(assetLabel) + "_generation_result",
+                {
+                    {"type", "object"},
+                    {"properties", {
+                        {"asset_root", {
+                            {"type", "object"},
+                            {"additionalProperties", true},
+                            {"description", "The generated Moon asset JSON as a structured object."}
+                        }},
+                        {"strategy", {
+                            {"type", "string"}
+                        }},
+                        {"notes", {
+                            {"type", "array"},
+                            {"items", {{"type", "string"}}}
+                        }}
                     }},
-                    {"strategy", {
-                        {"type", "string"}
-                    }},
-                    {"notes", {
-                        {"type", "array"},
-                        {"items", {{"type", "string"}}}
-                    }}
-                }},
-                {"required", json::array({"asset_json", "strategy", "notes"})},
-                {"additionalProperties", false}
-            },
-            payload,
-            selectedModel,
-            outError)) {
-        return false;
-    }
-
-    const std::string assetJson = payload.resultJson.value("asset_json", std::string());
-    if (assetJson.empty()) {
-        outError = "Structured OpenAI result did not contain asset_json";
-        return false;
-    }
-
-    if (kind == AssetKind::Building) {
-        if (!ValidateBuildingJson(assetJson, outError)) {
-            outError = "OpenAI returned invalid building JSON: " + outError;
+                    {"required", json::array({"asset_root", "strategy", "notes"})},
+                    {"additionalProperties", false}
+                },
+                false,
+                payload,
+                selectedModel,
+                outError)) {
             return false;
         }
-    } else {
-        if (!ValidateObjectJson(assetJson, outError)) {
-            outError = "OpenAI returned invalid object JSON: " + outError;
+
+        std::string candidateAssetJson;
+        if (!TryExtractGeneratedAssetJson(kind, payload.resultJson, candidateAssetJson)) {
+            outError = "Structured OpenAI result did not contain asset_root";
+            if (!payload.rawText.empty()) {
+                MOON_LOG_ERROR(
+                    "OpenAIAssetGenerator",
+                    "Structured wrapper missing expected asset field for %s.\nRaw model output:\n%s",
+                    assetLabel.c_str(),
+                    TruncateForPrompt(payload.rawText, 8000).c_str());
+                outError += "\n\nRaw model output:\n" + TruncateForPrompt(payload.rawText, 4000);
+            }
             return false;
         }
+
+        std::string validationError;
+        bool valid = false;
+        if (kind == AssetKind::Building) {
+            valid = ValidateBuildingJson(candidateAssetJson, validationError);
+        } else {
+            NormalizeGeneratedObjectJson(candidateAssetJson, validationError);
+            valid = ValidateObjectJson(candidateAssetJson, validationError);
+        }
+
+        if (valid) {
+            outResult.assetJson = candidateAssetJson;
+            outResult.strategy = payload.resultJson.value("strategy", "openai_generated");
+            outResult.notes = payload.resultJson.value("notes", std::vector<std::string>());
+            outResult.hiddenContextSummary = (kind == AssetKind::Object)
+                ? "Injected core object rules plus dynamically retrieved registry entries and example blueprints chosen from the project."
+                : "Injected asset generation guide, source-of-truth docs, and curated JSON examples.";
+            outResult.debugContext = TruncateForPrompt(hiddenContext, 12000);
+            outResult.rawModelOutput = TruncateForPrompt(payload.rawText, 12000);
+            outResult.model = payload.model.empty() ? selectedModel : payload.model;
+            outResult.responseId = payload.responseId;
+            MOON_LOG_INFO(
+                "OpenAIAssetGenerator",
+                "Generated %s asset with model=%s responseId=%s strategy=%s\nContext:\n%s\n\nRaw model output:\n%s",
+                assetLabel.c_str(),
+                outResult.model.c_str(),
+                outResult.responseId.c_str(),
+                outResult.strategy.c_str(),
+                outResult.debugContext.c_str(),
+                outResult.rawModelOutput.c_str());
+            return true;
+        }
+
+        previousAttemptJson = candidateAssetJson;
+        previousValidationError = validationError;
+        lastRawModelOutput = payload.rawText;
+        outError = (kind == AssetKind::Building)
+            ? "OpenAI returned invalid building JSON: " + validationError
+            : "OpenAI returned invalid object JSON: " + validationError;
     }
 
-    outResult.assetJson = assetJson;
-    outResult.strategy = payload.resultJson.value("strategy", "openai_generated");
-    outResult.notes = payload.resultJson.value("notes", std::vector<std::string>());
-    outResult.hiddenContextSummary = "Injected asset generation guide, source-of-truth docs, and curated JSON examples.";
-    outResult.model = payload.model.empty() ? selectedModel : payload.model;
-    outResult.responseId = payload.responseId;
-    return true;
+    if (!lastRawModelOutput.empty()) {
+        outError += "\n\nInjected context:\n" + TruncateForPrompt(hiddenContext, 6000);
+        outError += "\n\nRaw model output:\n" + TruncateForPrompt(lastRawModelOutput, 6000);
+    }
+
+    MOON_LOG_ERROR(
+        "OpenAIAssetGenerator",
+        "Failed to generate %s asset.\nError: %s",
+        assetLabel.c_str(),
+        outError.c_str());
+
+    return false;
 }
 
 bool GenerateSceneOperations(const std::string& userPrompt,
@@ -604,6 +1238,8 @@ bool GenerateSceneOperations(const std::string& userPrompt,
         << "Do not rewrite the whole scene. Only return operations.\n"
         << "Use only supported ops: place_building, place_object, move_instance, remove_instance, replace_instance_asset.\n"
         << "For building redesign requests, use replace_instance_asset with building_json.\n"
+        << "If an operation includes building_json, that building_json must itself be a complete valid moon_building asset.\n"
+        << "Never output placeholder or partial building_json such as style:{} or mass:{}.\n"
         << "For new object placement, prefer inline object_json when the user is describing a brand new object.\n"
         << "When moving an instance, prefer absolute position if the user names a target placement; use delta for relative moves.\n"
         << "Never wrap JSON in markdown fences.\n\n"
@@ -625,9 +1261,19 @@ bool GenerateSceneOperations(const std::string& userPrompt,
             {
                 {"type", "object"},
                 {"properties", {
-                    {"ops_json", {
-                        {"type", "string"},
-                        {"description", "A scene_edit_ops JSON document encoded as a string."}
+                    {"scene_ops", {
+                        {"type", "object"},
+                        {"properties", {
+                            {"operations", {
+                                {"type", "array"},
+                                {"items", {
+                                    {"type", "object"},
+                                    {"additionalProperties", true}
+                                }}
+                            }}
+                        }},
+                        {"required", json::array({"operations"})},
+                        {"additionalProperties", false}
                     }},
                     {"strategy", {{"type", "string"}}},
                     {"notes", {
@@ -635,30 +1281,36 @@ bool GenerateSceneOperations(const std::string& userPrompt,
                         {"items", {{"type", "string"}}}
                     }}
                 }},
-                {"required", json::array({"ops_json", "strategy", "notes"})},
+                {"required", json::array({"scene_ops", "strategy", "notes"})},
                 {"additionalProperties", false}
             },
+            false,
             payload,
             selectedModel,
             outError)) {
         return false;
     }
 
-    const std::string opsJson = payload.resultJson.value("ops_json", std::string());
-    if (opsJson.empty()) {
-        outError = "Structured OpenAI result did not contain ops_json";
+    if (!payload.resultJson.contains("scene_ops") || !payload.resultJson["scene_ops"].is_object()) {
+        outError = "Structured OpenAI result did not contain scene_ops";
         return false;
     }
 
     json parsedOps;
+    const std::string opsJson = payload.resultJson["scene_ops"].dump();
     if (!Moon::Editor::SceneDesign::ParseSceneEditOps(opsJson, parsedOps, outError)) {
         outError = "OpenAI returned invalid scene operations: " + outError;
         return false;
     }
 
+    std::vector<std::string> repairedNotes = payload.resultJson.value("notes", std::vector<std::string>());
+    if (!RepairSceneOperations(userPrompt, parsedOps, repairedNotes, outError)) {
+        return false;
+    }
+
     outResult.opsJson = parsedOps.dump(2);
     outResult.strategy = payload.resultJson.value("strategy", "openai_scene_ops");
-    outResult.notes = payload.resultJson.value("notes", std::vector<std::string>());
+    outResult.notes = repairedNotes;
     outResult.hiddenContextSummary = "Injected scene, building, and object guides plus the full normalized working scene JSON.";
     outResult.model = payload.model.empty() ? selectedModel : payload.model;
     outResult.responseId = payload.responseId;
