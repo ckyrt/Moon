@@ -75,6 +75,7 @@ struct StairConfig {
     GridPos2D position;         // Position within space
     float width;                // Stair width (meters)
     float rotationDegrees = 0.0f; // Base orientation in plan view. 0 = +Z, 90 = +X
+    Rect footprintRect;         // Reserved plan footprint for fitting stair geometry/openings
 };
 
 /**
@@ -271,6 +272,7 @@ struct VerticalTransport {
     std::string transportId;
     VerticalTransportType type = VerticalTransportType::Stair;
     Rect shaftRect;
+    Rect openingRect;
     int floorFrom = 0;
     int floorTo = 0;
     int sourceFloorLevel = 0;
@@ -282,6 +284,91 @@ struct VerticalTransport {
     GridPos2D position = {0.0f, 0.0f};
     float rotationDegrees = 0.0f;
 };
+
+inline float NormalizeRotationDegrees(float rotationDegrees) {
+    float normalized = std::fmod(rotationDegrees, 360.0f);
+    if (normalized < 0.0f) {
+        normalized += 360.0f;
+    }
+    return normalized;
+}
+
+inline bool IsQuarterTurnRotation(float rotationDegrees) {
+    const float normalized = NormalizeRotationDegrees(rotationDegrees);
+    return std::abs(normalized - 90.0f) < 1.0f || std::abs(normalized - 270.0f) < 1.0f;
+}
+
+inline float ComputeTransportRunWidth(const Rect& footprintRect, StairType stairType) {
+    const float minDim = std::min(footprintRect.size[0], footprintRect.size[1]);
+    if (minDim <= 0.0f) {
+        return 0.0f;
+    }
+
+    if (stairType == StairType::L || stairType == StairType::U) {
+        return std::max(0.9f, std::min(1.6f, minDim * 0.42f));
+    }
+    if (stairType == StairType::Spiral) {
+        return std::max(1.0f, std::min(2.0f, minDim * 0.55f));
+    }
+    return std::max(0.9f, minDim - 0.3f);
+}
+
+inline Rect ComputeTransportOpeningRect(const Rect& footprintRect,
+                                        StairType stairType,
+                                        float rotationDegrees) {
+    if (footprintRect.size[0] <= 0.0f || footprintRect.size[1] <= 0.0f) {
+        return footprintRect;
+    }
+
+    if (stairType == StairType::Straight || stairType == StairType::Spiral) {
+        return footprintRect;
+    }
+
+    const float normalized = NormalizeRotationDegrees(rotationDegrees);
+    const float minDim = std::min(footprintRect.size[0], footprintRect.size[1]);
+    const float runWidth = ComputeTransportRunWidth(footprintRect, stairType);
+    const float landingSize = std::min(std::max(runWidth, 1.0f), minDim);
+    Rect opening = footprintRect;
+
+    if (stairType == StairType::U) {
+        if (IsQuarterTurnRotation(normalized)) {
+            opening.origin[0] += std::max(0.0f, (footprintRect.size[0] - landingSize) * 0.5f);
+            opening.size[0] = std::min(landingSize, footprintRect.size[0]);
+        } else {
+            opening.origin[1] += std::max(0.0f, (footprintRect.size[1] - landingSize) * 0.5f);
+            opening.size[1] = std::min(landingSize, footprintRect.size[1]);
+        }
+        return opening;
+    }
+
+    // L-shaped stairs should open above the upper run instead of removing the whole shaft footprint.
+    if (std::abs(normalized - 90.0f) < 1.0f) {
+        opening.origin[0] = footprintRect.origin[0] + landingSize;
+        opening.size[0] = std::max(landingSize, footprintRect.size[0] - landingSize);
+        opening.size[1] = std::max(landingSize, footprintRect.size[1] - landingSize);
+    } else if (std::abs(normalized - 180.0f) < 1.0f) {
+        opening.size[0] = std::max(landingSize, footprintRect.size[0] - landingSize);
+        opening.size[1] = std::max(landingSize, footprintRect.size[1] - landingSize);
+    } else if (std::abs(normalized - 270.0f) < 1.0f) {
+        opening.origin[1] = footprintRect.origin[1] + landingSize;
+        opening.size[0] = std::max(landingSize, footprintRect.size[0] - landingSize);
+        opening.size[1] = std::max(landingSize, footprintRect.size[1] - landingSize);
+    } else {
+        opening.origin[0] = footprintRect.origin[0] + landingSize;
+        opening.origin[1] = footprintRect.origin[1] + landingSize;
+        opening.size[0] = std::max(landingSize, footprintRect.size[0] - landingSize);
+        opening.size[1] = std::max(landingSize, footprintRect.size[1] - landingSize);
+    }
+
+    return opening;
+}
+
+inline const Rect& GetTransportOpeningRect(const VerticalTransport& transport) {
+    if (transport.openingRect.size[0] > 0.0f && transport.openingRect.size[1] > 0.0f) {
+        return transport.openingRect;
+    }
+    return transport.shaftRect;
+}
 
 /**
  * @brief Complete resolved geometric building definition
@@ -418,6 +505,7 @@ struct GeneratedBuilding {
     BuildingDefinition definition;
     std::string resolvedLayoutJson;
     std::vector<GeneratedMeshPart> envelopeMeshes;
+    std::vector<GeneratedMeshPart> floorPlateMeshes;
     std::vector<FloorPlate> floorPlates;
     std::vector<VerticalCore> verticalCores;
     std::vector<VerticalTransport> verticalTransports;

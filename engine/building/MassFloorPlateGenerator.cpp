@@ -19,6 +19,19 @@ constexpr float kEpsilon = 1e-4f;
 constexpr float kCommercialFacadeInset = 0.6f;
 constexpr float kDefaultFacadeInset = 0.4f;
 
+std::vector<Moon::Building::GridPos2D> BuildRectOutline(const Moon::Building::Rect& rect) {
+    if (rect.size[0] <= 0.0f || rect.size[1] <= 0.0f) {
+        return {};
+    }
+
+    return {
+        {rect.origin[0], rect.origin[1]},
+        {rect.origin[0] + rect.size[0], rect.origin[1]},
+        {rect.origin[0] + rect.size[0], rect.origin[1] + rect.size[1]},
+        {rect.origin[0], rect.origin[1] + rect.size[1]}
+    };
+}
+
 struct MeshBounds {
     float minX = std::numeric_limits<float>::max();
     float minY = std::numeric_limits<float>::max();
@@ -741,6 +754,7 @@ std::vector<Moon::Building::GridPos2D> BuildEnvelopeOutline(const std::vector<Sl
 }
 
 bool BuildBestSliceCandidate(const Moon::Massing::MassBuildResult& buildResult,
+                             float targetPlaneY,
                              float bandMinY,
                              float bandMaxY,
                              float bandHalfThickness,
@@ -749,11 +763,31 @@ bool BuildBestSliceCandidate(const Moon::Massing::MassBuildResult& buildResult,
 
     const float span = std::max(0.0f, bandMaxY - bandMinY);
     const int sampleCount = 11;
+    float bestPlaneDistance = std::numeric_limits<float>::max();
     for (int sampleIndex = 0; sampleIndex < sampleCount; ++sampleIndex) {
         const float t = sampleCount == 1
             ? 0.5f
             : static_cast<float>(sampleIndex) / static_cast<float>(sampleCount - 1);
         const float planeY = bandMinY + span * t;
+        const float planeTolerance = std::max(0.01f, bandHalfThickness * 0.15f);
+        bool planeHitsVertexBand = false;
+        for (const auto& item : buildResult.items) {
+            if (!item.mesh || !item.mesh->IsValid()) {
+                continue;
+            }
+            for (const auto& vertex : item.mesh->GetVertices()) {
+                if (std::abs(vertex.position.y - planeY) <= planeTolerance) {
+                    planeHitsVertexBand = true;
+                    break;
+                }
+            }
+            if (planeHitsVertexBand) {
+                break;
+            }
+        }
+        if (planeHitsVertexBand) {
+            continue;
+        }
 
         SliceBounds candidateBounds;
         std::vector<SliceSegment> candidateSegments = ComputeSliceSegments(
@@ -778,8 +812,16 @@ bool BuildBestSliceCandidate(const Moon::Massing::MassBuildResult& buildResult,
         if (outerLoop == nullptr || outerLoop->size() < 3) {
             continue;
         }
+        if (outerLoop->size() < 6) {
+            continue;
+        }
 
-        if (outerLoopArea > outCandidate.outerLoopArea) {
+        const float planeDistance = std::abs(planeY - targetPlaneY);
+        const bool betterDistance = planeDistance + kEpsilon < bestPlaneDistance;
+        const bool sameDistance = std::abs(planeDistance - bestPlaneDistance) <= kEpsilon;
+        const bool betterAreaTieBreak = sameDistance && outerLoopArea > outCandidate.outerLoopArea + kEpsilon;
+        if (betterDistance || betterAreaTieBreak) {
+            bestPlaneDistance = planeDistance;
             outCandidate.bounds = candidateBounds;
             outCandidate.segments = std::move(candidateSegments);
             outCandidate.outerLoop = *outerLoop;
@@ -880,7 +922,31 @@ bool MassFloorPlateGenerator::Generate(const BuildingDefinition& definition,
                 break;
             }
         }
-        if (mass == nullptr || mass->massingRuleAsset.empty()) {
+        if (mass == nullptr) {
+            continue;
+        }
+
+        if (mass->massingRuleAsset.empty()) {
+            const Rect massRect{"mass_outline", mass->origin, mass->size};
+            const float usableInset = std::min(facadeInset,
+                std::max(0.0f, std::min(mass->size[0], mass->size[1]) * 0.18f));
+
+            FloorPlate plate;
+            plate.floorLevel = floor.level;
+            plate.massId = floor.massId;
+            plate.origin = mass->origin;
+            plate.size = mass->size;
+            plate.envelopeOutline = BuildRectOutline(massRect);
+
+            Rect usableRect = massRect;
+            usableRect.origin[0] += usableInset;
+            usableRect.origin[1] += usableInset;
+            usableRect.size[0] = std::max(definition.grid, usableRect.size[0] - usableInset * 2.0f);
+            usableRect.size[1] = std::max(definition.grid, usableRect.size[1] - usableInset * 2.0f);
+            plate.outline = BuildRectOutline(usableRect);
+            plate.origin = usableRect.origin;
+            plate.size = usableRect.size;
+            outPlates.push_back(std::move(plate));
             continue;
         }
 
@@ -896,11 +962,13 @@ bool MassFloorPlateGenerator::Generate(const BuildingDefinition& definition,
         const CachedMassingBuild& cachedBuild = buildIt->second;
         const float meshHeight = std::max(cachedBuild.bounds.maxY - cachedBuild.bounds.minY, kEpsilon);
         const float floorBase = GetFloorBaseHeight(definition, floor.level);
-        const float sliceT = Clamp01((floorBase + floor.floorHeight * 0.5f) / buildingTotalHeight);
+        const float slabSliceHeight = floorBase + floor.floorHeight * 0.5f;
         const float bandT = std::max(0.015f, (floor.floorHeight / buildingTotalHeight) * 0.35f);
         const float bandHalfThickness = meshHeight * bandT;
 
         const float floorTop = floorBase + floor.floorHeight;
+        const float targetSliceT = Clamp01(slabSliceHeight / buildingTotalHeight);
+        const float targetPlaneY = cachedBuild.bounds.minY + meshHeight * targetSliceT;
         const float bandMinT = Clamp01(floorBase / buildingTotalHeight);
         const float bandMaxT = Clamp01(floorTop / buildingTotalHeight);
         const float bandMinY = cachedBuild.bounds.minY + meshHeight * bandMinT;
@@ -909,6 +977,7 @@ bool MassFloorPlateGenerator::Generate(const BuildingDefinition& definition,
         SliceCandidate bestCandidate;
         if (!BuildBestSliceCandidate(
                 cachedBuild.buildResult,
+                targetPlaneY,
                 std::min(bandMinY, bandMaxY),
                 std::max(bandMinY, bandMaxY),
                 bandHalfThickness,

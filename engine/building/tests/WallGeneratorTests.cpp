@@ -142,9 +142,9 @@ TEST_F(WallGeneratorTest, WallHeight_AppliedCorrectly) {
     spaceGraph.BuildGraph(definition, connections);
     wallGenerator.GenerateWalls(definition, spaceGraph, walls);
     
-    // Check that walls use default height when ceiling_height is 0
+    // When ceiling_height is omitted, wall generation falls back to the resolved floor height.
     for (const auto& wall : walls) {
-        EXPECT_FLOAT_EQ(wall.height, customHeight);
+        EXPECT_FLOAT_EQ(wall.height, definition.floors[0].floorHeight);
     }
 }
 

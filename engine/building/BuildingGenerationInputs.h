@@ -45,6 +45,7 @@ struct ResolvedVerticalTransportPlan {
     std::string transportId;
     VerticalTransportType type = VerticalTransportType::Stair;
     Rect shaftRect;
+    Rect openingRect;
     int floorFrom = 0;
     int floorTo = 0;
     int sourceFloorLevel = 0;

@@ -1034,18 +1034,29 @@ void LayoutResolver::BuildOutput(BuildingDefinition& output, const SemanticBuild
         transport.enclosed = semanticSystem.mode != "open";
         transport.external = semanticSystem.placement == "external";
         transport.stairType = ParseStairType(semanticSystem.stairForm);
-        transport.width = std::min(semanticSystem.shaftRect.size[0], semanticSystem.shaftRect.size[1]);
+        transport.width = transport.type == VerticalTransportType::Elevator
+            ? std::min(semanticSystem.shaftRect.size[0], semanticSystem.shaftRect.size[1])
+            : ComputeTransportRunWidth(semanticSystem.shaftRect, transport.stairType);
         transport.rotationDegrees = DetermineStairRotationDegrees(semanticSystem.shaftRect.size);
+        transport.openingRect = transport.type == VerticalTransportType::Elevator
+            ? semanticSystem.shaftRect
+            : ComputeTransportOpeningRect(semanticSystem.shaftRect,
+                                          transport.stairType,
+                                          transport.rotationDegrees);
         if (transport.type == VerticalTransportType::Elevator) {
             transport.position = {
                 semanticSystem.shaftRect.origin[0] + semanticSystem.shaftRect.size[0] * 0.5f,
                 semanticSystem.shaftRect.origin[1] + semanticSystem.shaftRect.size[1] * 0.5f
             };
         } else {
-            transport.position = {
-                semanticSystem.shaftRect.origin[0] + semanticSystem.shaftRect.size[0] * 0.5f,
-                semanticSystem.shaftRect.origin[1] + input.grid * 0.5f
-            };
+            const bool quarterTurn = IsQuarterTurnRotation(transport.rotationDegrees);
+            transport.position = quarterTurn
+                ? GridPos2D{
+                    semanticSystem.shaftRect.origin[0] + input.grid * 0.5f,
+                    semanticSystem.shaftRect.origin[1] + transport.width * 0.5f}
+                : GridPos2D{
+                    semanticSystem.shaftRect.origin[0] + transport.width * 0.5f,
+                    semanticSystem.shaftRect.origin[1] + input.grid * 0.5f};
         }
         output.verticalTransports.push_back(std::move(transport));
     }

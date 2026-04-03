@@ -390,6 +390,13 @@ namespace {
         material->SetOpacity(1.0f);
         material->SetMappingMode(Moon::MappingMode::Triplanar);
 
+        if (materialName == "envelope_shell") {
+            material->SetBaseColor(Moon::Vector3(0.78f, 0.80f, 0.83f));
+            material->SetRoughness(0.86f);
+            material->SetOpacity(0.36f);
+            return material;
+        }
+
         const Moon::MaterialPreset preset = ParseMaterialPreset(materialName);
         material->SetMaterialPreset(preset);
         if (preset == Moon::MaterialPreset::None) {
@@ -412,6 +419,17 @@ namespace {
             ioBuildResult.AddMesh(Moon::CSG::MeshItem(
                 part.mesh,
                 part.material.empty() ? "glass_tinted" : part.material,
+                Moon::CSG::ResolvedTransform(),
+                false));
+        }
+        for (const auto& part : building.floorPlateMeshes) {
+            if (!part.mesh || !part.mesh->IsValid()) {
+                continue;
+            }
+
+            ioBuildResult.AddMesh(Moon::CSG::MeshItem(
+                part.mesh,
+                part.material.empty() ? "concrete_floor" : part.material,
                 Moon::CSG::ResolvedTransform(),
                 false));
         }
@@ -574,7 +592,8 @@ namespace {
             Moon::MeshRenderer* renderer = childNode->AddComponent<Moon::MeshRenderer>();
             renderer->SetMesh(item.mesh);
             Moon::Material* material = AddPreviewMaterial(childNode, item.material);
-            if (translucentBrickGlass && (item.material == "brick" || item.material == "glass")) {
+            if (translucentBrickGlass &&
+                (item.material == "brick" || item.material == "glass" || item.material == "envelope_shell")) {
                 material->SetOpacity(0.42f);
             }
             ++meshCount;
@@ -1719,7 +1738,9 @@ namespace CommandHandlers {
             Moon::MeshRenderer* renderer = childNode->AddComponent<Moon::MeshRenderer>();
             renderer->SetMesh(item.mesh);
             Moon::Material* material = AddPreviewMaterial(childNode, item.material);
-            if (item.material == "brick" || item.material.find("glass") != std::string::npos) {
+            if (item.material == "brick" ||
+                item.material == "envelope_shell" ||
+                item.material.find("glass") != std::string::npos) {
                 material->SetOpacity(0.42f);
             }
         }

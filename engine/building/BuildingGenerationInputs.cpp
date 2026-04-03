@@ -74,6 +74,7 @@ void BuildFloorSpacesFromResolvedLayout(const ResolvedFloorLayout& resolvedFloor
                 : rect.size[0];
             space.stairsConfig.position = resolvedSpace.stairPosition;
             space.stairsConfig.rotationDegrees = resolvedSpace.stairRotationDegrees;
+            space.stairsConfig.footprintRect = rect;
         }
 
         outSpaces.push_back(std::move(space));
@@ -112,6 +113,7 @@ void BuildVerticalTransportsFromResolvedLayout(const ResolvedBuildingLayout& res
             transport.transportId = resolvedTransport.transportId;
             transport.type = resolvedTransport.type;
             transport.shaftRect = resolvedTransport.shaftRect;
+            transport.openingRect = resolvedTransport.openingRect;
             transport.floorFrom = resolvedTransport.floorFrom;
             transport.floorTo = resolvedTransport.floorTo;
             transport.sourceFloorLevel = resolvedTransport.sourceFloorLevel;
@@ -171,6 +173,10 @@ bool SerializeResolvedBuildingLayout(const BuildingFormInput* formInput,
                 transportJson["shaft_rect"] = {
                     {"origin", {transport.shaftRect.origin[0], transport.shaftRect.origin[1]}},
                     {"size", {transport.shaftRect.size[0], transport.shaftRect.size[1]}}
+                };
+                transportJson["opening_rect"] = {
+                    {"origin", {transport.openingRect.origin[0], transport.openingRect.origin[1]}},
+                    {"size", {transport.openingRect.size[0], transport.openingRect.size[1]}}
                 };
                 transportJson["floor_from"] = transport.floorFrom;
                 transportJson["floor_to"] = transport.floorTo;

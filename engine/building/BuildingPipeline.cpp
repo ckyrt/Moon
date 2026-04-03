@@ -1,6 +1,8 @@
 #include "BuildingPipeline.h"
 #include "LayoutResolver.h"
 #include "../core/Assets/AssetPaths.h"
+#include "../core/Geometry/MeshGenerator.h"
+#include "../core/Mesh/Mesh.h"
 #include "../massing/MassRuleParser.h"
 
 #include <algorithm>
@@ -62,6 +64,33 @@ bool RectsMatch(const Moon::Building::Rect& a, const Moon::Building::Rect& b) {
            std::abs(a.origin[1] - b.origin[1]) < 0.001f &&
            std::abs(a.size[0] - b.size[0]) < 0.001f &&
            std::abs(a.size[1] - b.size[1]) < 0.001f;
+}
+
+std::shared_ptr<Moon::Mesh> CreateMassBoxMesh(const Moon::Building::Mass& mass,
+                                              const Moon::Building::BuildingDefinition& definition) {
+    float totalHeight = 0.0f;
+    for (const auto& floor : definition.floors) {
+        if (floor.massId == mass.massId) {
+            totalHeight = std::max(totalHeight,
+                Moon::Building::GetFloorBaseHeight(definition, floor.level) + floor.floorHeight);
+        }
+    }
+    if (totalHeight <= 0.0f) {
+        totalHeight = std::max(3.0f, static_cast<float>(mass.floors) * 3.2f);
+    }
+
+    std::shared_ptr<Moon::Mesh> mesh(Moon::MeshGenerator::CreateCube(1.0f, Moon::Vector3(1, 1, 1)));
+    std::vector<Moon::Vertex> vertices = mesh->GetVertices();
+    const float centerX = mass.origin[0] + mass.size[0] * 0.5f;
+    const float centerY = totalHeight * 0.5f;
+    const float centerZ = mass.origin[1] + mass.size[1] * 0.5f;
+    for (auto& vertex : vertices) {
+        vertex.position.x = centerX + vertex.position.x * mass.size[0];
+        vertex.position.y = centerY + vertex.position.y * totalHeight;
+        vertex.position.z = centerZ + vertex.position.z * mass.size[1];
+    }
+    mesh->SetVertices(std::move(vertices));
+    return mesh;
 }
 
 bool RectContainsPoint(const Moon::Building::Rect& rect, const Moon::Building::GridPos2D& point) {
@@ -444,13 +473,9 @@ bool BuildingPipeline::ProcessMassAndFloors(const BuildingDefinition& definition
 bool BuildingPipeline::GenerateStructuralPlan(const BuildingDefinition& definition,
                                              GeneratedBuilding& outBuilding) {
     std::vector<FloorPlate> slicedFloorPlates;
-    const bool hasMassingRule = std::any_of(definition.masses.begin(), definition.masses.end(),
-        [](const Mass& mass) { return !mass.massingRuleAsset.empty(); });
-    if (hasMassingRule) {
-        std::string sliceError;
-        if (!m_massFloorPlateGenerator.Generate(definition, slicedFloorPlates, sliceError)) {
-            return false;
-        }
+    std::string sliceError;
+    if (!m_massFloorPlateGenerator.Generate(definition, slicedFloorPlates, sliceError)) {
+        return false;
     }
 
     std::string structuralError;
@@ -499,9 +524,9 @@ void BuildingPipeline::ApplyMassDrivenSemanticLayout(BuildingDefinition& definit
             }
 
             const auto existingVoid = std::find_if(plate.voids.begin(), plate.voids.end(),
-                [&](const Rect& voidRect) { return RectsMatch(voidRect, transport.shaftRect); });
+                [&](const Rect& voidRect) { return RectsMatch(voidRect, GetTransportOpeningRect(transport)); });
             if (existingVoid == plate.voids.end()) {
-                plate.voids.push_back(transport.shaftRect);
+                plate.voids.push_back(GetTransportOpeningRect(transport));
             }
         }
     }
@@ -577,6 +602,11 @@ bool BuildingPipeline::GenerateEnvelopeMeshes(const BuildingDefinition& definiti
 
     for (const auto& mass : definition.masses) {
         if (mass.massingRuleAsset.empty()) {
+            GeneratedMeshPart part;
+            part.partId = mass.massId + "_envelope_box";
+            part.material = "envelope_shell";
+            part.mesh = CreateMassBoxMesh(mass, definition);
+            outBuilding.envelopeMeshes.push_back(std::move(part));
             continue;
         }
 
@@ -603,7 +633,7 @@ bool BuildingPipeline::GenerateEnvelopeMeshes(const BuildingDefinition& definiti
         for (size_t i = 0; i < buildResult.items.size(); ++i) {
             GeneratedMeshPart part;
             part.partId = mass.massId + "_envelope_" + std::to_string(i);
-            part.material = buildResult.items[i].material.empty() ? "glass_tinted" : buildResult.items[i].material;
+            part.material = "envelope_shell";
             part.mesh = buildResult.items[i].mesh;
             outBuilding.envelopeMeshes.push_back(std::move(part));
         }

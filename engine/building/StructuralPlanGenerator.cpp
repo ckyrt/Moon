@@ -1,5 +1,6 @@
 #include "StructuralPlanGenerator.h"
 
+#include "../core/Mesh/Mesh.h"
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -10,6 +11,115 @@ namespace {
 
 using namespace Moon::Building;
 constexpr float kSearchEpsilon = 0.001f;
+
+std::vector<GridPos2D> MakeRectOutline(const Rect& rect) {
+    if (rect.size[0] <= 0.0f || rect.size[1] <= 0.0f) {
+        return {};
+    }
+
+    return {
+        {rect.origin[0], rect.origin[1]},
+        {rect.origin[0] + rect.size[0], rect.origin[1]},
+        {rect.origin[0] + rect.size[0], rect.origin[1] + rect.size[1]},
+        {rect.origin[0], rect.origin[1] + rect.size[1]}
+    };
+}
+
+float ComputeSignedArea(const std::vector<GridPos2D>& outline) {
+    if (outline.size() < 3) {
+        return 0.0f;
+    }
+
+    float area = 0.0f;
+    for (size_t i = 0; i < outline.size(); ++i) {
+        const auto& a = outline[i];
+        const auto& b = outline[(i + 1) % outline.size()];
+        area += a[0] * b[1] - b[0] * a[1];
+    }
+    return area * 0.5f;
+}
+
+std::shared_ptr<Moon::Mesh> CreateExtrudedPlateMesh(const std::vector<GridPos2D>& outline,
+                                                    float baseY,
+                                                    float thickness) {
+    if (outline.size() < 3) {
+        return nullptr;
+    }
+
+    std::vector<GridPos2D> loop = outline;
+    if (ComputeSignedArea(loop) < 0.0f) {
+        std::reverse(loop.begin(), loop.end());
+    }
+
+    const float topY = baseY + thickness;
+    std::vector<Moon::Vertex> vertices;
+    std::vector<uint32_t> indices;
+
+    float centerX = 0.0f;
+    float centerZ = 0.0f;
+    for (const auto& point : loop) {
+        centerX += point[0];
+        centerZ += point[1];
+    }
+    centerX /= static_cast<float>(loop.size());
+    centerZ /= static_cast<float>(loop.size());
+
+    const uint32_t topCenterIndex = static_cast<uint32_t>(vertices.size());
+    vertices.emplace_back(Moon::Vector3(centerX, topY, centerZ), Moon::Vector3(0, 1, 0), Moon::Vector3(1, 1, 1));
+    const uint32_t bottomCenterIndex = static_cast<uint32_t>(vertices.size());
+    vertices.emplace_back(Moon::Vector3(centerX, baseY, centerZ), Moon::Vector3(0, -1, 0), Moon::Vector3(1, 1, 1));
+
+    std::vector<uint32_t> topIndices;
+    std::vector<uint32_t> bottomIndices;
+    for (const auto& point : loop) {
+        topIndices.push_back(static_cast<uint32_t>(vertices.size()));
+        vertices.emplace_back(Moon::Vector3(point[0], topY, point[1]), Moon::Vector3(0, 1, 0), Moon::Vector3(1, 1, 1));
+        bottomIndices.push_back(static_cast<uint32_t>(vertices.size()));
+        vertices.emplace_back(Moon::Vector3(point[0], baseY, point[1]), Moon::Vector3(0, -1, 0), Moon::Vector3(1, 1, 1));
+    }
+
+    for (size_t i = 0; i < loop.size(); ++i) {
+        const size_t next = (i + 1) % loop.size();
+        indices.push_back(topCenterIndex);
+        indices.push_back(topIndices[i]);
+        indices.push_back(topIndices[next]);
+
+        indices.push_back(bottomCenterIndex);
+        indices.push_back(bottomIndices[next]);
+        indices.push_back(bottomIndices[i]);
+    }
+
+    for (size_t i = 0; i < loop.size(); ++i) {
+        const size_t next = (i + 1) % loop.size();
+        const GridPos2D a = loop[i];
+        const GridPos2D b = loop[next];
+        const float edgeX = b[0] - a[0];
+        const float edgeZ = b[1] - a[1];
+        const float edgeLen = std::sqrt(edgeX * edgeX + edgeZ * edgeZ);
+        if (edgeLen <= 0.0001f) {
+            continue;
+        }
+
+        const Moon::Vector3 normal(edgeZ / edgeLen, 0.0f, -edgeX / edgeLen);
+        const uint32_t sideBase = static_cast<uint32_t>(vertices.size());
+        vertices.emplace_back(Moon::Vector3(a[0], baseY, a[1]), normal, Moon::Vector3(1, 1, 1));
+        vertices.emplace_back(Moon::Vector3(b[0], baseY, b[1]), normal, Moon::Vector3(1, 1, 1));
+        vertices.emplace_back(Moon::Vector3(b[0], topY, b[1]), normal, Moon::Vector3(1, 1, 1));
+        vertices.emplace_back(Moon::Vector3(a[0], topY, a[1]), normal, Moon::Vector3(1, 1, 1));
+
+        indices.push_back(sideBase + 0);
+        indices.push_back(sideBase + 1);
+        indices.push_back(sideBase + 2);
+        indices.push_back(sideBase + 0);
+        indices.push_back(sideBase + 2);
+        indices.push_back(sideBase + 3);
+    }
+
+    auto mesh = std::make_shared<Moon::Mesh>();
+    mesh->SetVertices(std::move(vertices));
+    mesh->SetIndices(std::move(indices));
+    return mesh->IsValid() ? mesh : nullptr;
+}
 
 std::string ToLowerCopy(const std::string& value) {
     std::string lowered = value;
@@ -450,6 +560,7 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
                                        GeneratedBuilding& outBuilding,
                                        std::string& outError) const {
     outBuilding.floorPlates.clear();
+    outBuilding.floorPlateMeshes.clear();
     outBuilding.verticalCores.clear();
     outBuilding.supportColumns.clear();
     outBuilding.programBlocks.clear();
@@ -493,6 +604,9 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
             plate.massId = floor.massId;
             plate.origin = mass->origin;
             plate.size = mass->size;
+            const Rect massRect{"mass_outline", mass->origin, mass->size};
+            plate.envelopeOutline = MakeRectOutline(massRect);
+            plate.outline = plate.envelopeOutline;
         }
 
         std::vector<Rect> exclusionRects;
@@ -527,6 +641,15 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
         }
 
         outBuilding.floorPlates.push_back(plate);
+        const std::vector<GridPos2D>& slabOutline =
+            plate.envelopeOutline.size() >= 3 ? plate.envelopeOutline : plate.outline;
+        if (auto mesh = CreateExtrudedPlateMesh(slabOutline, GetFloorBaseHeight(definition, floor.level), 0.18f)) {
+            GeneratedMeshPart meshPart;
+            meshPart.partId = "floor_plate_mesh_" + std::to_string(floor.level);
+            meshPart.material = "concrete_floor";
+            meshPart.mesh = std::move(mesh);
+            outBuilding.floorPlateMeshes.push_back(std::move(meshPart));
+        }
         pendingColumnPlans.push_back({plate, exclusionRects});
     }
 

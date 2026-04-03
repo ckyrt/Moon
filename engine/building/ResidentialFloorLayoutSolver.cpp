@@ -30,6 +30,20 @@ bool RectContainsPoint(const Rect& rect, const GridPos2D& point) {
            point[1] < rect.origin[1] + rect.size[1] - 0.001f;
 }
 
+bool RectsOverlap(const Rect& a, const Rect& b, float margin = 0.0f) {
+    const float aMinX = a.origin[0] + margin;
+    const float aMinY = a.origin[1] + margin;
+    const float aMaxX = a.origin[0] + a.size[0] - margin;
+    const float aMaxY = a.origin[1] + a.size[1] - margin;
+    const float bMinX = b.origin[0] + margin;
+    const float bMinY = b.origin[1] + margin;
+    const float bMaxX = b.origin[0] + b.size[0] - margin;
+    const float bMaxY = b.origin[1] + b.size[1] - margin;
+
+    return aMinX < bMaxX - 0.001f && aMaxX > bMinX + 0.001f &&
+           aMinY < bMaxY - 0.001f && aMaxY > bMinY + 0.001f;
+}
+
 bool PointInOutline(const std::vector<GridPos2D>& outline, const GridPos2D& point) {
     if (outline.size() < 3) {
         return false;
@@ -81,6 +95,13 @@ bool RectFitsPlate(const FloorPlate& plate, const Rect& rect, float margin) {
     }
 
     return true;
+}
+
+bool RectAvoidsBlockedAreas(const Rect& rect,
+                            const std::vector<Rect>& blockedRects,
+                            float margin) {
+    return std::none_of(blockedRects.begin(), blockedRects.end(),
+        [&](const Rect& blocked) { return RectsOverlap(rect, blocked, margin); });
 }
 
 bool IsResidentialUnitUsage(SpaceUsage usage) {
@@ -325,6 +346,11 @@ ResolvedVerticalTransportPlan MakeResolvedVerticalTransport(const SemanticVertic
     transport.transportId = system.id;
     transport.type = system.type == "elevator" ? VerticalTransportType::Elevator : VerticalTransportType::Stair;
     transport.shaftRect = system.shaftRect;
+    transport.openingRect = transport.type == VerticalTransportType::Elevator
+        ? system.shaftRect
+        : ComputeTransportOpeningRect(system.shaftRect,
+                                      ParseStairType(system.stairForm),
+                                      DetermineStairRotationDegrees(system.shaftRect));
     transport.floorFrom = system.floorFrom;
     transport.floorTo = system.floorTo;
     transport.sourceFloorLevel = system.floorFrom;
@@ -332,12 +358,17 @@ ResolvedVerticalTransportPlan MakeResolvedVerticalTransport(const SemanticVertic
     transport.enclosed = system.mode != "open";
     transport.external = system.placement == "external";
     transport.stairType = ParseStairType(system.stairForm);
-    transport.width = std::min(system.shaftRect.size[0], system.shaftRect.size[1]);
+    transport.width = transport.type == VerticalTransportType::Elevator
+        ? std::min(system.shaftRect.size[0], system.shaftRect.size[1])
+        : ComputeTransportRunWidth(system.shaftRect, transport.stairType);
     transport.position = transport.type == VerticalTransportType::Elevator
         ? GridPos2D{system.shaftRect.origin[0] + system.shaftRect.size[0] * 0.5f,
                     system.shaftRect.origin[1] + system.shaftRect.size[1] * 0.5f}
-        : GridPos2D{system.shaftRect.origin[0] + system.shaftRect.size[0] * 0.5f,
-                    system.shaftRect.origin[1] + 0.25f};
+        : (IsQuarterTurnRotation(DetermineStairRotationDegrees(system.shaftRect))
+            ? GridPos2D{system.shaftRect.origin[0] + 0.25f,
+                        system.shaftRect.origin[1] + transport.width * 0.5f}
+            : GridPos2D{system.shaftRect.origin[0] + transport.width * 0.5f,
+                        system.shaftRect.origin[1] + 0.25f});
     transport.rotationDegrees = DetermineStairRotationDegrees(system.shaftRect);
     return transport;
 }
@@ -401,6 +432,21 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
         }
     }
 
+    std::vector<Rect> blockedRects;
+    for (const auto& system : layoutInput.verticalSystems) {
+        if (system.placement == "external") {
+            continue;
+        }
+        if (system.shaftRect.size[0] > 0.0f && system.shaftRect.size[1] > 0.0f) {
+            blockedRects.push_back(system.shaftRect);
+        }
+    }
+    for (const auto& core : floorCores) {
+        if (core.rect.size[0] > 0.0f && core.rect.size[1] > 0.0f) {
+            blockedRects.push_back(core.rect);
+        }
+    }
+
     Rect combinedCore = MergeCoreEnvelope(floorCores);
     if (combinedCore.size[0] <= 0.0f || combinedCore.size[1] <= 0.0f) {
         combinedCore = MergeTransportEnvelope(layoutInput.verticalSystems, false);
@@ -420,7 +466,7 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
         };
     }
 
-    const float corridorWidth = std::max(1.8f, definition.grid * 3.0f);
+    const float corridorWidth = std::max(2.0f, definition.grid * 4.0f);
     Rect corridorRect;
     corridorRect.rectId = "residential_corridor";
     corridorRect.origin = {
@@ -448,14 +494,14 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
     leftUnitBand.rectId = "residential_unit_left";
     leftUnitBand.origin = {floorPlate.origin[0] + margin, floorPlate.origin[1] + margin};
     leftUnitBand.size = {
-        std::max(4.5f, corridorRect.origin[0] - leftUnitBand.origin[0] - definition.grid),
+        std::max(4.5f, corridorRect.origin[0] - leftUnitBand.origin[0]),
         std::max(5.0f, floorPlate.size[1] - margin * 2.0f)
     };
 
     Rect rightUnitBand;
     rightUnitBand.rectId = "residential_unit_right";
     rightUnitBand.origin = {
-        corridorRect.origin[0] + corridorRect.size[0] + definition.grid,
+        corridorRect.origin[0] + corridorRect.size[0],
         floorPlate.origin[1] + margin
     };
     rightUnitBand.size = {
@@ -555,7 +601,8 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
                 std::max(10.0f, semanticSpace.areaPreferred),
                 std::max(2.4f, semanticSpace.constraints.minWidth));
             candidate.rectId = semanticSpace.spaceId;
-            if (!RectFitsPlate(floorPlate, candidate, margin)) {
+            if (!RectFitsPlate(floorPlate, candidate, margin) ||
+                !RectAvoidsBlockedAreas(candidate, blockedRects, 0.05f)) {
                 continue;
             }
 
@@ -586,7 +633,8 @@ bool ResidentialFloorLayoutSolver::GenerateFloor(const BuildingDefinition& defin
                 std::max(6.0f, semanticSpace.areaPreferred),
                 std::max(2.0f, semanticSpace.constraints.minWidth));
             candidate.rectId = semanticSpace.spaceId;
-            if (!RectFitsPlate(floorPlate, candidate, margin)) {
+            if (!RectFitsPlate(floorPlate, candidate, margin) ||
+                !RectAvoidsBlockedAreas(candidate, blockedRects, 0.05f)) {
                 continue;
             }
 

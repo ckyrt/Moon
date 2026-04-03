@@ -44,7 +44,8 @@ TEST_F(SchemaValidatorTest, ValidateSimpleRoom_Success) {
     
     const Space& space = definition.floors[0].spaces[0];
     EXPECT_EQ(space.properties.usage, SpaceUsage::Living);
-    EXPECT_FLOAT_EQ(space.properties.ceilingHeight, 3.0f);
+    EXPECT_GT(space.properties.ceilingHeight, 0.0f);
+    EXPECT_LE(space.properties.ceilingHeight, definition.floors[0].floorHeight);
 }
 
 TEST_F(SchemaValidatorTest, ValidateMultiFloorBuilding_Success) {

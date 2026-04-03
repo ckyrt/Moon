@@ -172,7 +172,11 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
         }
 
         std::vector<VerticalCore> floorCores = CollectFloorCores(verticalCores, floor.level);
+        const std::vector<VerticalCore> inferredFloorCores = floorCores;
         floorCores = FilterFloorCoresForSemanticInput(floorCores, *semanticFloor, layoutInput, floor.level);
+        if (floorCores.empty() && !inferredFloorCores.empty()) {
+            floorCores = inferredFloorCores;
+        }
         const bool needsStructuredCoreLayout = typology == LayoutTypology::Office ||
             typology == LayoutTypology::Residential;
         if (needsStructuredCoreLayout && floorCores.empty() && !FloorDeclaresCoreLikeSpaces(*semanticFloor) &&

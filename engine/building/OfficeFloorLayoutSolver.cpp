@@ -42,6 +42,20 @@ bool RectContainsPoint(const Rect& rect, const GridPos2D& point) {
            point[1] < rect.origin[1] + rect.size[1] - 0.001f;
 }
 
+bool RectsOverlap(const Rect& a, const Rect& b, float margin = 0.0f) {
+    const float aMinX = a.origin[0] + margin;
+    const float aMinY = a.origin[1] + margin;
+    const float aMaxX = a.origin[0] + a.size[0] - margin;
+    const float aMaxY = a.origin[1] + a.size[1] - margin;
+    const float bMinX = b.origin[0] + margin;
+    const float bMinY = b.origin[1] + margin;
+    const float bMaxX = b.origin[0] + b.size[0] - margin;
+    const float bMaxY = b.origin[1] + b.size[1] - margin;
+
+    return aMinX < bMaxX - 0.001f && aMaxX > bMinX + 0.001f &&
+           aMinY < bMaxY - 0.001f && aMaxY > bMinY + 0.001f;
+}
+
 bool RectFitsPlate(const FloorPlate& plate, const Rect& rect, float margin) {
     const std::array<GridPos2D, 5> samplePoints = {{
         {rect.origin[0] + margin, rect.origin[1] + margin},
@@ -75,6 +89,13 @@ bool RectFitsPlate(const FloorPlate& plate, const Rect& rect, float margin) {
     }
 
     return true;
+}
+
+bool RectAvoidsBlockedAreas(const Rect& rect,
+                            const std::vector<Rect>& blockedRects,
+                            float margin) {
+    return std::none_of(blockedRects.begin(), blockedRects.end(),
+        [&](const Rect& blocked) { return RectsOverlap(rect, blocked, margin); });
 }
 
 GridPos2D ComputePlateCenter(const FloorPlate& plate) {
@@ -321,6 +342,7 @@ ResolvedSpacePlan MakeResolvedSpace(const std::string& spaceId,
 ResolvedVerticalTransportPlan MakeResolvedVerticalTransport(const std::string& transportId,
                                                             VerticalTransportType type,
                                                             const Rect& shaftRect,
+                                                            const Rect& openingRect,
                                                             int floorFrom,
                                                             int floorTo,
                                                             float width,
@@ -331,6 +353,7 @@ ResolvedVerticalTransportPlan MakeResolvedVerticalTransport(const std::string& t
     transport.transportId = transportId;
     transport.type = type;
     transport.shaftRect = shaftRect;
+    transport.openingRect = openingRect;
     transport.floorFrom = floorFrom;
     transport.floorTo = floorTo;
     transport.sourceFloorLevel = floorFrom;
@@ -346,23 +369,32 @@ ResolvedVerticalTransportPlan MakeResolvedVerticalTransportFromSemantic(const Se
     const VerticalTransportType type = system.type == "elevator"
         ? VerticalTransportType::Elevator
         : VerticalTransportType::Stair;
-    const float width = std::min(system.shaftRect.size[0], system.shaftRect.size[1]);
+    const StairType stairType = ParseStairType(system.stairForm);
+    const float width = type == VerticalTransportType::Elevator
+        ? std::min(system.shaftRect.size[0], system.shaftRect.size[1])
+        : ComputeTransportRunWidth(system.shaftRect, stairType);
     const float rotation = DetermineStairRotationDegrees(system.shaftRect);
     const GridPos2D position = type == VerticalTransportType::Elevator
         ? GridPos2D{system.shaftRect.origin[0] + system.shaftRect.size[0] * 0.5f,
                     system.shaftRect.origin[1] + system.shaftRect.size[1] * 0.5f}
-        : GridPos2D{system.shaftRect.origin[0] + system.shaftRect.size[0] * 0.5f,
-                    system.shaftRect.origin[1] + 0.25f};
+        : (IsQuarterTurnRotation(rotation)
+            ? GridPos2D{system.shaftRect.origin[0] + 0.25f,
+                        system.shaftRect.origin[1] + width * 0.5f}
+            : GridPos2D{system.shaftRect.origin[0] + width * 0.5f,
+                        system.shaftRect.origin[1] + 0.25f});
     auto transport = MakeResolvedVerticalTransport(
         system.id,
         type,
         system.shaftRect,
+        type == VerticalTransportType::Elevator
+            ? system.shaftRect
+            : ComputeTransportOpeningRect(system.shaftRect, stairType, rotation),
         system.floorFrom,
         system.floorTo,
         width,
         position,
         rotation,
-        ParseStairType(system.stairForm));
+        stairType);
     transport.enclosed = system.mode != "open";
     transport.external = system.placement == "external";
     transport.continuousShaft = type == VerticalTransportType::Elevator || system.type == "stairwell";
@@ -411,6 +443,20 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
     const float corridorWidth = definition.style.category == "commercial" ? 2.5f : 2.0f;
     const float margin = std::max(0.2f, definition.grid * 0.5f);
     const float sideInset = std::max(0.8f, corridorWidth);
+    std::vector<Rect> blockedRects;
+    for (const auto& system : layoutInput.verticalSystems) {
+        if (system.placement == "external") {
+            continue;
+        }
+        if (system.shaftRect.size[0] > 0.0f && system.shaftRect.size[1] > 0.0f) {
+            blockedRects.push_back(system.shaftRect);
+        }
+    }
+    for (const auto& core : floorCores) {
+        if (core.rect.size[0] > 0.0f && core.rect.size[1] > 0.0f) {
+            blockedRects.push_back(core.rect);
+        }
+    }
     const Rect safeInterior = ComputeSafeInteriorRect(floorPlate, margin);
     if (safeInterior.size[0] <= 0.0f || safeInterior.size[1] <= 0.0f) {
         outError = "Failed to find a valid interior region inside sliced office floor plate";
@@ -498,6 +544,7 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
                         semanticSpace.spaceId,
                         VerticalTransportType::Elevator,
                         matchedCore->rect,
+                        matchedCore->rect,
                         0,
                         definition.floors.empty() ? 0 : definition.floors.back().level,
                         matchedCore->rect.size[0],
@@ -516,6 +563,7 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
                         semanticSpace.spaceId,
                         VerticalTransportType::Stair,
                         matchedCore->rect,
+                        ComputeTransportOpeningRect(matchedCore->rect, stairType, stairRotation),
                         layoutInput.level,
                         semanticSpace.constraints.connectsToFloor,
                         stairWidth,
@@ -554,7 +602,8 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
             std::max(2.0f, semanticSpace.constraints.minWidth));
         candidate.rectId = semanticSpace.spaceId;
 
-        if (!RectFitsPlate(floorPlate, candidate, 0.1f)) {
+        if (!RectFitsPlate(floorPlate, candidate, 0.1f) ||
+            !RectAvoidsBlockedAreas(candidate, blockedRects, 0.05f)) {
             continue;
         }
 
@@ -616,7 +665,8 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
                 candidate = FitRectToArea(candidate,
                     std::max(8.0f, semanticSpace.areaPreferred),
                     std::max(2.0f, semanticSpace.constraints.minWidth));
-                if (!RectFitsPlate(floorPlate, candidate, 0.1f)) {
+                if (!RectFitsPlate(floorPlate, candidate, 0.1f) ||
+                    !RectAvoidsBlockedAreas(candidate, blockedRects, 0.05f)) {
                     continue;
                 }
 

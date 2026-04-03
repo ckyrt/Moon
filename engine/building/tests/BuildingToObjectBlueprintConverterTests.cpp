@@ -309,7 +309,7 @@ TEST_F(BuildingToObjectBlueprintConverterTest, MassDrivenBuilding_DoesNotPlaceSu
     }
 }
 
-TEST_F(BuildingToObjectBlueprintConverterTest, StraightStairsEmitProceduralStairNodes) {
+TEST_F(BuildingToObjectBlueprintConverterTest, StraightStairsExportAsExplicitGeometry) {
     std::string inputJson = TestHelpers::CreateShoppingCenter();
     GeneratedBuilding building;
     std::string errorMsg;
@@ -324,18 +324,95 @@ TEST_F(BuildingToObjectBlueprintConverterTest, StraightStairsEmitProceduralStair
     ASSERT_TRUE(j.contains("root"));
     ASSERT_TRUE(j["root"].contains("children"));
 
-    bool foundProceduralStair = false;
-    for (const auto& child : j["root"]["children"]) {
-        if (!child.is_object() || !child.contains("type")) {
-            continue;
+    std::function<bool(const json&)> containsProceduralStair = [&](const json& node) {
+        if (node.is_object()) {
+            if (node.contains("type") && node["type"].is_string() &&
+                node["type"].get<std::string>() == "stair") {
+                return true;
+            }
+            if (node.contains("children") && node["children"].is_array()) {
+                for (const auto& child : node["children"]) {
+                    if (containsProceduralStair(child)) {
+                        return true;
+                    }
+                }
+            }
+        } else if (node.is_array()) {
+            for (const auto& child : node) {
+                if (containsProceduralStair(child)) {
+                    return true;
+                }
+            }
         }
-        if (child["type"] == "stair") {
-            foundProceduralStair = true;
-            break;
-        }
-    }
+        return false;
+    };
 
-    EXPECT_TRUE(foundProceduralStair) << "Expected building converter to emit procedural stair nodes";
+    std::function<int(const json&)> countCubeNodes = [&](const json& node) {
+        int count = 0;
+        if (node.is_object()) {
+            if (node.contains("type") && node["type"].is_string() &&
+                node["type"].get<std::string>() == "primitive" &&
+                node.contains("primitive") && node["primitive"].is_string() &&
+                node["primitive"].get<std::string>() == "cube") {
+                ++count;
+            }
+            if (node.contains("children") && node["children"].is_array()) {
+                for (const auto& child : node["children"]) {
+                    count += countCubeNodes(child);
+                }
+            }
+        } else if (node.is_array()) {
+            for (const auto& child : node) {
+                count += countCubeNodes(child);
+            }
+        }
+        return count;
+    };
+
+    EXPECT_FALSE(containsProceduralStair(j["root"]))
+        << "Expected stair export to use explicit geometry instead of procedural stair nodes";
+    EXPECT_GT(countCubeNodes(j["root"]), 0)
+        << "Expected stair export to contribute explicit cube geometry";
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, StairsExportAsExplicitGeometryInsteadOfProceduralNodes) {
+    std::string inputJson = TestHelpers::LoadFromFile("office_dual_egress_tower_demo.json");
+    GeneratedBuilding building;
+    std::string errorMsg;
+
+    bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
+    ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    ASSERT_TRUE(j.contains("root"));
+    ASSERT_TRUE(j["root"].contains("children"));
+
+    std::function<bool(const json&)> containsProceduralStair = [&](const json& node) {
+        if (node.is_object()) {
+            if (node.contains("type") && node["type"].is_string() &&
+                node["type"].get<std::string>() == "stair") {
+                return true;
+            }
+            if (node.contains("children") && node["children"].is_array()) {
+                for (const auto& child : node["children"]) {
+                    if (containsProceduralStair(child)) {
+                        return true;
+                    }
+                }
+            }
+            if (node.contains("left") && containsProceduralStair(node["left"])) {
+                return true;
+            }
+            if (node.contains("right") && containsProceduralStair(node["right"])) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    EXPECT_FALSE(containsProceduralStair(j["root"]));
 }
 
 TEST_F(BuildingToObjectBlueprintConverterTest, ElevatorShaftsEmitCabinReferences) {

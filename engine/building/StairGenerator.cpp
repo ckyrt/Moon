@@ -13,14 +13,114 @@ GridPos2D RotateOffset(const GridPos2D& offset, float rotationDegrees) {
     const float cosTheta = std::cos(radians);
     const float sinTheta = std::sin(radians);
     return {
-        offset[0] * cosTheta - offset[1] * sinTheta,
-        offset[0] * sinTheta + offset[1] * cosTheta
+        offset[0] * cosTheta + offset[1] * sinTheta,
+        -offset[0] * sinTheta + offset[1] * cosTheta
     };
 }
 
 GridPos2D TranslateRotated(const GridPos2D& origin, const GridPos2D& offset, float rotationDegrees) {
     const GridPos2D rotated = RotateOffset(offset, rotationDegrees);
     return {origin[0] + rotated[0], origin[1] + rotated[1]};
+}
+
+Rect ComputeStairPlanBounds(const StairGeometry& geometry) {
+    Rect bounds;
+    bool hasAny = false;
+    float minX = 0.0f;
+    float minY = 0.0f;
+    float maxX = 0.0f;
+    float maxY = 0.0f;
+
+    auto accumulate = [&](const GridPos2D& center, float sizeX, float sizeY) {
+        const float rectMinX = center[0] - sizeX * 0.5f;
+        const float rectMinY = center[1] - sizeY * 0.5f;
+        const float rectMaxX = center[0] + sizeX * 0.5f;
+        const float rectMaxY = center[1] + sizeY * 0.5f;
+        if (!hasAny) {
+            minX = rectMinX;
+            minY = rectMinY;
+            maxX = rectMaxX;
+            maxY = rectMaxY;
+            hasAny = true;
+        } else {
+            minX = std::min(minX, rectMinX);
+            minY = std::min(minY, rectMinY);
+            maxX = std::max(maxX, rectMaxX);
+            maxY = std::max(maxY, rectMaxY);
+        }
+    };
+
+    for (const auto& step : geometry.steps) {
+        const bool quarterTurn = IsQuarterTurnRotation(step.rotation);
+        const float sizeX = quarterTurn ? geometry.stepDepth : geometry.stairWidth;
+        const float sizeY = quarterTurn ? geometry.stairWidth : geometry.stepDepth;
+        accumulate(step.position, sizeX, sizeY);
+    }
+
+    for (const auto& landing : geometry.landings) {
+        const bool quarterTurn = IsQuarterTurnRotation(landing.rotation);
+        const float sizeX = quarterTurn ? landing.depth : landing.width;
+        const float sizeY = quarterTurn ? landing.width : landing.depth;
+        accumulate(landing.position, sizeX, sizeY);
+    }
+
+    if (!hasAny) {
+        return bounds;
+    }
+
+    bounds.origin = {minX, minY};
+    bounds.size = {maxX - minX, maxY - minY};
+    return bounds;
+}
+
+void TranslateStairGeometry(StairGeometry& geometry, float offsetX, float offsetY) {
+    geometry.position[0] += offsetX;
+    geometry.position[1] += offsetY;
+    geometry.config.position[0] += offsetX;
+    geometry.config.position[1] += offsetY;
+    for (auto& step : geometry.steps) {
+        step.position[0] += offsetX;
+        step.position[1] += offsetY;
+    }
+    for (auto& landing : geometry.landings) {
+        landing.position[0] += offsetX;
+        landing.position[1] += offsetY;
+    }
+}
+
+void FitStairGeometryToFootprint(StairGeometry& geometry) {
+    const Rect& footprint = geometry.config.footprintRect;
+    if (footprint.size[0] <= 0.0f || footprint.size[1] <= 0.0f) {
+        return;
+    }
+
+    const Rect bounds = ComputeStairPlanBounds(geometry);
+    if (bounds.size[0] <= 0.0f || bounds.size[1] <= 0.0f) {
+        return;
+    }
+
+    float offsetX = 0.0f;
+    float offsetY = 0.0f;
+    const float footprintMaxX = footprint.origin[0] + footprint.size[0];
+    const float footprintMaxY = footprint.origin[1] + footprint.size[1];
+    const float boundsMaxX = bounds.origin[0] + bounds.size[0];
+    const float boundsMaxY = bounds.origin[1] + bounds.size[1];
+
+    if (bounds.origin[0] < footprint.origin[0]) {
+        offsetX += footprint.origin[0] - bounds.origin[0];
+    } else if (boundsMaxX > footprintMaxX) {
+        offsetX -= boundsMaxX - footprintMaxX;
+    }
+
+    if (bounds.origin[1] < footprint.origin[1]) {
+        offsetY += footprint.origin[1] - bounds.origin[1];
+    } else if (boundsMaxY > footprintMaxY) {
+        offsetY -= boundsMaxY - footprintMaxY;
+    }
+
+    if (std::abs(offsetX) > 0.0001f || std::abs(offsetY) > 0.0001f) {
+        TranslateStairGeometry(geometry, offsetX, offsetY);
+    }
 }
 
 } // namespace
@@ -53,6 +153,7 @@ void StairGenerator::GenerateStairs(const BuildingDefinition& definition,
         config.position = transport.position;
         config.width = transport.width > 0.0f ? transport.width : transport.shaftRect.size[0];
         config.rotationDegrees = transport.rotationDegrees;
+        config.footprintRect = transport.shaftRect;
 
         StairGeometry geometry;
         geometry.config = config;
@@ -78,6 +179,7 @@ void StairGenerator::GenerateStairs(const BuildingDefinition& definition,
                 break;
         }
 
+        FitStairGeometryToFootprint(geometry);
         ValidateStairGeometry(geometry);
         outStairs.push_back(std::move(geometry));
     };
@@ -139,6 +241,7 @@ void StairGenerator::GenerateStairs(const BuildingDefinition& definition,
                     break;
             }
             
+            FitStairGeometryToFootprint(geometry);
             // Validate geometry
             ValidateStairGeometry(geometry);
             
@@ -161,12 +264,22 @@ void StairGenerator::GenerateStraightStair(const StairConfig& config,
     outGeometry.stepHeight = stepHeight;
     outGeometry.stepDepth = stepDepth;
     outGeometry.stairLength = numSteps * stepDepth;
-    
+
     // Generate individual step positions
     outGeometry.steps.clear();
+    const bool hasFootprint = config.footprintRect.size[0] > 0.0f && config.footprintRect.size[1] > 0.0f;
+    const bool quarterTurn = std::abs(NormalizeRotationDegrees(config.rotationDegrees) - 90.0f) < 1.0f ||
+                             std::abs(NormalizeRotationDegrees(config.rotationDegrees) - 270.0f) < 1.0f;
+    const GridPos2D startPosition = hasFootprint
+        ? (quarterTurn
+            ? GridPos2D{config.footprintRect.origin[0] + stepDepth * 0.5f,
+                        config.footprintRect.origin[1] + config.width * 0.5f}
+            : GridPos2D{config.footprintRect.origin[0] + config.width * 0.5f,
+                        config.footprintRect.origin[1] + stepDepth * 0.5f})
+        : config.position;
     for (int i = 0; i < numSteps; ++i) {
         StepData step;
-        step.position = TranslateRotated(config.position, {0.0f, i * stepDepth}, config.rotationDegrees);
+        step.position = TranslateRotated(startPosition, {0.0f, i * stepDepth}, config.rotationDegrees);
         step.height = i * stepHeight;
         step.rotation = config.rotationDegrees;
         outGeometry.steps.push_back(step);
@@ -188,21 +301,44 @@ void StairGenerator::GenerateLStair(const StairConfig& config,
     outGeometry.numSteps = numSteps;
     outGeometry.stepHeight = stepHeight;
     outGeometry.stepDepth = stepDepth;
-    
+
     int stepsBeforeLanding = numSteps / 2;
     int stepsAfterLanding = numSteps - stepsBeforeLanding;
     float landingHeight = stepsBeforeLanding * stepHeight;
-    
-    // Calculate total length considering the L-shape
+
+    const bool hasFootprint = config.footprintRect.size[0] > 0.0f && config.footprintRect.size[1] > 0.0f;
+    float runWidth = config.width;
     float firstRunLength = stepsBeforeLanding * stepDepth;
     float secondRunLength = stepsAfterLanding * stepDepth;
-    outGeometry.stairLength = firstRunLength + secondRunLength + config.width; // Approximate
-    
+    GridPos2D startPosition = config.position;
+    if (hasFootprint) {
+        runWidth = std::max(0.9f, std::min(config.width, ComputeTransportRunWidth(config.footprintRect, StairType::L)));
+        const float availablePrimary = std::max(runWidth, config.footprintRect.size[1] - runWidth);
+        const float availableSecondary = std::max(runWidth, config.footprintRect.size[0] - runWidth);
+        firstRunLength = availablePrimary;
+        secondRunLength = availableSecondary;
+        stepsBeforeLanding = std::max(1, static_cast<int>(std::round(static_cast<float>(numSteps) *
+            (firstRunLength / std::max(0.001f, firstRunLength + secondRunLength)))));
+        stepsBeforeLanding = std::min(stepsBeforeLanding, numSteps - 1);
+        stepsAfterLanding = numSteps - stepsBeforeLanding;
+        firstRunLength = std::max(stepDepth, firstRunLength);
+        secondRunLength = std::max(stepDepth, secondRunLength);
+        startPosition = {
+            config.footprintRect.origin[0] + runWidth * 0.5f,
+            config.footprintRect.origin[1] + stepDepth * 0.5f
+        };
+    }
+    outGeometry.stairWidth = runWidth;
+    outGeometry.stairLength = firstRunLength + secondRunLength + runWidth;
+
     // Generate steps for first run (along initial direction)
     outGeometry.steps.clear();
     for (int i = 0; i < stepsBeforeLanding; ++i) {
         StepData step;
-        step.position = TranslateRotated(config.position, {0.0f, i * stepDepth}, config.rotationDegrees);
+        const float localStepDepth = hasFootprint
+            ? firstRunLength / std::max(1, stepsBeforeLanding)
+            : stepDepth;
+        step.position = TranslateRotated(startPosition, {0.0f, i * localStepDepth}, config.rotationDegrees);
         step.height = i * stepHeight;
         step.rotation = config.rotationDegrees;
         outGeometry.steps.push_back(step);
@@ -210,19 +346,22 @@ void StairGenerator::GenerateLStair(const StairConfig& config,
     
     // Add landing platform
     LandingPlatform landing;
-    landing.position = TranslateRotated(config.position, {0.0f, firstRunLength}, config.rotationDegrees);
-    landing.width = config.width;
-    landing.depth = config.width; // Square landing typically
+    landing.position = TranslateRotated(startPosition, {0.0f, firstRunLength}, config.rotationDegrees);
+    landing.width = runWidth;
+    landing.depth = runWidth;
     landing.height = landingHeight;
     landing.rotation = config.rotationDegrees;
     outGeometry.landings.push_back(landing);
-    
+
     // Generate steps for second run (perpendicular direction)
     for (int i = 0; i < stepsAfterLanding; ++i) {
         StepData step;
+        const float localStepDepth = hasFootprint
+            ? secondRunLength / std::max(1, stepsAfterLanding)
+            : stepDepth;
         step.position = TranslateRotated(
-            config.position,
-            {i * stepDepth, firstRunLength + config.width},
+            startPosition,
+            {i * localStepDepth, firstRunLength + runWidth},
             config.rotationDegrees);
         step.height = landingHeight + i * stepHeight;
         step.rotation = config.rotationDegrees + 90.0f;
@@ -246,16 +385,33 @@ void StairGenerator::GenerateUStair(const StairConfig& config,
     int stepsBeforeLanding = numSteps / 2;
     int stepsAfterLanding = numSteps - stepsBeforeLanding;
     float landingHeight = stepsBeforeLanding * stepHeight;
-    
+
+    const bool hasFootprint = config.footprintRect.size[0] > 0.0f && config.footprintRect.size[1] > 0.0f;
+    float runWidth = config.width;
     float firstRunLength = stepsBeforeLanding * stepDepth;
     float secondRunLength = stepsAfterLanding * stepDepth;
+    GridPos2D startPosition = config.position;
+    if (hasFootprint) {
+        runWidth = std::max(0.9f, std::min(config.width, ComputeTransportRunWidth(config.footprintRect, StairType::U)));
+        const float availablePrimary = std::max(stepDepth, config.footprintRect.size[1] - runWidth);
+        firstRunLength = availablePrimary;
+        secondRunLength = availablePrimary;
+        startPosition = {
+            config.footprintRect.origin[0] + runWidth * 0.5f,
+            config.footprintRect.origin[1] + stepDepth * 0.5f
+        };
+    }
     outGeometry.stairLength = firstRunLength + secondRunLength;
-    
+    outGeometry.stairWidth = runWidth;
+
     // Generate steps for first run (going up)
     outGeometry.steps.clear();
     for (int i = 0; i < stepsBeforeLanding; ++i) {
         StepData step;
-        step.position = TranslateRotated(config.position, {0.0f, i * stepDepth}, config.rotationDegrees);
+        const float localStepDepth = hasFootprint
+            ? firstRunLength / std::max(1, stepsBeforeLanding)
+            : stepDepth;
+        step.position = TranslateRotated(startPosition, {0.0f, i * localStepDepth}, config.rotationDegrees);
         step.height = i * stepHeight;
         step.rotation = config.rotationDegrees;
         outGeometry.steps.push_back(step);
@@ -263,19 +419,22 @@ void StairGenerator::GenerateUStair(const StairConfig& config,
     
     // Add landing platform
     LandingPlatform landing;
-    landing.position = TranslateRotated(config.position, {0.0f, firstRunLength}, config.rotationDegrees);
-    landing.width = config.width;
-    landing.depth = config.width;
+    landing.position = TranslateRotated(startPosition, {0.0f, firstRunLength}, config.rotationDegrees);
+    landing.width = runWidth;
+    landing.depth = runWidth;
     landing.height = landingHeight;
     landing.rotation = config.rotationDegrees;
     outGeometry.landings.push_back(landing);
-    
+
     // Generate steps for second run (coming back parallel)
     for (int i = 0; i < stepsAfterLanding; ++i) {
         StepData step;
+        const float localStepDepth = hasFootprint
+            ? secondRunLength / std::max(1, stepsAfterLanding)
+            : stepDepth;
         step.position = TranslateRotated(
-            config.position,
-            {config.width, firstRunLength - i * stepDepth},
+            startPosition,
+            {runWidth, firstRunLength - i * localStepDepth},
             config.rotationDegrees);
         step.height = landingHeight + i * stepHeight;
         step.rotation = config.rotationDegrees + 180.0f;
