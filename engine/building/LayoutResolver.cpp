@@ -93,6 +93,35 @@ float DetermineStairRotationDegrees(const GridSize2D& size) {
     return size[0] >= size[1] ? 90.0f : 0.0f;
 }
 
+void FitFloorHeightsToMassTotalHeight(const SemanticBuilding& input,
+                                      Moon::Building::BuildingDefinition& output) {
+    if (input.mass.totalHeight <= 0.0f || output.floors.empty()) {
+        return;
+    }
+
+    float resolvedTotalHeight = 0.0f;
+    for (const auto& floor : output.floors) {
+        resolvedTotalHeight += std::max(0.0f, floor.floorHeight);
+    }
+    if (resolvedTotalHeight <= 0.001f) {
+        return;
+    }
+
+    const float scale = input.mass.totalHeight / resolvedTotalHeight;
+    if (std::abs(scale - 1.0f) <= 0.001f) {
+        return;
+    }
+
+    for (auto& floor : output.floors) {
+        floor.floorHeight = std::max(0.1f, floor.floorHeight * scale);
+        for (auto& space : floor.spaces) {
+            if (space.properties.ceilingHeight > 0.0f) {
+                space.properties.ceilingHeight = std::max(0.1f, space.properties.ceilingHeight * scale);
+            }
+        }
+    }
+}
+
 StairType ParseStairType(const std::string& stairForm) {
     if (stairForm == "u") {
         return StairType::U;
@@ -181,6 +210,7 @@ bool SemanticBuildingParser::ParseFromString(
             building.style.roof = style.value("roof", "");
             building.style.windowStyle = style.value("window_style", "");
             building.style.material = style.value("material", "");
+            building.style.facadeOffset = style.value("facade_offset", 0.0f);
         }
         
         // Parse mass
@@ -978,6 +1008,7 @@ void LayoutResolver::BuildOutput(BuildingDefinition& output, const SemanticBuild
     output.style.roof = input.style.roof;
     output.style.windowStyle = input.style.windowStyle;
     output.style.material = input.style.material;
+    output.style.facadeOffset = input.style.facadeOffset;
     
     // Create mass
     Mass mass;
@@ -1127,6 +1158,8 @@ void LayoutResolver::BuildOutput(BuildingDefinition& output, const SemanticBuild
         
         output.floors.push_back(floor);
     }
+
+    FitFloorHeightsToMassTotalHeight(input, output);
     
     MOON_LOG_INFO("LayoutResolver", "Built output: %zu masses, %zu floors",
                   output.masses.size(), output.floors.size());

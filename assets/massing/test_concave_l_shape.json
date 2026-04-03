@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "test_concave_l_shape",
+  "description": "Minimal concave L-shaped mass used for floor plate regression tests",
+  "unit": "meter",
+  "root": {
+    "id": "l_shape_root",
+    "name": "l_shape_root",
+    "type": "extrude",
+    "material": "concrete",
+    "params": {
+      "height": 12.0
+    },
+    "profiles": [
+      {
+        "id": "l_shape_profile",
+        "closed": true,
+        "points": [[0, 0], [8, 0], [8, 2], [2, 2], [2, 8], [0, 8]]
+      }
+    ]
+  }
+}

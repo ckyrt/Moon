@@ -85,6 +85,13 @@
       "tags": ["level2", "architectural", "door"]
     },
     {
+      "id": "elevator_cabin_v1",
+      "path": "components/architectural/elevator_cabin_v1.json",
+      "description": "Simple enclosed elevator cabin with front doors",
+      "category": "architectural",
+      "tags": ["level2", "architectural", "elevator", "cabin"]
+    },
+    {
       "id": "door_frame_v1",
       "path": "components/architectural/door_frame_v1.json",
       "description": "Door frame structure",

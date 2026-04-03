@@ -12,8 +12,8 @@
   "mass": {
     "footprint_area": 980,
     "floors": 8,
-    "total_height": 140.0,
-    "massing_rule": "planned_vase_tower.json"
+    "total_height": 34.0,
+    "massing_rule": "planned_vase_midrise_office.json"
   },
   "program": {
     "floors": [

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../core/Mesh/Mesh.h"
+
 #include <string>
 #include <vector>
 #include <array>
@@ -23,6 +25,7 @@ struct BuildingStyle {
     std::string roof;           // e.g., "flat", "pitched", "gable"
     std::string windowStyle;    // e.g., "full_height", "standard", "small"
     std::string material;       // e.g., "concrete_white", "brick_red"
+    float facadeOffset = 0.0f;  // Optional usable-floor inset from envelope in meters
 };
 
 /**
@@ -363,8 +366,15 @@ struct FloorPlate {
     std::string massId;
     GridPos2D origin = {0.0f, 0.0f};
     GridSize2D size = {0.0f, 0.0f};
+    std::vector<GridPos2D> envelopeOutline;
     std::vector<GridPos2D> outline;
     std::vector<Rect> voids;
+};
+
+struct GeneratedMeshPart {
+    std::string partId;
+    std::string material;
+    std::shared_ptr<Moon::Mesh> mesh;
 };
 
 struct VerticalCore {
@@ -407,6 +417,7 @@ struct SpaceConnection {
 struct GeneratedBuilding {
     BuildingDefinition definition;
     std::string resolvedLayoutJson;
+    std::vector<GeneratedMeshPart> envelopeMeshes;
     std::vector<FloorPlate> floorPlates;
     std::vector<VerticalCore> verticalCores;
     std::vector<VerticalTransport> verticalTransports;

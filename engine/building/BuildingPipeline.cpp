@@ -1,8 +1,12 @@
 #include "BuildingPipeline.h"
 #include "LayoutResolver.h"
+#include "../core/Assets/AssetPaths.h"
+#include "../massing/MassRuleParser.h"
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <sstream>
 
 namespace {
@@ -65,6 +69,29 @@ bool RectContainsPoint(const Moon::Building::Rect& rect, const Moon::Building::G
            point[0] < rect.origin[0] + rect.size[0] - 0.001f &&
            point[1] > rect.origin[1] + 0.001f &&
            point[1] < rect.origin[1] + rect.size[1] - 0.001f;
+}
+
+bool DoesFloorNeedVerticalOpening(const Moon::Building::VerticalTransport& transport, int floorLevel) {
+    if (transport.external) {
+        return false;
+    }
+
+    return floorLevel > transport.floorFrom && floorLevel <= transport.floorTo;
+}
+
+std::string ReadTextFile(const std::filesystem::path& path) {
+    std::ifstream input(path, std::ios::in | std::ios::binary);
+    if (!input.is_open()) {
+        return std::string();
+    }
+    std::string contents((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    if (contents.size() >= 3 &&
+        static_cast<unsigned char>(contents[0]) == 0xEF &&
+        static_cast<unsigned char>(contents[1]) == 0xBB &&
+        static_cast<unsigned char>(contents[2]) == 0xBF) {
+        contents.erase(0, 3);
+    }
+    return contents;
 }
 
 } // namespace
@@ -193,6 +220,10 @@ bool BuildingPipeline::ProcessBuildingInternal(const BuildingDefinition& definit
 
     if (!GenerateStructuralPlan(workingDefinition, outBuilding)) {
         outError = "Structural planning failed";
+        return false;
+    }
+
+    if (!GenerateEnvelopeMeshes(workingDefinition, outBuilding, outError)) {
         return false;
     }
 
@@ -463,7 +494,7 @@ void BuildingPipeline::ApplyMassDrivenSemanticLayout(BuildingDefinition& definit
     generated.verticalTransports = definition.verticalTransports;
     for (auto& plate : generated.floorPlates) {
         for (const auto& transport : generated.verticalTransports) {
-            if (plate.floorLevel < transport.floorFrom || plate.floorLevel > transport.floorTo) {
+            if (!DoesFloorNeedVerticalOpening(transport, plate.floorLevel)) {
                 continue;
             }
 
@@ -536,6 +567,48 @@ bool BuildingPipeline::GenerateFacade(const BuildingDefinition& definition,
     
     m_facadeGenerator.GenerateFacade(definition, outBuilding.walls, index,
                                      outBuilding.windows, m_facadeElements);
+    return true;
+}
+
+bool BuildingPipeline::GenerateEnvelopeMeshes(const BuildingDefinition& definition,
+                                              GeneratedBuilding& outBuilding,
+                                              std::string& outError) {
+    outBuilding.envelopeMeshes.clear();
+
+    for (const auto& mass : definition.masses) {
+        if (mass.massingRuleAsset.empty()) {
+            continue;
+        }
+
+        const std::filesystem::path rulePath =
+            std::filesystem::path(Moon::Assets::BuildAssetPath("massing")) / mass.massingRuleAsset;
+        const std::string ruleJson = ReadTextFile(rulePath);
+        if (ruleJson.empty()) {
+            outError = "Failed to read massing envelope rule: " + rulePath.string();
+            return false;
+        }
+
+        Moon::Massing::RuleSet ruleSet;
+        if (!Moon::Massing::MassRuleParser::ParseFromString(ruleJson, ruleSet, outError)) {
+            outError = "Failed to parse massing envelope rule: " + outError;
+            return false;
+        }
+
+        Moon::Massing::MassBuildResult buildResult;
+        if (!Moon::Massing::MassMeshBuilder::Build(ruleSet, buildResult, outError)) {
+            outError = "Failed to build massing envelope mesh: " + outError;
+            return false;
+        }
+
+        for (size_t i = 0; i < buildResult.items.size(); ++i) {
+            GeneratedMeshPart part;
+            part.partId = mass.massId + "_envelope_" + std::to_string(i);
+            part.material = buildResult.items[i].material.empty() ? "glass_tinted" : buildResult.items[i].material;
+            part.mesh = buildResult.items[i].mesh;
+            outBuilding.envelopeMeshes.push_back(std::move(part));
+        }
+    }
+
     return true;
 }
 

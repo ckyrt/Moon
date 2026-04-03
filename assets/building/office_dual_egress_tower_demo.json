@@ -13,7 +13,7 @@
     "footprint_area": 1200,
     "floors": 12,
     "total_height": 54.0,
-    "massing_rule": "planned_vase_tower.json"
+    "massing_rule": "planned_vase_midrise_office.json"
   },
   "program": {
     "floors": [

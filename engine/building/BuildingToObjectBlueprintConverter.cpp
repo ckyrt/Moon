@@ -1,6 +1,7 @@
 ﻿#include "BuildingToObjectBlueprintConverter.h"
 #include "../../external/nlohmann/json.hpp"
 #include <cmath>
+#include <limits>
 #include <sstream>
 #include <unordered_set>
 
@@ -17,6 +18,11 @@ namespace Building {
 static inline float m2cm(float meters) { return meters * 100.0f; }
 
 static inline json pos3(float x, float y, float z)
+{
+    return json::array({x, y, z});
+}
+
+static inline json rot3(float x, float y, float z)
 {
     return json::array({x, y, z});
 }
@@ -67,6 +73,15 @@ static inline GridPos2D RotateOffset2D(float offsetX, float offsetZ, float rotat
     };
 }
 
+static inline bool DoesFloorNeedVerticalOpening(const VerticalTransport& transport, int floorLevel)
+{
+    if (transport.external) {
+        return false;
+    }
+
+    return floorLevel > transport.floorFrom && floorLevel <= transport.floorTo;
+}
+
 static json CreateCubeNode(const std::string& name,
                            float centerX,
                            float centerY,
@@ -74,7 +89,8 @@ static json CreateCubeNode(const std::string& name,
                            float sizeX,
                            float sizeY,
                            float sizeZ,
-                           const char* material)
+                           const char* material,
+                           float rotationY = 0.0f)
 {
     json node;
     node["name"] = name;
@@ -86,13 +102,147 @@ static json CreateCubeNode(const std::string& name,
         {"size_z", m2cm(sizeZ)}
     };
     node["transform"] = {
-        {"position", pos3(m2cm(centerX), m2cm(centerY), m2cm(centerZ))}
+        {"position", pos3(m2cm(centerX), m2cm(centerY), m2cm(centerZ))},
+        {"rotation", rot3(0.0f, rotationY, 0.0f)}
     };
     node["material"] = material;
     return node;
 }
 
+static json CreateWallPanelReference(const std::string& name,
+                                     float centerX,
+                                     float baseY,
+                                     float centerZ,
+                                     float length,
+                                     float height,
+                                     float thickness,
+                                     float rotationDegrees,
+                                     const char* material)
+{
+    json wallNode;
+    wallNode["name"] = name;
+    wallNode["type"] = "reference";
+    wallNode["ref"] = "wall_panel_v1";
+    wallNode["size"] = json::array({length, height, thickness});
+    wallNode["overrides"] = {
+        {"w", m2cm(length)},
+        {"h", m2cm(height)},
+        {"t", m2cm(thickness)},
+        {"rotation_y", rotationDegrees}
+    };
+    wallNode["transform"] = {
+        {"position", pos3(m2cm(centerX), m2cm(baseY), m2cm(centerZ))}
+    };
+    wallNode["material"] = material;
+    return wallNode;
+}
+
 static json SubtractHoles(json base, const std::vector<json>& holes);
+
+static const char* GetExteriorWallMaterial(const BuildingDefinition& definition)
+{
+    const std::string& facade = definition.style.facade;
+    const std::string& material = definition.style.material;
+
+    if (facade.find("glass") != std::string::npos || material.find("glass") != std::string::npos) {
+        return "glass_tinted";
+    }
+    if (facade.find("stone") != std::string::npos) {
+        return "stone";
+    }
+    if (facade.find("concrete") != std::string::npos || material.find("concrete") != std::string::npos) {
+        return "concrete";
+    }
+    return "brick";
+}
+
+static float ComputeSignedArea(const std::vector<GridPos2D>& outline)
+{
+    if (outline.size() < 3) {
+        return 0.0f;
+    }
+
+    float area = 0.0f;
+    for (size_t i = 0; i < outline.size(); ++i) {
+        const auto& a = outline[i];
+        const auto& b = outline[(i + 1) % outline.size()];
+        area += a[0] * b[1] - b[0] * a[1];
+    }
+    return area * 0.5f;
+}
+
+static json BuildConvexOutlineClipNode(const std::string& name,
+                                       const std::vector<GridPos2D>& outline,
+                                       float baseY,
+                                       float slabThickness,
+                                       const char* material)
+{
+    float minX = std::numeric_limits<float>::max();
+    float minZ = std::numeric_limits<float>::max();
+    float maxX = -std::numeric_limits<float>::max();
+    float maxZ = -std::numeric_limits<float>::max();
+    for (const auto& point : outline) {
+        minX = std::min(minX, point[0]);
+        minZ = std::min(minZ, point[1]);
+        maxX = std::max(maxX, point[0]);
+        maxZ = std::max(maxZ, point[1]);
+    }
+
+    const float width = std::max(0.1f, maxX - minX);
+    const float depth = std::max(0.1f, maxZ - minZ);
+    const float centerX = (minX + maxX) * 0.5f;
+    const float centerZ = (minZ + maxZ) * 0.5f;
+    json shape = CreateCubeNode(
+        name + "_bbox",
+        centerX,
+        baseY + slabThickness * 0.5f,
+        centerZ,
+        width,
+        slabThickness,
+        depth,
+        material);
+
+    const float signedArea = ComputeSignedArea(outline);
+    const bool ccw = signedArea >= 0.0f;
+    const float span = std::max(width, depth);
+    const float cutDepth = std::max(span * 3.0f, 6.0f);
+    const float tangentPadding = std::max(span * 2.0f, 6.0f);
+    const float cutHeight = slabThickness + 0.04f;
+    std::vector<json> clipNodes;
+
+    for (size_t i = 0; i < outline.size(); ++i) {
+        const auto& a = outline[i];
+        const auto& b = outline[(i + 1) % outline.size()];
+        const float dx = b[0] - a[0];
+        const float dz = b[1] - a[1];
+        const float length = std::sqrt(dx * dx + dz * dz);
+        if (length <= 0.001f) {
+            continue;
+        }
+
+        const float tangentX = dx / length;
+        const float tangentZ = dz / length;
+        const float outwardX = ccw ? tangentZ : -tangentZ;
+        const float outwardZ = ccw ? -tangentX : tangentX;
+        const float centerOffset = cutDepth * 0.5f;
+        const float clipCenterX = (a[0] + b[0]) * 0.5f + outwardX * centerOffset;
+        const float clipCenterZ = (a[1] + b[1]) * 0.5f + outwardZ * centerOffset;
+        const float rotationY = std::atan2(tangentZ, tangentX) * 180.0f / 3.14159265f;
+
+        clipNodes.push_back(CreateCubeNode(
+            name + "_clip_" + std::to_string(i),
+            clipCenterX,
+            baseY + slabThickness * 0.5f,
+            clipCenterZ,
+            length + tangentPadding,
+            cutHeight,
+            cutDepth,
+            material,
+            rotationY));
+    }
+
+    return SubtractHoles(shape, clipNodes);
+}
 
 static json CreateFloorPlateNode(const std::string& name,
                                  const FloorPlate& plate,
@@ -100,15 +250,27 @@ static json CreateFloorPlateNode(const std::string& name,
                                  float slabThickness,
                                  const char* material)
 {
-    json base = CreateCubeNode(
-        name + "_base",
-        plate.origin[0] + plate.size[0] * 0.5f,
-        baseY + slabThickness * 0.5f,
-        plate.origin[1] + plate.size[1] * 0.5f,
-        plate.size[0],
-        slabThickness,
-        plate.size[1],
-        material);
+    const std::vector<GridPos2D>& slabOutline =
+        plate.envelopeOutline.size() >= 3 ? plate.envelopeOutline : plate.outline;
+    json base;
+    if (slabOutline.size() >= 3) {
+        base = BuildConvexOutlineClipNode(
+            name + "_outline",
+            slabOutline,
+            baseY,
+            slabThickness,
+            material);
+    } else {
+        base = CreateCubeNode(
+            name + "_base",
+            plate.origin[0] + plate.size[0] * 0.5f,
+            baseY + slabThickness * 0.5f,
+            plate.origin[1] + plate.size[1] * 0.5f,
+            plate.size[0],
+            slabThickness,
+            plate.size[1],
+            material);
+    }
 
     std::vector<json> holes;
     for (const auto& voidRect : plate.voids) {
@@ -148,7 +310,7 @@ static json CreateFloorRectNode(const std::string& name,
 
     std::vector<json> holes;
     for (const auto& transport : verticalTransports) {
-        if (transport.external || floorLevel < transport.floorFrom || floorLevel >= transport.floorTo) {
+        if (!DoesFloorNeedVerticalOpening(transport, floorLevel)) {
             continue;
         }
 
@@ -331,6 +493,26 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
                 height,
                 transport.shaftRect.size[1],
                 "metal_black"));
+
+            const float servedFloorHeight =
+                std::max(2.3f, std::min(2.8f, GetTopOfFloor(building.definition, transport.floorFrom) - baseHeight - 0.3f));
+            json cabinNode;
+            cabinNode["name"] = "elevator_cabin_" + std::to_string(transportIdx);
+            cabinNode["type"] = "reference";
+            cabinNode["ref"] = "elevator_cabin_v1";
+            cabinNode["overrides"] = {
+                {"cabin_width", m2cm(std::max(1.4f, transport.shaftRect.size[0] - 0.28f))},
+                {"cabin_depth", m2cm(std::max(1.4f, transport.shaftRect.size[1] - 0.28f))},
+                {"cabin_height", m2cm(servedFloorHeight)},
+                {"door_width", m2cm(std::max(0.9f, std::min(1.3f, transport.shaftRect.size[0] * 0.45f)))}
+            };
+            cabinNode["transform"] = {
+                {"position", pos3(
+                    m2cm(transport.shaftRect.origin[0] + transport.shaftRect.size[0] * 0.5f),
+                    m2cm(baseHeight),
+                    m2cm(transport.shaftRect.origin[1] + transport.shaftRect.size[1] * 0.5f))}
+            };
+            children.push_back(std::move(cabinNode));
             ++transportIdx;
         }
     }
@@ -432,27 +614,26 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
         // Calculate wall rotation: angle from +X axis to (dx, dz) direction in degrees
         float wallRotationY = std::atan2(dz, dx) * 180.0f / 3.14159265f;
 
+        const float centerX = (wall.start[0] + wall.end[0]) * 0.5f;
+        const float centerZ = (wall.start[1] + wall.end[1]) * 0.5f;
+        const float floorBaseY = GetFloorBaseHeight(building.definition, wall.floorLevel);
+        const char* wallMaterial =
+            (wall.type == WallType::Exterior)
+                ? GetExteriorWallMaterial(building.definition)
+                : "plaster";
+
         // Wall reference: use wall_panel_v1 component for proper UV mapping
         // Panel is created along X axis, then rotated via rotation_y parameter
-        json wallCube;
-        wallCube["type"] = "reference";
-        wallCube["ref"]  = "wall_panel_v1";
-        wallCube["size"] = json::array({length, wall.height, wall.thickness});
-        wallCube["overrides"] = {
-            {"w", m2cm(length)},         // Width along X (before rotation)
-            {"h", m2cm(wall.height)},    // Height along Y
-            {"t", m2cm(wall.thickness)}, // Thickness along Z
-            {"rotation_y", wallRotationY}
-        };
-        // POSITIONING: wall_panel_v1 uses bottom-center convention (y=0 at base)
-        wallCube["transform"] = {
-            {"position", pos3(
-                m2cm((wall.start[0] + wall.end[0]) * 0.5f),
-                m2cm(GetFloorBaseHeight(building.definition, wall.floorLevel)),  // Bottom of wall
-                m2cm((wall.start[1] + wall.end[1]) * 0.5f)
-            )}
-        };
-        wallCube["material"] = (wall.type == WallType::Exterior) ? "brick" : "plaster";
+        json wallCube = CreateWallPanelReference(
+            "wall_panel_" + std::to_string(wallIdx),
+            centerX,
+            floorBaseY,
+            centerZ,
+            length,
+            wall.height,
+            wall.thickness,
+            wallRotationY,
+            wallMaterial);
 
         // Hole cubes
         std::vector<json> holes;
@@ -560,53 +741,25 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
         const float treadDepth = std::max(0.1f, stair.stepDepth);
         const float stairWidth = std::max(0.8f, stair.stairWidth);
         const float baseHeight = GetFloorBaseHeight(building.definition, stair.fromLevel);
-        const bool useProceduralStraightStair =
-            stair.config.type == StairType::Straight &&
-            !stair.steps.empty() &&
-            IsCardinalRotation(stair.rotation);
+        std::vector<std::pair<size_t, size_t>> proceduralRuns;
+        if (!stair.steps.empty()) {
+            size_t runStart = 0;
+            for (size_t stepIndex = 1; stepIndex <= stair.steps.size(); ++stepIndex) {
+                const bool endOfRun = stepIndex == stair.steps.size() ||
+                    std::abs(NormalizeRotation(stair.steps[stepIndex].rotation) -
+                             NormalizeRotation(stair.steps[runStart].rotation)) > 1.0f;
+                if (!endOfRun) {
+                    continue;
+                }
 
-        if (useProceduralStraightStair) {
-            const auto& firstStep = stair.steps.front();
-            const GridPos2D baseOffset = RotateOffset2D(0.0f, -treadDepth * 0.5f, stair.rotation);
+                if (IsCardinalRotation(stair.steps[runStart].rotation)) {
+                    proceduralRuns.emplace_back(runStart, stepIndex);
+                }
+                runStart = stepIndex;
+            }
+        }
 
-            json stairNode;
-            stairNode["name"] = "stair_" + std::to_string(stairIdx);
-            stairNode["type"] = "stair";
-            stairNode["params"] = {
-                {"w", m2cm(stairWidth)},
-                {"step_count", static_cast<float>(stair.numSteps)},
-                {"tread_d", m2cm(treadDepth)},
-                {"step_h", m2cm(stepHeight)},
-                {"step_t", 4.0f},
-                {"stringer_t", 4.0f},
-                {"stringer_h", 12.0f},
-                {"rail_h", 92.0f},
-                {"rail_offset", 3.0f},
-                {"post_spacing", 95.0f},
-                {"post_w", 4.0f},
-                {"handrail_w", 4.0f},
-                {"handrail_t", 4.0f}
-            };
-            stairNode["materials"] = {
-                {"tread", "concrete_floor"},
-                {"stringer", "concrete_floor"},
-                {"rail", "metal_black"}
-            };
-            stairNode["rails"] = {
-                {"left", true},
-                {"right", true}
-            };
-            stairNode["transform"] = {
-                {"position", pos3(
-                    m2cm(firstStep.position[0] + baseOffset[0]),
-                    m2cm(baseHeight),
-                    m2cm(firstStep.position[1] + baseOffset[1])
-                )},
-                {"rotation_euler", pos3(0.0f, stair.rotation, 0.0f)}
-            };
-
-            children.push_back(stairNode);
-        } else {
+        if (proceduralRuns.empty()) {
             json stairGroup;
             stairGroup["name"] = "stair_" + std::to_string(stairIdx);
             stairGroup["type"] = "group";
@@ -647,6 +800,77 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
             }
 
             children.push_back(stairGroup);
+            ++stairIdx;
+            continue;
+        }
+
+        for (size_t runIndex = 0; runIndex < proceduralRuns.size(); ++runIndex) {
+            const auto [runStart, runEnd] = proceduralRuns[runIndex];
+            const auto& firstStep = stair.steps[runStart];
+            const float runRotation = firstStep.rotation;
+            const GridPos2D baseOffset = RotateOffset2D(0.0f, -treadDepth * 0.5f, runRotation);
+
+            json stairNode;
+            stairNode["name"] = "stair_" + std::to_string(stairIdx) + "_run_" + std::to_string(runIndex);
+            stairNode["type"] = "stair";
+            stairNode["params"] = {
+                {"w", m2cm(stairWidth)},
+                {"step_count", static_cast<float>(runEnd - runStart)},
+                {"tread_d", m2cm(treadDepth)},
+                {"step_h", m2cm(stepHeight)},
+                {"step_t", 4.0f},
+                {"stringer_t", 4.0f},
+                {"stringer_h", 12.0f},
+                {"rail_h", 92.0f},
+                {"rail_offset", 3.0f},
+                {"post_spacing", 95.0f},
+                {"post_w", 4.0f},
+                {"handrail_w", 4.0f},
+                {"handrail_t", 4.0f}
+            };
+            stairNode["materials"] = {
+                {"tread", "concrete_floor"},
+                {"stringer", "concrete_floor"},
+                {"rail", "metal_black"}
+            };
+            stairNode["rails"] = {
+                {"left", true},
+                {"right", true}
+            };
+            stairNode["transform"] = {
+                {"position", pos3(
+                    m2cm(firstStep.position[0] + baseOffset[0]),
+                    m2cm(baseHeight + firstStep.height),
+                    m2cm(firstStep.position[1] + baseOffset[1]))},
+                {"rotation_euler", pos3(0.0f, runRotation, 0.0f)}
+            };
+            children.push_back(std::move(stairNode));
+        }
+
+        if (!stair.landings.empty()) {
+            json landingGroup;
+            landingGroup["name"] = "stair_" + std::to_string(stairIdx) + "_landings";
+            landingGroup["type"] = "group";
+            landingGroup["children"] = json::array();
+
+            for (size_t landingIndex = 0; landingIndex < stair.landings.size(); ++landingIndex) {
+                const auto& landing = stair.landings[landingIndex];
+                const bool quarterTurn = IsQuarterTurn(landing.rotation);
+                const float sizeX = quarterTurn ? landing.depth : landing.width;
+                const float sizeZ = quarterTurn ? landing.width : landing.depth;
+
+                landingGroup["children"].push_back(CreateCubeNode(
+                    "stair_" + std::to_string(stairIdx) + "_landing_" + std::to_string(landingIndex),
+                    landing.position[0],
+                    baseHeight + landing.height + stepHeight * 0.5f,
+                    landing.position[1],
+                    sizeX,
+                    stepHeight,
+                    sizeZ,
+                    "concrete_floor"));
+            }
+
+            children.push_back(std::move(landingGroup));
         }
         ++stairIdx;
     }

@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "name": "elevator_cabin_v1",
+  "description": "Simple enclosed elevator cabin with a front door opening.",
+  "version": 1,
+  "parameters": {
+    "cabin_width": 220.0,
+    "cabin_depth": 220.0,
+    "cabin_height": 250.0,
+    "wall_thickness": 6.0,
+    "door_width": 100.0,
+    "door_height": 210.0
+  },
+  "anchors": {
+    "origin": [0, 0, 0],
+    "center": [0, "$cabin_height / 2", 0],
+    "door_center": [0, "$door_height / 2", "$cabin_depth / 2 - $wall_thickness / 2"]
+  },
+  "root": {
+    "type": "group",
+    "children": [
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$cabin_width",
+          "size_y": "$cabin_height",
+          "size_z": "$wall_thickness"
+        },
+        "transform": {
+          "position": [0, "$cabin_height / 2", "-$cabin_depth / 2 + $wall_thickness / 2"]
+        },
+        "material": "steel"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$wall_thickness",
+          "size_y": "$cabin_height",
+          "size_z": "$cabin_depth"
+        },
+        "transform": {
+          "position": ["-$cabin_width / 2 + $wall_thickness / 2", "$cabin_height / 2", 0]
+        },
+        "material": "steel"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$wall_thickness",
+          "size_y": "$cabin_height",
+          "size_z": "$cabin_depth"
+        },
+        "transform": {
+          "position": ["$cabin_width / 2 - $wall_thickness / 2", "$cabin_height / 2", 0]
+        },
+        "material": "steel"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$cabin_width",
+          "size_y": "$wall_thickness",
+          "size_z": "$cabin_depth"
+        },
+        "transform": {
+          "position": [0, "$cabin_height - $wall_thickness / 2", 0]
+        },
+        "material": "steel"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$cabin_width - $wall_thickness * 2",
+          "size_y": 4.0,
+          "size_z": "$cabin_depth - $wall_thickness * 2"
+        },
+        "transform": {
+          "position": [0, 2.0, 0]
+        },
+        "material": "rubber"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "($cabin_width - $door_width) / 2",
+          "size_y": "$cabin_height",
+          "size_z": "$wall_thickness"
+        },
+        "transform": {
+          "position": ["-$door_width / 4 - $cabin_width / 4", "$cabin_height / 2", "$cabin_depth / 2 - $wall_thickness / 2"]
+        },
+        "material": "steel"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "($cabin_width - $door_width) / 2",
+          "size_y": "$cabin_height",
+          "size_z": "$wall_thickness"
+        },
+        "transform": {
+          "position": ["$door_width / 4 + $cabin_width / 4", "$cabin_height / 2", "$cabin_depth / 2 - $wall_thickness / 2"]
+        },
+        "material": "steel"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$door_width * 0.48",
+          "size_y": "$door_height",
+          "size_z": 2.0
+        },
+        "transform": {
+          "position": ["-$door_width * 0.26", "$door_height / 2", "$cabin_depth / 2 - $wall_thickness"]
+        },
+        "material": "glass_tinted"
+      },
+      {
+        "type": "primitive",
+        "primitive": "cube",
+        "params": {
+          "size_x": "$door_width * 0.48",
+          "size_y": "$door_height",
+          "size_z": 2.0
+        },
+        "transform": {
+          "position": ["$door_width * 0.26", "$door_height / 2", "$cabin_depth / 2 - $wall_thickness"]
+        },
+        "material": "glass_tinted"
+      }
+    ],
+    "output": {
+      "mode": "separate"
+    }
+  }
+}

@@ -1,10 +1,15 @@
 #include <gtest/gtest.h>
 #include "building/BuildingPipeline.h"
+#include "building/BuildingGenerationInputs.h"
 #include "building/LayoutResolver.h"
+#include "building/MassFloorPlateGenerator.h"
+#include "building/OfficeFloorLayoutSolver.h"
+#include "building/StructuralPlanGenerator.h"
 #include "building/BuildingTypes.h"
 #include "TestHelpers.h"
 #include <array>
 #include <chrono>
+#include <iostream>
 #include <limits>
 
 using namespace Moon::Building;
@@ -167,6 +172,16 @@ int CountSemanticSpaces(const SemanticBuilding& building, const std::string& spa
     return count;
 }
 
+std::vector<VerticalCore> CollectFloorCores(const std::vector<VerticalCore>& cores, int floorLevel) {
+    std::vector<VerticalCore> result;
+    for (const auto& core : cores) {
+        if (floorLevel >= core.floorFrom && floorLevel <= core.floorTo) {
+            result.push_back(core);
+        }
+    }
+    return result;
+}
+
 void ExpectReferenceDatasetLooksPlausible(const std::string& json,
                                           const std::string& expectedType,
                                           int minFloors,
@@ -316,8 +331,8 @@ TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_GeneratesVariabl
     "mass": {
         "footprint_area": 900,
         "floors": 8,
-        "total_height": 140.0,
-        "massing_rule": "planned_vase_tower.json"
+        "total_height": 34.0,
+      "massing_rule": "planned_vase_midrise_office.json"
     },
     "program": {
         "floors": [
@@ -455,6 +470,69 @@ TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_GeneratesMassDri
         << "Mass-driven towers should not emit a dense full-plate interior column grid";
 }
 
+TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_GeneratesCoreAndOfficeFloorsFromFormalData) {
+    const std::string json = TestHelpers::LoadFromFile("massing_vase_office_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    SemanticBuilding semantic;
+    ASSERT_TRUE(SemanticBuildingParser::ParseFromString(json, semantic, errorMsg))
+        << "Semantic parse failed: " << errorMsg;
+
+    LayoutResolver resolver;
+    BuildingDefinition definition;
+    ASSERT_TRUE(resolver.Resolve(semantic, definition, errorMsg))
+        << "Layout resolve failed: " << errorMsg;
+
+    MassFloorPlateGenerator plateGenerator;
+    std::vector<FloorPlate> slicedFloorPlates;
+    ASSERT_TRUE(plateGenerator.Generate(definition, slicedFloorPlates, errorMsg))
+        << "Mass floor plate generation failed: " << errorMsg;
+    ASSERT_EQ(slicedFloorPlates.size(), 8u);
+
+    StructuralPlanGenerator structuralGenerator;
+    GeneratedBuilding generated;
+    ASSERT_TRUE(structuralGenerator.Generate(definition, slicedFloorPlates, generated, errorMsg))
+        << "Structural plan generation failed: " << errorMsg;
+    EXPECT_EQ(definition.style.category, "commercial");
+    EXPECT_EQ(definition.floors.size(), 8u);
+    EXPECT_EQ(generated.supportColumns.size(), 0u);
+    std::ostringstream plateSummary;
+    for (const auto& plate : generated.floorPlates) {
+        plateSummary << "[L" << plate.floorLevel
+                     << " bbox=" << plate.size[0] << "x" << plate.size[1]
+                     << " outline=" << plate.outline.size()
+                     << " envelope=" << plate.envelopeOutline.size()
+                     << "] ";
+    }
+    ASSERT_FALSE(generated.verticalCores.empty()) << plateSummary.str();
+
+    for (const auto& core : generated.verticalCores) {
+        for (const auto& plate : generated.floorPlates) {
+            if (plate.floorLevel < core.floorFrom || plate.floorLevel > core.floorTo) {
+                continue;
+            }
+            EXPECT_TRUE(RectFitsPlate(plate, core.rect, 0.1f))
+                << "Core '" << core.coreId << "' escapes floor plate on level " << plate.floorLevel;
+        }
+    }
+
+    const BuildingLayoutInput layoutInput = ExtractBuildingLayoutInput(semantic);
+    OfficeFloorLayoutSolver solver;
+    for (const auto& floor : layoutInput.floors) {
+        auto plateIt = std::find_if(generated.floorPlates.begin(), generated.floorPlates.end(),
+            [&](const FloorPlate& plate) { return plate.floorLevel == floor.level; });
+        ASSERT_NE(plateIt, generated.floorPlates.end()) << "Missing floor plate for level " << floor.level;
+
+        ResolvedFloorLayout resolvedFloor;
+        std::string floorError;
+        const auto floorCores = CollectFloorCores(generated.verticalCores, floor.level);
+        EXPECT_TRUE(solver.GenerateFloor(definition, floor, *plateIt, floorCores, resolvedFloor, floorError))
+            << "Office solver failed on level " << floor.level << ": " << floorError;
+        EXPECT_FALSE(resolvedFloor.spaces.empty())
+            << "Office solver emitted no spaces on level " << floor.level;
+    }
+}
+
 TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_AllResolvedSpacesStayInsideFloorPlates) {
     const std::string json = TestHelpers::LoadFromFile("massing_vase_office_demo.json");
     ASSERT_FALSE(json.empty());
@@ -464,6 +542,69 @@ TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_AllResolvedSpace
     ASSERT_TRUE(result) << "Error: " << errorMsg;
     ASSERT_FALSE(building.floorPlates.empty());
     ExpectAllSpacesInsideFloorPlates(building);
+}
+
+TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithMassingRule_StoresEnvelopeGeometryInGeneratedBuilding) {
+    const std::string json = TestHelpers::LoadFromFile("massing_vase_office_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    const bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    EXPECT_FALSE(building.envelopeMeshes.empty());
+    EXPECT_TRUE(std::all_of(
+        building.floorPlates.begin(),
+        building.floorPlates.end(),
+        [](const FloorPlate& plate) {
+            return plate.envelopeOutline.size() >= 3;
+        }));
+}
+
+TEST_F(BuildingPipelineTest, ProcessBuilding_WithConcaveMassingRule_PreservesConcaveFloorPlateOutline) {
+    const std::string json = R"({
+    "schema": "moon_building",
+    "grid": 0.5,
+    "building_type": "villa",
+    "style": {
+        "category": "minimal",
+        "facade": "white",
+        "roof": "flat",
+        "window_style": "standard",
+        "material": "concrete",
+        "facade_offset": 0.5
+    },
+    "mass": {
+        "footprint_area": 40,
+        "floors": 1,
+        "total_height": 3.0,
+        "massing_rule": "test_concave_l_shape.json"
+    },
+    "program": {
+        "floors": [
+            {
+                "level": 0,
+                "name": "ground_floor",
+                "spaces": [
+                    {"space_id": "living_0", "type": "living", "zone": "public", "area_preferred": 16, "constraints": {"ceiling_height": 3.0, "min_width": 3.0}},
+                    {"space_id": "stairs_0", "type": "stairs", "zone": "service", "area_preferred": 4, "constraints": {"ceiling_height": 3.0, "min_width": 1.5}}
+                ]
+            }
+        ]
+    }
+})";
+
+    const bool result = pipeline.ProcessBuilding(json, building, errorMsg);
+
+    ASSERT_TRUE(result) << "Error: " << errorMsg;
+    ASSERT_EQ(building.floorPlates.size(), 1u);
+
+    const FloorPlate* groundPlate = FindFloorPlate(building, 0);
+    ASSERT_NE(groundPlate, nullptr);
+    EXPECT_GE(groundPlate->envelopeOutline.size(), 6u);
+    EXPECT_FALSE(PointInOutline(groundPlate->envelopeOutline, {4.0f, 4.0f}))
+        << "Concave notch should stay empty instead of collapsing back to a convex hull";
+    EXPECT_FALSE(PointInOutline(groundPlate->outline, {4.0f, 4.0f}))
+        << "Usable outline should also preserve the concave cutout";
 }
 
 TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithVerticalSystems_UsesEnclosedStairAndElevator) {

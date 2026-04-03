@@ -12,6 +12,7 @@
 #include "MassFloorPlateGenerator.h"
 #include "SemanticFloorLayoutGenerator.h"
 #include "StructuralPlanGenerator.h"
+#include "../massing/MassMeshBuilder.h"
 #include <string>
 #include <memory>
 
@@ -116,6 +117,9 @@ private:
                        GeneratedBuilding& outBuilding);
     bool GenerateFacade(const BuildingDefinition& definition,
                        GeneratedBuilding& outBuilding);
+    bool GenerateEnvelopeMeshes(const BuildingDefinition& definition,
+                                GeneratedBuilding& outBuilding,
+                                std::string& outError);
 
     SchemaValidator m_schemaValidator;
     LayoutValidator m_layoutValidator;

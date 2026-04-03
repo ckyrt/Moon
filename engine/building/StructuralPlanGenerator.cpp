@@ -9,6 +9,7 @@
 namespace {
 
 using namespace Moon::Building;
+constexpr float kSearchEpsilon = 0.001f;
 
 std::string ToLowerCopy(const std::string& value) {
     std::string lowered = value;
@@ -138,6 +139,86 @@ Rect MakeCenteredRect(const GridPos2D& center, float width, float depth) {
     return rect;
 }
 
+bool RectFitsPlate(const FloorPlate& plate, const Rect& rect, float margin);
+
+bool TryFitCoreRectAcrossPlates(const std::vector<FloorPlate>& plates,
+                                const std::vector<GridPos2D>& candidateCenters,
+                                float initialWidth,
+                                float initialDepth,
+                                float fitMargin,
+                                float grid,
+                                Rect& outRect) {
+    for (const auto& center : candidateCenters) {
+        float testWidth = initialWidth;
+        float testDepth = initialDepth;
+        for (int attempts = 0; attempts < 16; ++attempts) {
+            const Rect candidate = MakeCenteredRect(center, testWidth, testDepth);
+            const bool fits = std::all_of(plates.begin(), plates.end(),
+                [&](const FloorPlate& plate) {
+                    return RectFitsPlate(plate, candidate, fitMargin);
+                });
+            if (fits) {
+                outRect = candidate;
+                return true;
+            }
+
+            testWidth = std::max(grid * 4.0f, testWidth - grid);
+            testDepth = std::max(grid * 4.0f, testDepth - grid);
+        }
+    }
+
+    return false;
+}
+
+bool FindBestCoreRectAcrossPlates(const std::vector<FloorPlate>& plates,
+                                  float boundsMinX,
+                                  float boundsMinY,
+                                  float boundsMaxX,
+                                  float boundsMaxY,
+                                  float initialWidth,
+                                  float initialDepth,
+                                  float fitMargin,
+                                  float grid,
+                                  Rect& outRect) {
+    const float step = std::max(grid, 0.5f);
+    Rect bestRect;
+    float bestArea = 0.0f;
+
+    for (float testWidth = initialWidth; testWidth >= std::max(grid * 4.0f, 2.0f); testWidth -= step) {
+        for (float testDepth = initialDepth; testDepth >= std::max(grid * 4.0f, 2.0f); testDepth -= step) {
+            for (float centerX = boundsMinX + testWidth * 0.5f;
+                 centerX <= boundsMaxX - testWidth * 0.5f + kSearchEpsilon;
+                 centerX += step) {
+                for (float centerY = boundsMinY + testDepth * 0.5f;
+                     centerY <= boundsMaxY - testDepth * 0.5f + kSearchEpsilon;
+                     centerY += step) {
+                    const Rect candidate = MakeCenteredRect({centerX, centerY}, testWidth, testDepth);
+                    const bool fits = std::all_of(plates.begin(), plates.end(),
+                        [&](const FloorPlate& plate) {
+                            return RectFitsPlate(plate, candidate, fitMargin);
+                        });
+                    if (!fits) {
+                        continue;
+                    }
+
+                    const float area = candidate.size[0] * candidate.size[1];
+                    if (area > bestArea) {
+                        bestArea = area;
+                        bestRect = candidate;
+                    }
+                }
+            }
+
+            if (bestArea > 0.0f) {
+                outRect = bestRect;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 bool RectFitsPlate(const FloorPlate& plate, const Rect& rect, float margin) {
     const std::array<GridPos2D, 5> samplePoints = {{
         {rect.origin[0] + margin, rect.origin[1] + margin},
@@ -228,26 +309,52 @@ bool IsCommercialOrOfficeTower(const BuildingDefinition& definition) {
     return definition.style.category == "commercial" || definition.style.category == "retail";
 }
 
+bool RequiresSharedVerticalZone(const BuildingDefinition& definition) {
+    if (!(definition.style.category == "commercial" || definition.style.category == "retail")) {
+        return false;
+    }
+    return definition.floors.size() >= 5;
+}
+
 void AddMassDrivenCoreIfNeeded(const BuildingDefinition& definition,
                                int maxFloorLevel,
                                GeneratedBuilding& outBuilding) {
     if (!outBuilding.verticalCores.empty() || outBuilding.floorPlates.empty()) {
         return;
     }
+    if (!RequiresSharedVerticalZone(definition)) {
+        return;
+    }
 
     float minWidth = std::numeric_limits<float>::max();
     float minDepth = std::numeric_limits<float>::max();
+    float minPlateArea = std::numeric_limits<float>::max();
     float centerXSum = 0.0f;
     float centerYSum = 0.0f;
     int count = 0;
+    float boundsMinX = std::numeric_limits<float>::max();
+    float boundsMinY = std::numeric_limits<float>::max();
+    float boundsMaxX = -std::numeric_limits<float>::max();
+    float boundsMaxY = -std::numeric_limits<float>::max();
+    std::vector<GridPos2D> candidateCenters;
 
     for (const auto& plate : outBuilding.floorPlates) {
         minWidth = std::min(minWidth, plate.size[0]);
         minDepth = std::min(minDepth, plate.size[1]);
+        minPlateArea = std::min(minPlateArea, plate.size[0] * plate.size[1]);
         const auto center = ComputePlateCenter(plate);
         centerXSum += center[0];
         centerYSum += center[1];
         ++count;
+        candidateCenters.push_back(center);
+        candidateCenters.push_back({
+            plate.origin[0] + plate.size[0] * 0.5f,
+            plate.origin[1] + plate.size[1] * 0.5f
+        });
+        boundsMinX = std::min(boundsMinX, plate.origin[0]);
+        boundsMinY = std::min(boundsMinY, plate.origin[1]);
+        boundsMaxX = std::max(boundsMaxX, plate.origin[0] + plate.size[0]);
+        boundsMaxY = std::max(boundsMaxY, plate.origin[1] + plate.size[1]);
     }
 
     if (count == 0 || minWidth <= 0.0f || minDepth <= 0.0f) {
@@ -256,92 +363,62 @@ void AddMassDrivenCoreIfNeeded(const BuildingDefinition& definition,
 
     const float centerX = centerXSum / static_cast<float>(count);
     const float centerY = centerYSum / static_cast<float>(count);
+    const float targetCoreArea = IsCommercialOrOfficeTower(definition)
+        ? std::clamp(minPlateArea * 0.16f, 24.0f, 80.0f)
+        : std::clamp(minPlateArea * 0.12f, 12.0f, 40.0f);
     float targetWidth = IsCommercialOrOfficeTower(definition)
-        ? std::clamp(minWidth * 0.28f, 5.0f, 8.5f)
-        : std::clamp(minWidth * 0.24f, 3.5f, 6.0f);
-    float targetDepth = IsCommercialOrOfficeTower(definition)
-        ? std::clamp(minDepth * 0.32f, 6.0f, 10.0f)
-        : std::clamp(minDepth * 0.28f, 4.0f, 7.0f);
-    const GridPos2D center = {centerX, centerY};
+        ? std::clamp(std::sqrt(targetCoreArea * 0.75f), 4.0f, std::max(4.0f, minWidth * 0.45f))
+        : std::clamp(std::sqrt(targetCoreArea * 0.8f), 3.0f, std::max(3.0f, minWidth * 0.4f));
+    float targetDepth = std::max(
+        targetCoreArea / std::max(targetWidth, 0.5f),
+        IsCommercialOrOfficeTower(definition) ? 5.0f : 4.0f);
+    targetDepth = std::min(targetDepth, std::max(4.0f, minDepth * 0.5f));
     const float fitMargin = std::max(0.35f, definition.grid * 0.5f);
-
-    bool fitted = false;
-    for (int attempts = 0; attempts < 12 && !fitted; ++attempts) {
-        const Rect candidate = MakeCenteredRect(center, targetWidth, targetDepth);
-        fitted = std::all_of(outBuilding.floorPlates.begin(), outBuilding.floorPlates.end(),
-            [&](const FloorPlate& plate) {
-                return RectFitsPlate(plate, candidate, fitMargin);
-            });
-        if (!fitted) {
-            targetWidth = std::max(definition.grid * 4.0f, targetWidth - definition.grid);
-            targetDepth = std::max(definition.grid * 4.0f, targetDepth - definition.grid);
+    const GridPos2D averageCenter = {centerX, centerY};
+    candidateCenters.insert(candidateCenters.begin(), averageCenter);
+    candidateCenters.push_back({
+        (boundsMinX + boundsMaxX) * 0.5f,
+        (boundsMinY + boundsMaxY) * 0.5f
+    });
+    for (float dx = -definition.grid * 4.0f; dx <= definition.grid * 4.0f; dx += definition.grid * 2.0f) {
+        for (float dy = -definition.grid * 4.0f; dy <= definition.grid * 4.0f; dy += definition.grid * 2.0f) {
+            candidateCenters.push_back({averageCenter[0] + dx, averageCenter[1] + dy});
         }
     }
 
-    Rect overallCoreRect = MakeCenteredRect(center, targetWidth, targetDepth);
-
-    const float circulationGap = definition.grid;
-    const float stairWidth = std::clamp(targetWidth * 0.26f, 1.8f, 2.8f);
-    const float serviceWidth = std::clamp(targetWidth * 0.24f, 1.5f, 2.4f);
-    const float elevatorWidth = std::max(2.4f, targetWidth - stairWidth - serviceWidth - circulationGap * 2.0f);
-
-    Rect stairRect;
-    stairRect.rectId = "mass_core_stair";
-    stairRect.origin = {overallCoreRect.origin[0], overallCoreRect.origin[1]};
-    stairRect.size = {stairWidth, overallCoreRect.size[1]};
-
-    Rect elevatorRect;
-    elevatorRect.rectId = "mass_core_elevator";
-    elevatorRect.origin = {
-        stairRect.origin[0] + stairRect.size[0] + circulationGap,
-        overallCoreRect.origin[1] + std::max(0.0f, (overallCoreRect.size[1] - std::max(2.8f, overallCoreRect.size[1] * 0.4f)) * 0.5f)
-    };
-    elevatorRect.size = {
-        std::max(2.4f, elevatorWidth),
-        std::max(2.8f, overallCoreRect.size[1] * 0.4f)
-    };
-
-    Rect serviceRect;
-    serviceRect.rectId = "mass_core_service";
-    serviceRect.origin = {
-        elevatorRect.origin[0] + elevatorRect.size[0] + circulationGap,
-        overallCoreRect.origin[1]
-    };
-    serviceRect.size = {
-        std::max(1.2f, overallCoreRect.origin[0] + overallCoreRect.size[0] - serviceRect.origin[0]),
-        overallCoreRect.size[1]
-    };
-
-    if (!std::all_of(outBuilding.floorPlates.begin(), outBuilding.floorPlates.end(),
-        [&](const FloorPlate& plate) { return RectFitsPlate(plate, stairRect, 0.2f); })) {
-        stairRect = overallCoreRect;
-        stairRect.size[0] = std::min(overallCoreRect.size[0], std::max(2.0f, overallCoreRect.size[0] * 0.28f));
+    Rect overallCoreRect;
+    bool fitted = TryFitCoreRectAcrossPlates(
+        outBuilding.floorPlates,
+        candidateCenters,
+        targetWidth,
+        targetDepth,
+        fitMargin,
+        definition.grid,
+        overallCoreRect);
+    if (!fitted) {
+        fitted = FindBestCoreRectAcrossPlates(
+            outBuilding.floorPlates,
+            boundsMinX,
+            boundsMinY,
+            boundsMaxX,
+            boundsMaxY,
+            targetWidth,
+            targetDepth,
+            fitMargin,
+            definition.grid,
+            overallCoreRect);
+    }
+    if (!fitted) {
+        return;
     }
 
-    if (!std::all_of(outBuilding.floorPlates.begin(), outBuilding.floorPlates.end(),
-        [&](const FloorPlate& plate) { return RectFitsPlate(plate, elevatorRect, 0.2f); })) {
-        elevatorRect = overallCoreRect;
-        elevatorRect.size = {
-            std::min(overallCoreRect.size[0], std::max(2.4f, overallCoreRect.size[0] * 0.36f)),
-            std::min(overallCoreRect.size[1], std::max(2.8f, overallCoreRect.size[1] * 0.36f))
-        };
-        elevatorRect.origin = {
-            center[0] - elevatorRect.size[0] * 0.5f,
-            center[1] - elevatorRect.size[1] * 0.5f
-        };
-    }
-
-    if (!std::all_of(outBuilding.floorPlates.begin(), outBuilding.floorPlates.end(),
-        [&](const FloorPlate& plate) { return RectFitsPlate(plate, serviceRect, 0.2f); })) {
-        serviceRect = overallCoreRect;
-        serviceRect.size[0] = std::max(1.5f, overallCoreRect.size[0] * 0.24f);
-        serviceRect.origin[0] = overallCoreRect.origin[0] + overallCoreRect.size[0] - serviceRect.size[0];
-    }
+    Rect sharedZoneRect = overallCoreRect;
+    sharedZoneRect.rectId = "mass_vertical_zone";
 
     VerticalCore stairCore;
     stairCore.coreId = "mass_core_stair";
     stairCore.type = VerticalCoreType::Stair;
-    stairCore.rect = stairRect;
+    stairCore.rect = sharedZoneRect;
     stairCore.floorFrom = 0;
     stairCore.floorTo = maxFloorLevel;
     outBuilding.verticalCores.push_back(stairCore);
@@ -349,7 +426,7 @@ void AddMassDrivenCoreIfNeeded(const BuildingDefinition& definition,
     VerticalCore elevatorCore;
     elevatorCore.coreId = "mass_core_elevator";
     elevatorCore.type = VerticalCoreType::Elevator;
-    elevatorCore.rect = elevatorRect;
+    elevatorCore.rect = sharedZoneRect;
     elevatorCore.floorFrom = 0;
     elevatorCore.floorTo = maxFloorLevel;
     outBuilding.verticalCores.push_back(elevatorCore);
@@ -357,7 +434,7 @@ void AddMassDrivenCoreIfNeeded(const BuildingDefinition& definition,
     VerticalCore serviceCore;
     serviceCore.coreId = "mass_core_service";
     serviceCore.type = VerticalCoreType::Service;
-    serviceCore.rect = serviceRect;
+    serviceCore.rect = sharedZoneRect;
     serviceCore.floorFrom = 0;
     serviceCore.floorTo = maxFloorLevel;
     outBuilding.verticalCores.push_back(serviceCore);
@@ -462,7 +539,12 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
     const float columnSize = (definition.style.category == "commercial" || definition.style.category == "retail")
         ? 0.45f : 0.35f;
 
+    const bool sparseHighriseColumns = RequiresSharedVerticalZone(definition);
     for (const auto& plan : pendingColumnPlans) {
+        if (sparseHighriseColumns) {
+            continue;
+        }
+
         std::vector<Rect> exclusionRects = plan.exclusionRects;
         for (const auto& core : outBuilding.verticalCores) {
             if (core.floorFrom <= plan.plate.floorLevel && core.floorTo >= plan.plate.floorLevel) {

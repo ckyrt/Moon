@@ -5,6 +5,7 @@
 #include "TestHelpers.h"
 #include "json.hpp"
 #include <chrono>
+#include <functional>
 
 using namespace Moon::Building;
 using namespace Moon::Building::Test;
@@ -337,6 +338,36 @@ TEST_F(BuildingToObjectBlueprintConverterTest, StraightStairsEmitProceduralStair
     EXPECT_TRUE(foundProceduralStair) << "Expected building converter to emit procedural stair nodes";
 }
 
+TEST_F(BuildingToObjectBlueprintConverterTest, ElevatorShaftsEmitCabinReferences) {
+    const std::string inputJson = TestHelpers::LoadFromFile("office_enclosed_core_demo.json");
+    GeneratedBuilding building;
+    std::string errorMsg;
+
+    const bool success = pipeline.ProcessBuilding(inputJson, building, errorMsg);
+    ASSERT_TRUE(success) << "Building processing failed: " << errorMsg;
+    ASSERT_FALSE(building.verticalTransports.empty()) << "Expected vertical transports";
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    ASSERT_TRUE(j.contains("root"));
+    ASSERT_TRUE(j["root"].contains("children"));
+
+    bool foundElevatorCabin = false;
+    for (const auto& child : j["root"]["children"]) {
+        if (!child.is_object() || !child.contains("ref")) {
+            continue;
+        }
+
+        if (child["ref"] == "elevator_cabin_v1") {
+            foundElevatorCabin = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(foundElevatorCabin) << "Expected building converter to emit an elevator cabin object";
+}
+
 TEST_F(BuildingToObjectBlueprintConverterTest, OutputDoesNotContainProgramPreviewBlocks) {
     std::string inputJson = TestHelpers::CreateShoppingCenter();
     GeneratedBuilding building;
@@ -361,6 +392,106 @@ TEST_F(BuildingToObjectBlueprintConverterTest, OutputDoesNotContainProgramPrevie
         EXPECT_TRUE(name.rfind("program_", 0) != 0)
             << "Final building output should not contain debug preview blocks: " << name;
     }
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, FloorPlatesWithOutlineEmitClippedCsgSlabs) {
+    GeneratedBuilding building;
+    building.definition.grid = 0.5f;
+
+    Floor floor;
+    floor.level = 0;
+    floor.floorHeight = 4.0f;
+    building.definition.floors.push_back(floor);
+
+    FloorPlate plate;
+    plate.floorLevel = 0;
+    plate.origin = {0.0f, 0.0f};
+    plate.size = {8.0f, 8.0f};
+    plate.outline = {
+        GridPos2D{0.0f, 0.0f},
+        GridPos2D{8.0f, 0.0f},
+        GridPos2D{6.0f, 6.0f},
+        GridPos2D{0.0f, 8.0f}
+    };
+    building.floorPlates.push_back(plate);
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    ASSERT_TRUE(j.contains("root"));
+    ASSERT_TRUE(j["root"].contains("children"));
+    ASSERT_FALSE(j["root"]["children"].empty());
+
+    const json& floorNode = j["root"]["children"][0];
+    ASSERT_TRUE(floorNode.is_object());
+    EXPECT_EQ(floorNode.value("type", ""), "csg");
+    EXPECT_EQ(floorNode.value("operation", ""), "subtract");
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, FloorPlatesPreferEnvelopeOutlineForSlabShape) {
+    GeneratedBuilding building;
+    building.definition.grid = 0.5f;
+
+    Floor floor;
+    floor.level = 0;
+    floor.floorHeight = 4.0f;
+    building.definition.floors.push_back(floor);
+
+    FloorPlate plate;
+    plate.floorLevel = 0;
+    plate.origin = {0.0f, 0.0f};
+    plate.size = {8.0f, 8.0f};
+    plate.envelopeOutline = {
+        GridPos2D{0.0f, 0.0f},
+        GridPos2D{10.0f, 0.0f},
+        GridPos2D{10.0f, 10.0f},
+        GridPos2D{0.0f, 10.0f}
+    };
+    plate.outline = {
+        GridPos2D{2.0f, 2.0f},
+        GridPos2D{8.0f, 2.0f},
+        GridPos2D{8.0f, 8.0f},
+        GridPos2D{2.0f, 8.0f}
+    };
+    building.floorPlates.push_back(plate);
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    const json& floorNode = j["root"]["children"][0];
+    ASSERT_TRUE(floorNode.is_object());
+    std::function<const json*(const json&)> findBboxNode = [&](const json& node) -> const json* {
+        if (!node.is_object()) {
+            return nullptr;
+        }
+        if (node.value("name", std::string()).find("_bbox") != std::string::npos) {
+            return &node;
+        }
+        if (node.contains("left")) {
+            if (const json* found = findBboxNode(node["left"])) {
+                return found;
+            }
+        }
+        if (node.contains("right")) {
+            if (const json* found = findBboxNode(node["right"])) {
+                return found;
+            }
+        }
+        if (node.contains("children") && node["children"].is_array()) {
+            for (const auto& child : node["children"]) {
+                if (const json* found = findBboxNode(child)) {
+                    return found;
+                }
+            }
+        }
+        return nullptr;
+    };
+
+    const json* bboxNode = findBboxNode(floorNode);
+    ASSERT_NE(bboxNode, nullptr);
+    ASSERT_TRUE(bboxNode->contains("params"));
+    EXPECT_FLOAT_EQ((*bboxNode)["params"]["size_x"].get<float>(), 1000.0f);
+    EXPECT_FLOAT_EQ((*bboxNode)["params"]["size_z"].get<float>(), 1000.0f);
 }
 
 // ========================================

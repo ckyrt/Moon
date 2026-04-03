@@ -241,24 +241,6 @@ namespace {
         material->SetMappingMode(Moon::MappingMode::UV);
     }
 
-    void AddEnvelopeMaterial(Moon::SceneNode* node) {
-        Moon::Material* material = node->AddComponent<Moon::Material>();
-        material->SetBaseColor(Moon::Vector3(0.64f, 0.69f, 0.76f));
-        material->SetMetallic(0.0f);
-        material->SetRoughness(0.88f);
-        material->SetOpacity(0.28f);
-        material->SetMappingMode(Moon::MappingMode::UV);
-    }
-
-    void AddUsablePlateMaterial(Moon::SceneNode* node) {
-        Moon::Material* material = node->AddComponent<Moon::Material>();
-        material->SetBaseColor(Moon::Vector3(0.74f, 0.76f, 0.8f));
-        material->SetMetallic(0.0f);
-        material->SetRoughness(0.9f);
-        material->SetOpacity(1.0f);
-        material->SetMappingMode(Moon::MappingMode::UV);
-    }
-
     std::filesystem::path GetMassingPresetDirectory() {
         return std::filesystem::path(Moon::Assets::BuildAssetPath("massing"));
     }
@@ -266,6 +248,7 @@ namespace {
     std::filesystem::path GetBuildingPresetDirectory() {
         return std::filesystem::path(Moon::Assets::BuildAssetPath("building"));
     }
+
 
     std::filesystem::path GetObjectPresetDirectory() {
         return std::filesystem::path(Moon::Assets::BuildObjectPath(""));
@@ -297,152 +280,6 @@ namespace {
             contents.erase(0, 3);
         }
         return contents;
-    }
-
-    bool AppendMassingEnvelopePreview(Moon::Scene* scene,
-                                      Moon::SceneNode* previewRoot,
-                                      const std::string& massingRuleAsset,
-                                      std::vector<std::string>& outWarnings,
-                                      std::string& outError) {
-        if (massingRuleAsset.empty()) {
-            return true;
-        }
-
-        const std::filesystem::path rulePath = GetMassingPresetDirectory() / massingRuleAsset;
-        const std::string ruleJson = ReadTextFile(rulePath);
-        if (ruleJson.empty()) {
-            outError = "Failed to read massing envelope rule: " + rulePath.string();
-            return false;
-        }
-
-        Moon::Massing::RuleSet ruleSet;
-        if (!Moon::Massing::MassRuleParser::ParseFromString(ruleJson, ruleSet, outError)) {
-            outError = "Failed to parse massing envelope rule: " + outError;
-            return false;
-        }
-
-        Moon::Massing::MassBuildResult massBuildResult;
-        if (!Moon::Massing::MassMeshBuilder::Build(ruleSet, massBuildResult, outError)) {
-            outError = "Failed to build massing envelope preview: " + outError;
-            return false;
-        }
-
-        for (size_t i = 0; i < massBuildResult.items.size(); ++i) {
-            const Moon::Massing::MassBuildItem& item = massBuildResult.items[i];
-            Moon::SceneNode* childNode = scene->CreateNode("EnvelopePart_" + std::to_string(i));
-            childNode->SetParent(previewRoot, false);
-            Moon::MeshRenderer* renderer = childNode->AddComponent<Moon::MeshRenderer>();
-            renderer->SetMesh(item.mesh);
-            AddEnvelopeMaterial(childNode);
-        }
-
-        outWarnings.insert(outWarnings.end(), massBuildResult.warnings.begin(), massBuildResult.warnings.end());
-        return true;
-    }
-
-    std::shared_ptr<Moon::Mesh> CreateFloorPlateMesh(const Moon::Building::FloorPlate& plate,
-                                                     const Moon::Building::BuildingDefinition& definition,
-                                                     float slabThickness) {
-        if (plate.outline.size() < 3) {
-            return nullptr;
-        }
-
-        auto mesh = std::make_shared<Moon::Mesh>();
-        std::vector<Moon::Vertex> vertices;
-        std::vector<uint32_t> indices;
-
-        const float baseY = Moon::Building::GetFloorBaseHeight(definition, plate.floorLevel);
-        const float topY = baseY + slabThickness;
-
-        float centerX = 0.0f;
-        float centerZ = 0.0f;
-        for (const auto& point : plate.outline) {
-            centerX += point[0];
-            centerZ += point[1];
-        }
-        centerX /= static_cast<float>(plate.outline.size());
-        centerZ /= static_cast<float>(plate.outline.size());
-
-        auto addVertex = [&](float x, float y, float z, const Moon::Vector3& normal, float u, float v) {
-            vertices.emplace_back(Moon::Vector3(x, y, z), normal, Moon::Vector3(1.0f, 1.0f, 1.0f), 1.0f, Moon::Vector2(u, v));
-        };
-
-        const uint32_t topCenter = static_cast<uint32_t>(vertices.size());
-        addVertex(centerX, topY, centerZ, Moon::Vector3(0.0f, 1.0f, 0.0f), 0.5f, 0.5f);
-        for (const auto& point : plate.outline) {
-            addVertex(point[0], topY, point[1], Moon::Vector3(0.0f, 1.0f, 0.0f), 0.0f, 0.0f);
-        }
-
-        const uint32_t bottomCenter = static_cast<uint32_t>(vertices.size());
-        addVertex(centerX, baseY, centerZ, Moon::Vector3(0.0f, -1.0f, 0.0f), 0.5f, 0.5f);
-        for (const auto& point : plate.outline) {
-            addVertex(point[0], baseY, point[1], Moon::Vector3(0.0f, -1.0f, 0.0f), 0.0f, 0.0f);
-        }
-
-        const size_t count = plate.outline.size();
-        for (size_t i = 0; i < count; ++i) {
-            const size_t next = (i + 1) % count;
-            indices.push_back(topCenter);
-            indices.push_back(topCenter + 1 + static_cast<uint32_t>(i));
-            indices.push_back(topCenter + 1 + static_cast<uint32_t>(next));
-
-            indices.push_back(bottomCenter);
-            indices.push_back(bottomCenter + 1 + static_cast<uint32_t>(next));
-            indices.push_back(bottomCenter + 1 + static_cast<uint32_t>(i));
-        }
-
-        for (size_t i = 0; i < count; ++i) {
-            const size_t next = (i + 1) % count;
-            const auto& a = plate.outline[i];
-            const auto& b = plate.outline[next];
-            Moon::Vector3 edge(b[0] - a[0], 0.0f, b[1] - a[1]);
-            Moon::Vector3 normal(edge.z, 0.0f, -edge.x);
-            const float length = normal.Length();
-            if (length > 0.0001f) {
-                normal = normal * (1.0f / length);
-            } else {
-                normal = Moon::Vector3(1.0f, 0.0f, 0.0f);
-            }
-
-            const uint32_t sideStart = static_cast<uint32_t>(vertices.size());
-            addVertex(a[0], topY, a[1], normal, 0.0f, 0.0f);
-            addVertex(b[0], topY, b[1], normal, 1.0f, 0.0f);
-            addVertex(b[0], baseY, b[1], normal, 1.0f, 1.0f);
-            addVertex(a[0], baseY, a[1], normal, 0.0f, 1.0f);
-            indices.push_back(sideStart + 0);
-            indices.push_back(sideStart + 1);
-            indices.push_back(sideStart + 2);
-            indices.push_back(sideStart + 0);
-            indices.push_back(sideStart + 2);
-            indices.push_back(sideStart + 3);
-        }
-
-        mesh->SetVertices(std::move(vertices));
-        mesh->SetIndices(std::move(indices));
-        return mesh;
-    }
-
-    size_t AppendFloorPlateContourPreview(Moon::Scene* scene,
-                                          Moon::SceneNode* previewRoot,
-                                          const Moon::Building::GeneratedBuilding& building) {
-        size_t meshCount = 0;
-        for (const auto& plate : building.floorPlates) {
-            if (plate.outline.size() < 3) {
-                continue;
-            }
-            std::shared_ptr<Moon::Mesh> mesh = CreateFloorPlateMesh(plate, building.definition, 0.18f);
-            if (!mesh || !mesh->IsValid()) {
-                continue;
-            }
-
-            Moon::SceneNode* node = scene->CreateNode("UsablePlate_" + std::to_string(plate.floorLevel));
-            node->SetParent(previewRoot, false);
-            Moon::MeshRenderer* renderer = node->AddComponent<Moon::MeshRenderer>();
-            renderer->SetMesh(mesh);
-            AddUsablePlateMaterial(node);
-            ++meshCount;
-        }
-        return meshCount;
     }
 
     struct Bounds3 {
@@ -565,16 +402,24 @@ namespace {
         return database.LoadIndex(Moon::Assets::BuildObjectPath("index.json"), outError);
     }
 
-    bool BuildBuildingPreviewResult(const std::string& buildingJson,
-                                    Moon::CSG::BuildResult& outBuildResult,
-                                    std::string& outError) {
-        Moon::Building::GeneratedBuilding building;
-        Moon::Building::BuildingPipeline pipeline;
-        if (!pipeline.ProcessBuilding(buildingJson, building, outError)) {
-            return false;
-        }
+    void AppendGeneratedBuildingPreviewMeshes(const Moon::Building::GeneratedBuilding& building,
+                                             Moon::CSG::BuildResult& ioBuildResult) {
+        for (const auto& part : building.envelopeMeshes) {
+            if (!part.mesh || !part.mesh->IsValid()) {
+                continue;
+            }
 
-        building.programBlocks.clear();
+            ioBuildResult.AddMesh(Moon::CSG::MeshItem(
+                part.mesh,
+                part.material.empty() ? "glass_tinted" : part.material,
+                Moon::CSG::ResolvedTransform(),
+                false));
+        }
+    }
+
+    bool BuildGeneratedBuildingPreviewResult(const Moon::Building::GeneratedBuilding& building,
+                                             Moon::CSG::BuildResult& outBuildResult,
+                                             std::string& outError) {
         const std::string blueprintJson = Moon::Building::BuildingToObjectBlueprintConverter::Convert(building);
 
         Moon::Object::BlueprintDatabase database;
@@ -593,6 +438,7 @@ namespace {
         builder.SetBlueprintDatabase(&database);
         std::unordered_map<std::string, float> params;
         outBuildResult = builder.Build(generatedBlueprint.get(), params, outError);
+        AppendGeneratedBuildingPreviewMeshes(building, outBuildResult);
         if (outBuildResult.meshes.empty()) {
             if (outError.empty()) {
                 outError = "Failed to build building preview";
@@ -601,6 +447,19 @@ namespace {
         }
 
         return true;
+    }
+
+    bool BuildBuildingPreviewResult(const std::string& buildingJson,
+                                    Moon::CSG::BuildResult& outBuildResult,
+                                    std::string& outError) {
+        Moon::Building::GeneratedBuilding building;
+        Moon::Building::BuildingPipeline pipeline;
+        if (!pipeline.ProcessBuilding(buildingJson, building, outError)) {
+            return false;
+        }
+
+        building.programBlocks.clear();
+        return BuildGeneratedBuildingPreviewResult(building, outBuildResult, outError);
     }
 
     bool BuildInlineObjectPreviewResult(const std::string& objectJson,
@@ -1837,28 +1696,11 @@ namespace CommandHandlers {
 
         building.programBlocks.clear();
 
-        MOON_LOG_INFO("MoonEngineMessage", "HandlePreviewBuilding: converting to blueprint");
-        std::string blueprintJson = Moon::Building::BuildingToObjectBlueprintConverter::Convert(building);
         std::string loadError;
-        Moon::Object::BlueprintDatabase database;
-        const std::string csgIndexPath = Moon::Assets::BuildObjectPath("index.json");
-        if (!database.LoadIndex(csgIndexPath, loadError)) {
-            return CreateErrorResponse("Failed to load CSG index: " + loadError);
-        }
-
-        MOON_LOG_INFO("MoonEngineMessage", "HandlePreviewBuilding: parsing generated blueprint");
-        auto generatedBlueprint = Moon::Object::BlueprintLoader::ParseFromString(blueprintJson, loadError);
-        if (!generatedBlueprint) {
-            return CreateErrorResponse("Failed to parse building blueprint: " + loadError);
-        }
-
-        Moon::CSG::CSGBuilder builder;
-        builder.SetBlueprintDatabase(&database);
-        std::unordered_map<std::string, float> params;
         MOON_LOG_INFO("MoonEngineMessage", "HandlePreviewBuilding: building CSG meshes");
-        Moon::CSG::BuildResult buildResult = builder.Build(generatedBlueprint.get(), params, loadError);
-        if (buildResult.meshes.empty()) {
-            return CreateErrorResponse("Failed to build building preview: " + loadError);
+        Moon::CSG::BuildResult buildResult;
+        if (!BuildGeneratedBuildingPreviewResult(building, buildResult, loadError)) {
+            return CreateErrorResponse(loadError);
         }
         MOON_LOG_INFO("MoonEngineMessage", "HandlePreviewBuilding: CSG build complete meshes=%zu", buildResult.meshes.size());
 
@@ -1877,7 +1719,7 @@ namespace CommandHandlers {
             Moon::MeshRenderer* renderer = childNode->AddComponent<Moon::MeshRenderer>();
             renderer->SetMesh(item.mesh);
             Moon::Material* material = AddPreviewMaterial(childNode, item.material);
-            if (item.material == "brick" || item.material == "glass") {
+            if (item.material == "brick" || item.material.find("glass") != std::string::npos) {
                 material->SetOpacity(0.42f);
             }
         }

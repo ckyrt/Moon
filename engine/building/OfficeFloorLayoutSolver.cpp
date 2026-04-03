@@ -95,22 +95,74 @@ GridPos2D ComputePlateCenter(const FloorPlate& plate) {
     };
 }
 
-Rect ComputeSafeInteriorRect(const FloorPlate& plate, float margin) {
+Rect MakeCenteredRect(const GridPos2D& center, float width, float depth) {
     Rect rect;
-    const auto center = ComputePlateCenter(plate);
-    const float safeWidth = std::max(2.0f, plate.size[0] * 0.62f);
-    const float safeDepth = std::max(2.0f, plate.size[1] * 0.62f);
     rect.origin = {
-        std::max(plate.origin[0] + margin, center[0] - safeWidth * 0.5f),
-        std::max(plate.origin[1] + margin, center[1] - safeDepth * 0.5f)
+        center[0] - width * 0.5f,
+        center[1] - depth * 0.5f
     };
-    rect.size = {
-        std::min(safeWidth, plate.origin[0] + plate.size[0] - margin - rect.origin[0]),
-        std::min(safeDepth, plate.origin[1] + plate.size[1] - margin - rect.origin[1])
-    };
-    rect.size[0] = std::max(0.5f, rect.size[0]);
-    rect.size[1] = std::max(0.5f, rect.size[1]);
+    rect.size = {width, depth};
     return rect;
+}
+
+void AppendUniqueCandidateCenter(std::vector<GridPos2D>& candidates,
+                                 const GridPos2D& point,
+                                 float epsilon = 0.05f) {
+    const auto duplicate = std::find_if(candidates.begin(), candidates.end(),
+        [&](const GridPos2D& existing) {
+            return std::abs(existing[0] - point[0]) <= epsilon &&
+                   std::abs(existing[1] - point[1]) <= epsilon;
+        });
+    if (duplicate == candidates.end()) {
+        candidates.push_back(point);
+    }
+}
+
+Rect ComputeSafeInteriorRect(const FloorPlate& plate, float margin) {
+    const auto center = ComputePlateCenter(plate);
+    const GridPos2D boundsCenter = {
+        plate.origin[0] + plate.size[0] * 0.5f,
+        plate.origin[1] + plate.size[1] * 0.5f
+    };
+    const float grid = 0.5f;
+    const float width = std::max(3.0f, plate.size[0] * 0.62f);
+    const float depth = std::max(3.0f, plate.size[1] * 0.62f);
+
+    std::vector<GridPos2D> candidateCenters;
+    AppendUniqueCandidateCenter(candidateCenters, center);
+    AppendUniqueCandidateCenter(candidateCenters, boundsCenter);
+    for (const auto& point : plate.outline) {
+        AppendUniqueCandidateCenter(candidateCenters, point);
+    }
+    for (float dx = -plate.size[0] * 0.2f; dx <= plate.size[0] * 0.2f; dx += std::max(grid, plate.size[0] * 0.1f)) {
+        for (float dy = -plate.size[1] * 0.2f; dy <= plate.size[1] * 0.2f; dy += std::max(grid, plate.size[1] * 0.1f)) {
+            AppendUniqueCandidateCenter(candidateCenters, {center[0] + dx, center[1] + dy});
+        }
+    }
+
+    Rect bestRect;
+    float bestArea = 0.0f;
+    for (const auto& candidateCenter : candidateCenters) {
+        float testWidth = width;
+        float testDepth = depth;
+
+        for (int attempt = 0; attempt < 18; ++attempt) {
+            const Rect candidate = MakeCenteredRect(candidateCenter, testWidth, testDepth);
+            if (RectFitsPlate(plate, candidate, margin)) {
+                const float area = candidate.size[0] * candidate.size[1];
+                if (area > bestArea) {
+                    bestArea = area;
+                    bestRect = candidate;
+                }
+                break;
+            }
+
+            testWidth = std::max(2.0f, testWidth - grid);
+            testDepth = std::max(2.0f, testDepth - grid);
+        }
+    }
+
+    return bestRect;
 }
 
 bool IsCoreSemanticType(const std::string& type) {
@@ -149,6 +201,42 @@ Rect MergeCoreEnvelope(const std::vector<VerticalCore>& cores) {
         maxX = std::max(maxX, core.rect.origin[0] + core.rect.size[0]);
         maxY = std::max(maxY, core.rect.origin[1] + core.rect.size[1]);
     }
+    merged.origin = {minX, minY};
+    merged.size = {maxX - minX, maxY - minY};
+    return merged;
+}
+
+Rect MergeTransportEnvelope(const std::vector<SemanticVerticalSystem>& systems) {
+    Rect merged;
+    bool hasAny = false;
+    float minX = 0.0f;
+    float minY = 0.0f;
+    float maxX = 0.0f;
+    float maxY = 0.0f;
+
+    for (const auto& system : systems) {
+        if (system.shaftRect.size[0] <= 0.0f || system.shaftRect.size[1] <= 0.0f) {
+            continue;
+        }
+
+        if (!hasAny) {
+            minX = system.shaftRect.origin[0];
+            minY = system.shaftRect.origin[1];
+            maxX = system.shaftRect.origin[0] + system.shaftRect.size[0];
+            maxY = system.shaftRect.origin[1] + system.shaftRect.size[1];
+            hasAny = true;
+        } else {
+            minX = std::min(minX, system.shaftRect.origin[0]);
+            minY = std::min(minY, system.shaftRect.origin[1]);
+            maxX = std::max(maxX, system.shaftRect.origin[0] + system.shaftRect.size[0]);
+            maxY = std::max(maxY, system.shaftRect.origin[1] + system.shaftRect.size[1]);
+        }
+    }
+
+    if (!hasAny) {
+        return merged;
+    }
+
     merged.origin = {minX, minY};
     merged.size = {maxX - minX, maxY - minY};
     return merged;
@@ -311,18 +399,23 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
     outResolvedFloor.verticalTransports.clear();
     outResolvedFloor.debugBlocks.clear();
 
-    const Rect combinedCore = MergeCoreEnvelope(floorCores);
+    Rect combinedCore = MergeCoreEnvelope(floorCores);
     if (combinedCore.size[0] <= 0.0f || combinedCore.size[1] <= 0.0f) {
-        outError = "Office floor layout requires a valid stair/elevator core envelope";
-        if (layoutInput.verticalSystems.empty()) {
+        combinedCore = MergeTransportEnvelope(layoutInput.verticalSystems);
+        if (combinedCore.size[0] <= 0.0f || combinedCore.size[1] <= 0.0f) {
+            outError = "Office floor layout requires a valid stair/elevator core envelope";
             return false;
         }
     }
 
     const float corridorWidth = definition.style.category == "commercial" ? 2.5f : 2.0f;
     const float margin = std::max(0.2f, definition.grid * 0.5f);
-    const float sideInset = std::max(0.8f, corridorWidth + definition.grid);
+    const float sideInset = std::max(0.8f, corridorWidth);
     const Rect safeInterior = ComputeSafeInteriorRect(floorPlate, margin);
+    if (safeInterior.size[0] <= 0.0f || safeInterior.size[1] <= 0.0f) {
+        outError = "Failed to find a valid interior region inside sliced office floor plate";
+        return false;
+    }
     const float plateMinX = safeInterior.origin[0];
     const float plateMinY = safeInterior.origin[1];
     const float plateMaxX = safeInterior.origin[0] + safeInterior.size[0];
@@ -476,6 +569,74 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
     }
 
     if (outResolvedFloor.spaces.empty()) {
+        std::vector<const SemanticSpace*> fallbackSpaces;
+        fallbackSpaces.reserve(layoutInput.spaces.size());
+        for (const auto& semanticSpace : layoutInput.spaces) {
+            if (IsCoreSemanticType(semanticSpace.type)) {
+                continue;
+            }
+
+            const SpaceUsage usage = StringToSpaceUsage(semanticSpace.type);
+            if (usage == SpaceUsage::Unknown) {
+                continue;
+            }
+
+            fallbackSpaces.push_back(&semanticSpace);
+        }
+
+        if (!fallbackSpaces.empty()) {
+            const float totalHeight = safeInterior.size[1];
+            const float minBandDepth = std::max(2.0f, definition.grid * 4.0f);
+            float cursorY = safeInterior.origin[1];
+
+            for (size_t index = 0; index < fallbackSpaces.size(); ++index) {
+                const auto& semanticSpace = *fallbackSpaces[index];
+                const SpaceUsage usage = StringToSpaceUsage(semanticSpace.type);
+                const size_t remainingCount = fallbackSpaces.size() - index;
+                const float remainingHeight = safeInterior.origin[1] + totalHeight - cursorY;
+                if (remainingHeight < minBandDepth) {
+                    break;
+                }
+
+                float bandDepth = remainingHeight / static_cast<float>(remainingCount);
+                if (usage == SpaceUsage::Corridor || usage == SpaceUsage::Entrance) {
+                    bandDepth = std::clamp(
+                        std::max(semanticSpace.constraints.minWidth, definition.grid * 4.0f),
+                        minBandDepth,
+                        remainingHeight);
+                }
+                if (index + 1 == fallbackSpaces.size()) {
+                    bandDepth = remainingHeight;
+                }
+
+                Rect candidate;
+                candidate.rectId = semanticSpace.spaceId;
+                candidate.origin = {safeInterior.origin[0], cursorY};
+                candidate.size = {safeInterior.size[0], std::max(minBandDepth, bandDepth)};
+                candidate = FitRectToArea(candidate,
+                    std::max(8.0f, semanticSpace.areaPreferred),
+                    std::max(2.0f, semanticSpace.constraints.minWidth));
+                if (!RectFitsPlate(floorPlate, candidate, 0.1f)) {
+                    continue;
+                }
+
+                ResolvedSpacePlan space = MakeResolvedSpace(
+                    semanticSpace.spaceId,
+                    usage,
+                    candidate,
+                    semanticSpace.constraints.ceilingHeight,
+                    layoutInput.level);
+                AddDebugBlock(space, layoutInput.level, outResolvedFloor.debugBlocks);
+                outResolvedFloor.spaces.push_back(std::move(space));
+                cursorY += candidate.size[1];
+            }
+        }
+    }
+
+    if (outResolvedFloor.spaces.empty()) {
+        if (!layoutInput.verticalSystems.empty()) {
+            return true;
+        }
         outError = "Failed to synthesize office floor spaces inside sliced floor plates";
         return false;
     }
