@@ -1,6 +1,6 @@
 #pragma once
 
-#include "LayoutResolver.h"
+#include "SemanticBuildingTypes.h"
 #include <string>
 #include <vector>
 

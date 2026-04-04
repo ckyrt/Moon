@@ -6,6 +6,8 @@ This file is the AI-facing guide for generating new building assets.
 
 When a player asks for a new building, generate semantic `moon_building` JSON that the current pipeline can validate and preview.
 
+The default workflow should be staged authoring, not blind one-shot generation.
+
 ## Output Rules
 
 - output valid JSON only for building asset files
@@ -158,14 +160,103 @@ Use relationships such as:
 - references: `assets/building/reference/*.json`
 - asset list: `assets/building/catalog.json`
 
-## Recommended Workflow
+## Staged Workflow Rule
 
-1. choose the building type
-2. define mass and floor count
-3. define floor-by-floor spaces
-4. add `core`, `corridor`, `void`, and `unit_id` structure when needed
-5. add adjacency and constraints
-6. keep the result simple enough for validators and generators
+For building design changes, keep a current full building asset JSON and rewrite that asset at each stage.
+
+Use these stages:
+
+1. `form`
+2. `vertical`
+3. `plate`
+4. `program`
+5. `facade`
+
+Then switch to scene composition:
+
+6. `scene_composition`
+
+`scene_composition` should use `scene_edit_ops`, not a rewritten building asset.
+
+See:
+
+- `docs/building-authoring-workflow.md`
+- `docs/scene-system-ai.md`
+
+## Workflow Template Hints
+
+### `residential_lite`
+
+Use for:
+
+- villa
+- house
+- townhouse
+
+Prefer:
+
+- `form`
+- `vertical`
+- `program`
+- `facade`
+
+### `residential_midrise`
+
+Use for:
+
+- three-floor apartment
+- small apartment block
+- low-rise residential
+
+Prefer:
+
+- `form`
+- `vertical`
+- `program`
+- `facade`
+
+### `office_tower`
+
+Use for:
+
+- office tower
+- high-rise office
+
+Prefer:
+
+- `form`
+- `vertical`
+- `plate`
+- `program`
+- `facade`
+
+### `retail_mall`
+
+Use for:
+
+- mall
+- shopping center
+- retail center
+
+Prefer:
+
+- `form`
+- `vertical`
+- `plate`
+- `program`
+- `facade`
+
+## Output Rule By Stage
+
+For `form`, `vertical`, `plate`, `program`, and `facade`:
+
+- output a full valid `moon_building` JSON
+- preserve valid existing information that is not being redesigned
+- do not emit partial patch formats
+
+For `scene_composition`:
+
+- output scene operations, not full building JSON
 
 ## Avoid
 
@@ -174,3 +265,5 @@ Use relationships such as:
 - omitting circulation in multi-space buildings
 - using inconsistent `space_id`
 - forcing detailed shape instructions when semantic program data is enough
+- using invalid data and expecting the engine to repair it silently
+- mixing furniture placement with building redesign in the same output

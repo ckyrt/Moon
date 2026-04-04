@@ -2,9 +2,15 @@
 #include "building/BuildingToObjectBlueprintConverter.h"
 #include "building/BuildingPipeline.h"
 #include "building/SchemaValidator.h"
+#include "core/Assets/AssetPaths.h"
+#include "core/CSG/CSGBuilder.h"
+#include "core/Object/Blueprint.h"
+#include "core/Object/BlueprintLoader.h"
 #include "TestHelpers.h"
 #include "json.hpp"
 #include <chrono>
+#include <cmath>
+#include <fstream>
 #include <functional>
 
 using namespace Moon::Building;
@@ -49,6 +55,65 @@ bool PointInsideRect(const GridPos2D& point, const Rect& rect) {
            point[1] > rect.origin[1] &&
            point[1] < rect.origin[1] + rect.size[1];
 }
+
+const json* FindNodeByNameRecursive(const json& node, const std::string& name) {
+    if (!node.is_object()) {
+        return nullptr;
+    }
+    if (node.value("name", std::string()) == name) {
+        return &node;
+    }
+    if (node.contains("left")) {
+        if (const json* found = FindNodeByNameRecursive(node["left"], name)) {
+            return found;
+        }
+    }
+    if (node.contains("right")) {
+        if (const json* found = FindNodeByNameRecursive(node["right"], name)) {
+            return found;
+        }
+    }
+    if (node.contains("children") && node["children"].is_array()) {
+        for (const auto& child : node["children"]) {
+            if (const json* found = FindNodeByNameRecursive(child, name)) {
+                return found;
+            }
+        }
+    }
+    return nullptr;
+}
+
+void CollectNodesByPrefixRecursive(const json& node,
+                                   const std::string& prefix,
+                                   std::vector<const json*>& outNodes) {
+    if (!node.is_object()) {
+        return;
+    }
+
+    const std::string name = node.value("name", std::string());
+    if (name.rfind(prefix, 0) == 0) {
+        outNodes.push_back(&node);
+    }
+
+    if (node.contains("left")) {
+        CollectNodesByPrefixRecursive(node["left"], prefix, outNodes);
+    }
+    if (node.contains("right")) {
+        CollectNodesByPrefixRecursive(node["right"], prefix, outNodes);
+    }
+    if (node.contains("children") && node["children"].is_array()) {
+        for (const auto& child : node["children"]) {
+            CollectNodesByPrefixRecursive(child, prefix, outNodes);
+        }
+    }
+}
+
+class PreloadedBlueprintDatabase : public Moon::Object::BlueprintDatabase {
+public:
+    bool LoadObjectIndex(std::string& outError) {
+        return LoadIndex(Moon::Assets::BuildObjectPath("index.json"), outError);
+    }
+};
 
 } // namespace
 
@@ -569,6 +634,362 @@ TEST_F(BuildingToObjectBlueprintConverterTest, FloorPlatesPreferEnvelopeOutlineF
     ASSERT_TRUE(bboxNode->contains("params"));
     EXPECT_FLOAT_EQ((*bboxNode)["params"]["size_x"].get<float>(), 1000.0f);
     EXPECT_FLOAT_EQ((*bboxNode)["params"]["size_z"].get<float>(), 1000.0f);
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, WallsAndOpeningsStartAboveFallbackSlab) {
+    GeneratedBuilding building;
+
+    Floor floor;
+    floor.level = 0;
+    floor.floorHeight = 4.0f;
+    building.definition.floors.push_back(floor);
+
+    WallSegment wall;
+    wall.wallId = 1;
+    wall.start = {0.0f, 0.0f};
+    wall.end = {4.0f, 0.0f};
+    wall.type = WallType::Exterior;
+    wall.spaceId = 10;
+    wall.neighborSpaceId = -1;
+    wall.floorLevel = 0;
+    wall.height = 3.0f;
+    wall.thickness = 0.2f;
+    building.walls.push_back(wall);
+
+    Door door;
+    door.wallId = 1;
+    door.position = {2.0f, 0.0f};
+    door.rotation = 0.0f;
+    door.type = DoorType::Entrance;
+    door.width = 1.0f;
+    door.height = 2.1f;
+    door.spaceA = 10;
+    door.spaceB = -1;
+    door.floorLevel = 0;
+    building.doors.push_back(door);
+
+    Window window;
+    window.wallId = 1;
+    window.position = {1.0f, 0.0f};
+    window.rotation = 0.0f;
+    window.width = 1.2f;
+    window.height = 1.5f;
+    window.sillHeight = 0.9f;
+    window.floorLevel = 0;
+    window.spaceId = 10;
+    building.windows.push_back(window);
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    const json* wallPanelNode = FindNodeByNameRecursive(j["root"], "wall_panel_0");
+    const json* wallNode = FindNodeByNameRecursive(j["root"], "wall_0");
+    const json* doorNode = FindNodeByNameRecursive(j["root"], "door_0");
+    const json* windowNode = FindNodeByNameRecursive(j["root"], "window_0");
+
+    ASSERT_NE(wallPanelNode, nullptr);
+    ASSERT_NE(doorNode, nullptr);
+    ASSERT_NE(windowNode, nullptr);
+
+    EXPECT_FLOAT_EQ((*wallPanelNode)["transform"]["position"][1].get<float>(), 5.0f);
+    ASSERT_NE(wallNode, nullptr);
+    EXPECT_FLOAT_EQ((*wallNode)["size"][1].get<float>(), 3.95f);
+    EXPECT_FLOAT_EQ((*doorNode)["transform"]["position"][1].get<float>(), 5.0f);
+    EXPECT_FLOAT_EQ((*windowNode)["transform"]["position"][1].get<float>(), 95.0f);
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, WallsAndOpeningsStartAboveMassFloorPlateSlab) {
+    GeneratedBuilding building;
+
+    Floor floor;
+    floor.level = 0;
+    floor.floorHeight = 4.0f;
+    building.definition.floors.push_back(floor);
+
+    FloorPlate plate;
+    plate.floorLevel = 0;
+    plate.origin = {0.0f, 0.0f};
+    plate.size = {6.0f, 6.0f};
+    plate.envelopeOutline = {
+        GridPos2D{0.0f, 0.0f},
+        GridPos2D{6.0f, 0.0f},
+        GridPos2D{6.0f, 6.0f},
+        GridPos2D{0.0f, 6.0f}
+    };
+    plate.outline = plate.envelopeOutline;
+    building.floorPlates.push_back(plate);
+
+    WallSegment wall;
+    wall.wallId = 1;
+    wall.start = {0.0f, 0.0f};
+    wall.end = {4.0f, 0.0f};
+    wall.type = WallType::Exterior;
+    wall.spaceId = 10;
+    wall.neighborSpaceId = -1;
+    wall.floorLevel = 0;
+    wall.height = 3.0f;
+    wall.thickness = 0.2f;
+    building.walls.push_back(wall);
+
+    Door door;
+    door.wallId = 1;
+    door.position = {2.0f, 0.0f};
+    door.rotation = 0.0f;
+    door.type = DoorType::Entrance;
+    door.width = 1.0f;
+    door.height = 2.1f;
+    door.spaceA = 10;
+    door.spaceB = -1;
+    door.floorLevel = 0;
+    building.doors.push_back(door);
+
+    Window window;
+    window.wallId = 1;
+    window.position = {1.0f, 0.0f};
+    window.rotation = 0.0f;
+    window.width = 1.2f;
+    window.height = 1.5f;
+    window.sillHeight = 0.9f;
+    window.floorLevel = 0;
+    window.spaceId = 10;
+    building.windows.push_back(window);
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    const json* wallPanelNode = FindNodeByNameRecursive(j["root"], "wall_panel_0");
+    const json* wallNode = FindNodeByNameRecursive(j["root"], "wall_0");
+    const json* doorNode = FindNodeByNameRecursive(j["root"], "door_0");
+    const json* windowNode = FindNodeByNameRecursive(j["root"], "window_0");
+
+    ASSERT_NE(wallPanelNode, nullptr);
+    ASSERT_NE(doorNode, nullptr);
+    ASSERT_NE(windowNode, nullptr);
+
+    EXPECT_FLOAT_EQ((*wallPanelNode)["transform"]["position"][1].get<float>(), 18.0f);
+    ASSERT_NE(wallNode, nullptr);
+EXPECT_FLOAT_EQ((*wallNode)["size"][1].get<float>(), 3.82f);
+EXPECT_FLOAT_EQ((*doorNode)["transform"]["position"][1].get<float>(), 18.0f);
+EXPECT_FLOAT_EQ((*windowNode)["transform"]["position"][1].get<float>(), 108.0f);
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, ShortRequestedWallsStillFillClearStoryHeight) {
+    GeneratedBuilding building;
+
+    Floor groundFloor;
+    groundFloor.level = 0;
+    groundFloor.floorHeight = 4.0f;
+    building.definition.floors.push_back(groundFloor);
+
+    Floor upperFloor;
+    upperFloor.level = 1;
+    upperFloor.floorHeight = 4.0f;
+    building.definition.floors.push_back(upperFloor);
+
+    FloorPlate groundPlate;
+    groundPlate.floorLevel = 0;
+    groundPlate.origin = {0.0f, 0.0f};
+    groundPlate.size = {6.0f, 6.0f};
+    groundPlate.envelopeOutline = {
+        GridPos2D{0.0f, 0.0f},
+        GridPos2D{6.0f, 0.0f},
+        GridPos2D{6.0f, 6.0f},
+        GridPos2D{0.0f, 6.0f}
+    };
+    groundPlate.outline = groundPlate.envelopeOutline;
+    building.floorPlates.push_back(groundPlate);
+
+    FloorPlate upperPlate = groundPlate;
+    upperPlate.floorLevel = 1;
+    building.floorPlates.push_back(upperPlate);
+
+    WallSegment wall;
+    wall.wallId = 1;
+    wall.start = {0.0f, 0.0f};
+    wall.end = {4.0f, 0.0f};
+    wall.type = WallType::Exterior;
+    wall.spaceId = 10;
+    wall.neighborSpaceId = -1;
+    wall.floorLevel = 0;
+    wall.height = 3.1f;
+    wall.thickness = 0.2f;
+    building.walls.push_back(wall);
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    const json* wallNode = FindNodeByNameRecursive(j["root"], "wall_0");
+
+    ASSERT_NE(wallNode, nullptr);
+    EXPECT_FLOAT_EQ((*wallNode)["transform"]["position"][1].get<float>(), 18.0f);
+    EXPECT_FLOAT_EQ((*wallNode)["size"][1].get<float>(), 3.82f);
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, IntentionallyShortWallsStayShort) {
+    GeneratedBuilding building;
+
+    Floor floor;
+    floor.level = 0;
+    floor.floorHeight = 4.0f;
+    building.definition.floors.push_back(floor);
+
+    FloorPlate plate;
+    plate.floorLevel = 0;
+    plate.origin = {0.0f, 0.0f};
+    plate.size = {6.0f, 6.0f};
+    plate.envelopeOutline = {
+        GridPos2D{0.0f, 0.0f},
+        GridPos2D{6.0f, 0.0f},
+        GridPos2D{6.0f, 6.0f},
+        GridPos2D{0.0f, 6.0f}
+    };
+    plate.outline = plate.envelopeOutline;
+    building.floorPlates.push_back(plate);
+
+    WallSegment wall;
+    wall.wallId = 1;
+    wall.start = {0.0f, 0.0f};
+    wall.end = {4.0f, 0.0f};
+    wall.type = WallType::Exterior;
+    wall.spaceId = 10;
+    wall.neighborSpaceId = -1;
+    wall.floorLevel = 0;
+    wall.height = 1.2f;
+    wall.thickness = 0.2f;
+    building.walls.push_back(wall);
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    const json* wallNode = FindNodeByNameRecursive(j["root"], "wall_0");
+    ASSERT_NE(wallNode, nullptr);
+    EXPECT_FLOAT_EQ((*wallNode)["size"][1].get<float>(), 1.2f);
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, ExteriorWallsOffsetInwardByHalfThickness) {
+    GeneratedBuilding building;
+
+    Floor floor;
+    floor.level = 0;
+    floor.floorHeight = 4.0f;
+
+    Space space;
+    space.spaceId = 10;
+    space.rects.push_back({"room", {0.0f, 0.0f}, {4.0f, 4.0f}});
+    floor.spaces.push_back(space);
+    building.definition.floors.push_back(floor);
+
+    FloorPlate plate;
+    plate.floorLevel = 0;
+    plate.origin = {0.0f, 0.0f};
+    plate.size = {4.0f, 4.0f};
+    plate.envelopeOutline = {
+        GridPos2D{0.0f, 0.0f},
+        GridPos2D{4.0f, 0.0f},
+        GridPos2D{4.0f, 4.0f},
+        GridPos2D{0.0f, 4.0f}
+    };
+    plate.outline = plate.envelopeOutline;
+    building.floorPlates.push_back(plate);
+
+    WallSegment wall;
+    wall.wallId = 1;
+    wall.start = {0.0f, 0.0f};
+    wall.end = {4.0f, 0.0f};
+    wall.type = WallType::Exterior;
+    wall.spaceId = 10;
+    wall.neighborSpaceId = -1;
+    wall.floorLevel = 0;
+    wall.height = 3.0f;
+    wall.thickness = 0.2f;
+    building.walls.push_back(wall);
+
+    std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    const json* wallNode = FindNodeByNameRecursive(j["root"], "wall_0");
+    ASSERT_NE(wallNode, nullptr);
+
+    EXPECT_FLOAT_EQ((*wallNode)["transform"]["position"][0].get<float>(), 200.0f);
+    EXPECT_FLOAT_EQ((*wallNode)["transform"]["position"][2].get<float>(), 10.0f);
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, ApartmentSingleStairDemo_BuiltWallMeshesStartAtSlabTop) {
+    const std::string inputJson = TestHelpers::LoadFromFile("apartment_single_stair_demo.json");
+    ASSERT_FALSE(inputJson.empty());
+
+    GeneratedBuilding building;
+    std::string errorMsg;
+    ASSERT_TRUE(pipeline.ProcessBuilding(inputJson, building, errorMsg)) << errorMsg;
+
+    const std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    std::string parseError;
+    auto blueprint = Moon::Object::BlueprintLoader::ParseFromString(csgJson, parseError);
+    ASSERT_TRUE(blueprint) << parseError;
+
+    PreloadedBlueprintDatabase database;
+    std::string indexError;
+    ASSERT_TRUE(database.LoadObjectIndex(indexError)) << indexError;
+
+    Moon::CSG::CSGBuilder builder;
+    builder.SetBlueprintDatabase(&database);
+
+    std::unordered_map<std::string, float> params;
+    std::string buildError;
+    const Moon::CSG::BuildResult result = builder.Build(blueprint.get(), params, buildError);
+    ASSERT_FALSE(result.meshes.empty()) << buildError;
+
+    std::vector<float> validBaseHeightsM;
+    for (const auto& floor : building.definition.floors) {
+        validBaseHeightsM.push_back(GetFloorBaseHeight(building.definition, floor.level) + 0.18f);
+    }
+
+    int checkedWallLikeMeshes = 0;
+    for (const auto& meshItem : result.meshes) {
+        if (!meshItem.mesh || !meshItem.mesh->IsValid()) {
+            continue;
+        }
+
+        const auto& vertices = meshItem.mesh->GetVertices();
+        if (vertices.empty()) {
+            continue;
+        }
+
+        float minX = vertices.front().position.x;
+        float maxX = vertices.front().position.x;
+        float minY = vertices.front().position.y;
+        float maxY = vertices.front().position.y;
+        float minZ = vertices.front().position.z;
+        float maxZ = vertices.front().position.z;
+        for (const auto& vertex : vertices) {
+            minX = std::min(minX, vertex.position.x);
+            maxX = std::max(maxX, vertex.position.x);
+            minY = std::min(minY, vertex.position.y);
+            maxY = std::max(maxY, vertex.position.y);
+            minZ = std::min(minZ, vertex.position.z);
+            maxZ = std::max(maxZ, vertex.position.z);
+        }
+
+        const float spanX = (maxX - minX) * meshItem.worldTransform.scale.x;
+        const float spanY = (maxY - minY) * meshItem.worldTransform.scale.y;
+        const float spanZ = (maxZ - minZ) * meshItem.worldTransform.scale.z;
+        const float length = std::max(spanX, spanZ);
+        const float thickness = std::min(spanX, spanZ);
+        const bool wallLike = spanY > 2.5f && length > 1.0f && thickness < 0.35f;
+        if (!wallLike) {
+            continue;
+        }
+
+        const float bottomY = minY * meshItem.worldTransform.scale.y + meshItem.worldTransform.position.y;
+        const bool matchesSlabTop = std::any_of(validBaseHeightsM.begin(), validBaseHeightsM.end(),
+            [&](float expectedY) { return std::abs(bottomY - expectedY) < 0.03f; });
+        EXPECT_TRUE(matchesSlabTop)
+            << "Wall-like mesh bottom at " << bottomY << "m"
+            << " length=" << length << " thickness=" << thickness << " height=" << spanY;
+        checkedWallLikeMeshes++;
+    }
+
+    EXPECT_GT(checkedWallLikeMeshes, 0);
 }
 
 // ========================================

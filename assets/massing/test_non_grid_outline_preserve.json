@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "name": "test_non_grid_outline_preserve",
+  "description": "Regression fixture: preserve non-grid aligned mass slice outline for slab envelopes",
+  "unit": "meter",
+  "root": {
+    "id": "test_non_grid_outline_preserve_root",
+    "name": "test_non_grid_outline_preserve_root",
+    "type": "group",
+    "children": [
+      {
+        "id": "body",
+        "name": "body",
+        "type": "extrude",
+        "material": "concrete",
+        "params": {
+          "height": 3.0
+        },
+        "profiles": [
+          {
+            "id": "body_profile",
+            "closed": true,
+            "points": [
+              [0.3, 0.2],
+              [8.7, 0.2],
+              [9.4, 1.1],
+              [9.4, 5.5],
+              [8.7, 6.4],
+              [0.3, 6.4],
+              [-0.4, 5.5],
+              [-0.4, 1.1]
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

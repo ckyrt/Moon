@@ -1,131 +1,29 @@
 #pragma once
 
+#include "BuildingTypology.h"
 #include "BuildingTypes.h"
+#include "SemanticBuildingTypes.h"
+
 #include <string>
-#include <vector>
-#include <memory>
 #include <unordered_map>
+#include <vector>
 
 namespace Moon {
 namespace Building {
-
-// ============================================================================
-// Semantic Building Definition
-// ============================================================================
-
-enum class RelationshipType {
-    Connected,   // Direct connection (door)
-    Nearby,      // Adjacent (share wall)
-    Separated,   // Not adjacent
-    Visual       // Visual connection (window/opening)
-};
-
-enum class ImportanceLevel {
-    Required,    // Must be satisfied
-    Preferred,   // Should be satisfied if possible
-    Optional     // Nice to have
-};
-
-struct Adjacency {
-    std::string to;
-    std::string relationship;  // "connected", "nearby", "separated", "visual"
-    std::string importance;    // "required", "preferred", "optional"
-};
-
-struct SpaceConstraints {
-    float aspectRatioMax = 0.0f;
-    std::string naturalLight = "none";  // "required", "preferred", "none"
-    bool exteriorAccess = false;
-    float ceilingHeight = 3.0f;
-    float minWidth = 2.0f;
-    int connectsToFloor = -1;
-    int connectsFromFloor = -1;
-};
-
-struct SemanticSpace {
-    std::string spaceId;
-    std::string unitId;
-    std::string type;
-    std::string zone;
-    float areaMin = 0.0f;
-    float areaMax = 0.0f;
-    float areaPreferred = 0.0f;
-    std::string priority = "medium";  // "low", "medium", "high"
-    std::vector<Adjacency> adjacency;
-    SpaceConstraints constraints;
-};
-
-struct SemanticFloor {
-    int level = 0;
-    std::string name;
-    std::vector<SemanticSpace> spaces;
-};
-
-struct SemanticVerticalAccess {
-    int floor = 0;
-    std::string toSpace;
-};
-
-struct SemanticVerticalSystem {
-    std::string id;
-    std::string type;
-    std::string mode;
-    std::string placement;
-    int floorFrom = 0;
-    int floorTo = 0;
-    std::string stairForm;
-    Rect shaftRect;
-    std::vector<SemanticVerticalAccess> accessDoors;
-};
-
-struct MassConstraints {
-    float footprintArea = 0.0f;
-    int floors = 1;
-    float totalHeight = 0.0f;
-    std::string massingRuleAsset;
-};
-
-struct SemanticBuilding {
-    std::string schema;
-    float grid = 0.5f;
-    std::string buildingType;
-    BuildingStyle style;  // 使用 BuildingTypes.h 中定义的
-    MassConstraints mass;
-    std::vector<SemanticFloor> floors;  // Parsed floors
-    std::vector<SemanticVerticalSystem> verticalSystems;
-};
-
-// ============================================================================
-// Layout Resolver
-// ============================================================================
 
 class LayoutResolver {
 public:
     LayoutResolver();
     ~LayoutResolver();
-    
-    // Main entry point: resolve semantic input to geometric building data.
-    bool Resolve(
-        const SemanticBuilding& input,
-        BuildingDefinition& output,
-        std::string& error);
+
+    bool Resolve(const SemanticBuilding& input,
+                 BuildingDefinition& output,
+                 std::string& error);
 
     void SetGridSize(float gridSize) { m_gridSize = gridSize; }
     void SetVerbose(bool verbose) { m_verbose = verbose; }
-    
+
 private:
-    bool ResolveInternal(
-        const SemanticBuilding& input,
-        BuildingDefinition& output,
-        std::string& error);
-
-    enum class LayoutStrategy {
-        Villa,
-        Apartment,
-        Tower,
-        Mall
-    };
-
     struct AllocatedSpace {
         std::string spaceId;
         std::string unitId;
@@ -135,15 +33,17 @@ private:
         GridSize2D size;
         int floorLevel;
     };
-    
-    // Pipeline steps
+
+    bool ResolveInternal(const SemanticBuilding& input,
+                         BuildingDefinition& output,
+                         std::string& error);
+
     bool CalculateFootprint(const SemanticBuilding& input);
     bool AllocateSpaces(const SemanticBuilding& input);
     bool GenerateRectangles(const SemanticBuilding& input);
     void BuildOutput(BuildingDefinition& output, const SemanticBuilding& input);
-    
-    // Helper functions
-    LayoutStrategy GetLayoutStrategy(const SemanticBuilding& input) const;
+
+    BuildingTypology GetLayoutStrategy(const SemanticBuilding& input) const;
     float ComputeMallRingBand(float corridorArea, const AllocatedSpace& voidSpace) const;
     float CalculateTotalArea(const std::vector<SemanticSpace>& spaces) const;
     float GetDefaultAreaForSpaceType(const std::string& spaceType) const;
@@ -200,30 +100,12 @@ private:
                                 const GridSize2D& size,
                                 const std::vector<AllocatedSpace>& placedSpaces,
                                 GridPos2D& outPosition) const;
-    
+
     float m_gridSize = 0.5f;
     bool m_verbose = false;
-    
     GridSize2D m_footprint;
     std::vector<AllocatedSpace> m_allocatedSpaces;
     std::vector<Rect> m_reservedRects;
-};
-
-// ============================================================================
-// Semantic JSON Parser
-// ============================================================================
-
-class SemanticBuildingParser {
-public:
-    static bool ParseFromFile(
-        const std::string& filePath,
-        SemanticBuilding& building,
-        std::string& error);
-    
-    static bool ParseFromString(
-        const std::string& jsonString,
-        SemanticBuilding& building,
-        std::string& error);
 };
 
 } // namespace Building

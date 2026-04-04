@@ -12,18 +12,21 @@ The authoring contract is semantic JSON, not manual geometry.
 
 - building authoring starts from `moon_building` JSON
 - `engine/building/BuildingPipeline.*` orchestrates validation and generation
-- `engine/building/SchemaValidator.*` parses and validates semantic input
-- `engine/building/*Generator.*` files produce resolved building data
+- `engine/building/SemanticBuildingValidator.*` validates authored semantic JSON
+- `engine/building/LayoutResolver.*` and `engine/building/SemanticBuildingResolver.*` resolve authored semantic input into internal building data
+- `engine/building/SchemaValidator.*` is a compatibility facade around authoring validation and resolution
+- `engine/building/*Generator.*` files produce generated building data from resolved definitions
 - `engine/building/BuildingToObjectBlueprintConverter.*` converts generated buildings into object-preview data for editor/runtime preview
 
 ## Pipeline
 
 1. semantic building JSON
-2. schema validation
-3. layout validation and resolution
-4. structural/layout generation
-5. building-to-object conversion for preview/runtime assembly
-6. mesh/object preview
+2. semantic validation
+3. semantic resolution into `BuildingDefinition`
+4. resolved layout validation
+5. structural/layout generation
+6. building-to-object conversion for preview/runtime assembly
+7. mesh/object preview
 
 ## Key Rule
 
@@ -32,6 +35,26 @@ JSON is the single source of truth for authored buildings.
 `BuildingDefinition` is an internal resolved runtime structure.
 
 It is not the external authoring contract.
+
+Current code organization follows three layers:
+
+- `Authoring`: authored semantic JSON parsing and validation
+- `Resolution`: semantic JSON to resolved `BuildingDefinition`
+- `Generation`: resolved building to geometry, preview, and runtime outputs
+
+On top of those layers, product workflow should be staged authoring:
+
+- `form`
+- `vertical`
+- `plate`
+- `program`
+- `facade`
+- `scene_composition`
+
+Workflow details live in:
+
+- `docs/building-authoring-workflow.md`
+- `engine/building/BuildingAuthoringWorkflow.*`
 
 ## Root Format
 

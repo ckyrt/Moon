@@ -92,6 +92,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BuildingAuthoringWorkflowTests.cpp" />
+    <ClCompile Include="BuildingAuthoringPromptTests.cpp" />
+    <ClCompile Include="BuildingAuthoringRegressionTests.cpp" />
+    <ClCompile Include="BuildingAuthoringReadinessTests.cpp" />
+    <ClCompile Include="BuildingQualityChecksTests.cpp" />
+    <ClCompile Include="BuildingWorkflowQualityCoverageTests.cpp" />
+    <ClCompile Include="BuildingAuthoringWorkflowE2ETests.cpp" />
     <ClCompile Include="AssetPresetTests.cpp" />
     <ClCompile Include="SchemaValidatorTests.cpp" />
     <ClCompile Include="LayoutValidatorTests.cpp" />

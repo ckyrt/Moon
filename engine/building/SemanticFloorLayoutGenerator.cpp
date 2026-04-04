@@ -1,4 +1,5 @@
 #include "SemanticFloorLayoutGenerator.h"
+#include "BuildingTypology.h"
 
 #include <algorithm>
 #include <cctype>
@@ -6,18 +7,6 @@
 namespace {
 
 using namespace Moon::Building;
-
-bool IsOfficeLike(const BuildingDefinition& definition) {
-    return definition.style.category == "commercial";
-}
-
-bool IsRetailLike(const BuildingDefinition& definition) {
-    return definition.style.category == "retail";
-}
-
-bool IsResidentialLike(const BuildingDefinition& definition) {
-    return definition.style.category == "residential";
-}
 
 const FloorLayoutInput* FindFloorLayoutInput(const BuildingLayoutInput* layoutInput, int floorLevel) {
     if (!layoutInput) {
@@ -118,29 +107,9 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
     }
 
     const std::string buildingType = formInput ? formInput->buildingType : std::string();
-    enum class LayoutTypology {
-        None,
-        Office,
-        Residential,
-        Retail
-    };
+    const BuildingTypology typology = InferBuildingTypology(buildingType, definition.style);
 
-    LayoutTypology typology = LayoutTypology::None;
-    if (buildingType == "mall" || buildingType == "shopping_center" || buildingType == "retail_center") {
-        typology = LayoutTypology::Retail;
-    } else if (buildingType == "apartment" || buildingType == "cbd_residential") {
-        typology = LayoutTypology::Residential;
-    } else if (buildingType == "office" || buildingType == "office_tower") {
-        typology = LayoutTypology::Office;
-    } else if (IsRetailLike(definition)) {
-        typology = LayoutTypology::Retail;
-    } else if (IsResidentialLike(definition) && buildingType != "villa") {
-        typology = LayoutTypology::Residential;
-    } else if (IsOfficeLike(definition)) {
-        typology = LayoutTypology::Office;
-    }
-
-    if (typology == LayoutTypology::None) {
+    if (typology == BuildingTypology::Unknown || typology == BuildingTypology::Villa) {
         return true;
     }
 
@@ -177,8 +146,8 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
         if (floorCores.empty() && !inferredFloorCores.empty()) {
             floorCores = inferredFloorCores;
         }
-        const bool needsStructuredCoreLayout = typology == LayoutTypology::Office ||
-            typology == LayoutTypology::Residential;
+        const bool needsStructuredCoreLayout = typology == BuildingTypology::Office ||
+            typology == BuildingTypology::Residential;
         if (needsStructuredCoreLayout && floorCores.empty() && !FloorDeclaresCoreLikeSpaces(*semanticFloor) &&
             !LayoutDeclaresTransportTypeForFloor(layoutInput, floor.level, VerticalCoreType::Stair) &&
             !LayoutDeclaresTransportTypeForFloor(layoutInput, floor.level, VerticalCoreType::Elevator)) {
@@ -187,7 +156,7 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
 
         ResolvedFloorLayout resolvedFloor;
         resolvedFloor.verticalTransports.clear();
-        if (typology == LayoutTypology::Office) {
+        if (typology == BuildingTypology::Office) {
             if (!m_officeSolver.GenerateFloor(
                     definition,
                     *semanticFloor,
@@ -197,7 +166,7 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
                     outError)) {
                 return false;
             }
-        } else if (typology == LayoutTypology::Residential) {
+        } else if (typology == BuildingTypology::Residential) {
             if (!m_residentialSolver.GenerateFloor(
                     definition,
                     *semanticFloor,
@@ -207,7 +176,7 @@ bool SemanticFloorLayoutGenerator::Generate(const BuildingDefinition& definition
                     outError)) {
                 return false;
             }
-        } else if (typology == LayoutTypology::Retail) {
+        } else if (typology == BuildingTypology::Retail) {
             if (!m_retailSolver.GenerateFloor(
                     definition,
                     *semanticFloor,

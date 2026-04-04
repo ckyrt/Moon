@@ -11,6 +11,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BuildingAuthoringWorkflow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BuildingAuthoringPrompt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BuildingAuthoringReadiness.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BuildingElementRules.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BuildingQualityChecks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Building.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -18,6 +33,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BuildingGeometryUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BuildingTypology.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BuildingIndex.h">
@@ -47,6 +65,9 @@
     <ClInclude Include="LayoutResolver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LayoutTypologyPolicy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="LayoutValidator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -60,6 +81,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RetailFloorLayoutSolver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SemanticBuildingResolver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SemanticBuildingTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SemanticBuildingValidator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SchemaValidator.h">
@@ -82,7 +112,25 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BuildingAuthoringWorkflow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BuildingAuthoringPrompt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BuildingAuthoringReadiness.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BuildingElementRules.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BuildingQualityChecks.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="BuildingGenerationInputs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BuildingTypology.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BuildingIndex.cpp">
@@ -106,6 +154,9 @@
     <ClCompile Include="LayoutResolver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="LayoutTypologyPolicy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="LayoutValidator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -119,6 +170,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RetailFloorLayoutSolver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SemanticBuildingResolver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SemanticBuildingParser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SemanticBuildingValidator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SchemaValidator.cpp">

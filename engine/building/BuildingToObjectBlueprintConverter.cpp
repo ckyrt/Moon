@@ -38,6 +38,77 @@ static inline float GetTopOfFloor(const BuildingDefinition& definition, int floo
     return base;
 }
 
+static inline float GetRenderedSlabThickness(const GeneratedBuilding& building)
+{
+    return building.floorPlates.empty() ? 0.05f : 0.18f;
+}
+
+static inline float GetWallBaseHeight(const GeneratedBuilding& building, int floorLevel)
+{
+    return GetFloorBaseHeight(building.definition, floorLevel) + GetRenderedSlabThickness(building);
+}
+
+static inline bool ShouldPreserveRequestedWallHeight(float requestedHeight)
+{
+    // Preserve intentionally short walls such as balcony railings and parapets.
+    return requestedHeight > 0.0f && requestedHeight <= 1.5f;
+}
+
+static inline float GetRenderableWallHeight(const GeneratedBuilding& building,
+                                            const WallSegment& wall)
+{
+    const int floorLevel = wall.floorLevel;
+    const float requestedHeight = wall.height;
+    const float clearStoryHeight = std::max(0.1f, GetTopOfFloor(building.definition, floorLevel) - GetWallBaseHeight(building, floorLevel));
+
+    if (ShouldPreserveRequestedWallHeight(requestedHeight)) {
+        return std::min(requestedHeight, clearStoryHeight);
+    }
+
+    return clearStoryHeight;
+}
+
+static inline float GetRenderableOpeningBaseHeight(const GeneratedBuilding& building,
+                                                   int floorLevel)
+{
+    return GetWallBaseHeight(building, floorLevel);
+}
+
+static inline float GetRenderableWindowBaseHeight(const GeneratedBuilding& building,
+                                                  const Window& window)
+{
+    return GetRenderableOpeningBaseHeight(building, window.floorLevel) + window.sillHeight;
+}
+
+static inline float GetRenderableDoorBaseHeight(const GeneratedBuilding& building,
+                                                const Door& door)
+{
+    return GetRenderableOpeningBaseHeight(building, door.floorLevel);
+}
+
+static inline float GetRenderableOpeningTopLimit(const GeneratedBuilding& building,
+                                                 int floorLevel)
+{
+    return std::max(GetRenderableOpeningBaseHeight(building, floorLevel),
+                    GetTopOfFloor(building.definition, floorLevel));
+}
+
+static inline float GetRenderableWindowHeight(const GeneratedBuilding& building,
+                                              const Window& window)
+{
+    const float baseY = GetRenderableWindowBaseHeight(building, window);
+    const float topLimit = GetRenderableOpeningTopLimit(building, window.floorLevel);
+    return std::max(0.1f, std::min(window.height, topLimit - baseY));
+}
+
+static inline float GetRenderableDoorHeight(const GeneratedBuilding& building,
+                                            const Door& door)
+{
+    const float baseY = GetRenderableDoorBaseHeight(building, door);
+    const float topLimit = GetRenderableOpeningTopLimit(building, door.floorLevel);
+    return std::max(0.1f, std::min(door.height, topLimit - baseY));
+}
+
 static inline float NormalizeRotation(float rotationDegrees)
 {
     float normalized = std::fmod(rotationDegrees, 360.0f);
@@ -60,6 +131,81 @@ static inline bool IsCardinalRotation(float rotationDegrees)
            std::abs(normalized - 90.0f) < 1.0f ||
            std::abs(normalized - 180.0f) < 1.0f ||
            std::abs(normalized - 270.0f) < 1.0f;
+}
+
+static const Space* FindSpaceById(const BuildingDefinition& definition, int floorLevel, int spaceId)
+{
+    for (const auto& floor : definition.floors) {
+        if (floor.level != floorLevel) {
+            continue;
+        }
+        for (const auto& space : floor.spaces) {
+            if (space.spaceId == spaceId) {
+                return &space;
+            }
+        }
+    }
+    return nullptr;
+}
+
+static bool PointInsideSpaceRects(const GridPos2D& point, const Space& space)
+{
+    for (const auto& rect : space.rects) {
+        if (point[0] > rect.origin[0] + 0.01f &&
+            point[0] < rect.origin[0] + rect.size[0] - 0.01f &&
+            point[1] > rect.origin[1] + 0.01f &&
+            point[1] < rect.origin[1] + rect.size[1] - 0.01f) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static inline GridPos2D GetWallPlacementOffset(const GeneratedBuilding& building,
+                                               const WallSegment& wall)
+{
+    if (wall.type != WallType::Exterior) {
+        return {0.0f, 0.0f};
+    }
+
+    const Space* owningSpace = FindSpaceById(building.definition, wall.floorLevel, wall.spaceId);
+    if (!owningSpace) {
+        return {0.0f, 0.0f};
+    }
+
+    const float dx = wall.end[0] - wall.start[0];
+    const float dz = wall.end[1] - wall.start[1];
+    const float length = std::sqrt(dx * dx + dz * dz);
+    if (length < 0.001f) {
+        return {0.0f, 0.0f};
+    }
+
+    const GridPos2D midpoint = {(wall.start[0] + wall.end[0]) * 0.5f, (wall.start[1] + wall.end[1]) * 0.5f};
+    const GridPos2D leftNormal = {-dz / length, dx / length};
+    const GridPos2D rightNormal = {dz / length, -dx / length};
+    const float probeDistance = std::min(0.15f, std::max(0.05f, wall.thickness));
+
+    const GridPos2D leftProbe = {midpoint[0] + leftNormal[0] * probeDistance, midpoint[1] + leftNormal[1] * probeDistance};
+    if (PointInsideSpaceRects(leftProbe, *owningSpace)) {
+        return {leftNormal[0] * wall.thickness * 0.5f, leftNormal[1] * wall.thickness * 0.5f};
+    }
+
+    const GridPos2D rightProbe = {midpoint[0] + rightNormal[0] * probeDistance, midpoint[1] + rightNormal[1] * probeDistance};
+    if (PointInsideSpaceRects(rightProbe, *owningSpace)) {
+        return {rightNormal[0] * wall.thickness * 0.5f, rightNormal[1] * wall.thickness * 0.5f};
+    }
+
+    return {0.0f, 0.0f};
+}
+
+static const WallSegment* FindWallById(const GeneratedBuilding& building, int wallId)
+{
+    for (const auto& wall : building.walls) {
+        if (wall.wallId == wallId) {
+            return &wall;
+        }
+    }
+    return nullptr;
 }
 
 static inline GridPos2D RotateOffset2D(float offsetX, float offsetZ, float rotationDegrees)
@@ -619,7 +765,9 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
 
         const float centerX = (wall.start[0] + wall.end[0]) * 0.5f;
         const float centerZ = (wall.start[1] + wall.end[1]) * 0.5f;
-        const float floorBaseY = GetFloorBaseHeight(building.definition, wall.floorLevel);
+        const GridPos2D wallPlacementOffset = GetWallPlacementOffset(building, wall);
+        const float wallBaseY = GetWallBaseHeight(building, wall.floorLevel);
+        const float wallHeight = GetRenderableWallHeight(building, wall);
         const char* wallMaterial =
             (wall.type == WallType::Exterior)
                 ? GetExteriorWallMaterial(building.definition)
@@ -629,11 +777,11 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
         // Panel is created along X axis, then rotated via rotation_y parameter
         json wallCube = CreateWallPanelReference(
             "wall_panel_" + std::to_string(wallIdx),
-            centerX,
-            floorBaseY,
-            centerZ,
+            centerX + wallPlacementOffset[0],
+            wallBaseY,
+            centerZ + wallPlacementOffset[1],
             length,
-            wall.height,
+            wallHeight,
             wall.thickness,
             wallRotationY,
             wallMaterial);
@@ -645,19 +793,20 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
         for (int wi : wallWindowIdx[wali]) {
             const auto& win = building.windows[wi];
             // POSITIONING: opening_v1 uses bottom-center convention (y=0 at sill)
-            float holeY = GetFloorBaseHeight(building.definition, win.floorLevel) + win.sillHeight;
+            const float holeY = GetRenderableWindowBaseHeight(building, win);
+            const float holeHeight = GetRenderableWindowHeight(building, win);
 
             json hole;
             hole["type"] = "reference";
             hole["ref"]  = "opening_v1";
             hole["overrides"] = {
                 {"w", m2cm(win.width) + 2.0f},           // +2 cm clearance
-                {"h", m2cm(win.height) + 2.0f},          // +2 cm clearance
+                {"h", m2cm(holeHeight) + 2.0f},          // +2 cm clearance
                 {"t", m2cm(wall.thickness) + 2.0f},      // punch through
                 {"rotation_y", wallRotationY}
             };
             hole["transform"] = {
-                {"position", pos3(m2cm(win.position[0]), m2cm(holeY), m2cm(win.position[1]))}
+                {"position", pos3(m2cm(win.position[0] + wallPlacementOffset[0]), m2cm(holeY), m2cm(win.position[1] + wallPlacementOffset[1]))}
             };
             holes.push_back(hole);
         }
@@ -666,26 +815,27 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
         for (int di : wallDoorIdx[wali]) {
             const auto& door = building.doors[di];
             // POSITIONING: opening_v1 uses bottom-center convention (y=0 at ground)
-            float holeY = GetFloorBaseHeight(building.definition, door.floorLevel);
+            const float holeY = GetRenderableDoorBaseHeight(building, door);
+            const float holeHeight = GetRenderableDoorHeight(building, door);
 
             json hole;
             hole["type"] = "reference";
             hole["ref"]  = "opening_v1";
             hole["overrides"] = {
                 {"w", m2cm(door.width) + 2.0f},          // +2 cm clearance
-                {"h", m2cm(door.height) + 2.0f},         // +2 cm clearance
+                {"h", m2cm(holeHeight) + 2.0f},         // +2 cm clearance
                 {"t", m2cm(wall.thickness) + 2.0f},      // punch through
                 {"rotation_y", wallRotationY}
             };
             hole["transform"] = {
-                {"position", pos3(m2cm(door.position[0]), m2cm(holeY), m2cm(door.position[1]))}
+                {"position", pos3(m2cm(door.position[0] + wallPlacementOffset[0]), m2cm(holeY), m2cm(door.position[1] + wallPlacementOffset[1]))}
             };
             holes.push_back(hole);
         }
 
         json wallNode = SubtractHoles(wallCube, holes);
         wallNode["name"] = "wall_" + std::to_string(wallIdx++);
-        wallNode["size"] = json::array({length, wall.height, wall.thickness});
+        wallNode["size"] = json::array({length, wallHeight, wall.thickness});
         children.push_back(wallNode);
     }
 
@@ -694,6 +844,8 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
     // -----------------------------------------------------------------------
     int doorIdx = 0;
     for (const auto& door : building.doors) {
+        const WallSegment* wall = FindWallById(building, door.wallId);
+        const GridPos2D wallPlacementOffset = wall ? GetWallPlacementOffset(building, *wall) : GridPos2D{0.0f, 0.0f};
         // POSITIONING: door_v1 uses bottom-center convention (y=0 at ground)
         json node;
         node["name"] = "door_" + std::to_string(doorIdx++);
@@ -706,7 +858,7 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
             {"rotation_y", door.rotation}
         };
         node["transform"] = {
-            {"position", pos3(m2cm(door.position[0]), m2cm(GetFloorBaseHeight(building.definition, door.floorLevel)), m2cm(door.position[1]))}
+            {"position", pos3(m2cm(door.position[0] + wallPlacementOffset[0]), m2cm(GetRenderableDoorBaseHeight(building, door)), m2cm(door.position[1] + wallPlacementOffset[1]))}
         };
         children.push_back(node);
     }
@@ -716,8 +868,10 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
     // -----------------------------------------------------------------------
     int windowIdx = 0;
     for (const auto& window : building.windows) {
+        const WallSegment* wall = FindWallById(building, window.wallId);
+        const GridPos2D wallPlacementOffset = wall ? GetWallPlacementOffset(building, *wall) : GridPos2D{0.0f, 0.0f};
         // POSITIONING: window_v1 uses bottom-center convention (y=0 at sill)
-        float winBaseY = GetFloorBaseHeight(building.definition, window.floorLevel) + window.sillHeight;
+        const float winBaseY = GetRenderableWindowBaseHeight(building, window);
 
         json node;
         node["name"] = "window_" + std::to_string(windowIdx++);
@@ -725,12 +879,12 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
         node["ref"]  = "window_v1";
         node["overrides"] = {
             {"w", m2cm(window.width)},
-            {"h", m2cm(window.height)},
+            {"h", m2cm(GetRenderableWindowHeight(building, window))},
             {"t", m2cm(wallThickness)},
             {"rotation_y", window.rotation}
         };
         node["transform"] = {
-            {"position", pos3(m2cm(window.position[0]), m2cm(winBaseY), m2cm(window.position[1]))}
+            {"position", pos3(m2cm(window.position[0] + wallPlacementOffset[0]), m2cm(winBaseY), m2cm(window.position[1] + wallPlacementOffset[1]))}
         };
         children.push_back(node);
     }

@@ -1,26 +1,14 @@
 #include "LayoutResolver.h"
+#include "LayoutTypologyPolicy.h"
 #include "../core/Logging/Logger.h"
-#include "../../external/nlohmann/json.hpp"
-#include <fstream>
-#include <sstream>
 #include <cmath>
 #include <algorithm>
 #include <unordered_set>
-
-using json = nlohmann::json;
 
 namespace Moon {
 namespace Building {
 
 namespace {
-
-constexpr float kTypicalOfficeFloorHeight = 3.8f;
-constexpr float kTypicalOfficeGroundFloorHeight = 4.5f;
-constexpr float kTypicalRetailFloorHeight = 4.5f;
-constexpr float kTypicalRetailGroundFloorHeight = 5.0f;
-constexpr float kTypicalResidentialFloorHeight = 3.0f;
-constexpr float kTypicalResidentialGroundFloorHeight = 3.5f;
-constexpr float kTypicalFallbackFloorHeight = 3.0f;
 
 const SemanticFloor* FindSemanticFloor(const SemanticBuilding& input, int floorLevel) {
     for (const auto& floor : input.floors) {
@@ -32,33 +20,11 @@ const SemanticFloor* FindSemanticFloor(const SemanticBuilding& input, int floorL
 }
 
 float GetTypologyFloorHeight(const SemanticBuilding& input, int floorLevel) {
-    if (input.buildingType == "mall" || input.buildingType == "shopping_center" ||
-        input.buildingType == "retail_center") {
-        return floorLevel == 0 ? kTypicalRetailGroundFloorHeight : kTypicalRetailFloorHeight;
-    }
-    if (input.buildingType == "office" || input.buildingType == "office_tower") {
-        return floorLevel == 0 ? kTypicalOfficeGroundFloorHeight : kTypicalOfficeFloorHeight;
-    }
-    if (input.buildingType == "apartment" || input.buildingType == "cbd_residential") {
-        return floorLevel == 0 ? kTypicalResidentialGroundFloorHeight : kTypicalResidentialFloorHeight;
-    }
-
-    return kTypicalFallbackFloorHeight;
+    return GetTypicalFloorHeight(ClassifyBuildingType(input.buildingType), floorLevel);
 }
 
 float GetReasonableMaxFloorHeight(const SemanticBuilding& input, int floorLevel) {
-    if (input.buildingType == "mall" || input.buildingType == "shopping_center" ||
-        input.buildingType == "retail_center") {
-        return floorLevel == 0 ? 8.0f : 6.5f;
-    }
-    if (input.buildingType == "office" || input.buildingType == "office_tower") {
-        return floorLevel <= 1 ? 7.5f : 5.5f;
-    }
-    if (input.buildingType == "apartment" || input.buildingType == "cbd_residential") {
-        return floorLevel == 0 ? 5.0f : 4.2f;
-    }
-
-    return 4.5f;
+    return Moon::Building::GetReasonableMaxFloorHeight(ClassifyBuildingType(input.buildingType), floorLevel);
 }
 
 float GetProgramDrivenFloorHeight(const SemanticBuilding& input, int floorLevel) {
@@ -81,9 +47,7 @@ float GetProgramDrivenFloorHeight(const SemanticBuilding& input, int floorLevel)
     const bool tallProgram =
         maxCeilingHeight >= 5.0f ||
         floorLevel == 0 ||
-        input.buildingType == "mall" ||
-        input.buildingType == "shopping_center" ||
-        input.buildingType == "retail_center";
+        IsRetailTypology(ClassifyBuildingType(input.buildingType));
     const float serviceAllowance = tallProgram ? 0.9f : 0.6f;
     const float targetHeight = std::max(typologyHeight, maxCeilingHeight + serviceAllowance);
     return std::min(targetHeight, maxReasonableHeight);
@@ -168,177 +132,6 @@ StairType DetermineStairType(const SemanticBuilding& input,
 
 } // namespace
 
-// ============================================================================
-// SemanticBuildingParser Implementation
-// ============================================================================
-
-bool SemanticBuildingParser::ParseFromFile(
-    const std::string& filePath,
-    SemanticBuilding& building,
-    std::string& error)
-{
-    std::ifstream file(filePath);
-    if (!file.is_open()) {
-        error = "Failed to open file: " + filePath;
-        return false;
-    }
-    
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return ParseFromString(buffer.str(), building, error);
-}
-
-bool SemanticBuildingParser::ParseFromString(
-    const std::string& jsonString,
-    SemanticBuilding& building,
-    std::string& error)
-{
-    try {
-        json j = json::parse(jsonString);
-        building = SemanticBuilding();
-        
-        // Parse root fields
-        building.schema = j.value("schema", "");
-        building.grid = j.value("grid", 0.5f);
-        building.buildingType = j.value("building_type", "");
-        
-        // Parse style
-        if (j.contains("style")) {
-            auto& style = j["style"];
-            building.style.category = style.value("category", "");
-            building.style.facade = style.value("facade", "");
-            building.style.roof = style.value("roof", "");
-            building.style.windowStyle = style.value("window_style", "");
-            building.style.material = style.value("material", "");
-            building.style.facadeOffset = style.value("facade_offset", 0.0f);
-        }
-        
-        // Parse mass
-        if (j.contains("mass")) {
-            auto& mass = j["mass"];
-            building.mass.footprintArea = mass.value("footprint_area", 0.0f);
-            building.mass.floors = mass.value("floors", 1);
-            building.mass.totalHeight = mass.value("total_height", 0.0f);
-            building.mass.massingRuleAsset = mass.value("massing_rule", "");
-        }
-        
-        // Parse program (floors)
-        if (j.contains("program") && j["program"].contains("floors")) {
-            auto& floorsArray = j["program"]["floors"];
-            
-            for (auto& floorJson : floorsArray) {
-                SemanticFloor floor;
-                floor.level = floorJson.value("level", 0);
-                floor.name = floorJson.value("name", "");
-                
-                // Parse spaces
-                if (floorJson.contains("spaces")) {
-                    for (auto& spaceJson : floorJson["spaces"]) {
-                        SemanticSpace space;
-                        space.spaceId = spaceJson.value("space_id", "");
-                        space.unitId = spaceJson.value("unit_id", "");
-                        space.type = spaceJson.value("type", "");
-                        space.zone = spaceJson.value("zone", "");
-                        space.areaMin = spaceJson.value("area_min", 0.0f);
-                        space.areaMax = spaceJson.value("area_max", 0.0f);
-                        space.areaPreferred = spaceJson.value("area_preferred", 0.0f);
-                        space.priority = spaceJson.value("priority", "medium");
-                        
-                        // Parse adjacency
-                        if (spaceJson.contains("adjacency")) {
-                            for (auto& adjJson : spaceJson["adjacency"]) {
-                                Adjacency adj;
-                                adj.to = adjJson.value("to", "");
-                                adj.relationship = adjJson.value("relationship", "connected");
-                                adj.importance = adjJson.value("importance", "optional");
-                                space.adjacency.push_back(adj);
-                            }
-                        }
-                        
-                        // Parse constraints
-                        if (spaceJson.contains("constraints")) {
-                            auto& constr = spaceJson["constraints"];
-                            space.constraints.aspectRatioMax = constr.value("aspect_ratio_max", 0.0f);
-                            space.constraints.naturalLight = constr.value("natural_light", "none");
-                            space.constraints.exteriorAccess = constr.value("exterior_access", false);
-                            space.constraints.ceilingHeight = constr.value("ceiling_height", 3.0f);
-                            space.constraints.minWidth = constr.value("min_width", 2.0f);
-                            space.constraints.connectsToFloor = constr.value("connects_to_floor", -1);
-                            space.constraints.connectsFromFloor = constr.value("connects_from_floor", -1);
-                        }
-                        
-                        floor.spaces.push_back(space);
-                    }
-                }
-                
-                building.floors.push_back(floor);
-            }
-        }
-
-        if (j.contains("vertical_systems") && j["vertical_systems"].is_array()) {
-            for (auto& systemJson : j["vertical_systems"]) {
-                SemanticVerticalSystem system;
-                system.id = systemJson.value("id", "");
-                system.type = systemJson.value("type", "");
-                system.mode = systemJson.value("mode", "enclosed");
-                system.placement = systemJson.value("placement", "internal");
-                system.floorFrom = systemJson.value("floor_from", 0);
-                system.floorTo = systemJson.value("floor_to", system.floorFrom);
-                system.stairForm = systemJson.value("stair_form", "straight");
-
-                const bool hasShaftRect = systemJson.contains("shaft_rect") && systemJson["shaft_rect"].is_object();
-                const bool hasStairRect = systemJson.contains("stair_rect") && systemJson["stair_rect"].is_object();
-                const json* rectJson = nullptr;
-                if (hasShaftRect) {
-                    rectJson = &systemJson["shaft_rect"];
-                } else if (hasStairRect) {
-                    rectJson = &systemJson["stair_rect"];
-                }
-                if (rectJson) {
-                    system.shaftRect.origin = {
-                        (*rectJson).value("x", 0.0f),
-                        (*rectJson).value("y", 0.0f)
-                    };
-                    system.shaftRect.size = {
-                        (*rectJson).value("w", 0.0f),
-                        (*rectJson).value("d", 0.0f)
-                    };
-                    system.shaftRect.rectId = system.id;
-                }
-
-                if (systemJson.contains("access_doors") && systemJson["access_doors"].is_array()) {
-                    for (auto& accessJson : systemJson["access_doors"]) {
-                        SemanticVerticalAccess access;
-                        access.floor = accessJson.value("floor", 0);
-                        access.toSpace = accessJson.value("to_space", "");
-                        system.accessDoors.push_back(access);
-                    }
-                }
-                if (systemJson.contains("connects") && systemJson["connects"].is_array()) {
-                    for (auto& accessJson : systemJson["connects"]) {
-                        SemanticVerticalAccess access;
-                        access.floor = accessJson.value("floor", 0);
-                        access.toSpace = accessJson.value("to_space", "");
-                        system.accessDoors.push_back(access);
-                    }
-                }
-
-                building.verticalSystems.push_back(std::move(system));
-            }
-        }
-        
-        return true;
-    }
-    catch (const json::exception& e) {
-        error = std::string("JSON parse error: ") + e.what();
-        return false;
-    }
-}
-
-// ============================================================================
-// LayoutResolver Implementation
-// ============================================================================
-
 LayoutResolver::LayoutResolver()
 {
 }
@@ -347,19 +140,10 @@ LayoutResolver::~LayoutResolver()
 {
 }
 
-LayoutResolver::LayoutStrategy LayoutResolver::GetLayoutStrategy(const SemanticBuilding& input) const
+BuildingTypology LayoutResolver::GetLayoutStrategy(const SemanticBuilding& input) const
 {
-    if (input.buildingType == "mall" || input.buildingType == "shopping_center" ||
-        input.buildingType == "retail_center") {
-        return LayoutStrategy::Mall;
-    }
-    if (input.buildingType == "office" || input.buildingType == "office_tower") {
-        return LayoutStrategy::Tower;
-    }
-    if (input.buildingType == "apartment" || input.buildingType == "cbd_residential") {
-        return LayoutStrategy::Apartment;
-    }
-    return LayoutStrategy::Villa;
+    const BuildingTypology typology = ClassifyBuildingType(input.buildingType);
+    return typology == BuildingTypology::Unknown ? BuildingTypology::Villa : typology;
 }
 
 float LayoutResolver::ComputeMallRingBand(float corridorArea, const AllocatedSpace& voidSpace) const
@@ -433,17 +217,7 @@ bool LayoutResolver::CalculateFootprint(const SemanticBuilding& input)
     // footprint_area is interpreted as the per-floor building footprint.
     float floorArea = totalArea;
     
-    float aspectRatio = 1.5f;
-    if (input.buildingType == "villa") {
-        aspectRatio = 1.2f;
-    } else if (input.buildingType == "apartment" || input.buildingType == "cbd_residential") {
-        aspectRatio = 1.8f;
-    } else if (input.buildingType == "office" || input.buildingType == "office_tower") {
-        aspectRatio = 2.2f;
-    } else if (input.buildingType == "mall" || input.buildingType == "shopping_center" ||
-               input.buildingType == "retail_center") {
-        aspectRatio = 3.0f;
-    }
+    const float aspectRatio = GetDefaultFootprintAspectRatio(GetLayoutStrategy(input));
     
     m_footprint = CalculateOptimalDimensions(floorArea, aspectRatio);
     
@@ -473,7 +247,7 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
             scaleFactor = availableArea / totalPreferredArea;
         }
         const auto orderedSpaces = BuildPlacementOrder(input, floor);
-        const LayoutStrategy strategy = GetLayoutStrategy(input);
+        const BuildingTypology strategy = GetLayoutStrategy(input);
         
         MOON_LOG_INFO("LayoutResolver", "  Total preferred area: %.1f m²", totalPreferredArea);
         MOON_LOG_INFO("LayoutResolver", "  Available area: %.1f m²", availableArea);
@@ -481,7 +255,7 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
         auto reserveAllocatedGeometry = [&](const SemanticSpace& semanticSpace,
                                            const AllocatedSpace& allocated,
                                            const std::vector<AllocatedSpace>& placedSpaces) {
-            if (strategy == LayoutStrategy::Mall && semanticSpace.type == "corridor") {
+            if (strategy == BuildingTypology::Retail && semanticSpace.type == "corridor") {
                 auto aroundVoid = std::find_if(semanticSpace.adjacency.begin(), semanticSpace.adjacency.end(),
                     [](const Adjacency& adjacency) {
                         return adjacency.relationship == "around";
@@ -695,7 +469,7 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
                 }
 
                 const bool hasRequiredPlacedAdjacency = hasPlacedRequiredAdjacencyConstraint(space, outSpaces);
-                const bool prioritizeMallRetailBand = strategy == LayoutStrategy::Mall && space.type == "shop";
+                const bool prioritizeMallRetailBand = strategy == BuildingTypology::Retail && space.type == "shop";
 
                 GridPos2D position = {0.0f, 0.0f};
                 bool placed = TryPlaceUsingStairAlignment(space, dims, outSpaces, position);
@@ -921,7 +695,7 @@ void LayoutResolver::BuildOutput(BuildingDefinition& output, const SemanticBuild
             GridSize2D size = SnapToGrid(allocated.size);
 
             bool emittedSpecialRects = false;
-            if (GetLayoutStrategy(input) == LayoutStrategy::Mall &&
+            if (GetLayoutStrategy(input) == BuildingTypology::Retail &&
                 semanticSpace.type == "corridor") {
                 auto aroundVoid = std::find_if(semanticSpace.adjacency.begin(), semanticSpace.adjacency.end(),
                     [](const Adjacency& adjacency) {
@@ -1067,7 +841,7 @@ int LayoutResolver::GetZoneWeight(const SemanticSpace& space) const
 float LayoutResolver::GetTargetAspectRatio(const SemanticBuilding& input, const SemanticSpace& space) const
 {
     float target = 1.5f;
-    const LayoutStrategy strategy = GetLayoutStrategy(input);
+    const BuildingTypology strategy = GetLayoutStrategy(input);
 
     if (space.type == "corridor") {
         target = 4.0f;
@@ -1089,7 +863,7 @@ float LayoutResolver::GetTargetAspectRatio(const SemanticBuilding& input, const 
         target = 1.3f;
     }
 
-    if (strategy == LayoutStrategy::Mall && space.type == "void") {
+    if (strategy == BuildingTypology::Retail && space.type == "void") {
         const float footprintAspect =
             m_footprint[1] > 0.001f ? (m_footprint[0] / m_footprint[1]) : 1.0f;
         // Retail atriums often become elongated gallerias on shallow floor plates.
@@ -1111,7 +885,7 @@ float LayoutResolver::GetDefaultFloorHeight(const SemanticBuilding& input, int f
 std::vector<const SemanticSpace*> LayoutResolver::BuildPlacementOrder(const SemanticBuilding& input,
                                                                       const SemanticFloor& floor) const
 {
-    const LayoutStrategy strategy = GetLayoutStrategy(input);
+    const BuildingTypology strategy = GetLayoutStrategy(input);
     std::unordered_map<std::string, int> inboundRequiredConnections;
     for (const auto& sourceSpace : floor.spaces) {
         for (const auto& adjacency : sourceSpace.adjacency) {
@@ -1166,57 +940,7 @@ std::vector<const SemanticSpace*> LayoutResolver::BuildPlacementOrder(const Sema
             score += static_cast<float>(inboundIt->second) * 1500.0f;
         }
 
-        if (strategy == LayoutStrategy::Tower) {
-            if (floor.level == 0 && (space.type == "lobby" || space.type == "entrance")) {
-                score += 700.0f;
-            }
-            if (space.type == "office" || space.type == "meeting_room") {
-                score += 220.0f;
-            }
-            if (space.type == "mechanical") {
-                score += 120.0f;
-            }
-        } else if (strategy == LayoutStrategy::Mall) {
-            if (space.type == "void") {
-                score += 11300.0f;
-            }
-            if (space.type == "corridor") {
-                score += 8650.0f;
-            }
-            if (space.type == "shop") {
-                score += 8450.0f;
-            }
-            if (space.type == "stairs") {
-                score += 7800.0f;
-            }
-            if (space.type == "lobby") {
-                score += 5200.0f;
-            }
-            if (space.type == "entrance") {
-                score += 4700.0f;
-            }
-            if (IsCoreSpace(space)) {
-                score += 7900.0f;
-            }
-        } else if (strategy == LayoutStrategy::Apartment) {
-            if (space.type == "corridor" || space.type == "lobby") {
-                score += 450.0f;
-            }
-            if (!space.unitId.empty()) {
-                score += 180.0f;
-            }
-        } else if (strategy == LayoutStrategy::Villa) {
-            if (floor.level == 0 && (space.type == "living" || space.type == "kitchen" ||
-                                     space.type == "entrance")) {
-                score += 180.0f;
-            }
-            if (floor.level > 0 && space.type == "bedroom") {
-                score += 120.0f;
-            }
-            if (IsCoreSpace(space)) {
-                score -= 600.0f;
-            }
-        }
+        score += GetTypologyPlacementScoreBoost(strategy, space, floor.level);
 
         return score;
     };
@@ -1364,11 +1088,11 @@ bool LayoutResolver::TryPlaceInCirculationBand(const SemanticBuilding& input,
                                                const std::vector<AllocatedSpace>& placedSpaces,
                                                GridPos2D& outPosition) const
 {
-    const LayoutStrategy strategy = GetLayoutStrategy(input);
-    const bool isRetailTypology = strategy == LayoutStrategy::Mall;
+    const BuildingTypology strategy = GetLayoutStrategy(input);
+    const bool isRetailTypology = strategy == BuildingTypology::Retail;
 
     if (IsCoreSpace(space)) {
-        if (strategy == LayoutStrategy::Mall) {
+        if (strategy == BuildingTypology::Retail) {
             const std::vector<GridPos2D> retailCoreCandidates = {
                 SnapToGrid({0.0f, 0.0f}),
                 SnapToGrid({std::max(0.0f, m_footprint[0] - size[0]), 0.0f}),
@@ -1382,7 +1106,7 @@ bool LayoutResolver::TryPlaceInCirculationBand(const SemanticBuilding& input,
                     return true;
                 }
             }
-        } else if (strategy == LayoutStrategy::Apartment || strategy == LayoutStrategy::Tower) {
+        } else if (strategy == BuildingTypology::Residential || strategy == BuildingTypology::Office) {
             const float centerX = std::max(0.0f, std::round(((m_footprint[0] - size[0]) * 0.5f) / m_gridSize) * m_gridSize);
             const float centerY = std::max(0.0f, std::round(((m_footprint[1] - size[1]) * 0.5f) / m_gridSize) * m_gridSize);
             GridPos2D candidate = SnapToGrid({centerX, centerY});
@@ -1407,7 +1131,7 @@ bool LayoutResolver::TryPlaceInCirculationBand(const SemanticBuilding& input,
     }
 
     if (IsVoidSpace(space)) {
-        if (strategy == LayoutStrategy::Mall) {
+        if (strategy == BuildingTypology::Retail) {
             const float centerX = std::max(0.0f, std::round(((m_footprint[0] - size[0]) * 0.5f) / m_gridSize) * m_gridSize);
             const float centerY = std::max(0.0f, std::round(((m_footprint[1] - size[1]) * 0.5f) / m_gridSize) * m_gridSize);
             GridPos2D candidate = SnapToGrid({centerX, centerY});
@@ -1449,7 +1173,7 @@ bool LayoutResolver::TryPlaceInCirculationBand(const SemanticBuilding& input,
     }
 
     if (space.type == "corridor" || space.type == "lobby") {
-        if (strategy == LayoutStrategy::Mall && space.type == "corridor") {
+        if (strategy == BuildingTypology::Retail && space.type == "corridor") {
             auto voidIt = std::find_if(placedSpaces.begin(), placedSpaces.end(),
                                        [](const AllocatedSpace& placed) {
                                            return placed.type == "void";
@@ -1466,7 +1190,7 @@ bool LayoutResolver::TryPlaceInCirculationBand(const SemanticBuilding& input,
                     candidates.push_back(SnapToGrid({std::min(m_footprint[0] - band, voidIt->position[0] + voidIt->size[0]), y}));
                 }
             }
-        } else if (strategy == LayoutStrategy::Mall && space.type == "lobby") {
+        } else if (strategy == BuildingTypology::Retail && space.type == "lobby") {
             const float frontY = 0.0f;
             const float centerX = std::max(0.0f, std::round(((m_footprint[0] - size[0]) * 0.5f) / m_gridSize) * m_gridSize);
             candidates.push_back(SnapToGrid({centerX, frontY}));
@@ -1568,7 +1292,7 @@ bool LayoutResolver::TryPlaceInMallRetailBand(const SemanticBuilding& input,
                                               const std::vector<AllocatedSpace>& placedSpaces,
                                               GridPos2D& outPosition) const
 {
-    if (GetLayoutStrategy(input) != LayoutStrategy::Mall || space.type != "shop") {
+    if (GetLayoutStrategy(input) != BuildingTypology::Retail || space.type != "shop") {
         return false;
     }
 
@@ -1829,20 +1553,9 @@ bool LayoutResolver::TryPlaceNearCoreOrCirculation(const SemanticBuilding& input
                                                    const std::vector<AllocatedSpace>& placedSpaces,
                                                    GridPos2D& outPosition) const
 {
-    const bool isOfficeFamily = input.buildingType == "office" || input.buildingType == "office_tower";
-    const bool isResidentialTower = input.buildingType == "cbd_residential" || input.buildingType == "apartment";
-    const bool isMallRetail = input.buildingType == "mall" || input.buildingType == "shopping_center" ||
-        input.buildingType == "retail_center";
+    const BuildingTypology typology = GetLayoutStrategy(input);
 
-    bool shouldPreferCirculation = false;
-    if (isOfficeFamily) {
-        shouldPreferCirculation = space.zone == "public" && space.unitId.empty() &&
-            (space.type == "office" || space.type == "meeting_room" || space.type == "shop");
-    } else if (isResidentialTower) {
-        shouldPreferCirculation = space.zone == "public" && space.unitId.empty();
-    } else if (isMallRetail) {
-        shouldPreferCirculation = space.type == "shop" || space.type == "bathroom";
-    }
+    const bool shouldPreferCirculation = ShouldPreferCirculationAdjacency(typology, space);
 
     if (!shouldPreferCirculation) {
         return false;

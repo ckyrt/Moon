@@ -150,6 +150,10 @@ Use this split:
 - asset design change: generate or regenerate full building/object JSON
 - scene placement change: emit `scene_edit_ops`
 
+Scene ops are the correct tool after the building authoring workflow reaches scene composition.
+
+Do not use scene ops to fake a building redesign that should have been expressed as a new building asset.
+
 Examples:
 
 - "make this house 30 floors" -> regenerate building asset JSON
@@ -163,3 +167,4 @@ Examples:
 - inventing unsupported scene ops
 - mixing scene instance fields into building asset JSON
 - mixing scene instance fields into object blueprint JSON
+- using scene ops to change architectural design intent such as floor count, core placement, or floor program
