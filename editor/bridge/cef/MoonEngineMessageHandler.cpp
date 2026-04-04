@@ -1,4 +1,5 @@
 #include "MoonEngineMessageHandler.h"
+#include "../../app/EditorApp.h"
 #include "../../app/SceneSerializer.h"
 #include "../ai/OpenAIAssetGenerator.h"
 #include "../scene/SceneDesign.h"
@@ -344,6 +345,202 @@ namespace {
             ExpandBounds(bounds, light.worldTransform.position + Moon::Vector3(0.25f, 0.25f, 0.25f));
         }
         return bounds;
+    }
+
+    json Vector3ToJson(const Moon::Vector3& value) {
+        return json{
+            {"x", value.x},
+            {"y", value.y},
+            {"z", value.z}
+        };
+    }
+
+    json BoundsToJson(const Bounds3& bounds) {
+        if (!bounds.valid) {
+            return {
+                {"valid", false}
+            };
+        }
+
+        const Moon::Vector3 size = bounds.max - bounds.min;
+        const Moon::Vector3 center = (bounds.min + bounds.max) * 0.5f;
+        return {
+            {"valid", true},
+            {"min", Vector3ToJson(bounds.min)},
+            {"max", Vector3ToJson(bounds.max)},
+            {"center", Vector3ToJson(center)},
+            {"size", Vector3ToJson(size)}
+        };
+    }
+
+    void SetPreviewOverlayFromBounds(const Bounds3& bounds) {
+        if (!bounds.valid) {
+            ClearObjectPreviewOverlayInfo();
+            return;
+        }
+
+        const Moon::Vector3 size = bounds.max - bounds.min;
+        SetObjectPreviewOverlayInfo(
+            true,
+            size.x, size.y, size.z,
+            bounds.min.x, bounds.min.y, bounds.min.z,
+            bounds.max.x, bounds.max.y, bounds.max.z);
+    }
+
+    void AddHelperMaterial(Moon::SceneNode* node,
+                           const Moon::Vector3& color,
+                           float opacity,
+                           float roughness = 0.9f) {
+        Moon::Material* material = node->AddComponent<Moon::Material>();
+        material->SetBaseColor(color);
+        material->SetMetallic(0.0f);
+        material->SetRoughness(roughness);
+        material->SetOpacity(opacity);
+        material->SetMappingMode(Moon::MappingMode::UV);
+    }
+
+    Moon::SceneNode* CreatePreviewMeshNode(Moon::Scene* scene,
+                                           Moon::SceneNode* parentNode,
+                                           const std::string& name,
+                                           std::shared_ptr<Moon::Mesh> mesh,
+                                           const Moon::Vector3& position,
+                                           const Moon::Vector3& scale,
+                                           const Moon::Vector3& color,
+                                           float opacity,
+                                           float roughness = 0.9f) {
+        if (!scene || !parentNode || !mesh || !mesh->IsValid()) {
+            return nullptr;
+        }
+
+        Moon::SceneNode* node = scene->CreateNode(name);
+        node->SetParent(parentNode, false);
+        node->GetTransform()->SetLocalPosition(position);
+        node->GetTransform()->SetLocalScale(scale);
+
+        Moon::MeshRenderer* renderer = node->AddComponent<Moon::MeshRenderer>();
+        renderer->SetMesh(mesh);
+        AddHelperMaterial(node, color, opacity, roughness);
+        return node;
+    }
+
+    void AddPreviewGroundAndOrigin(Moon::Scene* scene,
+                                   Moon::SceneNode* previewRoot,
+                                   const Bounds3& bounds) {
+        if (!scene || !previewRoot) {
+            return;
+        }
+
+        const Moon::Vector3 size = bounds.valid ? (bounds.max - bounds.min) : Moon::Vector3(1.0f, 1.0f, 1.0f);
+        const float footprint = std::max(2.5f, std::max(size.x, size.z) * 1.8f);
+        const float axisLength = std::max(0.8f, std::max({size.x, size.y, size.z}) * 0.35f);
+        const float axisThickness = std::max(0.015f, axisLength * 0.035f);
+
+        std::shared_ptr<Moon::Mesh> planeMesh(Moon::MeshGenerator::CreatePlane(
+            footprint, footprint, 1, 1, Moon::Vector3(0.65f, 0.67f, 0.70f)));
+        CreatePreviewMeshNode(
+            scene,
+            previewRoot,
+            "__PreviewGround",
+            planeMesh,
+            Moon::Vector3(0.0f, -0.002f, 0.0f),
+            Moon::Vector3(1.0f, 1.0f, 1.0f),
+            Moon::Vector3(0.67f, 0.69f, 0.72f),
+            0.38f,
+            0.96f);
+
+        std::shared_ptr<Moon::Mesh> cubeMesh(Moon::MeshGenerator::CreateCube(1.0f, Moon::Vector3(1.0f, 1.0f, 1.0f)));
+        CreatePreviewMeshNode(
+            scene,
+            previewRoot,
+            "__OriginAxisX",
+            cubeMesh,
+            Moon::Vector3(axisLength * 0.5f, axisThickness * 0.5f, 0.0f),
+            Moon::Vector3(axisLength, axisThickness, axisThickness),
+            Moon::Vector3(0.96f, 0.35f, 0.35f),
+            0.95f,
+            0.55f);
+        CreatePreviewMeshNode(
+            scene,
+            previewRoot,
+            "__OriginAxisY",
+            cubeMesh,
+            Moon::Vector3(0.0f, axisLength * 0.5f, 0.0f),
+            Moon::Vector3(axisThickness, axisLength, axisThickness),
+            Moon::Vector3(0.36f, 0.88f, 0.46f),
+            0.95f,
+            0.55f);
+        CreatePreviewMeshNode(
+            scene,
+            previewRoot,
+            "__OriginAxisZ",
+            cubeMesh,
+            Moon::Vector3(0.0f, axisThickness * 0.5f, axisLength * 0.5f),
+            Moon::Vector3(axisThickness, axisThickness, axisLength),
+            Moon::Vector3(0.34f, 0.62f, 0.97f),
+            0.95f,
+            0.55f);
+        CreatePreviewMeshNode(
+            scene,
+            previewRoot,
+            "__OriginMarker",
+            cubeMesh,
+            Moon::Vector3(0.0f, axisThickness * 0.5f, 0.0f),
+            Moon::Vector3(axisThickness * 1.8f, axisThickness * 1.8f, axisThickness * 1.8f),
+            Moon::Vector3(1.0f, 0.92f, 0.35f),
+            1.0f,
+            0.4f);
+    }
+
+    void AddBoundingBoxHelpers(Moon::Scene* scene,
+                               Moon::SceneNode* previewRoot,
+                               const Bounds3& bounds) {
+        if (!scene || !previewRoot || !bounds.valid) {
+            return;
+        }
+
+        const Moon::Vector3 size = bounds.max - bounds.min;
+        const float maxDimension = std::max({size.x, size.y, size.z, 1.0f});
+        const float thickness = std::max(0.018f, maxDimension * 0.012f);
+        const float dimensionOffset = std::max(0.12f, maxDimension * 0.08f);
+
+        std::shared_ptr<Moon::Mesh> cubeMesh(Moon::MeshGenerator::CreateCube(1.0f, Moon::Vector3(1.0f, 1.0f, 1.0f)));
+        auto addEdge = [&](const std::string& name,
+                           const Moon::Vector3& position,
+                           const Moon::Vector3& scale,
+                           const Moon::Vector3& color,
+                           float opacity) {
+            CreatePreviewMeshNode(scene, previewRoot, name, cubeMesh, position, scale, color, opacity, 0.35f);
+        };
+
+        const float minX = bounds.min.x;
+        const float minY = bounds.min.y;
+        const float minZ = bounds.min.z;
+        const float maxX = bounds.max.x;
+        const float maxY = bounds.max.y;
+        const float maxZ = bounds.max.z;
+
+        const float centerX = (minX + maxX) * 0.5f;
+        const float centerY = (minY + maxY) * 0.5f;
+        const float centerZ = (minZ + maxZ) * 0.5f;
+
+        addEdge("__BoundsEdgeX0", Moon::Vector3(centerX, minY, minZ), Moon::Vector3(size.x, thickness, thickness), Moon::Vector3(1.0f, 0.72f, 0.26f), 0.92f);
+        addEdge("__BoundsEdgeX1", Moon::Vector3(centerX, minY, maxZ), Moon::Vector3(size.x, thickness, thickness), Moon::Vector3(1.0f, 0.72f, 0.26f), 0.92f);
+        addEdge("__BoundsEdgeX2", Moon::Vector3(centerX, maxY, minZ), Moon::Vector3(size.x, thickness, thickness), Moon::Vector3(1.0f, 0.72f, 0.26f), 0.92f);
+        addEdge("__BoundsEdgeX3", Moon::Vector3(centerX, maxY, maxZ), Moon::Vector3(size.x, thickness, thickness), Moon::Vector3(1.0f, 0.72f, 0.26f), 0.92f);
+
+        addEdge("__BoundsEdgeY0", Moon::Vector3(minX, centerY, minZ), Moon::Vector3(thickness, size.y, thickness), Moon::Vector3(0.35f, 0.96f, 0.58f), 0.92f);
+        addEdge("__BoundsEdgeY1", Moon::Vector3(minX, centerY, maxZ), Moon::Vector3(thickness, size.y, thickness), Moon::Vector3(0.35f, 0.96f, 0.58f), 0.92f);
+        addEdge("__BoundsEdgeY2", Moon::Vector3(maxX, centerY, minZ), Moon::Vector3(thickness, size.y, thickness), Moon::Vector3(0.35f, 0.96f, 0.58f), 0.92f);
+        addEdge("__BoundsEdgeY3", Moon::Vector3(maxX, centerY, maxZ), Moon::Vector3(thickness, size.y, thickness), Moon::Vector3(0.35f, 0.96f, 0.58f), 0.92f);
+
+        addEdge("__BoundsEdgeZ0", Moon::Vector3(minX, minY, centerZ), Moon::Vector3(thickness, thickness, size.z), Moon::Vector3(0.38f, 0.73f, 1.0f), 0.92f);
+        addEdge("__BoundsEdgeZ1", Moon::Vector3(minX, maxY, centerZ), Moon::Vector3(thickness, thickness, size.z), Moon::Vector3(0.38f, 0.73f, 1.0f), 0.92f);
+        addEdge("__BoundsEdgeZ2", Moon::Vector3(maxX, minY, centerZ), Moon::Vector3(thickness, thickness, size.z), Moon::Vector3(0.38f, 0.73f, 1.0f), 0.92f);
+        addEdge("__BoundsEdgeZ3", Moon::Vector3(maxX, maxY, centerZ), Moon::Vector3(thickness, thickness, size.z), Moon::Vector3(0.38f, 0.73f, 1.0f), 0.92f);
+
+        addEdge("__DimensionWidth", Moon::Vector3(centerX, minY + thickness * 0.5f, maxZ + dimensionOffset), Moon::Vector3(size.x, thickness * 1.5f, thickness * 1.5f), Moon::Vector3(1.0f, 0.52f, 0.22f), 1.0f);
+        addEdge("__DimensionHeight", Moon::Vector3(maxX + dimensionOffset, centerY, maxZ), Moon::Vector3(thickness * 1.5f, size.y, thickness * 1.5f), Moon::Vector3(0.25f, 0.90f, 0.40f), 1.0f);
+        addEdge("__DimensionDepth", Moon::Vector3(maxX + dimensionOffset, minY + thickness * 0.5f, centerZ), Moon::Vector3(thickness * 1.5f, thickness * 1.5f, size.z), Moon::Vector3(0.25f, 0.60f, 0.98f), 1.0f);
     }
 
     void FrameCameraToBounds(MoonEngineMessageHandler* handler, const Bounds3& bounds) {
@@ -1648,6 +1845,7 @@ namespace CommandHandlers {
 
     // 
     std::string HandlePreviewMassing(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        ClearObjectPreviewOverlayInfo();
         if (!req.contains("ruleJson")) {
             return CreateErrorResponse("Missing 'ruleJson' field");
         }
@@ -1694,6 +1892,7 @@ namespace CommandHandlers {
     }
 
     std::string HandlePreviewBuilding(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        ClearObjectPreviewOverlayInfo();
         if (!req.contains("buildingJson")) {
             return CreateErrorResponse("Missing 'buildingJson' field");
         }
@@ -1762,6 +1961,7 @@ namespace CommandHandlers {
     }
 
     std::string HandlePreviewObject(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        ClearObjectPreviewOverlayInfo();
         if (!req.contains("objectJson")) {
             return CreateErrorResponse("Missing 'objectJson' field");
         }
@@ -1844,9 +2044,14 @@ namespace CommandHandlers {
             }
         }
 
+        const Bounds3 objectBounds = ComputeObjectPreviewBounds(buildResult);
+        AddPreviewGroundAndOrigin(scene, previewRoot, objectBounds);
+        AddBoundingBoxHelpers(scene, previewRoot, objectBounds);
+        SetPreviewOverlayFromBounds(objectBounds);
+
         const bool focusCamera = req.value("focusCamera", false);
         if (focusCamera) {
-            FrameCameraToBounds(handler, ComputeObjectPreviewBounds(buildResult));
+            FrameCameraToBounds(handler, objectBounds);
         }
 
         json response;
@@ -1854,6 +2059,7 @@ namespace CommandHandlers {
         response["rootNodeId"] = previewRoot->GetID();
         response["meshCount"] = buildResult.meshes.size();
         response["lightCount"] = buildResult.lights.size();
+        response["bounds"] = BoundsToJson(objectBounds);
         response["warnings"] = json::array();
         return response.dump();
     }
@@ -1861,6 +2067,7 @@ namespace CommandHandlers {
     std::string HandlePlanBuildingMassing(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         (void)handler;
         (void)scene;
+        ClearObjectPreviewOverlayInfo();
 
         if (!req.contains("intentJson")) {
             return CreateErrorResponse("Missing 'intentJson' field");
@@ -1890,6 +2097,7 @@ namespace CommandHandlers {
     std::string HandleGenerateMassingFromPrompt(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         (void)handler;
         (void)scene;
+        ClearObjectPreviewOverlayInfo();
 
         if (!req.contains("prompt")) {
             return CreateErrorResponse("Missing 'prompt' field");
@@ -1917,6 +2125,7 @@ namespace CommandHandlers {
     std::string HandleGenerateBuildingFromPrompt(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         (void)handler;
         (void)scene;
+        ClearObjectPreviewOverlayInfo();
 
         if (!req.contains("prompt")) {
             return CreateErrorResponse("Missing 'prompt' field");
@@ -1948,6 +2157,7 @@ namespace CommandHandlers {
     std::string HandleGenerateObjectFromPrompt(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         (void)handler;
         (void)scene;
+        ClearObjectPreviewOverlayInfo();
 
         if (!req.contains("prompt")) {
             return CreateErrorResponse("Missing 'prompt' field");
@@ -1979,6 +2189,7 @@ namespace CommandHandlers {
     std::string HandleGenerateSceneOperationsFromPrompt(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         (void)handler;
         (void)scene;
+        ClearObjectPreviewOverlayInfo();
 
         if (!req.contains("prompt")) {
             return CreateErrorResponse("Missing 'prompt' field");
@@ -2013,6 +2224,7 @@ namespace CommandHandlers {
     std::string HandleApplySceneOperations(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         (void)handler;
         (void)scene;
+        ClearObjectPreviewOverlayInfo();
 
         if (!req.contains("sceneJson")) {
             return CreateErrorResponse("Missing 'sceneJson' field");
@@ -2038,6 +2250,7 @@ namespace CommandHandlers {
     }
 
     std::string HandlePreviewScene(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
+        ClearObjectPreviewOverlayInfo();
         if (!req.contains("sceneJson")) {
             return CreateErrorResponse("Missing 'sceneJson' field");
         }
@@ -2134,6 +2347,7 @@ namespace CommandHandlers {
 
     std::string HandleClearMassingPreview(MoonEngineMessageHandler* handler, const json& req, Moon::Scene* scene) {
         ClearMassingPreviewNodes(scene);
+        ClearObjectPreviewOverlayInfo();
         return CreateSuccessResponse();
     }
 

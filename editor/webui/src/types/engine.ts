@@ -110,9 +110,19 @@ export interface Scene {
   allNodes: Record<number, SceneNode>;
 }
 
+export interface PreviewBounds {
+  valid: boolean;
+  min?: Vector3;
+  max?: Vector3;
+  center?: Vector3;
+  size?: Vector3;
+}
+
 export interface MassingPreviewResult {
   rootNodeId: number;
   meshCount: number;
+  lightCount?: number;
+  bounds?: PreviewBounds;
   warnings: string[];
 }
 

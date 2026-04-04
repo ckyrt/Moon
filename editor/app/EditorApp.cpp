@@ -74,6 +74,7 @@ Moon::Matrix4x4 g_GizmoMatrix;
 
 // Viewport 信息
 ViewportRect g_ViewportRect;
+ObjectPreviewOverlayInfo g_ObjectPreviewOverlayInfo;
 
 // ============================================================================
 // 公共接口实现
@@ -111,6 +112,28 @@ void SetGizmoMode(const std::string& mode)
         g_GizmoMode = ImGuizmo::LOCAL;
         MOON_LOG_INFO("EditorApp", "Gizmo mode set to LOCAL");
     }
+}
+
+void SetObjectPreviewOverlayInfo(bool visible,
+                                 float sizeX, float sizeY, float sizeZ,
+                                 float minX, float minY, float minZ,
+                                 float maxX, float maxY, float maxZ)
+{
+    g_ObjectPreviewOverlayInfo.visible = visible;
+    g_ObjectPreviewOverlayInfo.sizeX = sizeX;
+    g_ObjectPreviewOverlayInfo.sizeY = sizeY;
+    g_ObjectPreviewOverlayInfo.sizeZ = sizeZ;
+    g_ObjectPreviewOverlayInfo.minX = minX;
+    g_ObjectPreviewOverlayInfo.minY = minY;
+    g_ObjectPreviewOverlayInfo.minZ = minZ;
+    g_ObjectPreviewOverlayInfo.maxX = maxX;
+    g_ObjectPreviewOverlayInfo.maxY = maxY;
+    g_ObjectPreviewOverlayInfo.maxZ = maxZ;
+}
+
+void ClearObjectPreviewOverlayInfo()
+{
+    g_ObjectPreviewOverlayInfo = {};
 }
 
 // ============================================================================
@@ -241,6 +264,20 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
                 ImGui::End();
 
                 // 在Render之前确保DisplaySize正确（整个CEF窗口大小）
+                if (g_ObjectPreviewOverlayInfo.visible) {
+                    ImGui::SetNextWindowPos(ImVec2(static_cast<float>(g_ViewportRect.x + 10), static_cast<float>(g_ViewportRect.y + 72)), ImGuiCond_Always);
+                    ImGui::SetNextWindowBgAlpha(0.45f);
+                    if (ImGui::Begin("Object Preview Info", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
+                        ImGui::TextUnformatted("Object Preview");
+                        ImGui::Separator();
+                        ImGui::Text("Size W/H/D: %.2f / %.2f / %.2f", g_ObjectPreviewOverlayInfo.sizeX, g_ObjectPreviewOverlayInfo.sizeY, g_ObjectPreviewOverlayInfo.sizeZ);
+                        ImGui::Text("Min: %.2f, %.2f, %.2f", g_ObjectPreviewOverlayInfo.minX, g_ObjectPreviewOverlayInfo.minY, g_ObjectPreviewOverlayInfo.minZ);
+                        ImGui::Text("Max: %.2f, %.2f, %.2f", g_ObjectPreviewOverlayInfo.maxX, g_ObjectPreviewOverlayInfo.maxY, g_ObjectPreviewOverlayInfo.maxZ);
+                        ImGui::TextUnformatted("Ground = Y 0, origin marker = (0,0,0)");
+                    }
+                    ImGui::End();
+                }
+
                 ImGuiIO& io = ImGui::GetIO();
                 io.DisplaySize = ImVec2((float)cefWindowWidth, (float)cefWindowHeight);
 

@@ -363,6 +363,8 @@ const createRealAPI = (): MoonEngineAPI => {
             resolve({
               rootNodeId: parsed.rootNodeId,
               meshCount: parsed.meshCount,
+              lightCount: parsed.lightCount,
+              bounds: parsed.bounds,
               warnings: parsed.warnings ?? []
             });
           },
@@ -399,6 +401,8 @@ const createRealAPI = (): MoonEngineAPI => {
             resolve({
               rootNodeId: parsed.rootNodeId ?? 0,
               meshCount: parsed.meshCount,
+              lightCount: parsed.lightCount,
+              bounds: parsed.bounds,
               warnings: parsed.warnings ?? []
             });
           },
@@ -490,6 +494,8 @@ const createRealAPI = (): MoonEngineAPI => {
             resolve({
               rootNodeId: parsed.rootNodeId ?? 0,
               meshCount: parsed.meshCount,
+              lightCount: parsed.lightCount,
+              bounds: parsed.bounds,
               warnings: parsed.warnings ?? []
             });
           },
