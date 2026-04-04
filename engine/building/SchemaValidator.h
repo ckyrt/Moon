@@ -41,16 +41,6 @@ public:
                          BuildingDefinition& outDefinition,
                          std::string& outError);
 
-    bool ValidateAndParseBestEffort(const std::string& jsonStr,
-                                    BuildingDefinition& outDefinition,
-                                    BestEffortGenerationReport& outReport,
-                                    std::string& outError);
-
-    bool ValidateAndParseBestEffort(const nlohmann::json& json,
-                                    BuildingDefinition& outDefinition,
-                                    BestEffortGenerationReport& outReport,
-                                    std::string& outError);
-
 private:
     bool ValidateSemanticJson(const nlohmann::json& json, std::string& outError);
     bool ValidateSchema(const nlohmann::json& json, std::string& outError);

@@ -376,90 +376,48 @@ bool LayoutResolver::Resolve(
     BuildingDefinition& output,
     std::string& error)
 {
-    return ResolveInternal(input, output, nullptr, false, error);
-}
-
-bool LayoutResolver::ResolveBestEffort(
-    const SemanticBuilding& input,
-    BuildingDefinition& output,
-    BestEffortGenerationReport& report,
-    std::string& error)
-{
-    report.skippedSpaces.clear();
-    return ResolveInternal(input, output, &report, true, error);
+    return ResolveInternal(input, output, error);
 }
 
 bool LayoutResolver::ResolveInternal(
     const SemanticBuilding& input,
     BuildingDefinition& output,
-    BestEffortGenerationReport* report,
-    bool bestEffort,
     std::string& error)
 {
     MOON_LOG_INFO("LayoutResolver", "=== Starting Layout Resolution ===");
     MOON_LOG_INFO("LayoutResolver", "Building type: %s", input.buildingType.c_str());
 
-    m_bestEffortMode = bestEffort;
-    m_bestEffortReport = report;
     m_allocatedSpaces.clear();
     m_reservedRects.clear();
     
     // Step 1: Calculate footprint
     if (!CalculateFootprint(input)) {
         error = "Failed to calculate footprint";
-        m_bestEffortMode = false;
-        m_bestEffortReport = nullptr;
         return false;
     }
     
     // Step 2: Allocate spaces
     if (!AllocateSpaces(input)) {
         error = "Failed to allocate spaces";
-        m_bestEffortMode = false;
-        m_bestEffortReport = nullptr;
         return false;
     }
 
     if (m_allocatedSpaces.empty()) {
         error = "Failed to allocate any spaces";
-        m_bestEffortMode = false;
-        m_bestEffortReport = nullptr;
         return false;
     }
     
     // Step 3: Generate rectangles
     if (!GenerateRectangles(input)) {
         error = "Failed to generate rectangles";
-        m_bestEffortMode = false;
-        m_bestEffortReport = nullptr;
         return false;
     }
     
     // Step 4: Build output
     BuildOutput(output, input);
 
-    m_bestEffortMode = false;
-    m_bestEffortReport = nullptr;
-    
     MOON_LOG_INFO("LayoutResolver", "=== Layout Resolution Complete ===");
     return true;
-}
-
-void LayoutResolver::RecordBestEffortSkip(int floorLevel,
-                                          const SemanticSpace& space,
-                                          const std::string& reason)
-{
-    if (!m_bestEffortReport) {
-        return;
-    }
-
-    BestEffortSkippedSpace issue;
-    issue.floorLevel = floorLevel;
-    issue.spaceId = space.spaceId;
-    issue.spaceType = space.type;
-    issue.reason = reason;
-    m_bestEffortReport->usedBestEffort = true;
-    m_bestEffortReport->skippedSpaces.push_back(issue);
 }
 
 bool LayoutResolver::CalculateFootprint(const SemanticBuilding& input)
@@ -797,120 +755,6 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
             return outUsedHeight <= m_footprint[1] + 0.001f;
         };
 
-        auto tryAllocateFloorBestEffort = [&](float candidateScale,
-                                              std::vector<AllocatedSpace>& outSpaces,
-                                              float& outUsedHeight) {
-            outSpaces.clear();
-            m_reservedRects.clear();
-
-            outUsedHeight = 0.0f;
-
-            for (const auto* spacePtr : orderedSpaces) {
-                const auto& space = *spacePtr;
-                AllocatedSpace allocated;
-                allocated.spaceId = space.spaceId;
-                allocated.unitId = space.unitId;
-                allocated.type = space.type;
-                allocated.floorLevel = floor.level;
-
-                float targetArea = space.areaPreferred > 0.0f ?
-                    space.areaPreferred :
-                    GetDefaultAreaForSpaceType(space.type);
-                allocated.area = targetArea * candidateScale;
-
-                if (space.areaMin > 0.0f && allocated.area < space.areaMin) {
-                    allocated.area = space.areaMin;
-                }
-                if (space.areaMax > 0.0f && allocated.area > space.areaMax) {
-                    allocated.area = space.areaMax;
-                }
-
-                float aspectRatio = GetTargetAspectRatio(input, space);
-                GridSize2D dims = CalculateOptimalDimensions(allocated.area, aspectRatio);
-
-                if (dims[0] < space.constraints.minWidth) {
-                    dims[0] = space.constraints.minWidth;
-                    dims[1] = allocated.area / dims[0];
-                }
-                if (dims[1] < space.constraints.minWidth) {
-                    dims[1] = space.constraints.minWidth;
-                    dims[0] = allocated.area / dims[1];
-                }
-
-                dims = SnapToGrid(dims);
-
-                if (dims[0] > m_footprint[0] || dims[1] > m_footprint[1]) {
-                    RecordBestEffortSkip(floor.level, space, "space exceeds available footprint");
-                    MOON_LOG_ERROR("LayoutResolver",
-                                   "  Skipping floor %d space '%s' (%s): exceeds footprint %.1f x %.1f m",
-                                   floor.level, space.spaceId.c_str(), space.type.c_str(),
-                                   m_footprint[0], m_footprint[1]);
-                    continue;
-                }
-
-                const bool hasRequiredPlacedAdjacency = hasPlacedRequiredAdjacencyConstraint(space, outSpaces);
-                const bool prioritizeMallRetailBand = strategy == LayoutStrategy::Mall && space.type == "shop";
-
-                GridPos2D position = {0.0f, 0.0f};
-                bool placed = TryPlaceUsingStairAlignment(space, dims, outSpaces, position);
-
-                if (!placed && prioritizeMallRetailBand) {
-                    placed = TryPlaceInMallRetailBand(input, space, dims, outSpaces, position);
-                }
-
-                if (!placed && hasRequiredPlacedAdjacency) {
-                    placed = TryPlaceNearConnectedSpace(space, dims, outSpaces, position);
-                }
-
-                if (!placed) {
-                    placed = TryPlaceInCirculationBand(input, space, dims, outSpaces, position);
-                }
-
-                if (!placed && !space.unitId.empty()) {
-                    placed = TryPlaceInsideUnitCluster(space, dims, outSpaces, position);
-                }
-
-                if (!placed && !prioritizeMallRetailBand) {
-                    placed = TryPlaceInMallRetailBand(input, space, dims, outSpaces, position);
-                }
-
-                if (!placed) {
-                    placed = TryPlaceNearConnectedSpace(space, dims, outSpaces, position);
-                }
-
-                if (!placed) {
-                    placed = TryPlaceNearCoreOrCirculation(input, space, dims, outSpaces, position);
-                }
-
-                if (!placed && RequiresExteriorWall(space)) {
-                    placed = TryPlaceOnExteriorWall(space, dims, outSpaces, position);
-                } else if (!placed) {
-                    placed = TryPlaceOnExteriorWall(space, dims, outSpaces, position) ||
-                             FindFirstFitPosition(dims, outSpaces, position);
-                }
-
-                if (placed && hasRequiredPlacedAdjacency &&
-                    !satisfiesRequiredAdjacency(space, position, dims, outSpaces)) {
-                    placed = false;
-                }
-
-                if (!placed) {
-                    RecordBestEffortSkip(floor.level, space, "space could not be placed without breaking layout constraints");
-                    MOON_LOG_ERROR("LayoutResolver",
-                                   "  Skipping floor %d space '%s' (%s): could not place within current layout",
-                                   floor.level, space.spaceId.c_str(), space.type.c_str());
-                    continue;
-                }
-
-                allocated.position = position;
-                allocated.size = dims;
-                outSpaces.push_back(allocated);
-                reserveAllocatedGeometry(space, allocated, outSpaces);
-
-                outUsedHeight = std::max(outUsedHeight, allocated.position[1] + allocated.size[1]);
-            }
-        };
-
         std::vector<AllocatedSpace> floorAllocated;
         float usedHeight = 0.0f;
         bool allocatedFloor = false;
@@ -933,24 +777,6 @@ bool LayoutResolver::AllocateSpaces(const SemanticBuilding& input)
                 break;
             }
             scaleFactor = nextScaleFactor;
-        }
-
-        if (!allocatedFloor) {
-            if (m_bestEffortMode) {
-                resolvedScaleFactor = initialScaleFactor;
-                tryAllocateFloorBestEffort(resolvedScaleFactor, floorAllocated, usedHeight);
-                if (floorAllocated.empty()) {
-                    MOON_LOG_ERROR("LayoutResolver",
-                                   "  Floor %d could not place any spaces in best-effort mode",
-                                   floor.level);
-                } else {
-                    MOON_LOG_WARN("LayoutResolver",
-                                  "  Floor %d entered best-effort mode, skipped %zu spaces",
-                                  floor.level,
-                                  floor.spaces.size() - floorAllocated.size());
-                }
-                allocatedFloor = true;
-            }
         }
 
         if (!allocatedFloor) {

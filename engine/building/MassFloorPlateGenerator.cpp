@@ -1,4 +1,5 @@
 #include "MassFloorPlateGenerator.h"
+#include "BuildingGeometryUtils.h"
 
 #include "../core/Assets/AssetPaths.h"
 #include "../massing/MassMeshBuilder.h"
@@ -18,19 +19,6 @@ namespace {
 constexpr float kEpsilon = 1e-4f;
 constexpr float kCommercialFacadeInset = 0.6f;
 constexpr float kDefaultFacadeInset = 0.4f;
-
-std::vector<Moon::Building::GridPos2D> BuildRectOutline(const Moon::Building::Rect& rect) {
-    if (rect.size[0] <= 0.0f || rect.size[1] <= 0.0f) {
-        return {};
-    }
-
-    return {
-        {rect.origin[0], rect.origin[1]},
-        {rect.origin[0] + rect.size[0], rect.origin[1]},
-        {rect.origin[0] + rect.size[0], rect.origin[1] + rect.size[1]},
-        {rect.origin[0], rect.origin[1] + rect.size[1]}
-    };
-}
 
 struct MeshBounds {
     float minX = std::numeric_limits<float>::max();
@@ -191,20 +179,44 @@ std::vector<SliceSample> DeduplicatePoints(std::vector<SliceSample> points, floa
     return uniquePoints;
 }
 
-std::vector<SliceSample> RemoveSequentialDuplicateLoopPoints(std::vector<SliceSample> points,
-                                                             float epsilon = kEpsilon) {
-    std::vector<SliceSample> cleaned;
+template <typename PointType, typename EqualsFn>
+std::vector<PointType> RemoveSequentialDuplicatePoints(std::vector<PointType> points,
+                                                       EqualsFn&& equals) {
+    std::vector<PointType> cleaned;
     cleaned.reserve(points.size());
     for (const auto& point : points) {
-        if (!cleaned.empty() && NearlyEqual(cleaned.back(), point, epsilon)) {
+        if (!cleaned.empty() && equals(cleaned.back(), point)) {
             continue;
         }
         cleaned.push_back(point);
     }
-    if (cleaned.size() >= 2 && NearlyEqual(cleaned.front(), cleaned.back(), epsilon)) {
+    if (cleaned.size() >= 2 && equals(cleaned.front(), cleaned.back())) {
         cleaned.pop_back();
     }
     return cleaned;
+}
+
+std::vector<SliceSample> RemoveSequentialDuplicateLoopPoints(std::vector<SliceSample> points,
+                                                             float epsilon = kEpsilon) {
+    return RemoveSequentialDuplicatePoints(
+        std::move(points),
+        [&](const SliceSample& a, const SliceSample& b) { return NearlyEqual(a, b, epsilon); });
+}
+
+bool NearlyEqual(const Moon::Building::GridPos2D& a,
+                 const Moon::Building::GridPos2D& b,
+                 float epsilon = kEpsilon) {
+    return NearlyEqual(a[0], b[0], epsilon) && NearlyEqual(a[1], b[1], epsilon);
+}
+
+std::vector<Moon::Building::GridPos2D> RemoveSequentialDuplicateGridLoopPoints(
+    std::vector<Moon::Building::GridPos2D> points,
+    float epsilon = kEpsilon) {
+    return RemoveSequentialDuplicatePoints(
+        std::move(points),
+        [&](const Moon::Building::GridPos2D& a, const Moon::Building::GridPos2D& b) {
+            return NearlyEqual(a, b, epsilon);
+        });
 }
 
 bool IntersectEdgeWithPlane(const Moon::Vector3& a,
@@ -740,17 +752,16 @@ std::vector<std::vector<SliceSample>> BuildSliceLoops(const std::vector<SliceSeg
     return loops;
 }
 
-std::vector<Moon::Building::GridPos2D> BuildEnvelopeOutline(const std::vector<SliceSample>& hull,
-                                                            float grid) {
+std::vector<Moon::Building::GridPos2D> BuildEnvelopeOutline(const std::vector<SliceSample>& hull) {
     std::vector<Moon::Building::GridPos2D> outline;
     outline.reserve(hull.size());
     for (const auto& point : hull) {
         outline.push_back({
-            SnapNearest(point.x, grid),
-            SnapNearest(point.z, grid)
+            point.x,
+            point.z
         });
     }
-    return outline;
+    return RemoveSequentialDuplicateGridLoopPoints(std::move(outline), 0.01f);
 }
 
 bool BuildBestSliceCandidate(const Moon::Massing::MassBuildResult& buildResult,
@@ -902,10 +913,7 @@ bool MassFloorPlateGenerator::Generate(const BuildingDefinition& definition,
                                        std::string& outError) const {
     outPlates.clear();
 
-    float buildingTotalHeight = 0.0f;
-    for (const auto& floor : definition.floors) {
-        buildingTotalHeight = std::max(buildingTotalHeight, GetFloorBaseHeight(definition, floor.level) + floor.floorHeight);
-    }
+    const float buildingTotalHeight = ComputeBuildingTotalHeight(definition);
     if (buildingTotalHeight <= kEpsilon) {
         outError = "Building has no measurable floor height for mass slicing";
         return false;
@@ -915,13 +923,7 @@ bool MassFloorPlateGenerator::Generate(const BuildingDefinition& definition,
     const float facadeInset = GetFacadeInset(definition);
 
     for (const auto& floor : definition.floors) {
-        const Mass* mass = nullptr;
-        for (const auto& candidate : definition.masses) {
-            if (candidate.massId == floor.massId) {
-                mass = &candidate;
-                break;
-            }
-        }
+        const Mass* mass = FindMassForFloor(definition, floor);
         if (mass == nullptr) {
             continue;
         }
@@ -1002,23 +1004,15 @@ bool MassFloorPlateGenerator::Generate(const BuildingDefinition& definition,
 
         const float usableInset = std::min(facadeInset,
             std::max(0.0f, std::min(width, depth) * 0.18f));
-        const std::vector<GridPos2D> envelopeOutline = BuildEnvelopeOutline(*outerLoop, definition.grid);
+        const std::vector<GridPos2D> envelopeOutline = BuildEnvelopeOutline(*outerLoop);
         const std::vector<GridPos2D> insetOutline = BuildInsetOutline(*outerLoop, usableInset, definition.grid);
         if (!insetOutline.empty()) {
-            float outlineMinX = std::numeric_limits<float>::max();
-            float outlineMinZ = std::numeric_limits<float>::max();
-            float outlineMaxX = -std::numeric_limits<float>::max();
-            float outlineMaxZ = -std::numeric_limits<float>::max();
-            for (const auto& point : insetOutline) {
-                outlineMinX = std::min(outlineMinX, point[0]);
-                outlineMinZ = std::min(outlineMinZ, point[1]);
-                outlineMaxX = std::max(outlineMaxX, point[0]);
-                outlineMaxZ = std::max(outlineMaxZ, point[1]);
-            }
-            originX = outlineMinX;
-            originZ = outlineMinZ;
-            width = std::max(definition.grid, outlineMaxX - outlineMinX);
-            depth = std::max(definition.grid, outlineMaxZ - outlineMinZ);
+            const GridPos2D outlineMin = ComputeOutlineBoundsMin(insetOutline);
+            const GridPos2D outlineMax = ComputeOutlineBoundsMax(insetOutline);
+            originX = outlineMin[0];
+            originZ = outlineMin[1];
+            width = std::max(definition.grid, outlineMax[0] - outlineMin[0]);
+            depth = std::max(definition.grid, outlineMax[1] - outlineMin[1]);
         }
 
         FloorPlate plate;

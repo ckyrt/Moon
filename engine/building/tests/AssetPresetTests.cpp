@@ -37,36 +37,6 @@ std::string ReadUtf8TextFile(const std::string& path) {
     return content;
 }
 
-std::string DescribeBestEffortReport(const Moon::Building::BestEffortGenerationReport& report) {
-    std::ostringstream buffer;
-    buffer << "best-effort used=" << (report.usedBestEffort ? "true" : "false");
-
-    if (!report.repairNotes.empty()) {
-        buffer << "\nrepair notes:";
-        for (const auto& note : report.repairNotes) {
-            buffer << "\n  - " << note;
-        }
-    }
-
-    if (!report.adjustedSpaces.empty()) {
-        buffer << "\nadjusted spaces:";
-        for (const auto& adjusted : report.adjustedSpaces) {
-            buffer << "\n  - floor " << adjusted.floorLevel << " space '" << adjusted.spaceId
-                   << "' (" << adjusted.spaceType << "): " << adjusted.reason;
-        }
-    }
-
-    if (!report.skippedSpaces.empty()) {
-        buffer << "\nskipped spaces:";
-        for (const auto& skipped : report.skippedSpaces) {
-            buffer << "\n  - floor " << skipped.floorLevel << " space '" << skipped.spaceId
-                   << "' (" << skipped.spaceType << "): " << skipped.reason;
-        }
-    }
-
-    return buffer.str();
-}
-
 void CollectJsonFilesRecursive(const std::string& root, std::vector<std::string>& files) {
     WIN32_FIND_DATAA findData;
     HANDLE handle = FindFirstFileA((root + "\\*").c_str(), &findData);
@@ -150,16 +120,8 @@ TEST(BuildingAssetPresetTests, AllBuildingJsonFilesProcessThroughPipeline) {
 
         Moon::Building::GeneratedBuilding building;
         std::string error;
-        if (!pipeline.ProcessBuilding(content, building, error)) {
-            Moon::Building::GeneratedBuilding bestEffortBuilding;
-            Moon::Building::BestEffortGenerationReport report;
-            std::string bestEffortError;
-            pipeline.ProcessBuildingBestEffort(content, bestEffortBuilding, report, bestEffortError);
-
-            FAIL() << "Building asset failed: " << error
-                   << "\nBest-effort follow-up: " << bestEffortError
-                   << "\n" << DescribeBestEffortReport(report);
-        }
+        EXPECT_TRUE(pipeline.ProcessBuilding(content, building, error))
+            << "Building asset failed: " << error;
     }
 }
 

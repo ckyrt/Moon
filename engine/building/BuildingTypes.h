@@ -528,27 +528,6 @@ struct ValidationResult {
     std::vector<std::string> warnings;
 };
 
-struct BestEffortSkippedSpace {
-    int floorLevel = -1;
-    std::string spaceId;
-    std::string spaceType;
-    std::string reason;
-};
-
-struct BestEffortAdjustedSpace {
-    int floorLevel = -1;
-    std::string spaceId;
-    std::string spaceType;
-    std::string reason;
-};
-
-struct BestEffortGenerationReport {
-    bool usedBestEffort = false;
-    std::vector<BestEffortSkippedSpace> skippedSpaces;
-    std::vector<BestEffortAdjustedSpace> adjustedSpaces;
-    std::vector<std::string> repairNotes;
-};
-
 /**
  * @brief Helper function: Get the base height (Y coordinate) of a floor
  * Uses cumulative floor heights (not level * height) to support variable floor heights

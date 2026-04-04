@@ -110,12 +110,6 @@ public:
         BuildingDefinition& output,
         std::string& error);
 
-    bool ResolveBestEffort(
-        const SemanticBuilding& input,
-        BuildingDefinition& output,
-        BestEffortGenerationReport& report,
-        std::string& error);
-    
     void SetGridSize(float gridSize) { m_gridSize = gridSize; }
     void SetVerbose(bool verbose) { m_verbose = verbose; }
     
@@ -123,8 +117,6 @@ private:
     bool ResolveInternal(
         const SemanticBuilding& input,
         BuildingDefinition& output,
-        BestEffortGenerationReport* report,
-        bool bestEffort,
         std::string& error);
 
     enum class LayoutStrategy {
@@ -208,18 +200,13 @@ private:
                                 const GridSize2D& size,
                                 const std::vector<AllocatedSpace>& placedSpaces,
                                 GridPos2D& outPosition) const;
-    void RecordBestEffortSkip(int floorLevel,
-                              const SemanticSpace& space,
-                              const std::string& reason);
     
     float m_gridSize = 0.5f;
     bool m_verbose = false;
-    bool m_bestEffortMode = false;
     
     GridSize2D m_footprint;
     std::vector<AllocatedSpace> m_allocatedSpaces;
     std::vector<Rect> m_reservedRects;
-    BestEffortGenerationReport* m_bestEffortReport = nullptr;
 };
 
 // ============================================================================

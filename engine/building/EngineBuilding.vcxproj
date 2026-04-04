@@ -100,6 +100,7 @@
   <ItemGroup>
     <ClInclude Include="Building.h" />
     <ClInclude Include="BuildingGenerationInputs.h" />
+    <ClInclude Include="BuildingGeometryUtils.h" />
     <ClInclude Include="BuildingTypes.h" />
     <ClInclude Include="BuildingPipeline.h" />
     <ClInclude Include="SchemaValidator.h" />

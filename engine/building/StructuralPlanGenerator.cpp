@@ -1,4 +1,5 @@
 #include "StructuralPlanGenerator.h"
+#include "BuildingGeometryUtils.h"
 
 #include "../core/Mesh/Mesh.h"
 #include <algorithm>
@@ -11,33 +12,6 @@ namespace {
 
 using namespace Moon::Building;
 constexpr float kSearchEpsilon = 0.001f;
-
-std::vector<GridPos2D> MakeRectOutline(const Rect& rect) {
-    if (rect.size[0] <= 0.0f || rect.size[1] <= 0.0f) {
-        return {};
-    }
-
-    return {
-        {rect.origin[0], rect.origin[1]},
-        {rect.origin[0] + rect.size[0], rect.origin[1]},
-        {rect.origin[0] + rect.size[0], rect.origin[1] + rect.size[1]},
-        {rect.origin[0], rect.origin[1] + rect.size[1]}
-    };
-}
-
-float ComputeSignedArea(const std::vector<GridPos2D>& outline) {
-    if (outline.size() < 3) {
-        return 0.0f;
-    }
-
-    float area = 0.0f;
-    for (size_t i = 0; i < outline.size(); ++i) {
-        const auto& a = outline[i];
-        const auto& b = outline[(i + 1) % outline.size()];
-        area += a[0] * b[1] - b[0] * a[1];
-    }
-    return area * 0.5f;
-}
 
 std::shared_ptr<Moon::Mesh> CreateExtrudedPlateMesh(const std::vector<GridPos2D>& outline,
                                                     float baseY,
@@ -193,13 +167,6 @@ bool InferMallVoidFromCorridor(const Space& space, Rect& outVoid) {
     outVoid.origin = {innerMinX, innerMinY};
     outVoid.size = {innerMaxX - innerMinX, innerMaxY - innerMinY};
     return true;
-}
-
-bool RectContainsPoint(const Rect& rect, const GridPos2D& point) {
-    return point[0] > rect.origin[0] + 0.001f &&
-           point[0] < rect.origin[0] + rect.size[0] - 0.001f &&
-           point[1] > rect.origin[1] + 0.001f &&
-           point[1] < rect.origin[1] + rect.size[1] - 0.001f;
 }
 
 bool PointInOutline(const std::vector<GridPos2D>& outline, const GridPos2D& point) {
@@ -426,6 +393,150 @@ bool RequiresSharedVerticalZone(const BuildingDefinition& definition) {
     return definition.floors.size() >= 5;
 }
 
+struct PendingColumnPlan {
+    FloorPlate plate;
+    std::vector<Rect> exclusionRects;
+};
+
+FloorPlate BuildFloorPlateForMass(const Floor& floor,
+                                  const Mass& mass,
+                                  const std::vector<FloorPlate>& slicedFloorPlates) {
+    auto slicedPlateIt = std::find_if(slicedFloorPlates.begin(), slicedFloorPlates.end(),
+        [&](const FloorPlate& candidate) {
+            return candidate.floorLevel == floor.level && candidate.massId == floor.massId;
+        });
+    if (slicedPlateIt != slicedFloorPlates.end()) {
+        return *slicedPlateIt;
+    }
+
+    FloorPlate plate;
+    plate.floorLevel = floor.level;
+    plate.massId = floor.massId;
+    plate.origin = mass.origin;
+    plate.size = mass.size;
+    const Rect massRect{"mass_outline", mass.origin, mass.size};
+    plate.envelopeOutline = BuildRectOutline(massRect);
+    plate.outline = plate.envelopeOutline;
+    return plate;
+}
+
+bool IsExplicitCoreRect(const Rect& rect) {
+    return ContainsToken(rect.rectId, "core") ||
+           ContainsToken(rect.rectId, "elevator") ||
+           ContainsToken(rect.rectId, "stair");
+}
+
+VerticalCore BuildExplicitCore(const Space& space,
+                               const Rect& rect,
+                               int floorLevel,
+                               int maxFloorLevel) {
+    VerticalCore core;
+    core.coreId = rect.rectId;
+    core.type = ClassifyCoreType(rect);
+    core.rect = rect;
+    core.floorFrom = floorLevel;
+    core.floorTo = floorLevel;
+    if (space.properties.hasStairs) {
+        core.floorTo = std::max(core.floorTo, space.stairsConfig.connectToLevel);
+    } else if (core.type == VerticalCoreType::Elevator && floorLevel < maxFloorLevel) {
+        core.floorTo = floorLevel + 1;
+    }
+    return core;
+}
+
+void CollectFloorExclusionsAndCores(const Floor& floor,
+                                    bool hasMassingRule,
+                                    int maxFloorLevel,
+                                    FloorPlate& plate,
+                                    std::vector<VerticalCore>& outCores,
+                                    std::vector<Rect>& outExclusionRects) {
+    for (const auto& space : floor.spaces) {
+        for (const auto& rect : space.rects) {
+            if (!hasMassingRule && IsExplicitCoreRect(rect)) {
+                outCores.push_back(BuildExplicitCore(space, rect, floor.level, maxFloorLevel));
+                outExclusionRects.push_back(rect);
+            }
+        }
+
+        Rect inferredVoid;
+        if (InferMallVoidFromCorridor(space, inferredVoid)) {
+            plate.voids.push_back(inferredVoid);
+            outExclusionRects.push_back(inferredVoid);
+        }
+    }
+}
+
+void AppendFloorPlateMesh(const BuildingDefinition& definition,
+                          const FloorPlate& plate,
+                          GeneratedBuilding& outBuilding) {
+    const std::vector<GridPos2D>& slabOutline =
+        plate.envelopeOutline.size() >= 3 ? plate.envelopeOutline : plate.outline;
+    if (auto mesh = CreateExtrudedPlateMesh(slabOutline, GetFloorBaseHeight(definition, plate.floorLevel), 0.18f)) {
+        GeneratedMeshPart meshPart;
+        meshPart.partId = "floor_plate_mesh_" + std::to_string(plate.floorLevel);
+        meshPart.material = "concrete_floor";
+        meshPart.mesh = std::move(mesh);
+        outBuilding.floorPlateMeshes.push_back(std::move(meshPart));
+    }
+}
+
+void AppendActiveCoreExclusions(const GeneratedBuilding& outBuilding,
+                                int floorLevel,
+                                std::vector<Rect>& exclusionRects) {
+    for (const auto& core : outBuilding.verticalCores) {
+        if (core.floorFrom <= floorLevel && core.floorTo >= floorLevel) {
+            exclusionRects.push_back(core.rect);
+        }
+    }
+}
+
+std::vector<GridPos2D> BuildRegularColumnCandidates(const FloorPlate& plate, float spacing) {
+    std::vector<GridPos2D> candidates;
+    for (float x = plate.origin[0] + spacing * 0.5f;
+         x < plate.origin[0] + plate.size[0] - spacing * 0.25f;
+         x += spacing) {
+        for (float y = plate.origin[1] + spacing * 0.5f;
+             y < plate.origin[1] + plate.size[1] - spacing * 0.25f;
+             y += spacing) {
+            candidates.push_back({x, y});
+        }
+    }
+    return candidates;
+}
+
+std::vector<GridPos2D> BuildColumnCandidates(const FloorPlate& plate,
+                                             bool useMassingColumnPattern,
+                                             float spacing) {
+    return useMassingColumnPattern
+        ? BuildMassingColumnCandidates(plate)
+        : BuildRegularColumnCandidates(plate, spacing);
+}
+
+void UpsertSupportColumn(GeneratedBuilding& outBuilding,
+                         const GridPos2D& center,
+                         float columnSize,
+                         int floorLevel) {
+    const int keyX = static_cast<int>(std::round(center[0] * 100.0f));
+    const int keyY = static_cast<int>(std::round(center[1] * 100.0f));
+    const std::string columnId = "column_" + std::to_string(keyX) + "_" + std::to_string(keyY);
+    auto existing = std::find_if(outBuilding.supportColumns.begin(), outBuilding.supportColumns.end(),
+        [&](const SupportColumn& column) { return column.columnId == columnId; });
+    if (existing != outBuilding.supportColumns.end()) {
+        existing->floorFrom = std::min(existing->floorFrom, 0);
+        existing->floorTo = std::max(existing->floorTo, floorLevel);
+        return;
+    }
+
+    SupportColumn column;
+    column.columnId = columnId;
+    column.center = center;
+    column.width = columnSize;
+    column.depth = columnSize;
+    column.floorFrom = 0;
+    column.floorTo = floorLevel;
+    outBuilding.supportColumns.push_back(column);
+}
+
 void AddMassDrivenCoreIfNeeded(const BuildingDefinition& definition,
                                int maxFloorLevel,
                                GeneratedBuilding& outBuilding) {
@@ -573,83 +684,27 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
         maxFloorLevel = std::max(maxFloorLevel, floor.level);
     }
 
-    struct PendingColumnPlan {
-        FloorPlate plate;
-        std::vector<Rect> exclusionRects;
-    };
-
     std::vector<PendingColumnPlan> pendingColumnPlans;
 
     for (const auto& floor : definition.floors) {
-        const Mass* mass = nullptr;
-        for (const auto& candidate : definition.masses) {
-            if (candidate.massId == floor.massId) {
-                mass = &candidate;
-                break;
-            }
-        }
+        const Mass* mass = FindMassForFloor(definition, floor);
         if (!mass) {
             continue;
         }
 
-        FloorPlate plate;
-        auto slicedPlateIt = std::find_if(slicedFloorPlates.begin(), slicedFloorPlates.end(),
-            [&](const FloorPlate& candidate) {
-                return candidate.floorLevel == floor.level && candidate.massId == floor.massId;
-            });
-        if (slicedPlateIt != slicedFloorPlates.end()) {
-            plate = *slicedPlateIt;
-        } else {
-            plate.floorLevel = floor.level;
-            plate.massId = floor.massId;
-            plate.origin = mass->origin;
-            plate.size = mass->size;
-            const Rect massRect{"mass_outline", mass->origin, mass->size};
-            plate.envelopeOutline = MakeRectOutline(massRect);
-            plate.outline = plate.envelopeOutline;
-        }
+        FloorPlate plate = BuildFloorPlateForMass(floor, *mass, slicedFloorPlates);
 
         std::vector<Rect> exclusionRects;
-        for (const auto& space : floor.spaces) {
-            for (const auto& rect : space.rects) {
-                const VerticalCoreType coreType = ClassifyCoreType(rect);
-                const bool explicitCore = ContainsToken(rect.rectId, "core") ||
-                                          ContainsToken(rect.rectId, "elevator") ||
-                                          ContainsToken(rect.rectId, "stair");
-                if (explicitCore && !hasMassingRule) {
-                    VerticalCore core;
-                    core.coreId = rect.rectId;
-                    core.type = coreType;
-                    core.rect = rect;
-                    core.floorFrom = floor.level;
-                    core.floorTo = floor.level;
-                    if (space.properties.hasStairs) {
-                        core.floorTo = std::max(core.floorTo, space.stairsConfig.connectToLevel);
-                    } else if (core.type == VerticalCoreType::Elevator && floor.level < maxFloorLevel) {
-                        core.floorTo = floor.level + 1;
-                    }
-                    outBuilding.verticalCores.push_back(core);
-                    exclusionRects.push_back(rect);
-                }
-            }
-
-            Rect inferredVoid;
-            if (InferMallVoidFromCorridor(space, inferredVoid)) {
-                plate.voids.push_back(inferredVoid);
-                exclusionRects.push_back(inferredVoid);
-            }
-        }
+        CollectFloorExclusionsAndCores(
+            floor,
+            hasMassingRule,
+            maxFloorLevel,
+            plate,
+            outBuilding.verticalCores,
+            exclusionRects);
 
         outBuilding.floorPlates.push_back(plate);
-        const std::vector<GridPos2D>& slabOutline =
-            plate.envelopeOutline.size() >= 3 ? plate.envelopeOutline : plate.outline;
-        if (auto mesh = CreateExtrudedPlateMesh(slabOutline, GetFloorBaseHeight(definition, floor.level), 0.18f)) {
-            GeneratedMeshPart meshPart;
-            meshPart.partId = "floor_plate_mesh_" + std::to_string(floor.level);
-            meshPart.material = "concrete_floor";
-            meshPart.mesh = std::move(mesh);
-            outBuilding.floorPlateMeshes.push_back(std::move(meshPart));
-        }
+        AppendFloorPlateMesh(definition, plate, outBuilding);
         pendingColumnPlans.push_back({plate, exclusionRects});
     }
 
@@ -669,52 +724,17 @@ bool StructuralPlanGenerator::Generate(const BuildingDefinition& definition,
         }
 
         std::vector<Rect> exclusionRects = plan.exclusionRects;
-        for (const auto& core : outBuilding.verticalCores) {
-            if (core.floorFrom <= plan.plate.floorLevel && core.floorTo >= plan.plate.floorLevel) {
-                exclusionRects.push_back(core.rect);
-            }
-        }
+        AppendActiveCoreExclusions(outBuilding, plan.plate.floorLevel, exclusionRects);
 
         const bool useMassingColumnPattern = hasMassingRule;
-        std::vector<GridPos2D> candidates;
-        if (useMassingColumnPattern) {
-            candidates = BuildMassingColumnCandidates(plan.plate);
-        } else {
-            for (float x = plan.plate.origin[0] + spacing * 0.5f;
-                 x < plan.plate.origin[0] + plan.plate.size[0] - spacing * 0.25f;
-                 x += spacing) {
-                for (float y = plan.plate.origin[1] + spacing * 0.5f;
-                     y < plan.plate.origin[1] + plan.plate.size[1] - spacing * 0.25f;
-                     y += spacing) {
-                    candidates.push_back({x, y});
-                }
-            }
-        }
+        const std::vector<GridPos2D> candidates = BuildColumnCandidates(plan.plate, useMassingColumnPattern, spacing);
 
         for (const auto& center : candidates) {
             if (!CandidateColumnAllowed(plan.plate, exclusionRects, center)) {
                 continue;
             }
 
-            const int keyX = static_cast<int>(std::round(center[0] * 100.0f));
-            const int keyY = static_cast<int>(std::round(center[1] * 100.0f));
-            const std::string columnId = "column_" + std::to_string(keyX) + "_" + std::to_string(keyY);
-            auto existing = std::find_if(outBuilding.supportColumns.begin(), outBuilding.supportColumns.end(),
-                [&](const SupportColumn& column) { return column.columnId == columnId; });
-            if (existing != outBuilding.supportColumns.end()) {
-                existing->floorFrom = std::min(existing->floorFrom, 0);
-                existing->floorTo = std::max(existing->floorTo, plan.plate.floorLevel);
-                continue;
-            }
-
-            SupportColumn column;
-            column.columnId = columnId;
-            column.center = center;
-            column.width = columnSize;
-            column.depth = columnSize;
-            column.floorFrom = 0;
-            column.floorTo = plan.plate.floorLevel;
-            outBuilding.supportColumns.push_back(column);
+            UpsertSupportColumn(outBuilding, center, columnSize, plan.plate.floorLevel);
         }
     }
 

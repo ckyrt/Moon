@@ -31,7 +31,6 @@ void TestBuildingSample(EngineCore* engine)
     semanticCheck.close();
 
     Moon::Building::GeneratedBuilding result;
-    Moon::Building::BestEffortGenerationReport report;
     std::string error;
 
     std::ifstream semanticFile(semanticFilePath);
@@ -44,33 +43,9 @@ void TestBuildingSample(EngineCore* engine)
                              std::istreambuf_iterator<char>());
 
     Moon::Building::BuildingPipeline pipeline;
-    if (!pipeline.ProcessBuildingBestEffort(semanticJson, result, report, error)) {
+    if (!pipeline.ProcessBuilding(semanticJson, result, error)) {
         MOON_LOG_ERROR("BuildingSample", "%s", error.c_str());
         return;
-    }
-
-    if (report.usedBestEffort) {
-        MOON_LOG_WARN("BuildingSample", "Building generated in best-effort mode. Skipped %zu spaces.",
-                      report.skippedSpaces.size());
-        for (const auto& note : report.repairNotes) {
-            MOON_LOG_WARN("BuildingSample", "  Repair: %s", note.c_str());
-        }
-        for (const auto& adjustedSpace : report.adjustedSpaces) {
-            MOON_LOG_WARN("BuildingSample",
-                          "  Floor %d space '%s' (%s) repaired: %s",
-                          adjustedSpace.floorLevel,
-                          adjustedSpace.spaceId.c_str(),
-                          adjustedSpace.spaceType.c_str(),
-                          adjustedSpace.reason.c_str());
-        }
-        for (const auto& skippedSpace : report.skippedSpaces) {
-            MOON_LOG_ERROR("BuildingSample",
-                           "  Floor %d space '%s' (%s) skipped: %s",
-                           skippedSpace.floorLevel,
-                           skippedSpace.spaceId.c_str(),
-                           skippedSpace.spaceType.c_str(),
-                           skippedSpace.reason.c_str());
-        }
     }
 
     MOON_LOG_INFO("BuildingSample", "Building generated successfully:");

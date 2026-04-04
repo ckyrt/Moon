@@ -53,11 +53,6 @@ public:
                         GeneratedBuilding& outBuilding,
                         std::string& outError);
 
-    bool ProcessBuildingBestEffort(const std::string& jsonStr,
-                                   GeneratedBuilding& outBuilding,
-                                   BestEffortGenerationReport& outReport,
-                                   std::string& outError);
-
     /**
      * @brief Process building definition
      * @param definition Pre-parsed building definition
@@ -93,13 +88,7 @@ private:
                                  const BuildingFormInput* formInput,
                                  const BuildingLayoutInput* layoutInput,
                                  GeneratedBuilding& outBuilding,
-                                 BestEffortGenerationReport* outReport,
-                                 bool bestEffort,
                                  std::string& outError);
-    bool RepairDefinitionForBestEffort(BuildingDefinition& definition,
-                                       BestEffortGenerationReport& outReport,
-                                       std::string& outError);
-    bool ProcessMassAndFloors(const BuildingDefinition& definition);
     bool GenerateStructuralPlan(const BuildingDefinition& definition,
                                 GeneratedBuilding& outBuilding);
     void ApplyMassDrivenSemanticLayout(BuildingDefinition& definition,
@@ -131,9 +120,6 @@ private:
     MassFloorPlateGenerator m_massFloorPlateGenerator;
     StructuralPlanGenerator m_structuralPlanGenerator;
     SemanticFloorLayoutGenerator m_semanticFloorLayoutGenerator;
-
-    std::vector<StairGeometry> m_stairs;
-    std::vector<FacadeElement> m_facadeElements;
 };
 
 } // namespace Building

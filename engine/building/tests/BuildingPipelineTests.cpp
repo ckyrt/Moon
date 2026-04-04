@@ -162,6 +162,88 @@ float ComputeOutlineArea(const std::vector<GridPos2D>& outline) {
     return std::abs(area) * 0.5f;
 }
 
+bool NearlyEqualPoint(const GridPos2D& a, const GridPos2D& b, float epsilon = 0.001f) {
+    return std::abs(a[0] - b[0]) <= epsilon && std::abs(a[1] - b[1]) <= epsilon;
+}
+
+bool OutlineMatchesCyclic(const std::vector<GridPos2D>& actual,
+                          const std::vector<GridPos2D>& expected,
+                          float epsilon = 0.001f) {
+    if (actual.size() != expected.size()) {
+        return false;
+    }
+    if (actual.empty()) {
+        return true;
+    }
+
+    for (size_t start = 0; start < actual.size(); ++start) {
+        bool forwardMatch = true;
+        for (size_t i = 0; i < expected.size(); ++i) {
+            if (!NearlyEqualPoint(actual[(start + i) % actual.size()], expected[i], epsilon)) {
+                forwardMatch = false;
+                break;
+            }
+        }
+        if (forwardMatch) {
+            return true;
+        }
+
+        bool reverseMatch = true;
+        for (size_t i = 0; i < expected.size(); ++i) {
+            const size_t index = (start + actual.size() - i) % actual.size();
+            if (!NearlyEqualPoint(actual[index], expected[i], epsilon)) {
+                reverseMatch = false;
+                break;
+            }
+        }
+        if (reverseMatch) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool PointOnSegment(const GridPos2D& point,
+                    const GridPos2D& a,
+                    const GridPos2D& b,
+                    float epsilon = 0.001f) {
+    const float abX = b[0] - a[0];
+    const float abY = b[1] - a[1];
+    const float apX = point[0] - a[0];
+    const float apY = point[1] - a[1];
+    const float cross = std::abs(abX * apY - abY * apX);
+    if (cross > epsilon) {
+        return false;
+    }
+
+    const float dot = apX * abX + apY * abY;
+    if (dot < -epsilon) {
+        return false;
+    }
+
+    const float abLenSq = abX * abX + abY * abY;
+    if (dot > abLenSq + epsilon) {
+        return false;
+    }
+
+    return true;
+}
+
+bool PointOnOutlineBoundary(const GridPos2D& point,
+                            const std::vector<GridPos2D>& outline,
+                            float epsilon = 0.001f) {
+    if (outline.size() < 2) {
+        return false;
+    }
+    for (size_t i = 0; i < outline.size(); ++i) {
+        if (PointOnSegment(point, outline[i], outline[(i + 1) % outline.size()], epsilon)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 int CountSpacesByUsage(const GeneratedBuilding& building, SpaceUsage usage) {
     int count = 0;
     for (const auto& floor : building.definition.floors) {
@@ -686,6 +768,75 @@ TEST_F(BuildingPipelineTest, ProcessBuilding_WithConcaveMassingRule_PreservesCon
         << "Usable outline should also preserve the concave cutout";
 }
 
+TEST_F(BuildingPipelineTest, ProcessBuilding_WithNonGridMassingRule_PreservesExactEnvelopeOutline) {
+    const std::string json = R"({
+    "schema": "moon_building",
+    "grid": 0.5,
+    "building_type": "villa",
+    "style": {
+        "category": "minimal",
+        "facade": "white",
+        "roof": "flat",
+        "window_style": "standard",
+        "material": "concrete",
+        "facade_offset": 0.5
+    },
+    "mass": {
+        "footprint_area": 60,
+        "floors": 1,
+        "total_height": 3.0,
+        "massing_rule": "test_non_grid_outline_preserve.json"
+    },
+    "program": {
+        "floors": [
+            {
+                "level": 0,
+                "name": "ground_floor",
+                "spaces": [
+                    {"space_id": "living_0", "type": "living", "zone": "public", "area_preferred": 24, "constraints": {"ceiling_height": 3.0, "min_width": 3.0}}
+                ]
+            }
+        ]
+    }
+})";
+
+    SemanticBuilding semantic;
+    ASSERT_TRUE(SemanticBuildingParser::ParseFromString(json, semantic, errorMsg))
+        << "Semantic parse failed: " << errorMsg;
+
+    LayoutResolver resolver;
+    BuildingDefinition definition;
+    ASSERT_TRUE(resolver.Resolve(semantic, definition, errorMsg))
+        << "Layout resolve failed: " << errorMsg;
+
+    MassFloorPlateGenerator plateGenerator;
+    std::vector<FloorPlate> slicedFloorPlates;
+    ASSERT_TRUE(plateGenerator.Generate(definition, slicedFloorPlates, errorMsg))
+        << "Mass floor plate generation failed: " << errorMsg;
+    ASSERT_EQ(slicedFloorPlates.size(), 1u);
+
+    const FloorPlate& slicedPlate = slicedFloorPlates.front();
+    EXPECT_TRUE(std::any_of(
+        slicedPlate.envelopeOutline.begin(),
+        slicedPlate.envelopeOutline.end(),
+        [](const GridPos2D& point) {
+            const float snappedX = std::round(point[0] * 2.0f) / 2.0f;
+            const float snappedY = std::round(point[1] * 2.0f) / 2.0f;
+            return std::abs(point[0] - snappedX) > 0.001f || std::abs(point[1] - snappedY) > 0.001f;
+        }))
+        << "Regression guard: sliced envelope vertices should preserve non-grid contour points";
+
+    StructuralPlanGenerator structuralGenerator;
+    GeneratedBuilding generated;
+    ASSERT_TRUE(structuralGenerator.Generate(definition, slicedFloorPlates, generated, errorMsg))
+        << "Structural plan generation failed: " << errorMsg;
+
+    const FloorPlate* generatedPlate = FindFloorPlate(generated, 0);
+    ASSERT_NE(generatedPlate, nullptr);
+    EXPECT_TRUE(OutlineMatchesCyclic(generatedPlate->envelopeOutline, slicedPlate.envelopeOutline, 0.001f))
+        << "Structural planning must preserve the exact sliced envelope outline for floor slabs";
+}
+
 TEST_F(BuildingPipelineTest, ProcessOfficeTower_WithVerticalSystems_UsesEnclosedStairAndElevator) {
     const std::string json = TestHelpers::LoadFromFile("office_enclosed_core_demo.json");
     ASSERT_FALSE(json.empty());
@@ -1157,482 +1308,6 @@ TEST_F(BuildingPipelineTest, ProcessInvalidJSON_Fails) {
     
     EXPECT_FALSE(result);
     EXPECT_FALSE(errorMsg.empty());
-}
-
-TEST_F(BuildingPipelineTest, ProcessBuildingBestEffort_RepairsMissingRootFields) {
-        const std::string json = R"({
-    "mass": {
-        "footprint_area": 64,
-        "floors": 1
-    },
-    "program": {
-        "floors": [
-            {
-                "level": 0,
-                "spaces": [
-                    {
-                        "space_id": "living_1",
-                        "type": "living",
-                        "area_preferred": 20
-                    }
-                ]
-            }
-        ]
-    }
-})";
-
-        bool strictResult = pipeline.ProcessBuilding(json, building, errorMsg);
-        EXPECT_FALSE(strictResult);
-
-        GeneratedBuilding bestEffortBuilding;
-        BestEffortGenerationReport report;
-        std::string bestEffortError;
-        bool bestEffortResult = pipeline.ProcessBuildingBestEffort(json, bestEffortBuilding, report, bestEffortError);
-
-        EXPECT_TRUE(bestEffortResult) << "Error: " << bestEffortError;
-        EXPECT_TRUE(report.usedBestEffort);
-        EXPECT_FALSE(report.repairNotes.empty());
-        ASSERT_EQ(bestEffortBuilding.definition.floors.size(), 1);
-        ASSERT_EQ(bestEffortBuilding.definition.floors[0].spaces.size(), 1);
-        EXPECT_GT(bestEffortBuilding.walls.size(), 0);
-}
-
-TEST_F(BuildingPipelineTest, ProcessBuildingBestEffort_RecoversEmptyProgram) {
-        const std::string json = R"({
-    "schema": "moon_building",
-    "grid": 0.5,
-    "building_type": "villa",
-    "style": {
-        "category": "minimal",
-        "facade": "white",
-        "roof": "flat",
-        "window_style": "standard",
-        "material": "plaster"
-    },
-    "mass": {
-        "footprint_area": 64,
-        "floors": 1,
-        "total_height": 3
-    },
-    "program": {
-        "floors": []
-    }
-})";
-
-        bool strictResult = pipeline.ProcessBuilding(json, building, errorMsg);
-        EXPECT_FALSE(strictResult);
-
-        GeneratedBuilding bestEffortBuilding;
-        BestEffortGenerationReport report;
-        std::string bestEffortError;
-        bool bestEffortResult = pipeline.ProcessBuildingBestEffort(json, bestEffortBuilding, report, bestEffortError);
-
-        EXPECT_TRUE(bestEffortResult) << "Error: " << bestEffortError;
-        EXPECT_TRUE(report.usedBestEffort);
-        EXPECT_FALSE(report.repairNotes.empty());
-        ASSERT_EQ(bestEffortBuilding.definition.floors.size(), 1);
-        ASSERT_EQ(bestEffortBuilding.definition.floors[0].spaces.size(), 1);
-        EXPECT_GT(bestEffortBuilding.walls.size(), 0);
-}
-
-TEST_F(BuildingPipelineTest, ProcessBuildingBestEffort_RepairsDuplicateSpaceIdsAndInvalidZone) {
-        const std::string json = R"({
-    "schema": "moon_building",
-    "grid": 0.5,
-    "building_type": "villa",
-    "style": {
-        "category": "minimal",
-        "facade": "white",
-        "roof": "flat",
-        "window_style": "standard",
-        "material": "plaster"
-    },
-    "mass": {
-        "footprint_area": 64,
-        "floors": 1,
-        "total_height": 3
-    },
-    "program": {
-        "floors": [
-            {
-                "level": 0,
-                "spaces": [
-                    {
-                        "space_id": "dup_room",
-                        "type": "living",
-                        "zone": "bad_zone",
-                        "area_preferred": 18
-                    },
-                    {
-                        "space_id": "dup_room",
-                        "type": "kitchen",
-                        "zone": "bad_zone",
-                        "area_preferred": 12
-                    }
-                ]
-            }
-        ]
-    }
-})";
-
-        bool strictResult = pipeline.ProcessBuilding(json, building, errorMsg);
-        EXPECT_FALSE(strictResult);
-        EXPECT_FALSE(errorMsg.empty());
-
-        GeneratedBuilding bestEffortBuilding;
-        BestEffortGenerationReport report;
-        std::string bestEffortError;
-        bool bestEffortResult = pipeline.ProcessBuildingBestEffort(json, bestEffortBuilding, report, bestEffortError);
-
-        EXPECT_TRUE(bestEffortResult) << "Error: " << bestEffortError;
-        EXPECT_TRUE(report.usedBestEffort);
-        EXPECT_FALSE(report.adjustedSpaces.empty());
-        ASSERT_EQ(bestEffortBuilding.definition.floors.size(), 1);
-        ASSERT_EQ(bestEffortBuilding.definition.floors[0].spaces.size(), 2);
-        EXPECT_GT(bestEffortBuilding.walls.size(), 0);
-}
-
-TEST_F(BuildingPipelineTest, ProcessBuildingBestEffort_RepairsUnsupportedAdjacencyValues) {
-        const std::string json = R"({
-    "schema": "moon_building",
-    "grid": 0.5,
-    "building_type": "villa",
-    "style": {
-        "category": "minimal",
-        "facade": "white",
-        "roof": "flat",
-        "window_style": "standard",
-        "material": "plaster"
-    },
-    "mass": {
-        "footprint_area": 64,
-        "floors": 1,
-        "total_height": 3
-    },
-    "program": {
-        "floors": [
-            {
-                "level": 0,
-                "spaces": [
-                    {
-                        "space_id": "room_a",
-                        "type": "living",
-                        "zone": "public",
-                        "area_preferred": 18,
-                        "adjacency": [
-                            { "to": "room_b", "relationship": "teleport", "importance": "mandatory" }
-                        ]
-                    },
-                    {
-                        "space_id": "room_b",
-                        "type": "kitchen",
-                        "zone": "public",
-                        "area_preferred": 12
-                    }
-                ]
-            }
-        ]
-    }
-})";
-
-        bool strictResult = pipeline.ProcessBuilding(json, building, errorMsg);
-        EXPECT_FALSE(strictResult);
-        EXPECT_NE(errorMsg.find("Unsupported adjacency"), std::string::npos);
-
-        GeneratedBuilding bestEffortBuilding;
-        BestEffortGenerationReport report;
-        std::string bestEffortError;
-        bool bestEffortResult = pipeline.ProcessBuildingBestEffort(json, bestEffortBuilding, report, bestEffortError);
-
-        EXPECT_TRUE(bestEffortResult) << "Error: " << bestEffortError;
-        EXPECT_TRUE(report.usedBestEffort);
-        EXPECT_FALSE(report.adjustedSpaces.empty());
-        ASSERT_EQ(bestEffortBuilding.definition.floors.size(), 1);
-        ASSERT_EQ(bestEffortBuilding.definition.floors[0].spaces.size(), 2);
-}
-
-TEST_F(BuildingPipelineTest, ProcessBuildingBestEffort_RepairsInvalidFloorLevels) {
-        const std::string json = R"({
-    "schema": "moon_building",
-    "grid": 0.5,
-    "building_type": "villa",
-    "style": {
-        "category": "minimal",
-        "facade": "white",
-        "roof": "flat",
-        "window_style": "standard",
-        "material": "plaster"
-    },
-    "mass": {
-        "footprint_area": 100,
-        "floors": 2,
-        "total_height": 6
-    },
-    "program": {
-        "floors": [
-            {
-                "level": 3,
-                "spaces": [
-                    {
-                        "space_id": "core_bad",
-                        "type": "core",
-                        "zone": "service",
-                        "area_preferred": 20,
-                        "constraints": {
-                            "connects_to_floor": 9,
-                            "min_width": 3.0,
-                            "ceiling_height": 3.0
-                        }
-                    }
-                ]
-            },
-            {
-                "level": 3,
-                "spaces": [
-                    {
-                        "space_id": "bedroom_bad",
-                        "type": "bedroom",
-                        "zone": "private",
-                        "area_preferred": 24,
-                        "constraints": {
-                            "min_width": 3.0,
-                            "ceiling_height": 3.0
-                        }
-                    }
-                ]
-            }
-        ]
-    }
-})";
-
-        bool strictResult = pipeline.ProcessBuilding(json, building, errorMsg);
-        EXPECT_FALSE(strictResult);
-        EXPECT_NE(errorMsg.find("Floor level"), std::string::npos);
-
-        GeneratedBuilding bestEffortBuilding;
-        BestEffortGenerationReport report;
-        std::string bestEffortError;
-        bool bestEffortResult = pipeline.ProcessBuildingBestEffort(json, bestEffortBuilding, report, bestEffortError);
-
-        EXPECT_TRUE(bestEffortResult) << "Error: " << bestEffortError;
-        EXPECT_TRUE(report.usedBestEffort);
-        ASSERT_EQ(bestEffortBuilding.definition.floors.size(), 2);
-        EXPECT_EQ(bestEffortBuilding.definition.floors[0].level, 0);
-        EXPECT_EQ(bestEffortBuilding.definition.floors[1].level, 1);
-}
-
-TEST_F(BuildingPipelineTest, ProcessBuildingBestEffort_RepairsTooSmallResolvedSpace) {
-        const std::string json = R"({
-    "schema": "moon_building",
-    "grid": 0.5,
-    "building_type": "villa",
-    "style": {
-        "category": "minimal",
-        "facade": "white",
-        "roof": "flat",
-        "window_style": "standard",
-        "material": "plaster"
-    },
-    "mass": {
-        "footprint_area": 30,
-        "floors": 1,
-        "total_height": 3
-    },
-    "program": {
-        "floors": [
-            {
-                "level": 0,
-                "name": "ground_floor",
-                "spaces": [
-                    {
-                        "space_id": "tiny_entry",
-                        "type": "entrance",
-                        "zone": "circulation",
-                        "area_preferred": 1,
-                        "constraints": {
-                            "min_width": 0.5,
-                            "ceiling_height": 3.0
-                        }
-                    },
-                    {
-                        "space_id": "living_room",
-                        "type": "living",
-                        "zone": "public",
-                        "area_preferred": 24,
-                        "constraints": {
-                            "min_width": 3.0,
-                            "ceiling_height": 3.0
-                        }
-                    }
-                ]
-            }
-        ]
-    }
-})";
-
-        bool strictResult = pipeline.ProcessBuilding(json, building, errorMsg);
-        EXPECT_FALSE(strictResult);
-        EXPECT_NE(errorMsg.find("smaller than minimum size"), std::string::npos);
-
-        GeneratedBuilding bestEffortBuilding;
-        BestEffortGenerationReport report;
-        std::string bestEffortError;
-        bool bestEffortResult = pipeline.ProcessBuildingBestEffort(json, bestEffortBuilding, report, bestEffortError);
-
-        EXPECT_TRUE(bestEffortResult) << "Error: " << bestEffortError;
-        EXPECT_TRUE(report.usedBestEffort);
-        const bool tinyEntryAdjusted = std::any_of(report.adjustedSpaces.begin(), report.adjustedSpaces.end(),
-            [](const BestEffortAdjustedSpace& adjustedSpace) {
-                return adjustedSpace.spaceId == "tiny_entry";
-            });
-        const bool tinyEntrySkipped = std::any_of(report.skippedSpaces.begin(), report.skippedSpaces.end(),
-            [](const BestEffortSkippedSpace& skippedSpace) {
-                return skippedSpace.spaceId == "tiny_entry";
-            });
-
-        EXPECT_TRUE(tinyEntryAdjusted || tinyEntrySkipped);
-        ASSERT_EQ(bestEffortBuilding.definition.floors.size(), 1);
-        ASSERT_GE(bestEffortBuilding.definition.floors[0].spaces.size(), 1);
-        bool foundTinyEntry = false;
-        for (const auto& space : bestEffortBuilding.definition.floors[0].spaces) {
-            if (!space.rects.empty() && space.rects[0].rectId == "tiny_entry") {
-                foundTinyEntry = true;
-                EXPECT_GE(space.rects[0].size[0], 1.5f);
-                EXPECT_GE(space.rects[0].size[1], 1.5f);
-            }
-        }
-        if (tinyEntryAdjusted) {
-            EXPECT_TRUE(foundTinyEntry);
-        }
-        EXPECT_GT(bestEffortBuilding.walls.size(), 0);
-}
-
-TEST_F(BuildingPipelineTest, ProcessBuildingBestEffort_RepairsInvalidStairTarget) {
-        const std::string json = R"({
-    "schema": "moon_building",
-    "grid": 0.5,
-    "building_type": "villa",
-    "style": {
-        "category": "minimal",
-        "facade": "white",
-        "roof": "flat",
-        "window_style": "standard",
-        "material": "plaster"
-    },
-    "mass": {
-        "footprint_area": 64,
-        "floors": 1,
-        "total_height": 3
-    },
-    "program": {
-        "floors": [
-            {
-                "level": 0,
-                "name": "ground_floor",
-                "spaces": [
-                    {
-                        "space_id": "bad_core",
-                        "type": "core",
-                        "zone": "service",
-                        "area_preferred": 20,
-                        "constraints": {
-                            "connects_to_floor": 5,
-                            "min_width": 3.0,
-                            "ceiling_height": 3.0
-                        }
-                    }
-                ]
-            }
-        ]
-    }
-})";
-
-        bool strictResult = pipeline.ProcessBuilding(json, building, errorMsg);
-        EXPECT_FALSE(strictResult);
-        EXPECT_NE(errorMsg.find("connect to non-existent floor"), std::string::npos);
-
-        GeneratedBuilding bestEffortBuilding;
-        BestEffortGenerationReport report;
-        std::string bestEffortError;
-        bool bestEffortResult = pipeline.ProcessBuildingBestEffort(json, bestEffortBuilding, report, bestEffortError);
-
-        EXPECT_TRUE(bestEffortResult) << "Error: " << bestEffortError;
-        EXPECT_TRUE(report.usedBestEffort);
-        EXPECT_FALSE(report.adjustedSpaces.empty());
-        EXPECT_EQ(report.adjustedSpaces[0].spaceId, "bad_core");
-        ASSERT_EQ(bestEffortBuilding.definition.floors.size(), 1);
-        ASSERT_EQ(bestEffortBuilding.definition.floors[0].spaces.size(), 1);
-        EXPECT_EQ(bestEffortBuilding.definition.floors[0].spaces[0].stairsConfig.connectToLevel, 0);
-}
-
-TEST_F(BuildingPipelineTest, ProcessBuildingBestEffort_SkipsOnlyInvalidSpace) {
-        const std::string json = R"({
-    "schema": "moon_building",
-    "grid": 0.5,
-    "building_type": "villa",
-    "style": {
-        "category": "minimal",
-        "facade": "white",
-        "roof": "flat",
-        "window_style": "standard",
-        "material": "plaster"
-    },
-    "mass": {
-        "footprint_area": 36,
-        "floors": 1,
-        "total_height": 3
-    },
-    "program": {
-        "floors": [
-            {
-                "level": 0,
-                "name": "ground_floor",
-                "spaces": [
-                    {
-                        "space_id": "oversized_room",
-                        "type": "living",
-                        "zone": "public",
-                        "area_preferred": 120,
-                        "area_min": 120,
-                        "constraints": {
-                            "min_width": 12.0,
-                            "ceiling_height": 3.0
-                        }
-                    },
-                    {
-                        "space_id": "valid_room",
-                        "type": "kitchen",
-                        "zone": "public",
-                        "area_preferred": 12,
-                        "constraints": {
-                            "min_width": 3.0,
-                            "ceiling_height": 3.0
-                        }
-                    }
-                ]
-            }
-        ]
-    }
-})";
-
-        bool strictResult = pipeline.ProcessBuilding(json, building, errorMsg);
-        EXPECT_FALSE(strictResult);
-
-        GeneratedBuilding bestEffortBuilding;
-        BestEffortGenerationReport report;
-        std::string bestEffortError;
-        bool bestEffortResult = pipeline.ProcessBuildingBestEffort(json, bestEffortBuilding, report, bestEffortError);
-
-        EXPECT_TRUE(bestEffortResult) << "Error: " << bestEffortError;
-        EXPECT_TRUE(report.usedBestEffort);
-        ASSERT_GE(report.skippedSpaces.size(), 1);
-        EXPECT_TRUE(std::any_of(report.skippedSpaces.begin(), report.skippedSpaces.end(),
-            [](const BestEffortSkippedSpace& skippedSpace) {
-                return skippedSpace.spaceId == "oversized_room";
-            }));
-        ASSERT_EQ(bestEffortBuilding.definition.floors.size(), 1);
-        ASSERT_EQ(bestEffortBuilding.definition.floors[0].spaces.size(), 1);
-        EXPECT_GT(bestEffortBuilding.walls.size(), 0);
 }
 
 // ========================================
