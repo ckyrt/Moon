@@ -23,6 +23,7 @@
 #include "../engine/core/EngineCore.h"
 #include "../engine/core/Logging/Logger.h"
 #include "../engine/core/Camera/FPSCameraController.h"
+#include "../engine/core/Math/Matrix4x4.h"
 #include "../engine/core/Profiling/FPSCounter.h"
 #include "../engine/core/Texture/TextureManager.h"
 
@@ -76,6 +77,11 @@ Moon::Matrix4x4 g_GizmoMatrix;
 ViewportRect g_ViewportRect;
 ObjectPreviewOverlayInfo g_ObjectPreviewOverlayInfo;
 
+static void DrawPreviewOverlay(Moon::PerspectiveCamera* camera)
+{
+    (void)camera;
+}
+
 // ============================================================================
 // 公共接口实现
 // ============================================================================
@@ -116,6 +122,7 @@ void SetGizmoMode(const std::string& mode)
 
 void SetObjectPreviewOverlayInfo(bool visible,
                                  float sizeX, float sizeY, float sizeZ,
+                                 float axisLength,
                                  float minX, float minY, float minZ,
                                  float maxX, float maxY, float maxZ)
 {
@@ -123,6 +130,7 @@ void SetObjectPreviewOverlayInfo(bool visible,
     g_ObjectPreviewOverlayInfo.sizeX = sizeX;
     g_ObjectPreviewOverlayInfo.sizeY = sizeY;
     g_ObjectPreviewOverlayInfo.sizeZ = sizeZ;
+    g_ObjectPreviewOverlayInfo.axisLength = axisLength;
     g_ObjectPreviewOverlayInfo.minX = minX;
     g_ObjectPreviewOverlayInfo.minY = minY;
     g_ObjectPreviewOverlayInfo.minZ = minZ;
@@ -277,6 +285,8 @@ void RunMainLoop(EditorBridge& bridge, EngineCore* engine)
                     }
                     ImGui::End();
                 }
+
+                DrawPreviewOverlay(engine->GetCamera());
 
                 ImGuiIO& io = ImGui::GetIO();
                 io.DisplaySize = ImVec2((float)cefWindowWidth, (float)cefWindowHeight);

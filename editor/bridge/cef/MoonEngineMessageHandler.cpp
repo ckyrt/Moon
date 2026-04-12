@@ -329,8 +329,16 @@ namespace {
                 continue;
             }
 
+            const Moon::Quaternion rotation = item.worldTransform.rotation.Normalized();
+            const Moon::Vector3 scale = item.worldTransform.scale;
+            const Moon::Vector3 translation = item.worldTransform.position;
+
             for (const Moon::Vertex& vertex : item.mesh->GetVertices()) {
-                const Moon::Vector3 position = vertex.position + item.worldTransform.position;
+                const Moon::Vector3 scaled(
+                    vertex.position.x * scale.x,
+                    vertex.position.y * scale.y,
+                    vertex.position.z * scale.z);
+                const Moon::Vector3 position = rotation * scaled + translation;
                 ExpandBounds(bounds, position);
             }
         }
@@ -344,6 +352,36 @@ namespace {
             ExpandBounds(bounds, light.worldTransform.position + Moon::Vector3(-0.25f, -0.25f, -0.25f));
             ExpandBounds(bounds, light.worldTransform.position + Moon::Vector3(0.25f, 0.25f, 0.25f));
         }
+        return bounds;
+    }
+
+    Bounds3 ComputeSceneNodeBounds(Moon::SceneNode* rootNode) {
+        Bounds3 bounds;
+        if (!rootNode) {
+            return bounds;
+        }
+
+        std::function<void(Moon::SceneNode*)> visit = [&](Moon::SceneNode* node) {
+            if (!node) {
+                return;
+            }
+
+            if (Moon::MeshRenderer* renderer = node->GetComponent<Moon::MeshRenderer>()) {
+                std::shared_ptr<Moon::Mesh> mesh = renderer->GetMesh();
+                if (mesh) {
+                    const Moon::Matrix4x4& world = node->GetTransform()->GetWorldMatrix();
+                    for (const Moon::Vertex& vertex : mesh->GetVertices()) {
+                        ExpandBounds(bounds, world.MultiplyPoint(vertex.position));
+                    }
+                }
+            }
+
+            for (size_t i = 0; i < node->GetChildCount(); ++i) {
+                visit(node->GetChild(i));
+            }
+        };
+
+        visit(rootNode);
         return bounds;
     }
 
@@ -380,9 +418,11 @@ namespace {
         }
 
         const Moon::Vector3 size = bounds.max - bounds.min;
+        const float axisLength = std::max(0.35f, std::max({size.x, size.y, size.z}) * 0.3f);
         SetObjectPreviewOverlayInfo(
             true,
             size.x, size.y, size.z,
+            axisLength,
             bounds.min.x, bounds.min.y, bounds.min.z,
             bounds.max.x, bounds.max.y, bounds.max.z);
     }
@@ -423,7 +463,7 @@ namespace {
         return node;
     }
 
-    void AddPreviewGroundAndOrigin(Moon::Scene* scene,
+    void AddPreviewGround(Moon::Scene* scene,
                                    Moon::SceneNode* previewRoot,
                                    const Bounds3& bounds) {
         if (!scene || !previewRoot) {
@@ -432,8 +472,6 @@ namespace {
 
         const Moon::Vector3 size = bounds.valid ? (bounds.max - bounds.min) : Moon::Vector3(1.0f, 1.0f, 1.0f);
         const float footprint = std::max(2.5f, std::max(size.x, size.z) * 1.8f);
-        const float axisLength = std::max(0.8f, std::max({size.x, size.y, size.z}) * 0.35f);
-        const float axisThickness = std::max(0.015f, axisLength * 0.035f);
 
         std::shared_ptr<Moon::Mesh> planeMesh(Moon::MeshGenerator::CreatePlane(
             footprint, footprint, 1, 1, Moon::Vector3(0.65f, 0.67f, 0.70f)));
@@ -448,99 +486,84 @@ namespace {
             0.38f,
             0.96f);
 
-        std::shared_ptr<Moon::Mesh> cubeMesh(Moon::MeshGenerator::CreateCube(1.0f, Moon::Vector3(1.0f, 1.0f, 1.0f)));
-        CreatePreviewMeshNode(
-            scene,
-            previewRoot,
-            "__OriginAxisX",
-            cubeMesh,
-            Moon::Vector3(axisLength * 0.5f, axisThickness * 0.5f, 0.0f),
-            Moon::Vector3(axisLength, axisThickness, axisThickness),
-            Moon::Vector3(0.96f, 0.35f, 0.35f),
-            0.95f,
-            0.55f);
-        CreatePreviewMeshNode(
-            scene,
-            previewRoot,
-            "__OriginAxisY",
-            cubeMesh,
-            Moon::Vector3(0.0f, axisLength * 0.5f, 0.0f),
-            Moon::Vector3(axisThickness, axisLength, axisThickness),
-            Moon::Vector3(0.36f, 0.88f, 0.46f),
-            0.95f,
-            0.55f);
-        CreatePreviewMeshNode(
-            scene,
-            previewRoot,
-            "__OriginAxisZ",
-            cubeMesh,
-            Moon::Vector3(0.0f, axisThickness * 0.5f, axisLength * 0.5f),
-            Moon::Vector3(axisThickness, axisThickness, axisLength),
-            Moon::Vector3(0.34f, 0.62f, 0.97f),
-            0.95f,
-            0.55f);
-        CreatePreviewMeshNode(
-            scene,
-            previewRoot,
-            "__OriginMarker",
-            cubeMesh,
-            Moon::Vector3(0.0f, axisThickness * 0.5f, 0.0f),
-            Moon::Vector3(axisThickness * 1.8f, axisThickness * 1.8f, axisThickness * 1.8f),
-            Moon::Vector3(1.0f, 0.92f, 0.35f),
-            1.0f,
-            0.4f);
-    }
-
-    void AddBoundingBoxHelpers(Moon::Scene* scene,
-                               Moon::SceneNode* previewRoot,
-                               const Bounds3& bounds) {
-        if (!scene || !previewRoot || !bounds.valid) {
+        if (!bounds.valid) {
             return;
         }
 
-        const Moon::Vector3 size = bounds.max - bounds.min;
-        const float maxDimension = std::max({size.x, size.y, size.z, 1.0f});
-        const float thickness = std::max(0.018f, maxDimension * 0.012f);
-        const float dimensionOffset = std::max(0.12f, maxDimension * 0.08f);
+        std::shared_ptr<Moon::Mesh> unitCube(Moon::MeshGenerator::CreateCube(1.0f, Moon::Vector3(1.0f, 1.0f, 1.0f)));
+        if (!unitCube || !unitCube->IsValid()) {
+            return;
+        }
 
-        std::shared_ptr<Moon::Mesh> cubeMesh(Moon::MeshGenerator::CreateCube(1.0f, Moon::Vector3(1.0f, 1.0f, 1.0f)));
+        const Moon::Vector3 boundsSize = bounds.max - bounds.min;
+        const float maxSize = std::max({boundsSize.x, boundsSize.y, boundsSize.z, 0.001f});
+        const float lineThickness = std::max(0.006f, maxSize * 0.01f);
+        const float axisThickness = std::max(0.008f, maxSize * 0.012f);
+        const float axisLength = std::max(0.35f, maxSize * 0.3f);
+
         auto addEdge = [&](const std::string& name,
-                           const Moon::Vector3& position,
-                           const Moon::Vector3& scale,
-                           const Moon::Vector3& color,
-                           float opacity) {
-            CreatePreviewMeshNode(scene, previewRoot, name, cubeMesh, position, scale, color, opacity, 0.35f);
+                           const Moon::Vector3& center,
+                           const Moon::Vector3& edgeScale) {
+            CreatePreviewMeshNode(
+                scene,
+                previewRoot,
+                name,
+                unitCube,
+                center,
+                edgeScale,
+                Moon::Vector3(0.95f, 0.76f, 0.22f),
+                0.72f,
+                0.28f);
         };
 
-        const float minX = bounds.min.x;
-        const float minY = bounds.min.y;
-        const float minZ = bounds.min.z;
-        const float maxX = bounds.max.x;
-        const float maxY = bounds.max.y;
-        const float maxZ = bounds.max.z;
+        addEdge("__PreviewBBox_B0", Moon::Vector3((bounds.min.x + bounds.max.x) * 0.5f, bounds.min.y, bounds.min.z), Moon::Vector3(boundsSize.x, lineThickness, lineThickness));
+        addEdge("__PreviewBBox_B1", Moon::Vector3((bounds.min.x + bounds.max.x) * 0.5f, bounds.min.y, bounds.max.z), Moon::Vector3(boundsSize.x, lineThickness, lineThickness));
+        addEdge("__PreviewBBox_B2", Moon::Vector3(bounds.min.x, bounds.min.y, (bounds.min.z + bounds.max.z) * 0.5f), Moon::Vector3(lineThickness, lineThickness, boundsSize.z));
+        addEdge("__PreviewBBox_B3", Moon::Vector3(bounds.max.x, bounds.min.y, (bounds.min.z + bounds.max.z) * 0.5f), Moon::Vector3(lineThickness, lineThickness, boundsSize.z));
 
-        const float centerX = (minX + maxX) * 0.5f;
-        const float centerY = (minY + maxY) * 0.5f;
-        const float centerZ = (minZ + maxZ) * 0.5f;
+        addEdge("__PreviewBBox_T0", Moon::Vector3((bounds.min.x + bounds.max.x) * 0.5f, bounds.max.y, bounds.min.z), Moon::Vector3(boundsSize.x, lineThickness, lineThickness));
+        addEdge("__PreviewBBox_T1", Moon::Vector3((bounds.min.x + bounds.max.x) * 0.5f, bounds.max.y, bounds.max.z), Moon::Vector3(boundsSize.x, lineThickness, lineThickness));
+        addEdge("__PreviewBBox_T2", Moon::Vector3(bounds.min.x, bounds.max.y, (bounds.min.z + bounds.max.z) * 0.5f), Moon::Vector3(lineThickness, lineThickness, boundsSize.z));
+        addEdge("__PreviewBBox_T3", Moon::Vector3(bounds.max.x, bounds.max.y, (bounds.min.z + bounds.max.z) * 0.5f), Moon::Vector3(lineThickness, lineThickness, boundsSize.z));
 
-        addEdge("__BoundsEdgeX0", Moon::Vector3(centerX, minY, minZ), Moon::Vector3(size.x, thickness, thickness), Moon::Vector3(1.0f, 0.72f, 0.26f), 0.92f);
-        addEdge("__BoundsEdgeX1", Moon::Vector3(centerX, minY, maxZ), Moon::Vector3(size.x, thickness, thickness), Moon::Vector3(1.0f, 0.72f, 0.26f), 0.92f);
-        addEdge("__BoundsEdgeX2", Moon::Vector3(centerX, maxY, minZ), Moon::Vector3(size.x, thickness, thickness), Moon::Vector3(1.0f, 0.72f, 0.26f), 0.92f);
-        addEdge("__BoundsEdgeX3", Moon::Vector3(centerX, maxY, maxZ), Moon::Vector3(size.x, thickness, thickness), Moon::Vector3(1.0f, 0.72f, 0.26f), 0.92f);
+        addEdge("__PreviewBBox_V0", Moon::Vector3(bounds.min.x, (bounds.min.y + bounds.max.y) * 0.5f, bounds.min.z), Moon::Vector3(lineThickness, boundsSize.y, lineThickness));
+        addEdge("__PreviewBBox_V1", Moon::Vector3(bounds.max.x, (bounds.min.y + bounds.max.y) * 0.5f, bounds.min.z), Moon::Vector3(lineThickness, boundsSize.y, lineThickness));
+        addEdge("__PreviewBBox_V2", Moon::Vector3(bounds.min.x, (bounds.min.y + bounds.max.y) * 0.5f, bounds.max.z), Moon::Vector3(lineThickness, boundsSize.y, lineThickness));
+        addEdge("__PreviewBBox_V3", Moon::Vector3(bounds.max.x, (bounds.min.y + bounds.max.y) * 0.5f, bounds.max.z), Moon::Vector3(lineThickness, boundsSize.y, lineThickness));
 
-        addEdge("__BoundsEdgeY0", Moon::Vector3(minX, centerY, minZ), Moon::Vector3(thickness, size.y, thickness), Moon::Vector3(0.35f, 0.96f, 0.58f), 0.92f);
-        addEdge("__BoundsEdgeY1", Moon::Vector3(minX, centerY, maxZ), Moon::Vector3(thickness, size.y, thickness), Moon::Vector3(0.35f, 0.96f, 0.58f), 0.92f);
-        addEdge("__BoundsEdgeY2", Moon::Vector3(maxX, centerY, minZ), Moon::Vector3(thickness, size.y, thickness), Moon::Vector3(0.35f, 0.96f, 0.58f), 0.92f);
-        addEdge("__BoundsEdgeY3", Moon::Vector3(maxX, centerY, maxZ), Moon::Vector3(thickness, size.y, thickness), Moon::Vector3(0.35f, 0.96f, 0.58f), 0.92f);
+        CreatePreviewMeshNode(
+            scene,
+            previewRoot,
+            "__PreviewAxisX",
+            unitCube,
+            Moon::Vector3(axisLength * 0.5f, 0.0f, 0.0f),
+            Moon::Vector3(axisLength, axisThickness, axisThickness),
+            Moon::Vector3(0.92f, 0.28f, 0.28f),
+            0.90f,
+            0.18f);
 
-        addEdge("__BoundsEdgeZ0", Moon::Vector3(minX, minY, centerZ), Moon::Vector3(thickness, thickness, size.z), Moon::Vector3(0.38f, 0.73f, 1.0f), 0.92f);
-        addEdge("__BoundsEdgeZ1", Moon::Vector3(minX, maxY, centerZ), Moon::Vector3(thickness, thickness, size.z), Moon::Vector3(0.38f, 0.73f, 1.0f), 0.92f);
-        addEdge("__BoundsEdgeZ2", Moon::Vector3(maxX, minY, centerZ), Moon::Vector3(thickness, thickness, size.z), Moon::Vector3(0.38f, 0.73f, 1.0f), 0.92f);
-        addEdge("__BoundsEdgeZ3", Moon::Vector3(maxX, maxY, centerZ), Moon::Vector3(thickness, thickness, size.z), Moon::Vector3(0.38f, 0.73f, 1.0f), 0.92f);
+        CreatePreviewMeshNode(
+            scene,
+            previewRoot,
+            "__PreviewAxisY",
+            unitCube,
+            Moon::Vector3(0.0f, axisLength * 0.5f, 0.0f),
+            Moon::Vector3(axisThickness, axisLength, axisThickness),
+            Moon::Vector3(0.26f, 0.82f, 0.36f),
+            0.90f,
+            0.18f);
 
-        addEdge("__DimensionWidth", Moon::Vector3(centerX, minY + thickness * 0.5f, maxZ + dimensionOffset), Moon::Vector3(size.x, thickness * 1.5f, thickness * 1.5f), Moon::Vector3(1.0f, 0.52f, 0.22f), 1.0f);
-        addEdge("__DimensionHeight", Moon::Vector3(maxX + dimensionOffset, centerY, maxZ), Moon::Vector3(thickness * 1.5f, size.y, thickness * 1.5f), Moon::Vector3(0.25f, 0.90f, 0.40f), 1.0f);
-        addEdge("__DimensionDepth", Moon::Vector3(maxX + dimensionOffset, minY + thickness * 0.5f, centerZ), Moon::Vector3(thickness * 1.5f, thickness * 1.5f, size.z), Moon::Vector3(0.25f, 0.60f, 0.98f), 1.0f);
+        CreatePreviewMeshNode(
+            scene,
+            previewRoot,
+            "__PreviewAxisZ",
+            unitCube,
+            Moon::Vector3(0.0f, 0.0f, axisLength * 0.5f),
+            Moon::Vector3(axisThickness, axisThickness, axisLength),
+            Moon::Vector3(0.30f, 0.52f, 0.96f),
+            0.90f,
+            0.18f);
+
     }
 
     void FrameCameraToBounds(MoonEngineMessageHandler* handler, const Bounds3& bounds) {
@@ -2044,9 +2067,8 @@ namespace CommandHandlers {
             }
         }
 
-        const Bounds3 objectBounds = ComputeObjectPreviewBounds(buildResult);
-        AddPreviewGroundAndOrigin(scene, previewRoot, objectBounds);
-        AddBoundingBoxHelpers(scene, previewRoot, objectBounds);
+        const Bounds3 objectBounds = ComputePreviewBounds(buildResult);
+        AddPreviewGround(scene, previewRoot, objectBounds);
         SetPreviewOverlayFromBounds(objectBounds);
 
         const bool focusCamera = req.value("focusCamera", false);

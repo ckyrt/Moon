@@ -62,6 +62,7 @@ struct ObjectPreviewOverlayInfo {
     float sizeX = 0.0f;
     float sizeY = 0.0f;
     float sizeZ = 0.0f;
+    float axisLength = 0.0f;
     float minX = 0.0f;
     float minY = 0.0f;
     float minZ = 0.0f;
@@ -73,6 +74,7 @@ extern ObjectPreviewOverlayInfo g_ObjectPreviewOverlayInfo;
 
 void SetObjectPreviewOverlayInfo(bool visible,
                                  float sizeX, float sizeY, float sizeZ,
+                                 float axisLength,
                                  float minX, float minY, float minZ,
                                  float maxX, float maxY, float maxZ);
 void ClearObjectPreviewOverlayInfo();
