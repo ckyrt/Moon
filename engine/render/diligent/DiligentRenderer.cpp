@@ -563,9 +563,174 @@ void DiligentRenderer::BeginFrame()
     m_pImmediateContext->ClearDepthStencil(m_pDSV, CLEAR_DEPTH_FLAG, 1.0f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     Viewport vp{};
+    vp.TopLeftX = static_cast<float>(m_ViewportX);
+    vp.TopLeftY = static_cast<float>(m_ViewportY);
+    vp.Width = static_cast<float>(m_ViewportWidth > 0 ? m_ViewportWidth : m_Width);
+    vp.Height = static_cast<float>(m_ViewportHeight > 0 ? m_ViewportHeight : m_Height);
+    vp.MinDepth = 0.f; vp.MaxDepth = 1.f;
+    m_pImmediateContext->SetViewports(1, &vp, 0, 0);
+}
+
+void DiligentRenderer::EnsurePreviewRenderTarget(uint32_t width, uint32_t height)
+{
+    width = std::max(1u, width);
+    height = std::max(1u, height);
+
+    if (m_pPreviewColor &&
+        m_pPreviewDepth &&
+        m_PreviewWidth == width &&
+        m_PreviewHeight == height) {
+        return;
+    }
+
+    m_pPreviewColor.Release();
+    m_pPreviewRTV.Release();
+    m_pPreviewSRV.Release();
+    m_pPreviewDepth.Release();
+    m_pPreviewDSV.Release();
+
+    TextureDesc colorDesc = {};
+    colorDesc.Name = "Object Copilot Preview Color";
+    colorDesc.Type = RESOURCE_DIM_TEX_2D;
+    colorDesc.Width = width;
+    colorDesc.Height = height;
+    colorDesc.MipLevels = 1;
+    colorDesc.Format = TEX_FORMAT_RGBA8_TYPELESS;
+    colorDesc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
+    colorDesc.Usage = USAGE_DEFAULT;
+    m_pDevice->CreateTexture(colorDesc, nullptr, &m_pPreviewColor);
+
+    TextureDesc depthDesc = {};
+    depthDesc.Name = "Object Copilot Preview Depth";
+    depthDesc.Type = RESOURCE_DIM_TEX_2D;
+    depthDesc.Width = width;
+    depthDesc.Height = height;
+    depthDesc.MipLevels = 1;
+    depthDesc.Format = TEX_FORMAT_D32_FLOAT;
+    depthDesc.BindFlags = BIND_DEPTH_STENCIL;
+    depthDesc.Usage = USAGE_DEFAULT;
+    m_pDevice->CreateTexture(depthDesc, nullptr, &m_pPreviewDepth);
+
+    if (m_pPreviewColor) {
+        TextureViewDesc rtvDesc = {};
+        rtvDesc.ViewType = TEXTURE_VIEW_RENDER_TARGET;
+        rtvDesc.TextureDim = RESOURCE_DIM_TEX_2D;
+        rtvDesc.Format = TEX_FORMAT_RGBA8_UNORM_SRGB;
+        m_pPreviewColor->CreateView(rtvDesc, &m_pPreviewRTV);
+
+        TextureViewDesc srvDesc = {};
+        srvDesc.ViewType = TEXTURE_VIEW_SHADER_RESOURCE;
+        srvDesc.TextureDim = RESOURCE_DIM_TEX_2D;
+        srvDesc.Format = TEX_FORMAT_RGBA8_UNORM;
+        m_pPreviewColor->CreateView(srvDesc, &m_pPreviewSRV);
+    }
+    if (m_pPreviewDepth) {
+        m_pPreviewDSV = m_pPreviewDepth->GetDefaultView(TEXTURE_VIEW_DEPTH_STENCIL);
+    }
+
+    m_PreviewWidth = width;
+    m_PreviewHeight = height;
+}
+
+bool DiligentRenderer::BeginPreviewPass(uint32_t width, uint32_t height)
+{
+    if (!m_pImmediateContext || !m_pDevice) {
+        return false;
+    }
+
+    EnsurePreviewRenderTarget(width, height);
+    if (!m_pPreviewRTV || !m_pPreviewDSV) {
+        return false;
+    }
+
+    // Shadow/prepass code restores render targets through m_pRTV/m_pDSV,
+    // so point them at the preview target for the duration of the offscreen pass.
+    m_pRTV = m_pPreviewRTV;
+    m_pDSV = m_pPreviewDSV;
+
+    ITextureView* rtvs[] = { m_pPreviewRTV };
+    m_pImmediateContext->SetRenderTargets(1, rtvs, m_pPreviewDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+    const float clearColor[] = {
+        m_SceneDataCache.skyColor.x,
+        m_SceneDataCache.skyColor.y,
+        m_SceneDataCache.skyColor.z,
+        1.0f
+    };
+    m_pImmediateContext->ClearRenderTarget(m_pPreviewRTV, clearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    m_pImmediateContext->ClearDepthStencil(m_pPreviewDSV, CLEAR_DEPTH_FLAG, 1.0f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+    Viewport vp = {};
+    vp.Width = static_cast<float>(m_PreviewWidth);
+    vp.Height = static_cast<float>(m_PreviewHeight);
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    m_pImmediateContext->SetViewports(1, &vp, 0, 0);
+    return true;
+}
+
+void DiligentRenderer::EndPreviewPass()
+{
+    if (!m_pImmediateContext || !m_pSwapChain) {
+        return;
+    }
+
+    m_pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
+    m_pDSV = m_pSwapChain->GetDepthBufferDSV();
+
+    ITextureView* rtvs[] = { m_pRTV };
+    m_pImmediateContext->SetRenderTargets(1, rtvs, m_pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+    Viewport vp = {};
     vp.Width = static_cast<float>(m_Width);
     vp.Height = static_cast<float>(m_Height);
-    vp.MinDepth = 0.f; vp.MaxDepth = 1.f;
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    m_pImmediateContext->SetViewports(1, &vp, 0, 0);
+}
+
+Diligent::ITextureView* DiligentRenderer::GetPreviewSRV() const
+{
+    return m_pPreviewSRV;
+}
+
+void DiligentRenderer::SetViewportRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+{
+    m_ViewportX = x;
+    m_ViewportY = y;
+    m_ViewportWidth = width;
+    m_ViewportHeight = height;
+
+    if (!m_pImmediateContext) {
+        return;
+    }
+
+    Viewport vp{};
+    vp.TopLeftX = static_cast<float>(m_ViewportX);
+    vp.TopLeftY = static_cast<float>(m_ViewportY);
+    vp.Width = static_cast<float>(m_ViewportWidth);
+    vp.Height = static_cast<float>(m_ViewportHeight);
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    m_pImmediateContext->SetViewports(1, &vp, 0, 0);
+}
+
+void DiligentRenderer::ResetViewportRect()
+{
+    m_ViewportX = 0;
+    m_ViewportY = 0;
+    m_ViewportWidth = m_Width;
+    m_ViewportHeight = m_Height;
+
+    if (!m_pImmediateContext) {
+        return;
+    }
+
+    Viewport vp{};
+    vp.Width = static_cast<float>(m_Width);
+    vp.Height = static_cast<float>(m_Height);
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
     m_pImmediateContext->SetViewports(1, &vp, 0, 0);
 }
 
@@ -587,6 +752,7 @@ void DiligentRenderer::Resize(uint32_t w, uint32_t h)
 
     MOON_LOG_INFO("DiligentRenderer", "Resizing %ux%u -> %ux%u", m_Width, m_Height, w, h);
     m_Width = w; m_Height = h;
+    ResetViewportRect();
 
     if (m_pSwapChain) {
         m_pSwapChain->Resize(w, h);

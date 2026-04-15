@@ -46,6 +46,11 @@ public:
     void BeginFrame() override;
     void EndFrame() override;
     void RenderFrame() override;
+    void SetViewportRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+    void ResetViewportRect();
+    bool BeginPreviewPass(uint32_t width, uint32_t height);
+    void EndPreviewPass();
+    Diligent::ITextureView* GetPreviewSRV() const;
 
     void SetViewProjectionMatrix(const float* viewProj16) override;
     void SetMaterialParameters(Moon::Material* material);
@@ -196,6 +201,10 @@ private:
 
     uint32_t m_Width = 0;
     uint32_t m_Height = 0;
+    uint32_t m_ViewportX = 0;
+    uint32_t m_ViewportY = 0;
+    uint32_t m_ViewportWidth = 0;
+    uint32_t m_ViewportHeight = 0;
 
     Diligent::RefCntAutoPtr<Diligent::IBuffer> m_pVSConstants;
     Diligent::RefCntAutoPtr<Diligent::IBuffer> m_pPSMaterialConstants;
@@ -277,6 +286,13 @@ private:
 
     Diligent::RefCntAutoPtr<Diligent::ITexture> m_pDefaultWhiteTexture;
     Diligent::RefCntAutoPtr<Diligent::ITextureView> m_pDefaultWhiteTextureSRV;
+    Diligent::RefCntAutoPtr<Diligent::ITexture> m_pPreviewColor;
+    Diligent::RefCntAutoPtr<Diligent::ITextureView> m_pPreviewRTV;
+    Diligent::RefCntAutoPtr<Diligent::ITextureView> m_pPreviewSRV;
+    Diligent::RefCntAutoPtr<Diligent::ITexture> m_pPreviewDepth;
+    Diligent::RefCntAutoPtr<Diligent::ITextureView> m_pPreviewDSV;
+    uint32_t m_PreviewWidth = 0;
+    uint32_t m_PreviewHeight = 0;
 
     Moon::Matrix4x4 m_ViewProj;
     PSSceneCPU m_SceneDataCache;
@@ -290,6 +306,7 @@ private:
     std::chrono::steady_clock::time_point m_SkyStartTime;
 
     void CreateDeviceAndSwapchain(const RenderInitParams& params);
+    void EnsurePreviewRenderTarget(uint32_t width, uint32_t height);
     void CreateVSConstants();
     void CreateDefaultWhiteTexture();
     void CreateMainPass();
