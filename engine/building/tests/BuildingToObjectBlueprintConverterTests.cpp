@@ -12,6 +12,7 @@
 #include <cmath>
 #include <fstream>
 #include <functional>
+#include <unordered_map>
 
 using namespace Moon::Building;
 using namespace Moon::Building::Test;
@@ -54,6 +55,67 @@ bool PointInsideRect(const GridPos2D& point, const Rect& rect) {
            point[0] < rect.origin[0] + rect.size[0] &&
            point[1] > rect.origin[1] &&
            point[1] < rect.origin[1] + rect.size[1];
+}
+
+const Space* FindSpaceById(const BuildingDefinition& definition, int floorLevel, int spaceId) {
+    for (const auto& floor : definition.floors) {
+        if (floor.level != floorLevel) {
+            continue;
+        }
+        for (const auto& space : floor.spaces) {
+            if (space.spaceId == spaceId) {
+                return &space;
+            }
+        }
+    }
+    return nullptr;
+}
+
+bool PointInsideSpaceRects(const GridPos2D& point, const Space& space) {
+    for (const auto& rect : space.rects) {
+        if (point[0] > rect.origin[0] + 0.01f &&
+            point[0] < rect.origin[0] + rect.size[0] - 0.01f &&
+            point[1] > rect.origin[1] + 0.01f &&
+            point[1] < rect.origin[1] + rect.size[1] - 0.01f) {
+            return true;
+        }
+    }
+    return false;
+}
+
+GridPos2D GetExpectedWallPlacementOffset(const GeneratedBuilding& building, const WallSegment& wall) {
+    if (wall.type != WallType::Exterior) {
+        return {0.0f, 0.0f};
+    }
+
+    const Space* owningSpace = FindSpaceById(building.definition, wall.floorLevel, wall.spaceId);
+    if (!owningSpace) {
+        return {0.0f, 0.0f};
+    }
+
+    const float dx = wall.end[0] - wall.start[0];
+    const float dz = wall.end[1] - wall.start[1];
+    const float length = std::sqrt(dx * dx + dz * dz);
+    if (length < 0.001f) {
+        return {0.0f, 0.0f};
+    }
+
+    const GridPos2D midpoint = {(wall.start[0] + wall.end[0]) * 0.5f, (wall.start[1] + wall.end[1]) * 0.5f};
+    const GridPos2D leftNormal = {-dz / length, dx / length};
+    const GridPos2D rightNormal = {dz / length, -dx / length};
+    const float probeDistance = std::min(0.15f, std::max(0.05f, wall.thickness));
+
+    const GridPos2D leftProbe = {midpoint[0] + leftNormal[0] * probeDistance, midpoint[1] + leftNormal[1] * probeDistance};
+    if (PointInsideSpaceRects(leftProbe, *owningSpace)) {
+        return {leftNormal[0] * wall.thickness * 0.5f, leftNormal[1] * wall.thickness * 0.5f};
+    }
+
+    const GridPos2D rightProbe = {midpoint[0] + rightNormal[0] * probeDistance, midpoint[1] + rightNormal[1] * probeDistance};
+    if (PointInsideSpaceRects(rightProbe, *owningSpace)) {
+        return {rightNormal[0] * wall.thickness * 0.5f, rightNormal[1] * wall.thickness * 0.5f};
+    }
+
+    return {0.0f, 0.0f};
 }
 
 const json* FindNodeByNameRecursive(const json& node, const std::string& name) {
@@ -912,6 +974,88 @@ TEST_F(BuildingToObjectBlueprintConverterTest, ExteriorWallsOffsetInwardByHalfTh
 
     EXPECT_FLOAT_EQ((*wallNode)["transform"]["position"][0].get<float>(), 200.0f);
     EXPECT_FLOAT_EQ((*wallNode)["transform"]["position"][2].get<float>(), 10.0f);
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, TownhouseSegmentedOpenStair_WindowsUseHostWallPlacementOffset) {
+    const std::string inputJson = TestHelpers::LoadFromFile("townhouse_segmented_open_stair_demo.json");
+    ASSERT_FALSE(inputJson.empty());
+
+    GeneratedBuilding building;
+    std::string errorMsg;
+    ASSERT_TRUE(pipeline.ProcessBuilding(inputJson, building, errorMsg)) << errorMsg;
+    ASSERT_FALSE(building.windows.empty());
+
+    const std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    std::vector<const json*> windowNodes;
+    CollectNodesByPrefixRecursive(j["root"], "window_", windowNodes);
+    ASSERT_EQ(windowNodes.size(), building.windows.size());
+
+    std::unordered_map<int, const WallSegment*> wallsById;
+    for (const auto& wall : building.walls) {
+        wallsById[wall.wallId] = &wall;
+    }
+
+    for (size_t i = 0; i < building.windows.size(); ++i) {
+        const Window& window = building.windows[i];
+        SCOPED_TRACE(i);
+        ASSERT_GE(window.wallId, 0);
+
+        const auto wallIt = wallsById.find(window.wallId);
+        ASSERT_NE(wallIt, wallsById.end());
+
+        const GridPos2D offset = GetExpectedWallPlacementOffset(building, *wallIt->second);
+        const json& node = *windowNodes[i];
+        ASSERT_TRUE(node.contains("transform"));
+        ASSERT_TRUE(node["transform"].contains("position"));
+
+        EXPECT_NEAR(node["transform"]["position"][0].get<float>(), (window.position[0] + offset[0]) * 100.0f, 0.25f);
+        EXPECT_NEAR(node["transform"]["position"][2].get<float>(), (window.position[1] + offset[1]) * 100.0f, 0.25f);
+    }
+}
+
+TEST_F(BuildingToObjectBlueprintConverterTest, VoidedFloorLevelsFallbackToFloorPlateCsgWhenPreviewMeshIsMissing) {
+    GeneratedBuilding building;
+
+    Floor lowerFloor;
+    lowerFloor.level = 0;
+    lowerFloor.floorHeight = 3.6f;
+    building.definition.floors.push_back(lowerFloor);
+
+    Floor upperFloor;
+    upperFloor.level = 1;
+    upperFloor.floorHeight = 3.6f;
+    building.definition.floors.push_back(upperFloor);
+
+    FloorPlate lowerPlate;
+    lowerPlate.floorLevel = 0;
+    lowerPlate.origin = {0.0f, 0.0f};
+    lowerPlate.size = {6.0f, 6.0f};
+    lowerPlate.envelopeOutline = {
+        GridPos2D{0.0f, 0.0f},
+        GridPos2D{6.0f, 0.0f},
+        GridPos2D{6.0f, 6.0f},
+        GridPos2D{0.0f, 6.0f}
+    };
+    lowerPlate.outline = lowerPlate.envelopeOutline;
+    building.floorPlates.push_back(lowerPlate);
+
+    FloorPlate upperPlate = lowerPlate;
+    upperPlate.floorLevel = 1;
+    upperPlate.voids.push_back({"stair_opening", {2.0f, 2.0f}, {2.0f, 2.0f}});
+    building.floorPlates.push_back(upperPlate);
+
+    GeneratedMeshPart lowerMesh;
+    lowerMesh.partId = "floor_plate_mesh_0";
+    lowerMesh.material = "concrete_floor";
+    building.floorPlateMeshes.push_back(std::move(lowerMesh));
+
+    const std::string csgJson = BuildingToObjectBlueprintConverter::Convert(building);
+    json j = json::parse(csgJson);
+
+    EXPECT_EQ(FindNodeByNameRecursive(j["root"], "floor_plate_0"), nullptr);
+    EXPECT_NE(FindNodeByNameRecursive(j["root"], "floor_plate_1"), nullptr);
 }
 
 TEST_F(BuildingToObjectBlueprintConverterTest, ApartmentSingleStairDemo_BuiltWallMeshesStartAtSlabTop) {

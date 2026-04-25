@@ -7,10 +7,12 @@
 #include "../massing/MassRuleParser.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <unordered_set>
 
 namespace {
 
@@ -134,6 +136,35 @@ void RemoveColumnsInsideTransportShafts(Moon::Building::GeneratedBuilding& gener
         generated.supportColumns.end());
 }
 
+void RemoveSolidFloorMeshesForVoidedPlates(Moon::Building::GeneratedBuilding& generated) {
+    std::unordered_set<int> voidedLevels;
+    for (const auto& plate : generated.floorPlates) {
+        if (!plate.voids.empty()) {
+            voidedLevels.insert(plate.floorLevel);
+        }
+    }
+
+    if (voidedLevels.empty()) {
+        return;
+    }
+
+    generated.floorPlateMeshes.erase(
+        std::remove_if(
+            generated.floorPlateMeshes.begin(),
+            generated.floorPlateMeshes.end(),
+            [&](const Moon::Building::GeneratedMeshPart& part) {
+                constexpr const char* prefix = "floor_plate_mesh_";
+                if (part.partId.rfind(prefix, 0) != 0) {
+                    return false;
+                }
+
+                const std::string suffix = part.partId.substr(std::char_traits<char>::length(prefix));
+                const int floorLevel = std::atoi(suffix.c_str());
+                return voidedLevels.count(floorLevel) > 0;
+            }),
+        generated.floorPlateMeshes.end());
+}
+
 } // namespace
 
 namespace Moon {
@@ -214,6 +245,7 @@ bool BuildingPipeline::ProcessBuildingInternal(const BuildingDefinition& definit
         return false;
     }
     outBuilding.definition = workingDefinition;
+    RemoveSolidFloorMeshesForVoidedPlates(outBuilding);
     
     if (!BuildSpaceGraph(workingDefinition, outBuilding)) {
         outError = "Space graph construction failed";

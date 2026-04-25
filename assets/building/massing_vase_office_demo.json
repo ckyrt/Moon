@@ -25,6 +25,9 @@
             "space_id": "core_0",
             "type": "core",
             "zone": "service",
+            "adjacency": [
+              { "to": "lobby_0", "relationship": "connected", "importance": "required" }
+            ],
             "area_preferred": 80,
             "constraints": {
               "connects_to_floor": 1,
@@ -36,6 +39,10 @@
             "space_id": "lobby_0",
             "type": "lobby",
             "zone": "circulation",
+            "adjacency": [
+              { "to": "core_0", "relationship": "connected", "importance": "required" },
+              { "to": "retail_0", "relationship": "connected", "importance": "required" }
+            ],
             "area_preferred": 120,
             "constraints": {
               "ceiling_height": 6.0,
@@ -46,6 +53,9 @@
             "space_id": "retail_0",
             "type": "shop",
             "zone": "public",
+            "adjacency": [
+              { "to": "lobby_0", "relationship": "connected", "importance": "required" }
+            ],
             "area_preferred": 90,
             "constraints": {
               "ceiling_height": 5.5,
@@ -62,6 +72,9 @@
             "space_id": "core_1",
             "type": "core",
             "zone": "service",
+            "adjacency": [
+              { "to": "corridor_1", "relationship": "connected", "importance": "required" }
+            ],
             "area_preferred": 72,
             "constraints": {
               "connects_from_floor": 0,
@@ -74,6 +87,9 @@
             "space_id": "meeting_1",
             "type": "meeting_room",
             "zone": "public",
+            "adjacency": [
+              { "to": "corridor_1", "relationship": "connected", "importance": "required" }
+            ],
             "area_preferred": 120,
             "constraints": {
               "ceiling_height": 5.0,
@@ -84,6 +100,10 @@
             "space_id": "corridor_1",
             "type": "corridor",
             "zone": "circulation",
+            "adjacency": [
+              { "to": "core_1", "relationship": "connected", "importance": "required" },
+              { "to": "meeting_1", "relationship": "connected", "importance": "required" }
+            ],
             "area_preferred": 60,
             "constraints": {
               "ceiling_height": 5.0,

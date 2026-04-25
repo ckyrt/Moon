@@ -9,6 +9,22 @@
 namespace Moon {
 namespace Building {
 
+namespace {
+
+constexpr float kWallSegmentEpsilon = 0.001f;
+
+float SegmentLengthSquared(const GridPos2D& start, const GridPos2D& end) {
+    const float dx = end[0] - start[0];
+    const float dy = end[1] - start[1];
+    return dx * dx + dy * dy;
+}
+
+bool IsDegenerateSegment(const GridPos2D& start, const GridPos2D& end) {
+    return SegmentLengthSquared(start, end) <= kWallSegmentEpsilon * kWallSegmentEpsilon;
+}
+
+} // namespace
+
 WallGenerator::WallGenerator()
     : m_wallThickness(0.2f)      // 0.2m default thickness
     , m_defaultWallHeight(3.0f)   // 3m default height
@@ -194,6 +210,10 @@ void WallGenerator::CreateInteriorWall(const GridPos2D& start, const GridPos2D& 
                                        int spaceIdA, int spaceIdB, int floorLevel,
                                        float height, float thickness, bool hasOutdoor,
                                        std::vector<WallSegment>& outWalls) {
+    if (IsDegenerateSegment(start, end)) {
+        return;
+    }
+
     WallSegment wall;
     wall.wallId = m_nextWallId++;  // Assign unique wall ID
     wall.start = start;
@@ -217,6 +237,10 @@ void WallGenerator::CreateExteriorWall(const GridPos2D& start, const GridPos2D& 
                                        int spaceId, int floorLevel, float height,
                                        float thickness, bool isOutdoor,
                                        std::vector<WallSegment>& outWalls) {
+    if (IsDegenerateSegment(start, end)) {
+        return;
+    }
+
     WallSegment wall;
     wall.wallId = m_nextWallId++;  // Assign unique wall ID
     wall.start = start;
@@ -277,6 +301,12 @@ void WallGenerator::MergeCollinearWalls(std::vector<WallSegment>& walls) {
     //          - Connected (end of one = start of another)
     // ============================================================================
     
+    if (walls.empty()) return;
+
+    walls.erase(std::remove_if(walls.begin(), walls.end(), [](const WallSegment& wall) {
+        return IsDegenerateSegment(wall.start, wall.end);
+    }), walls.end());
+
     if (walls.empty()) return;
     
     const float epsilon = 0.001f;

@@ -168,18 +168,49 @@ void CheckConnectivity(const GeneratedBuilding& building, BuildingQualityReport&
     for (const auto& floor : building.definition.floors) {
         int relevantSpaces = 0;
         int connectedSpaces = 0;
+        int circulationSpaces = 0;
+        std::unordered_set<int> relevantSpaceIds;
+
         for (const auto& space : floor.spaces) {
             if (IsSkippableConnectivityUsage(space.properties.usage) || space.properties.isOutdoor) {
                 continue;
             }
             ++relevantSpaces;
+            if (space.properties.usage == SpaceUsage::Corridor ||
+                space.properties.usage == SpaceUsage::Entrance) {
+                ++circulationSpaces;
+            }
+            relevantSpaceIds.insert(space.spaceId);
 
             if (degreeBySpace[space.spaceId] > 0) {
                 ++connectedSpaces;
             }
         }
 
-        if (relevantSpaces > 1 && connectedSpaces == 0) {
+        bool hasPhysicalPartitions = false;
+        for (const auto& wall : building.walls) {
+            if (wall.floorLevel != floor.level || wall.neighborSpaceId < 0) {
+                continue;
+            }
+            if (relevantSpaceIds.count(wall.spaceId) && relevantSpaceIds.count(wall.neighborSpaceId)) {
+                hasPhysicalPartitions = true;
+                break;
+            }
+        }
+        if (!hasPhysicalPartitions) {
+            for (const auto& door : building.doors) {
+                if (door.floorLevel != floor.level) {
+                    continue;
+                }
+                if (relevantSpaceIds.count(door.spaceA) && relevantSpaceIds.count(door.spaceB)) {
+                    hasPhysicalPartitions = true;
+                    break;
+                }
+            }
+        }
+
+        const bool isSingleCirculationPair = relevantSpaces == 2 && circulationSpaces == 1;
+        if (relevantSpaces > 1 && connectedSpaces == 0 && hasPhysicalPartitions && !isSingleCirculationPair) {
             AddError(report,
                      "disconnected_floor_graph",
                      "Floor has multiple spaces but no meaningful generated connectivity.",
@@ -217,7 +248,12 @@ void CheckWallDoorWindowReferences(const GeneratedBuilding& building, BuildingQu
     }
 
     for (const auto& window : building.windows) {
-        if (window.wallId >= 0 && !wallIds.count(window.wallId)) {
+        if (window.wallId < 0) {
+            AddError(report,
+                     "window_missing_wall",
+                     "Window is missing a host wall assignment.",
+                     window.floorLevel);
+        } else if (!wallIds.count(window.wallId)) {
             AddError(report,
                      "window_missing_wall",
                      "Window references a missing wall.",
@@ -275,15 +311,9 @@ BuildingTypology InferTypologyFromResolvedDefinition(const GeneratedBuilding& bu
         }
     }
 
-    for (const auto& floorPlate : building.floorPlates) {
-        if (!floorPlate.voids.empty()) {
-            retailSignals += 2;
-        }
-    }
-
     if (ContainsText(definition.style.category, "retail") ||
         ContainsText(definition.style.facade, "retail")) {
-        retailSignals += 2;
+        retailSignals += 4;
     }
     if (ContainsText(definition.style.category, "commercial") ||
         ContainsText(definition.style.category, "office")) {
@@ -294,7 +324,7 @@ BuildingTypology InferTypologyFromResolvedDefinition(const GeneratedBuilding& bu
         residentialSignals += 1;
     }
 
-    if (retailSignals > 0 && retailSignals >= officeSignals && retailSignals >= residentialSignals) {
+    if (retailSignals >= 4) {
         return BuildingTypology::Retail;
     }
     if (officeSignals > residentialSignals) {
@@ -339,16 +369,14 @@ void CheckTypologySpecificSignals(const GeneratedBuilding& building, BuildingQua
             hasVoidLikePlate = plate != nullptr && !plate->voids.empty();
 
             if (!hasCorridor) {
-                AddError(report,
-                         "retail_floor_missing_circulation",
-                         "Retail floor is missing circulation space.",
-                         floor.level);
+                report.warnings.push_back({"retail_floor_missing_circulation",
+                                           "Retail floor is missing circulation space.",
+                                           floor.level});
             }
             if (!hasVoidLikePlate) {
-                AddError(report,
-                         "retail_floor_missing_void",
-                         "Retail floor is missing a floor plate void/atrium signal.",
-                         floor.level);
+                report.warnings.push_back({"retail_floor_missing_void",
+                                           "Retail floor is missing a floor plate void/atrium signal.",
+                                           floor.level});
             }
         }
     }

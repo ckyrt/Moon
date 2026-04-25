@@ -21,8 +21,8 @@
         "level": 0,
         "name": "ground_lobby",
         "spaces": [
-          { "space_id": "lobby_0", "type": "lobby", "zone": "circulation", "area_preferred": 220, "constraints": { "ceiling_height": 6.0, "min_width": 8.0 } },
-          { "space_id": "retail_0", "type": "shop", "zone": "public", "area_preferred": 140, "constraints": { "ceiling_height": 5.2, "min_width": 6.0 } }
+          { "space_id": "lobby_0", "type": "lobby", "zone": "circulation", "adjacency": [{ "to": "retail_0", "relationship": "connected", "importance": "required" }], "area_preferred": 220, "constraints": { "ceiling_height": 6.0, "min_width": 8.0 } },
+          { "space_id": "retail_0", "type": "shop", "zone": "public", "adjacency": [{ "to": "lobby_0", "relationship": "connected", "importance": "required" }], "area_preferred": 140, "constraints": { "ceiling_height": 5.2, "min_width": 6.0 } }
         ]
       },
       {
@@ -61,8 +61,8 @@
         "level": 5,
         "name": "office_5",
         "spaces": [
-          { "space_id": "corridor_5", "type": "corridor", "zone": "circulation", "area_preferred": 54, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
-          { "space_id": "office_5_main", "type": "office", "zone": "public", "area_preferred": 270, "constraints": { "ceiling_height": 4.0, "min_width": 7.5 } }
+          { "space_id": "corridor_5", "type": "corridor", "zone": "circulation", "adjacency": [{ "to": "office_5_main", "relationship": "connected", "importance": "required" }], "area_preferred": 54, "constraints": { "ceiling_height": 4.0, "min_width": 3.0 } },
+          { "space_id": "office_5_main", "type": "office", "zone": "public", "adjacency": [{ "to": "corridor_5", "relationship": "connected", "importance": "required" }], "area_preferred": 270, "constraints": { "ceiling_height": 4.0, "min_width": 7.5 } }
         ]
       },
       {

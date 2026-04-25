@@ -469,6 +469,10 @@ void CollectFloorExclusionsAndCores(const Floor& floor,
 void AppendFloorPlateMesh(const BuildingDefinition& definition,
                           const FloorPlate& plate,
                           GeneratedBuilding& outBuilding) {
+    if (!plate.voids.empty()) {
+        return;
+    }
+
     const std::vector<GridPos2D>& slabOutline =
         plate.envelopeOutline.size() >= 3 ? plate.envelopeOutline : plate.outline;
     if (auto mesh = CreateExtrudedPlateMesh(slabOutline, GetFloorBaseHeight(definition, plate.floorLevel), 0.18f)) {

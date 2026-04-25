@@ -81,17 +81,51 @@ TEST(BuildingQualityChecksTests, DisconnectingFloorGraphFailsQualityChecks) {
     EXPECT_TRUE(report.HasErrorCode("disconnected_floor_graph"));
 }
 
+TEST(BuildingQualityChecksTests, OpenPlanFloorWithoutPartitionsDoesNotTriggerDisconnectedGraph) {
+    Moon::Building::GeneratedBuilding building;
+    building.definition.grid = 0.5f;
+
+    Moon::Building::Floor floor;
+    floor.level = 0;
+    floor.floorHeight = 3.2f;
+
+    Moon::Building::Space lobby;
+    lobby.spaceId = 1;
+    lobby.properties.usage = Moon::Building::SpaceUsage::Entrance;
+    lobby.rects.push_back({ "lobby", {0.0f, 0.0f}, {4.0f, 4.0f} });
+
+    Moon::Building::Space retail;
+    retail.spaceId = 2;
+    retail.properties.usage = Moon::Building::SpaceUsage::Office;
+    retail.rects.push_back({ "retail", {4.0f, 0.0f}, {4.0f, 4.0f} });
+
+    floor.spaces.push_back(lobby);
+    floor.spaces.push_back(retail);
+    building.definition.floors.push_back(floor);
+
+    Moon::Building::FloorPlate plate;
+    plate.floorLevel = 0;
+    plate.origin = {0.0f, 0.0f};
+    plate.size = {8.0f, 4.0f};
+    building.floorPlates.push_back(plate);
+
+    const auto report = Moon::Building::EvaluateBuildingQuality(building);
+    EXPECT_FALSE(report.HasErrorCode("disconnected_floor_graph"));
+}
+
 TEST(BuildingQualityChecksTests, InvalidDoorAndWindowReferencesFailQualityChecks) {
     auto building = BuildRepresentativeAsset(Moon::Assets::BuildAssetPath("building/fixtures/villa.json"));
     ASSERT_FALSE(building.doors.empty());
     ASSERT_FALSE(building.windows.empty());
 
     building.doors.front().wallId = 999999;
+    building.windows.front().wallId = -1;
     building.windows.front().spaceId = 999999;
 
     const auto report = Moon::Building::EvaluateBuildingQuality(building);
     EXPECT_FALSE(report.passed);
     EXPECT_TRUE(report.HasErrorCode("door_missing_wall"));
+    EXPECT_TRUE(report.HasErrorCode("window_missing_wall"));
     EXPECT_TRUE(report.HasErrorCode("window_missing_space"));
 }
 
@@ -167,6 +201,53 @@ TEST(BuildingQualityChecksTests, WallCannotExceedClearStoryHeight) {
     const auto report = Moon::Building::EvaluateBuildingQuality(building);
     EXPECT_FALSE(report.passed);
     EXPECT_TRUE(report.HasErrorCode("wall_invalid_height"));
+}
+
+TEST(BuildingQualityChecksTests, ZeroLengthWallFailsQualityChecks) {
+    Moon::Building::GeneratedBuilding building;
+    Moon::Building::Floor floor;
+    floor.level = 0;
+    floor.floorHeight = 3.5f;
+    building.definition.floors.push_back(floor);
+
+    Moon::Building::WallSegment wall;
+    wall.wallId = 1;
+    wall.start = {2.0f, 2.0f};
+    wall.end = {2.0f, 2.0f};
+    wall.type = Moon::Building::WallType::Exterior;
+    wall.spaceId = 10;
+    wall.neighborSpaceId = -1;
+    wall.floorLevel = 0;
+    wall.height = 3.0f;
+    wall.thickness = 0.2f;
+    building.walls.push_back(wall);
+
+    const auto report = Moon::Building::EvaluateBuildingQuality(building);
+    EXPECT_FALSE(report.passed);
+    EXPECT_TRUE(report.HasErrorCode("wall_zero_length"));
+}
+
+TEST(BuildingQualityChecksTests, ShortButNonZeroWallDoesNotTriggerZeroLengthRule) {
+    Moon::Building::GeneratedBuilding building;
+    Moon::Building::Floor floor;
+    floor.level = 0;
+    floor.floorHeight = 3.5f;
+    building.definition.floors.push_back(floor);
+
+    Moon::Building::WallSegment wall;
+    wall.wallId = 1;
+    wall.start = {0.0f, 0.0f};
+    wall.end = {0.12f, 0.0f};
+    wall.type = Moon::Building::WallType::Exterior;
+    wall.spaceId = 10;
+    wall.neighborSpaceId = -1;
+    wall.floorLevel = 0;
+    wall.height = 3.0f;
+    wall.thickness = 0.2f;
+    building.walls.push_back(wall);
+
+    const auto report = Moon::Building::EvaluateBuildingQuality(building);
+    EXPECT_FALSE(report.HasErrorCode("wall_zero_length"));
 }
 
 TEST(BuildingQualityChecksTests, ProgramOverflowFailsQualityChecks) {

@@ -11,7 +11,8 @@ namespace Building {
 
 namespace {
 
-constexpr float kGeometryEpsilon = 0.35f;
+constexpr float kWallLengthEpsilon = 0.01f;
+constexpr float kAlignmentEpsilon = 0.35f;
 constexpr float kMinimumSideClearance = 0.05f;
 
 void AddError(BuildingQualityReport& report,
@@ -94,7 +95,7 @@ const WallSegment* FindWallById(const GeneratedBuilding& building, int wallId) {
 void CheckWallGeometry(const GeneratedBuilding& building, BuildingQualityReport& report) {
     for (const auto& wall : building.walls) {
         const float wallLength = SegmentLength(wall);
-        if (wallLength <= kGeometryEpsilon) {
+        if (wallLength <= kWallLengthEpsilon) {
             AddError(report,
                      "wall_zero_length",
                      "Wall segment has zero or near-zero length.",
@@ -147,7 +148,7 @@ void CheckDoorRules(const GeneratedBuilding& building, BuildingQualityReport& re
         }
 
         const float clearStoryHeight = std::max(0.0f, GetTopOfFloor(building.definition, door.floorLevel) - GetWallBaseHeight(building, door.floorLevel));
-        if (clearStoryHeight > 0.0f && door.height > clearStoryHeight + kGeometryEpsilon) {
+        if (clearStoryHeight > 0.0f && door.height > clearStoryHeight + kAlignmentEpsilon) {
             AddError(report,
                      "door_exceeds_story_height",
                      "Door height exceeds the clear story height.",
@@ -172,7 +173,7 @@ void CheckWindowRules(const GeneratedBuilding& building, BuildingQualityReport& 
 
         const float wallLength = SegmentLength(*wall);
         const float distanceToWall = DistancePointToSegment(window.position, *wall);
-        if (distanceToWall > kGeometryEpsilon) {
+        if (distanceToWall > kAlignmentEpsilon) {
             AddError(report,
                      "window_off_wall",
                      "Window position is not aligned with its host wall.",
@@ -202,7 +203,7 @@ void CheckWindowRules(const GeneratedBuilding& building, BuildingQualityReport& 
 
         const float clearStoryHeight = std::max(0.0f, GetTopOfFloor(building.definition, window.floorLevel) - GetWallBaseHeight(building, window.floorLevel));
         if (clearStoryHeight > 0.0f &&
-            window.sillHeight + window.height > clearStoryHeight + kGeometryEpsilon) {
+            window.sillHeight + window.height > clearStoryHeight + kAlignmentEpsilon) {
             AddError(report,
                      "window_exceeds_story_height",
                      "Window top exceeds the clear story height and may pierce the upper slab.",

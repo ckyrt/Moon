@@ -176,6 +176,7 @@ void FacadeGenerator::PlaceWindowsOnWall(const WallSegment& wall,
         float t = currentOffset / wallLength;
         
         Window window;
+        window.wallId = wall.wallId;
         window.position[0] = wall.start[0] + dx * t;
         window.position[1] = wall.start[1] + dy * t;
         window.rotation = rotation;

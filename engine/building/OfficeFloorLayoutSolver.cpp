@@ -56,6 +56,28 @@ bool RectsOverlap(const Rect& a, const Rect& b, float margin = 0.0f) {
            aMinY < bMaxY - 0.001f && aMaxY > bMinY + 0.001f;
 }
 
+bool RectsShareBoundary(const Rect& a, const Rect& b) {
+    const float epsilon = 0.001f;
+
+    const bool verticalTouch =
+        std::abs((a.origin[0] + a.size[0]) - b.origin[0]) <= epsilon ||
+        std::abs((b.origin[0] + b.size[0]) - a.origin[0]) <= epsilon;
+    const float verticalOverlap =
+        std::min(a.origin[1] + a.size[1], b.origin[1] + b.size[1]) -
+        std::max(a.origin[1], b.origin[1]);
+    if (verticalTouch && verticalOverlap > epsilon) {
+        return true;
+    }
+
+    const bool horizontalTouch =
+        std::abs((a.origin[1] + a.size[1]) - b.origin[1]) <= epsilon ||
+        std::abs((b.origin[1] + b.size[1]) - a.origin[1]) <= epsilon;
+    const float horizontalOverlap =
+        std::min(a.origin[0] + a.size[0], b.origin[0] + b.size[0]) -
+        std::max(a.origin[0], b.origin[0]);
+    return horizontalTouch && horizontalOverlap > epsilon;
+}
+
 bool RectFitsPlate(const FloorPlate& plate, const Rect& rect, float margin) {
     const std::array<GridPos2D, 5> samplePoints = {{
         {rect.origin[0] + margin, rect.origin[1] + margin},
@@ -124,6 +146,26 @@ Rect MakeCenteredRect(const GridPos2D& center, float width, float depth) {
     };
     rect.size = {width, depth};
     return rect;
+}
+
+float SnapToGrid(float value, float grid) {
+    if (grid <= 0.0f) {
+        return value;
+    }
+    return std::round(value / grid) * grid;
+}
+
+Rect SnapRectToGrid(const Rect& rect, float grid) {
+    Rect snapped = rect;
+    snapped.origin = {
+        SnapToGrid(rect.origin[0], grid),
+        SnapToGrid(rect.origin[1], grid)
+    };
+    snapped.size = {
+        std::max(grid, SnapToGrid(rect.size[0], grid)),
+        std::max(grid, SnapToGrid(rect.size[1], grid))
+    };
+    return snapped;
 }
 
 void AppendUniqueCandidateCenter(std::vector<GridPos2D>& candidates,
@@ -689,6 +731,81 @@ bool OfficeFloorLayoutSolver::GenerateFloor(const BuildingDefinition& definition
         }
         outError = "Failed to synthesize office floor spaces inside sliced floor plates";
         return false;
+    }
+
+    auto findResolvedSpace = [&](const std::string& spaceId) -> ResolvedSpacePlan* {
+        auto it = std::find_if(outResolvedFloor.spaces.begin(), outResolvedFloor.spaces.end(),
+            [&](ResolvedSpacePlan& space) { return space.spaceId == spaceId; });
+        return it != outResolvedFloor.spaces.end() ? &(*it) : nullptr;
+    };
+
+    auto candidateAvoidsResolvedOverlaps = [&](const Rect& candidate, const std::string& ignoreSpaceId) {
+        return std::none_of(outResolvedFloor.spaces.begin(), outResolvedFloor.spaces.end(),
+            [&](const ResolvedSpacePlan& space) {
+                if (space.spaceId == ignoreSpaceId) {
+                    return false;
+                }
+                return RectsOverlap(candidate, space.rect, 0.05f);
+            });
+    };
+
+    auto tryAttachToAnchor = [&](ResolvedSpacePlan& space, const Rect& anchorRect) -> bool {
+        if (RectsShareBoundary(space.rect, anchorRect)) {
+            return true;
+        }
+
+        const float centeredX = anchorRect.origin[0] + (anchorRect.size[0] - space.rect.size[0]) * 0.5f;
+        const float centeredY = anchorRect.origin[1] + (anchorRect.size[1] - space.rect.size[1]) * 0.5f;
+
+        std::vector<Rect> candidates = {
+            {{}, {anchorRect.origin[0] - space.rect.size[0], centeredY}, space.rect.size},
+            {{}, {anchorRect.origin[0] + anchorRect.size[0], centeredY}, space.rect.size},
+            {{}, {centeredX, anchorRect.origin[1] - space.rect.size[1]}, space.rect.size},
+            {{}, {centeredX, anchorRect.origin[1] + anchorRect.size[1]}, space.rect.size}
+        };
+
+        for (Rect candidate : candidates) {
+            candidate.rectId = space.rect.rectId;
+            candidate = SnapRectToGrid(candidate, definition.grid);
+            if (!RectFitsPlate(floorPlate, candidate, 0.1f) ||
+                !RectAvoidsBlockedAreas(candidate, blockedRects, 0.05f) ||
+                !candidateAvoidsResolvedOverlaps(candidate, space.spaceId) ||
+                !RectsShareBoundary(candidate, anchorRect)) {
+                continue;
+            }
+
+            space.rect = candidate;
+            return true;
+        }
+
+        return false;
+    };
+
+    for (const auto& semanticSpace : layoutInput.spaces) {
+        if (IsCoreSemanticType(semanticSpace.type)) {
+            continue;
+        }
+
+        ResolvedSpacePlan* resolvedSpace = findResolvedSpace(semanticSpace.spaceId);
+        if (resolvedSpace == nullptr) {
+            continue;
+        }
+
+        for (const auto& adjacency : semanticSpace.adjacency) {
+            if (adjacency.importance != "required" ||
+                (adjacency.relationship != "connected" && adjacency.relationship != "share_wall")) {
+                continue;
+            }
+
+            ResolvedSpacePlan* anchorSpace = findResolvedSpace(adjacency.to);
+            if (anchorSpace == nullptr) {
+                continue;
+            }
+
+            if (tryAttachToAnchor(*resolvedSpace, anchorSpace->rect)) {
+                break;
+            }
+        }
     }
 
     return true;

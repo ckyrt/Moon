@@ -11,6 +11,7 @@
 #include <chrono>
 #include <iostream>
 #include <limits>
+#include <unordered_set>
 
 using namespace Moon::Building;
 using namespace Moon::Building::Test;
@@ -146,6 +147,29 @@ const FloorPlate* FindFloorPlate(const GeneratedBuilding& building, int floorLev
         }
     }
     return nullptr;
+}
+
+bool PlateHasVoidContainingRectCenter(const FloorPlate& plate, const Rect& rect) {
+    const GridPos2D center = {
+        rect.origin[0] + rect.size[0] * 0.5f,
+        rect.origin[1] + rect.size[1] * 0.5f
+    };
+    for (const auto& voidRect : plate.voids) {
+        if (RectContainsPoint(voidRect, center)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool HasFloorPlateMeshForLevel(const GeneratedBuilding& building, int floorLevel) {
+    const std::string suffix = std::to_string(floorLevel);
+    for (const auto& meshPart : building.floorPlateMeshes) {
+        if (meshPart.partId == "floor_plate_mesh_" + suffix) {
+            return true;
+        }
+    }
+    return false;
 }
 
 float ComputeOutlineArea(const std::vector<GridPos2D>& outline) {
@@ -871,6 +895,76 @@ TEST_F(BuildingPipelineTest, ProcessVilla_OpenAndExternalStairCases_ParseVertica
     }
 }
 
+TEST_F(BuildingPipelineTest, ProcessTownhouseSegmentedOpenStair_AssignsHostWallsToGeneratedWindows) {
+    const std::string json = TestHelpers::LoadFromFile("townhouse_segmented_open_stair_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    GeneratedBuilding sampleBuilding;
+    std::string sampleError;
+    const bool result = pipeline.ProcessBuilding(json, sampleBuilding, sampleError);
+
+    ASSERT_TRUE(result) << sampleError;
+    ASSERT_FALSE(sampleBuilding.windows.empty());
+
+    std::unordered_set<int> wallIds;
+    for (const auto& wall : sampleBuilding.walls) {
+        wallIds.insert(wall.wallId);
+    }
+
+    for (const auto& window : sampleBuilding.windows) {
+        EXPECT_GE(window.wallId, 0);
+        EXPECT_TRUE(wallIds.count(window.wallId) > 0);
+    }
+}
+
+TEST_F(BuildingPipelineTest, ProcessTownhouseSegmentedOpenStair_PreservesOpenStairFloorVoids) {
+    const std::string json = TestHelpers::LoadFromFile("townhouse_segmented_open_stair_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    GeneratedBuilding sampleBuilding;
+    std::string sampleError;
+    const bool result = pipeline.ProcessBuilding(json, sampleBuilding, sampleError);
+
+    ASSERT_TRUE(result) << sampleError;
+    ASSERT_GE(sampleBuilding.verticalTransports.size(), 2u);
+
+    for (const auto& transport : sampleBuilding.verticalTransports) {
+        if (transport.external || transport.type != VerticalTransportType::Stair) {
+            continue;
+        }
+
+        for (int level = transport.floorFrom + 1; level <= transport.floorTo; ++level) {
+            const FloorPlate* plate = FindFloorPlate(sampleBuilding, level);
+            ASSERT_NE(plate, nullptr) << "Missing floor plate for stair opening on level " << level;
+            EXPECT_TRUE(PlateHasVoidContainingRectCenter(*plate, transport.shaftRect))
+                << "Open stair transport should reserve a floor void on level " << level;
+        }
+    }
+}
+
+TEST_F(BuildingPipelineTest, ProcessTownhouseSegmentedOpenStair_DoesNotEmitSolidFloorMeshesForVoidedLevels) {
+    const std::string json = TestHelpers::LoadFromFile("townhouse_segmented_open_stair_demo.json");
+    ASSERT_FALSE(json.empty());
+
+    GeneratedBuilding sampleBuilding;
+    std::string sampleError;
+    const bool result = pipeline.ProcessBuilding(json, sampleBuilding, sampleError);
+
+    ASSERT_TRUE(result) << sampleError;
+
+    bool checkedVoidedLevel = false;
+    for (const auto& plate : sampleBuilding.floorPlates) {
+        if (plate.voids.empty()) {
+            continue;
+        }
+        checkedVoidedLevel = true;
+        EXPECT_FALSE(HasFloorPlateMeshForLevel(sampleBuilding, plate.floorLevel))
+            << "Voided floor level " << plate.floorLevel
+            << " should not export a solid preview mesh that ignores the opening";
+    }
+    EXPECT_TRUE(checkedVoidedLevel);
+}
+
 TEST_F(BuildingPipelineTest, ProcessOfficeTower_DualEgressVerticalSystems_KeepDistinctShafts) {
     const std::string json = TestHelpers::LoadFromFile("office_dual_egress_tower_demo.json");
     ASSERT_FALSE(json.empty());
@@ -1010,12 +1104,15 @@ TEST_F(BuildingPipelineTest, ProcessComplexShoppingMall_AllResolvedSpacesStayIns
 
     ASSERT_TRUE(result) << "Error: " << errorMsg;
     ASSERT_FALSE(building.floorPlates.empty());
-    EXPECT_EQ(building.floorPlateMeshes.size(), building.floorPlates.size());
     EXPECT_FALSE(building.envelopeMeshes.empty()) << "Mall should emit formal envelope shell geometry";
     EXPECT_TRUE(std::all_of(
         building.floorPlates.begin(),
         building.floorPlates.end(),
         [](const FloorPlate& plate) { return plate.envelopeOutline.size() >= 3; }));
+    for (const auto& plate : building.floorPlates) {
+        EXPECT_FALSE(HasFloorPlateMeshForLevel(building, plate.floorLevel))
+            << "Mall atrium floors should preview from floor plate CSG, not solid meshes";
+    }
     for (const auto& floor : building.definition.floors) {
         const FloorPlate* plate = FindFloorPlate(building, floor.level);
         ASSERT_NE(plate, nullptr) << "Missing floor plate for level " << floor.level;

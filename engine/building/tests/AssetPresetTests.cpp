@@ -73,6 +73,11 @@ std::vector<std::string> CollectJsonFiles(const std::string& root) {
     return files;
 }
 
+std::string NormalizePathSeparators(std::string path) {
+    std::replace(path.begin(), path.end(), '\\', '/');
+    return path;
+}
+
 const json* FindNodeByNameRecursive(const json& node, const std::string& name) {
     if (!node.is_object()) {
         return nullptr;
@@ -264,6 +269,113 @@ TEST(BuildingAssetPresetTests, AllBuildingJsonFilesPassQualityChecks) {
 
         EXPECT_TRUE(report.passed) << issues.str();
         EXPECT_TRUE(report.errors.empty()) << issues.str();
+    }
+}
+
+TEST(BuildingAssetPresetTests, OfficeReferenceAssetsGenerateConnectedFloorGraphs) {
+    const std::vector<std::string> relativePaths = {
+        "building/massing_vase_office_demo.json",
+        "building/office_collaboration_tower_demo.json",
+        "building/office_dual_egress_tower_demo.json",
+        "building/office_enclosed_core_demo.json",
+        "building/office_enterprise_tower_demo.json",
+        "building/reference/corporate_office_tower.json"
+    };
+
+    Moon::Building::BuildingPipeline pipeline;
+
+    for (const auto& relativePath : relativePaths) {
+        const std::string path = Moon::Assets::BuildAssetPath(relativePath);
+        SCOPED_TRACE(path);
+
+        const std::string content = ReadUtf8TextFile(path);
+        ASSERT_FALSE(content.empty()) << "Failed to read building asset";
+
+        Moon::Building::GeneratedBuilding building;
+        std::string error;
+        ASSERT_TRUE(pipeline.ProcessBuilding(content, building, error))
+            << "Building asset failed pipeline: " << error;
+
+        const auto report = Moon::Building::EvaluateBuildingQuality(building);
+        std::ostringstream graphIssues;
+        for (const auto& qualityError : report.errors) {
+            if (qualityError.code == "disconnected_floor_graph") {
+                graphIssues << "[" << qualityError.code << "] " << qualityError.message;
+                if (qualityError.floorLevel >= 0) {
+                    graphIssues << " floor=" << qualityError.floorLevel;
+                }
+                graphIssues << '\n';
+            }
+        }
+
+        EXPECT_TRUE(graphIssues.str().empty()) << graphIssues.str();
+    }
+}
+
+TEST(BuildingAssetPresetTests, AllBuildingJsonFilesGenerateNonDegenerateWalls) {
+    const std::string root = Moon::Assets::BuildAssetPath("building");
+    const auto files = CollectJsonFiles(root);
+    ASSERT_FALSE(files.empty()) << "No building json files found under " << root;
+
+    Moon::Building::BuildingPipeline pipeline;
+
+    for (const auto& path : files) {
+        if (path.size() >= 12 && path.substr(path.size() - 12) == "catalog.json") {
+            continue;
+        }
+
+        SCOPED_TRACE(path);
+        const std::string content = ReadUtf8TextFile(path);
+        ASSERT_FALSE(content.empty()) << "Failed to read building asset";
+
+        Moon::Building::GeneratedBuilding building;
+        std::string error;
+        ASSERT_TRUE(pipeline.ProcessBuilding(content, building, error))
+            << "Building asset failed pipeline: " << error;
+
+        for (const Moon::Building::WallSegment& wall : building.walls) {
+            const float dx = wall.end[0] - wall.start[0];
+            const float dy = wall.end[1] - wall.start[1];
+            const float lengthSquared = dx * dx + dy * dy;
+            EXPECT_GT(lengthSquared, 1e-6f)
+                << "Degenerate wall generated on floor " << wall.floorLevel << " for " << path;
+        }
+    }
+}
+
+TEST(BuildingAssetPresetTests, AllBuildingJsonFilesAssignWindowsToHostWalls) {
+    const std::string root = Moon::Assets::BuildAssetPath("building");
+    const auto files = CollectJsonFiles(root);
+    ASSERT_FALSE(files.empty()) << "No building json files found under " << root;
+
+    Moon::Building::BuildingPipeline pipeline;
+
+    for (const auto& path : files) {
+        if (path.size() >= 12 && path.substr(path.size() - 12) == "catalog.json") {
+            continue;
+        }
+
+        SCOPED_TRACE(path);
+        const std::string content = ReadUtf8TextFile(path);
+        ASSERT_FALSE(content.empty()) << "Failed to read building asset";
+
+        Moon::Building::GeneratedBuilding building;
+        std::string error;
+        ASSERT_TRUE(pipeline.ProcessBuilding(content, building, error))
+            << "Building asset failed pipeline: " << error;
+
+        std::unordered_map<int, const Moon::Building::WallSegment*> wallsById;
+        for (const Moon::Building::WallSegment& wall : building.walls) {
+            wallsById[wall.wallId] = &wall;
+        }
+
+        for (const Moon::Building::Window& window : building.windows) {
+            EXPECT_GE(window.wallId, 0) << "Window missing host wall in " << path;
+            auto wallIt = wallsById.find(window.wallId);
+            ASSERT_NE(wallIt, wallsById.end()) << "Window references unknown wall in " << path;
+            EXPECT_EQ(wallIt->second->floorLevel, window.floorLevel)
+                << "Window floor does not match host wall in " << path;
+        }
     }
 }
 

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <limits>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
 
 using json = nlohmann::json;
@@ -206,6 +207,23 @@ static const WallSegment* FindWallById(const GeneratedBuilding& building, int wa
         }
     }
     return nullptr;
+}
+
+static bool TryParseFloorPlateMeshLevel(const std::string& partId, int& outFloorLevel)
+{
+    constexpr const char* prefix = "floor_plate_mesh_";
+    if (partId.rfind(prefix, 0) != 0) {
+        return false;
+    }
+
+    std::istringstream stream(partId.substr(std::char_traits<char>::length(prefix)));
+    int level = 0;
+    stream >> level;
+    if (stream.fail()) {
+        return false;
+    }
+    outFloorLevel = level;
+    return true;
 }
 
 static inline GridPos2D RotateOffset2D(float offsetX, float offsetZ, float rotationDegrees)
@@ -574,8 +592,19 @@ std::string BuildingToObjectBlueprintConverter::Convert(const GeneratedBuilding&
     // -----------------------------------------------------------------------
     // 0. Structural floor plates
     // -----------------------------------------------------------------------
-    if (!building.floorPlates.empty() && building.floorPlateMeshes.empty()) {
+    std::unordered_set<int> floorLevelsWithPreviewMesh;
+    for (const auto& meshPart : building.floorPlateMeshes) {
+        int floorLevel = 0;
+        if (TryParseFloorPlateMeshLevel(meshPart.partId, floorLevel)) {
+            floorLevelsWithPreviewMesh.insert(floorLevel);
+        }
+    }
+
+    if (!building.floorPlates.empty()) {
         for (const auto& plate : building.floorPlates) {
+            if (floorLevelsWithPreviewMesh.count(plate.floorLevel) > 0) {
+                continue;
+            }
             const float floorBaseY = GetFloorBaseHeight(building.definition, plate.floorLevel);
             children.push_back(CreateFloorPlateNode(
                 "floor_plate_" + std::to_string(plate.floorLevel),

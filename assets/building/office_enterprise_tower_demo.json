@@ -21,9 +21,9 @@
         "level": 0,
         "name": "enterprise_arrival",
         "spaces": [
-          { "space_id": "core_0", "type": "core", "zone": "service", "area_preferred": 86, "constraints": { "connects_to_floor": 1, "ceiling_height": 6.0, "min_width": 5.0 } },
-          { "space_id": "lobby_0", "type": "lobby", "zone": "circulation", "area_preferred": 160, "constraints": { "ceiling_height": 6.0, "min_width": 8.0 } },
-          { "space_id": "retail_0", "type": "shop", "zone": "public", "area_preferred": 105, "constraints": { "ceiling_height": 5.5, "min_width": 6.0 } }
+          { "space_id": "core_0", "type": "core", "zone": "service", "adjacency": [{ "to": "lobby_0", "relationship": "connected", "importance": "required" }], "area_preferred": 86, "constraints": { "connects_to_floor": 1, "ceiling_height": 6.0, "min_width": 5.0 } },
+          { "space_id": "lobby_0", "type": "lobby", "zone": "circulation", "adjacency": [{ "to": "core_0", "relationship": "connected", "importance": "required" }, { "to": "retail_0", "relationship": "connected", "importance": "required" }], "area_preferred": 160, "constraints": { "ceiling_height": 6.0, "min_width": 8.0 } },
+          { "space_id": "retail_0", "type": "shop", "zone": "public", "adjacency": [{ "to": "lobby_0", "relationship": "connected", "importance": "required" }], "area_preferred": 105, "constraints": { "ceiling_height": 5.5, "min_width": 6.0 } }
         ]
       },
       {
