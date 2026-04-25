@@ -9,14 +9,14 @@ namespace Tooling {
 
 struct AgentPatchResponse {
     std::string summary;
-    std::string patchJson;
+    std::string updatedObjectJson;
     std::string rawResponseJson;
 };
 
 class ObjectCopilotAgentClient {
 public:
     static bool RequestPatch(const std::string& serviceUrl,
-                             const nlohmann::json& worldState,
+                             const std::string& currentObjectJson,
                              const nlohmann::json& conversation,
                              const std::string& userPrompt,
                              AgentPatchResponse& outResponse,

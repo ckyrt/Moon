@@ -5,7 +5,9 @@ namespace Tooling {
 
 namespace {
 
-bool ValidateWorldStateShape(const nlohmann::json& worldState, std::string& outError) {
+using json = nlohmann::json;
+
+bool ValidateWorldStateShape(const json& worldState, std::string& outError) {
     if (!worldState.is_object()) {
         outError = "World state root must be a JSON object";
         return false;
@@ -24,7 +26,7 @@ bool ValidateWorldStateShape(const nlohmann::json& worldState, std::string& outE
 ObjectCopilotSession::ObjectCopilotSession()
     : m_worldState(CreateDefaultWorldState()) {
     AddMessage(ChatRole::System,
-               "Object Copilot session started. Use this prototype to iterate on one object at a time.");
+               "Object Copilot session started. Edit the current object blueprint through conversation.");
 }
 
 std::string ObjectCopilotSession::GetWorldStatePrettyJson() const {
@@ -39,7 +41,7 @@ std::string ObjectCopilotSession::GetObjectBlueprintPrettyJson() const {
 }
 
 bool ObjectCopilotSession::SetWorldStateFromJson(const std::string& worldStateJson, std::string& outError) {
-    nlohmann::json parsed = nlohmann::json::parse(worldStateJson, nullptr, false);
+    json parsed = json::parse(worldStateJson, nullptr, false);
     if (parsed.is_discarded()) {
         outError = "World state JSON is invalid";
         return false;
@@ -54,22 +56,23 @@ bool ObjectCopilotSession::SetWorldStateFromJson(const std::string& worldStateJs
 }
 
 bool ObjectCopilotSession::SetObjectBlueprintFromJson(const std::string& objectJson, std::string& outError) {
-    nlohmann::json parsed = nlohmann::json::parse(objectJson, nullptr, false);
+    json parsed = json::parse(objectJson, nullptr, false);
     if (parsed.is_discarded() || !parsed.is_object()) {
         outError = "Object blueprint JSON is invalid";
         return false;
     }
 
     m_worldState["object_blueprint"] = std::move(parsed);
+    m_worldState["session"]["dirty"] = true;
     return true;
 }
 
 bool ObjectCopilotSession::ApplyPatch(const AgentPatch& patch, std::string& outError) {
-    nlohmann::json nextState = m_worldState;
+    json nextState = m_worldState;
 
     try {
         for (const PatchOperation& operation : patch.operations) {
-            const nlohmann::json::json_pointer pointer(operation.path);
+            const json::json_pointer pointer(operation.path);
             if (operation.op == "replace") {
                 if (!nextState.contains(pointer)) {
                     outError = "Patch replace path does not exist: " + operation.path;
@@ -79,8 +82,8 @@ bool ObjectCopilotSession::ApplyPatch(const AgentPatch& patch, std::string& outE
             } else if (operation.op == "add") {
                 nextState[pointer] = operation.value;
             } else if (operation.op == "remove") {
-                const nlohmann::json::json_pointer parentPointer = pointer.parent_pointer();
-                nlohmann::json& parent = parentPointer.empty() ? nextState : nextState[parentPointer];
+                const json::json_pointer parentPointer = pointer.parent_pointer();
+                json& parent = parentPointer.empty() ? nextState : nextState[parentPointer];
                 const std::string token = pointer.back();
                 if (parent.is_object()) {
                     parent.erase(token);
@@ -125,7 +128,7 @@ void ObjectCopilotSession::AddMessage(ChatRole role, const std::string& text) {
     m_messages.push_back(std::move(message));
 }
 
-nlohmann::json ObjectCopilotSession::CreateDefaultWorldState() {
+json ObjectCopilotSession::CreateDefaultWorldState() {
     return {
         {"schema", "moon_object_session"},
         {"version", 1},
@@ -137,12 +140,16 @@ nlohmann::json ObjectCopilotSession::CreateDefaultWorldState() {
             {"revision", 0},
             {"summary", "Fresh object session"}
         }},
+        {"session", {
+            {"dirty", false},
+            {"last_preview_ok", false}
+        }},
         {"object_blueprint", {
             {"schema_version", 1},
             {"id", "object_copilot_default_cube"},
             {"name", "Object Copilot Default Cube"},
             {"category", "prototype"},
-            {"tags", nlohmann::json::array({"prototype", "default"})},
+            {"tags", json::array({"prototype", "default"})},
             {"parameters", {
                 {"size", {
                     {"type", "float"},
@@ -166,7 +173,7 @@ nlohmann::json ObjectCopilotSession::CreateDefaultWorldState() {
 bool ObjectCopilotSession::ParsePatchJson(const std::string& patchJson,
                                           AgentPatch& outPatch,
                                           std::string& outError) {
-    nlohmann::json parsed = nlohmann::json::parse(patchJson, nullptr, false);
+    json parsed = json::parse(patchJson, nullptr, false);
     if (parsed.is_discarded() || !parsed.is_object()) {
         outError = "Patch JSON is invalid";
         return false;
@@ -182,7 +189,7 @@ bool ObjectCopilotSession::ParsePatchJson(const std::string& patchJson,
     }
 
     outPatch.operations.clear();
-    for (const nlohmann::json& item : parsed["operations"]) {
+    for (const json& item : parsed["operations"]) {
         if (!item.is_object()) {
             outError = "Each patch operation must be an object";
             return false;

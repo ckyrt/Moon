@@ -47,7 +47,7 @@ struct AppState {
     Moon::Tooling::ObjectCopilotSession session;
     Moon::Tooling::ObjectCopilotPreview* preview = nullptr;
     std::string promptDraft;
-    std::string patchDraft;
+    std::string aiObjectJsonDraft;
     std::string objectJsonDraft;
     std::string statusText;
     std::string errorText;
@@ -57,7 +57,7 @@ struct AppState {
 
 AppState* g_app = nullptr;
 
-void ApplyPatchDraft(AppState& app);
+void ApplyAiObjectDraft(AppState& app);
 void RefreshPreviewFromSession(AppState& app, const std::string& successMessage);
 
 void ConfigureImGuiFonts() {
@@ -112,14 +112,27 @@ RECT MakePreviewViewportRect(const UiLayout& layout) {
 
 std::string MakeDefaultPatchDraft() {
     return R"({
-  "summary": "Increase the default size parameter a little",
-  "operations": [
-    {
-      "op": "replace",
-      "path": "/object_blueprint/parameters/size/default",
-      "value": 140.0
+  "schema_version": 1,
+  "id": "object_copilot_default_cube",
+  "name": "Object Copilot Default Cube",
+  "category": "prototype",
+  "tags": ["prototype", "default"],
+  "parameters": {
+    "size": {
+      "type": "float",
+      "default": 140.0,
+      "min": 10.0,
+      "max": 400.0
     }
-  ]
+  },
+  "root": {
+    "type": "primitive",
+    "primitive": "cube",
+    "params": {
+      "size": "$size"
+    },
+    "material": "wood"
+  }
 })";
 }
 
@@ -182,6 +195,7 @@ nlohmann::json BuildConversationJson(const AppState& app) {
 
 void UpdateDraftsFromSession(AppState& app) {
     app.objectJsonDraft = app.session.GetObjectBlueprintPrettyJson();
+    app.aiObjectJsonDraft = app.objectJsonDraft;
 }
 
 void RefreshPreviewFromSession(AppState& app, const std::string& successMessage) {
@@ -206,7 +220,7 @@ void SubmitPrompt(AppState& app) {
     std::string requestError;
     if (!Moon::Tooling::ObjectCopilotAgentClient::RequestPatch(
             GetAgentServiceUrl(app),
-            app.session.GetWorldState(),
+            app.session.GetObjectBlueprintPrettyJson(),
             BuildConversationJson(app),
             prompt,
             agentResponse,
@@ -216,27 +230,27 @@ void SubmitPrompt(AppState& app) {
         return;
     }
 
-    app.patchDraft = agentResponse.patchJson;
+    app.aiObjectJsonDraft = agentResponse.updatedObjectJson;
     app.session.AddMessage(
         Moon::Tooling::ChatRole::Assistant,
-        agentResponse.summary.empty() ? "Agent returned a patch." : agentResponse.summary);
-    app.statusText = "Agent returned a patch. Applying it locally now.";
+        agentResponse.summary.empty() ? "Agent updated the object document." : agentResponse.summary);
+    app.statusText = "Agent returned an updated object document. Applying it locally now.";
     app.errorText.clear();
     app.promptDraft.clear();
 
-    ApplyPatchDraft(app);
+    ApplyAiObjectDraft(app);
 }
 
-void ApplyPatchDraft(AppState& app) {
+void ApplyAiObjectDraft(AppState& app) {
     std::string error;
-    if (!app.session.ApplyPatchJson(app.patchDraft, error)) {
+    if (!app.session.SetObjectBlueprintFromJson(app.aiObjectJsonDraft, error)) {
         app.errorText = error;
         return;
     }
 
-    app.session.AddMessage(Moon::Tooling::ChatRole::Assistant, "Applied a local structured patch to the world state.");
+    app.session.AddMessage(Moon::Tooling::ChatRole::Assistant, "Applied the updated object document to the current session.");
     UpdateDraftsFromSession(app);
-    RefreshPreviewFromSession(app, "Patch applied and preview rebuilt.");
+    RefreshPreviewFromSession(app, "Document applied and preview rebuilt.");
 }
 
 void ApplyObjectJsonDraft(AppState& app) {
@@ -253,7 +267,7 @@ void ResetSession(AppState& app) {
     app.session.ResetToDefaultObject();
     app.session.AddMessage(Moon::Tooling::ChatRole::System, "Session reset to the default prototype object.");
     app.promptDraft.clear();
-    app.patchDraft = MakeDefaultPatchDraft();
+    app.aiObjectJsonDraft = MakeDefaultPatchDraft();
     UpdateDraftsFromSession(app);
     RefreshPreviewFromSession(app, "Session reset and preview rebuilt.");
 }
@@ -306,14 +320,14 @@ void DrawAdvancedPanel(AppState& app) {
     ImGui::Separator();
 
     if (ImGui::BeginTabBar("AdvancedTabs")) {
-        if (ImGui::BeginTabItem("Patch")) {
+        if (ImGui::BeginTabItem("AI Draft")) {
             std::vector<char> patchBuffer(kLargeTextBufferSize);
-            CopyStringToBuffer(app.patchDraft, patchBuffer.data(), patchBuffer.size());
-            if (ImGui::InputTextMultiline("Patch JSON", patchBuffer.data(), patchBuffer.size(), ImVec2(-1.0f, 320.0f))) {
-                app.patchDraft = patchBuffer.data();
+            CopyStringToBuffer(app.aiObjectJsonDraft, patchBuffer.data(), patchBuffer.size());
+            if (ImGui::InputTextMultiline("AI Object JSON", patchBuffer.data(), patchBuffer.size(), ImVec2(-1.0f, 320.0f))) {
+                app.aiObjectJsonDraft = patchBuffer.data();
             }
-            if (ImGui::Button("Apply Patch", ImVec2(150.0f, 0.0f))) {
-                ApplyPatchDraft(app);
+            if (ImGui::Button("Apply AI JSON", ImVec2(150.0f, 0.0f))) {
+                ApplyAiObjectDraft(app);
             }
             ImGui::SameLine();
             if (ImGui::Button("Rebuild Preview", ImVec2(150.0f, 0.0f))) {
@@ -490,8 +504,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
 
     AppState app;
     g_app = &app;
-    app.patchDraft = MakeDefaultPatchDraft();
-    app.statusText = "Prototype ready. Record a prompt, apply a patch, or edit the current object blueprint.";
+    app.aiObjectJsonDraft = MakeDefaultPatchDraft();
+    app.statusText = "Prototype ready. Chat on the left and the current object document will keep evolving.";
     app.engine.Initialize();
 
     RECT clientRect;

@@ -116,7 +116,7 @@ bool ReadAllResponseBytes(HINTERNET requestHandle, std::string& outResponseBody,
 } // namespace
 
 bool ObjectCopilotAgentClient::RequestPatch(const std::string& serviceUrl,
-                                            const nlohmann::json& worldState,
+                                            const std::string& currentObjectJson,
                                             const nlohmann::json& conversation,
                                             const std::string& userPrompt,
                                             AgentPatchResponse& outResponse,
@@ -127,7 +127,7 @@ bool ObjectCopilotAgentClient::RequestPatch(const std::string& serviceUrl,
     }
 
     const nlohmann::json requestJson = {
-        {"world_state", worldState},
+        {"current_object_json", currentObjectJson},
         {"conversation", conversation},
         {"user_prompt", userPrompt}
     };
@@ -232,12 +232,11 @@ bool ObjectCopilotAgentClient::RequestPatch(const std::string& serviceUrl,
 
     outResponse.summary = parsedResponse.value("summary", std::string());
     outResponse.rawResponseJson = parsedResponse.dump(2);
-
-    nlohmann::json patchJson = {
-        {"summary", outResponse.summary},
-        {"operations", parsedResponse.value("operations", nlohmann::json::array())}
-    };
-    outResponse.patchJson = patchJson.dump(2);
+    if (!parsedResponse.contains("updated_object_json") || !parsedResponse["updated_object_json"].is_string()) {
+        outError = "Agent response did not include updated_object_json";
+        return false;
+    }
+    outResponse.updatedObjectJson = parsedResponse["updated_object_json"].get<std::string>();
     return true;
 }
 
