@@ -326,7 +326,7 @@ while (window.PollEvents()) {
 
 ## 单独拆 repo 的建议
 
-可以拆，而且建议拆成一个独立 `MoonRenderSDK` repo。拆分目标不是把整个 engine 复制出去，而是让外部项目只依赖稳定 API、头文件、导入库和运行时资源，不关心内部 `SceneNode`、`DiligentRenderer`、`TerrainVisualBuilder` 怎么组织。
+可以拆，而且建议拆成一个独立 `MoonRenderSDK` repo。这个 repo 不应该只是 wrapper API，而应该拥有材质、渲染管线、shader、天空/天气/光照/阴影、地形/水体/草地等 runtime 能力。外部项目只依赖稳定 API、头文件、导入库和运行时资源，不关心内部 `SceneNode`、`DiligentRenderer`、`TerrainVisualBuilder` 怎么组织。
 
 建议 repo 结构：
 
@@ -377,3 +377,5 @@ MoonRenderSDK/
 3. 在 Moon 主 repo 增加 adapter 实现，编译出 SDK lib/dll。
 4. 用 `examples/hello_world` 验证外部 repo 只依赖 SDK。
 5. 最后把 `engine/api` 变成 SDK repo 的 submodule/subtree，或者完全由 SDK repo 反向依赖 Moon engine adapter。
+
+更完整的拆分边界见 [`docs/render-sdk-extraction.md`](render-sdk-extraction.md)。
