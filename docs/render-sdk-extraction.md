@@ -104,8 +104,8 @@ MoonRenderSDK/
     hello_scene/
     terrain_weather/
     material_gallery/
-  cmake/
-  CMakeLists.txt
+  MoonRenderSDK.sln
+  MoonRenderSDK.vcxproj
   README.md
 ```
 
@@ -324,17 +324,27 @@ Forbidden in SDK:
 
 Recommended first target:
 
-- `MoonRenderSDK.lib`
-- `MoonRenderSDK.dll` later
+- `MoonRenderSDK.dll`
+- `MoonRenderSDK.lib` import library
 - `MoonRenderSDK.assets/`
 - `examples/hello_scene.exe`
 
-External integration should look like:
+External projects should not need to clone the SDK repository. They should consume a packaged release:
 
-```cmake
-find_package(MoonRenderSDK CONFIG REQUIRED)
-target_link_libraries(MyProject PRIVATE MoonRender::SDK)
+```text
+MoonRenderSDK/
+  include/
+  assets/
+  bin/x64/Release/MoonRenderSDK.dll
+  bin/x64/Release/MoonRenderSDK.lib
 ```
+
+Visual Studio integration:
+
+- add `MoonRenderSDK/include` to Additional Include Directories
+- add `MoonRenderSDK/bin/x64/Release` to Additional Library Directories
+- link `MoonRenderSDK.lib`
+- copy `MoonRenderSDK.dll` next to the executable
 
 ## Migration Steps
 
@@ -360,7 +370,7 @@ Create a new repo with:
 - copied runtime modules
 - shaders/material assets
 - one example app
-- CMake build
+- Visual Studio solution and `.vcxproj` DLL build
 
 At this phase the code can still be mostly copied from Moon, but public headers must hide internals.
 
@@ -370,8 +380,7 @@ Replace Moon's local render/core/environment/terrain copies with either:
 
 - git submodule
 - subtree
-- package dependency
-- sibling repo reference during development
+- source package dependency
 
 Editor and building tools call SDK APIs instead of directly owning the render runtime.
 

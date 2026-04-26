@@ -353,7 +353,8 @@ MoonRenderSDK/
     textures/
   examples/
     hello_world/
-  CMakeLists.txt
+  MoonRenderSDK.sln
+  MoonRenderSDK.vcxproj
   README.md
 ```
 
@@ -368,14 +369,14 @@ MoonRenderSDK/
 
 - public API 不暴露 `SceneNode*`、`DiligentRenderer&`、`EngineCore&`
 - adapter 层在 Moon 主 repo 内实现，把 public API 翻译到现有 engine 组件
-- 外部 repo 链接 `MoonRenderSDK.lib` 或 `MoonRenderSDK.dll`
+- 外部项目不需要 clone SDK 仓库，只使用发布包中的 `include/`、`assets/`、`MoonRenderSDK.dll`、`MoonRenderSDK.lib`
 
 最稳的迁移顺序：
 
 1. 在 Moon 主 repo 保留 `engine/api`，先稳定调用语义。
-2. 新建 `MoonRenderSDK` repo，把纯类型和 public header 复制过去。
-3. 在 Moon 主 repo 增加 adapter 实现，编译出 SDK lib/dll。
-4. 用 `examples/hello_world` 验证外部 repo 只依赖 SDK。
-5. 最后把 `engine/api` 变成 SDK repo 的 submodule/subtree，或者完全由 SDK repo 反向依赖 Moon engine adapter。
+2. 新建 `MoonRenderSDK` repo，把 public header、runtime 代码、shader/material assets 迁过去。
+3. SDK 用 Visual Studio 编译出 `MoonRenderSDK.dll` 和 import lib。
+4. 外部项目通过发布包使用 DLL；Moon 主 repo 用 `external/MoonRenderSDK` submodule 做源码级开发依赖。
+5. 最后让 Moon 的 editor/building/tools 调 SDK，而不是直接拥有渲染 runtime。
 
 更完整的拆分边界见 [`docs/render-sdk-extraction.md`](render-sdk-extraction.md)。
