@@ -43,6 +43,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <MoonRenderSDKRoot>$(SolutionDir)..\MoonRenderSDK</MoonRenderSDKRoot>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
@@ -59,7 +62,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>PLATFORM_WIN32=1;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)engine\core;$(SolutionDir)engine\render;$(SolutionDir)engine\building;$(SolutionDir)engine\environment;$(SolutionDir)engine\terrain;$(SolutionDir)engine\vehicle;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MoonRenderSDKRoot)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -67,9 +70,12 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>EngineCore.lib;EngineObjects.lib;EnginePhysics.lib;EngineRender.lib;EngineBuilding.lib;EngineEnvironment.lib;EngineTerrain.lib;EngineVehicle.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>MoonRenderSDK.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(MoonRenderSDKRoot)\bin\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(MoonRenderSDKRoot)\bin\$(Platform)\$(Configuration)\MoonRenderSDK.dll" "$(OutDir)MoonRenderSDK.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -79,68 +85,25 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>PLATFORM_WIN32=1;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)engine\core;$(SolutionDir)engine\render;$(SolutionDir)engine\building;$(SolutionDir)engine\environment;$(SolutionDir)engine\terrain;$(SolutionDir)engine\vehicle;$(SolutionDir)external\imgui;$(SolutionDir)external\ImGuizmo;$(SolutionDir)external\DiligentEngine\DiligentCore;$(SolutionDir)external\DiligentEngine\DiligentTools\Imgui\interface;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MoonRenderSDKRoot)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>EngineCore.lib;EngineObjects.lib;EnginePhysics.lib;EngineRender.lib;EngineBuilding.lib;EngineEnvironment.lib;EngineTerrain.lib;EngineVehicle.lib;ImGui.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>MoonRenderSDK.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(MoonRenderSDKRoot)\bin\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(MoonRenderSDKRoot)\bin\$(Platform)\$(Configuration)\MoonRenderSDK.dll" "$(OutDir)MoonRenderSDK.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\external\zip\src\zip.c">
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;6011;6386;6308;6262</DisableSpecificWarnings>
-    </ClCompile>
-    <ClCompile Include="hello_win32.cpp" />
-    <ClCompile Include="HelloEngineImGui.cpp" />
-    <ClCompile Include="DebugGridRenderer.cpp" />
-    <ClCompile Include="CSGUnitTest.cpp" />
-    <ClCompile Include="SceneZipLoader.cpp" />
-    <ClCompile Include="TestCSG.cpp" />
-    <ClCompile Include="TestCSGBlueprint.cpp" />
-    <ClCompile Include="TestBuildingSample.cpp" />
-    <ClCompile Include="TestEnvironment.cpp" />
-    <ClCompile Include="TestTerrain.cpp" />
-    <ClCompile Include="TestMaterial.cpp" />
-    <ClCompile Include="TestZipLoad.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="CSGUnitTest.h" />
-    <ClInclude Include="HelloEngineImGui.h" />
-    <ClInclude Include="DebugGridRenderer.h" />
-    <ClInclude Include="SceneZipLoader.h" />
-    <ClInclude Include="TestScenes.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\objects\EngineObjects.vcxproj">
-      <Project>{2C8D4A5E-6F71-4820-93AB-4C5D6E7F8A90}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\core\EngineCore.vcxproj">
-      <Project>{C4E6F6F1-0A2B-4E3C-9D8E-1F2A3B4C5D6E}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\render\EngineRender.vcxproj">
-      <Project>{256A3289-BE13-44ED-B3AE-BFDCAA130227}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\physics\EnginePhysics.vcxproj">
-      <Project>{9D8E5F6A-7B4C-3E2D-8A1F-0C6E4B5D7A92}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\environment\EngineEnvironment.vcxproj">
-      <Project>{6A7B8C9D-0E1F-4234-A5B6-C7D8E9F01234}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\terrain\EngineTerrain.vcxproj">
-      <Project>{1C2D3E4F-5061-4728-93A4-B5C6D7E8F901}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\vehicle\EngineVehicle.vcxproj">
-      <Project>{5E0A1B2C-3D4E-4F56-8A90-B1C2D3E4F5A6}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\building\EngineBuilding.vcxproj">
-      <Project>{7B8C9D0E-1F2A-3B4C-5D6E-7F8A9B0C1D2E}</Project>
-    </ProjectReference>
+    <ClCompile Include="hello_sdk.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -94,6 +94,28 @@ $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere
 & $msbuild .\Moon.sln /t:EngineBuildingTests /p:Configuration=Debug /p:Platform=x64 /m /v:minimal
 ```
 
+### MoonRenderSDK 与 HelloEngine
+
+`MoonRenderSDK` 已迁到与 `Moon` 平级的位置：
+
+```text
+E:\game_engine\Moon
+E:\game_engine\MoonRenderSDK
+```
+
+推荐先编 SDK，再编 Moon 中的 consumer 目标：
+
+```powershell
+& $msbuild E:\game_engine\MoonRenderSDK\MoonRenderSDK.sln /t:Build /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+& $msbuild .\Moon.sln /t:HelloEngine /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+```
+
+`HelloEngine` 现在直接链接 sibling SDK 的：
+
+- `E:\game_engine\MoonRenderSDK\include`
+- `E:\game_engine\MoonRenderSDK\bin\x64\Release\MoonRenderSDK.lib`
+- `E:\game_engine\MoonRenderSDK\bin\x64\Release\MoonRenderSDK.dll`
+
 ### 清理构建
 
 ```powershell

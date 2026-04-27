@@ -376,13 +376,14 @@ At this phase the code can still be mostly copied from Moon, but public headers 
 
 ### Phase 3: Make Moon Consume The SDK
 
-Replace Moon's local render/core/environment/terrain copies with either:
+Replace Moon's direct render/runtime ownership with SDK consumption:
 
-- git submodule
-- subtree
-- source package dependency
+- keep `MoonRenderSDK` as a sibling repo beside `Moon`
+- link `..\MoonRenderSDK\include`
+- link `..\MoonRenderSDK\bin\x64\{Debug|Release}\MoonRenderSDK.lib`
+- copy `MoonRenderSDK.dll` next to Moon executables
 
-Editor and building tools call SDK APIs instead of directly owning the render runtime.
+Editor and building tools should call SDK APIs instead of directly owning the render runtime.
 
 ### Phase 4: Harden SDK
 

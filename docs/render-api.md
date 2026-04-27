@@ -376,7 +376,7 @@ MoonRenderSDK/
 1. 在 Moon 主 repo 保留 `engine/api`，先稳定调用语义。
 2. 新建 `MoonRenderSDK` repo，把 public header、runtime 代码、shader/material assets 迁过去。
 3. SDK 用 Visual Studio 编译出 `MoonRenderSDK.dll` 和 import lib。
-4. 外部项目通过发布包使用 DLL；Moon 主 repo 用 `external/MoonRenderSDK` submodule 做源码级开发依赖。
+4. 外部项目通过发布包使用 DLL；Moon 主 repo 作为 SDK consumer，直接链接 `E:\game_engine\MoonRenderSDK` 的头文件和 `dll/lib` 产出。
 5. 最后让 Moon 的 editor/building/tools 调 SDK，而不是直接拥有渲染 runtime。
 
 更完整的拆分边界见 [`docs/render-sdk-extraction.md`](render-sdk-extraction.md)。
